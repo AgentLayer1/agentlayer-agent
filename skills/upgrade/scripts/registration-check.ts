@@ -10,6 +10,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
+import { PLUGIN_SOURCE_ROOT } from '../../../src/shared/naming';
 
 /** Where consumers install from, and the marketplace repos that name replaced. */
 const PUBLISHED = {
@@ -43,7 +44,7 @@ if (!home) {
   process.exit(2);
 }
 const homeDir = resolve(home);
-const pluginRoot = resolve(flag('plugin-root') ?? resolve(import.meta.dir, '..', '..', '..'));
+const pluginRoot = resolve(flag('plugin-root') ?? PLUGIN_SOURCE_ROOT);
 const claudeDir = resolve(flag('claude-dir') ?? resolve(homedir(), '.claude'));
 const codexDir = resolve(flag('codex-dir') ?? resolve(homedir(), '.codex'));
 

@@ -15,7 +15,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { AGENT_SLUG, FILES, FOLDERS, PLUGIN_NAME } from '@/config';
-import { pluginName } from '@/shared/naming';
+import { PLUGIN_SOURCE_ROOT, pluginName } from '@/shared/naming';
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -95,8 +95,7 @@ describe('process.env is consolidated into shared/env.ts', () => {
 });
 
 describe("the agent's names", () => {
-  // The checkout itself, not FOLDERS.ROOT, which AGENT_PLUGIN_ROOT can point at another install.
-  const checkout = resolve(import.meta.dir, '..');
+  const checkout = PLUGIN_SOURCE_ROOT;
   const json = (...parts: string[]): Record<string, unknown> =>
     JSON.parse(readFileSync(resolve(checkout, ...parts), 'utf-8')) as Record<string, unknown>;
 

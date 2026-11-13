@@ -134,7 +134,6 @@ export const runMigration = async (
     env: {
       ...process.env,
       AGENT_HOME: FOLDERS.HOME,
-      AGENT_PLUGIN_ROOT: FOLDERS.ROOT,
       AGENT_UPGRADE_OPTIONS: JSON.stringify(options ?? {})
     },
     // No cancel: a migration stopped halfway leaves the home half-migrated.

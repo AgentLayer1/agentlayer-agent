@@ -17,6 +17,7 @@ import {
   listSecretEntries,
   MARKDOWN_URL,
   PLUGIN_NAME,
+  PLUGIN_VERSION,
   type SecretEntry,
   TIMEZONE
 } from '@/config';
@@ -29,7 +30,7 @@ import { type ChangelogEntry, getUpgradeStatus, parseChangelog, type UpgradeStat
 import { readCadence } from '@/shared/cadence';
 import { nowISO, nowTime, todayDate } from '@/shared/date';
 import { agentDisplayName } from '@/shared/agent-name';
-import { CLI_FILE } from '@/shared/naming';
+import { CLI_PATH } from '@/shared/naming';
 import { routerPlaybooks } from '@/shared/playbooks';
 import { env } from '@/shared/env';
 import {
@@ -1457,7 +1458,7 @@ const collectLint = (): LintReport => {
 const collectCli = (): CliSection[] => {
   let content = '';
   try {
-    content = readText(resolve(FOLDERS.ROOT, CLI_FILE));
+    content = readText(CLI_PATH);
   } catch {
     return [];
   }
@@ -1505,14 +1506,11 @@ const runtimeHistory = (): StatusSnapshot['runtime']['history'] => {
 };
 
 const collectRuntime = (): StatusSnapshot['runtime'] => {
-  const manifest = readJson<{ name?: string; version?: string }>(
-    resolve(FOLDERS.ROOT, '.claude-plugin', 'plugin.json')
-  );
   const now = new Date();
   const upgrade = getUpgradeStatus();
   return {
-    version: manifest?.version ?? '0.0.0',
-    pluginName: manifest?.name ?? PLUGIN_NAME,
+    version: PLUGIN_VERSION,
+    pluginName: PLUGIN_NAME,
     home: FOLDERS.HOME,
     pluginRoot: FOLDERS.ROOT,
     timezone: TIMEZONE,

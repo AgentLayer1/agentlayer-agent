@@ -11,9 +11,7 @@ import { CLI_COMMAND, RUNTIME_DIR, pluginName } from '@/shared/naming';
 // settings.local.json (machine-specific) overrides settings.json (committed);
 // existing shell env always wins. Every server import below is dynamic, which
 // keeps each CLI invocation to the one subsystem it needs instead of loading
-// all of them. Staging env first is no longer load-bearing — config resolves paths
-// live and secret loading re-keys on the home — but it stays because it's the
-// order a reader expects. A `--home=PATH` argument anywhere on the line pins
+// all of them. A `--home=PATH` argument anywhere on the line pins
 // AGENT_HOME first: the Codex hooks pass the home that way because their command
 // line has to parse under sh and PowerShell alike, and an env prefix does not.
 async function loadProjectEnv(): Promise<void> {
@@ -532,12 +530,7 @@ async function run(): Promise<void> {
     // resolves through the host's project dir (Claude) or --home (Codex). Outside a home
     // there is nothing to protect.
     if (!isInitialized()) return;
-    const raw = await new Promise<string>((resolveFn) => {
-      let data = '';
-      process.stdin.setEncoding('utf-8');
-      process.stdin.on('data', (chunk) => (data += chunk));
-      process.stdin.on('end', () => resolveFn(data));
-    });
+    const raw = await Bun.stdin.text();
     const input: HookInput = raw.trim() ? parseHookInput(raw) : {};
     const commandText = input.tool_input?.command;
     if (typeof commandText !== 'string' || !input.cwd) return;
@@ -608,12 +601,7 @@ async function run(): Promise<void> {
 
     // Codex's hook payload uses Claude's field names (session_id, transcript_path, cwd).
     if (hookProtocol === 'claude' || hookProtocol === 'codex') {
-      const raw = await new Promise<string>((resolveFn) => {
-        let data = '';
-        process.stdin.setEncoding('utf-8');
-        process.stdin.on('data', (chunk) => (data += chunk));
-        process.stdin.on('end', () => resolveFn(data));
-      });
+      const raw = await Bun.stdin.text();
       const parsed = parseHookInput(raw);
       transcriptPath = parsed.transcript_path ?? '';
       // Claude reports the shell's cwd, which a Bash `cd` moves; the session lives where
@@ -668,12 +656,7 @@ async function run(): Promise<void> {
     const wantStdin = allArgs.includes('--stdin');
     let text = positional ?? localFlag('text');
     if (!text && !localFlag('file') && !localFlag('url') && (wantStdin || !process.stdin.isTTY)) {
-      text = await new Promise<string>((resolveFn) => {
-        let data = '';
-        process.stdin.setEncoding('utf-8');
-        process.stdin.on('data', (chunk) => (data += chunk));
-        process.stdin.on('end', () => resolveFn(data));
-      });
+      text = await Bun.stdin.text();
     }
     const { capture } = await import('@/knowledge/capture');
     const result = await capture({
@@ -729,8 +712,7 @@ async function run(): Promise<void> {
   }
 
   if (group === 'dashboard') {
-    // The Agent OS dashboard replaced the old terminal TUI: regenerate
-    // TASKS.md + <HOME>/dashboard.html and print where the snapshot landed.
+    // Regenerate TASKS.md + <HOME>/dashboard.html and print where the snapshot landed.
     const { rebuildDashboards } = await import('@/status/html');
     console.log(JSON.stringify(await rebuildDashboards(), null, 2));
     return;

@@ -13,6 +13,7 @@ import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { agentHomePath } from '../../../src/shared/env';
+import { PLUGIN_SOURCE_ROOT } from '../../../src/shared/naming';
 
 const args = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -21,7 +22,7 @@ const flag = (name: string): string | undefined => {
 };
 /** One spelling per existing directory, so a symlinked home and its target compare equal. */
 const canonical = (path: string): string => (existsSync(path) ? realpathSync(path) : resolve(path));
-const pluginRoot = resolve(flag('plugin-root') ?? join(import.meta.dir, '..', '..', '..'));
+const pluginRoot = resolve(flag('plugin-root') ?? PLUGIN_SOURCE_ROOT);
 const homeDir = canonical(flag('home') ?? agentHomePath());
 const claudeDir = resolve(flag('claude-dir') ?? process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude'));
 const codexDir = resolve(flag('codex-dir') ?? process.env.CODEX_HOME ?? join(homedir(), '.codex'));

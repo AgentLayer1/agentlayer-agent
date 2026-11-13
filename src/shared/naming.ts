@@ -53,8 +53,10 @@ const MANIFEST_PATH = resolve(PLUGIN_SOURCE_ROOT, MANIFEST_FILE);
 /** The CLI that hooks, the status line and the operator's terminal run, relative to the plugin root. */
 export const CLI_FILE = join('src', 'cli.ts');
 
+export const CLI_PATH = resolve(PLUGIN_SOURCE_ROOT, CLI_FILE);
+
 /** The command that runs this plugin's CLI from anywhere: nothing puts it on a PATH. */
-export const CLI_COMMAND = `bun "${resolve(PLUGIN_SOURCE_ROOT, CLI_FILE)}"`;
+export const CLI_COMMAND = `bun "${CLI_PATH}"`;
 
 const brokenManifest = (reason: string, cause?: unknown): Error =>
   new Error(
@@ -65,6 +67,7 @@ const brokenManifest = (reason: string, cause?: unknown): Error =>
 
 interface PluginManifest {
   name?: unknown;
+  version?: unknown;
   mcpServers?: unknown;
 }
 
@@ -87,6 +90,12 @@ export const pluginName = (): string => {
     throw brokenManifest(`the plugin manifest has no usable "name"`);
   }
   return name;
+};
+
+/** This plugin's manifest version, or `0.0.0` when the manifest has none. */
+export const pluginVersion = (): string => {
+  const { version } = manifest();
+  return typeof version === 'string' && version ? version : '0.0.0';
 };
 
 /**

@@ -31,7 +31,7 @@ import { ANSI, paint } from '@/shared/banner';
 import { env } from '@/shared/env';
 import { readCadence } from '@/shared/cadence';
 import { log as baseLog } from '@/shared/log';
-import { CLI_FILE } from '@/shared/naming';
+import { CLI_PATH } from '@/shared/naming';
 import { isInside } from '@/shared/paths';
 import { readText, readTextAsync } from '@/shared/text';
 import { countOf } from '@/shared/utils';
@@ -457,7 +457,7 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
   // A due upgrade re-points the footer itself, and the banner's upgrade line already says to run it.
   const statusLine =
     getUpgradeStatus().state === 'current'
-      ? statusLineDrift(resolve(FOLDERS.HOME, '.claude'), resolve(FOLDERS.ROOT, CLI_FILE))
+      ? statusLineDrift(resolve(FOLDERS.HOME, '.claude'), CLI_PATH)
       : undefined;
   if (statusLine) {
     entries.push({ label: 'status line', status: 'unavailable', bytes: 0, note: 'needs upgrade' });

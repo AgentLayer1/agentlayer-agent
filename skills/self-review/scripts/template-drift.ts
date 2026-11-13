@@ -11,6 +11,7 @@
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { PLUGIN_SOURCE_ROOT } from '../../../src/shared/naming';
 import { readText } from '../../../src/shared/text';
 
 interface Section {
@@ -40,7 +41,7 @@ if (!homeArg) {
   process.exit(2);
 }
 const home = resolve(homeArg);
-const plugin = resolve(flag('--plugin') ?? join(import.meta.dir, '..', '..', '..'));
+const plugin = resolve(flag('--plugin') ?? PLUGIN_SOURCE_ROOT);
 const templates = join(plugin, 'templates');
 const baseArg = flag('--base');
 const base = baseArg === undefined ? undefined : resolve(baseArg);

@@ -29,7 +29,6 @@
         "${CLAUDE_PLUGIN_ROOT}/src/server.ts"
       ],
       "env": {
-        "AGENT_PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
         "AGENT_PLUGIN_DATA": "${CLAUDE_PLUGIN_DATA}",
         "PLAYWRIGHT_BROWSERS_PATH": "0"
       }

@@ -1,10 +1,8 @@
-import { PLUGIN_SOURCE_ROOT, agentSlug, dataDirOf, pluginName } from '@/shared/naming';
+import { PLUGIN_SOURCE_ROOT, agentSlug, dataDirOf, pluginName, pluginVersion } from '@/shared/naming';
 import { agentHomePath, env, isAgentHome, loadedSecretKeyNames } from '@/shared/env';
 import { expandTilde } from '@/shared/paths';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-
-const PLUGIN_ROOT = env('AGENT_PLUGIN_ROOT') ?? PLUGIN_SOURCE_ROOT;
 
 const fromEnv = (key: string, fallback: string) => expandTilde(env(key) || fallback);
 
@@ -84,24 +82,15 @@ export const AGENT_SLUG = agentSlug();
  *  `${MCP_PREFIX}<tool>`. */
 export const MCP_PREFIX = `mcp__plugin_${PLUGIN_NAME}_${AGENT_SLUG}__`;
 
-/** Plugin version from `.claude-plugin/plugin.json`, read once at module load.
- *  Falls back to `0.0.0` if the manifest is missing or unparseable. */
-export const PLUGIN_VERSION = ((): string => {
-  try {
-    const manifest = JSON.parse(readFileSync(resolve(PLUGIN_ROOT, '.claude-plugin', 'plugin.json'), 'utf-8'));
-    return typeof manifest.version === 'string' ? manifest.version : '0.0.0';
-  } catch {
-    return '0.0.0';
-  }
-})();
+export const PLUGIN_VERSION = pluginVersion();
 
 /**
  * Filesystem layout. Plugin-relative entries are plain values (fixed for the process);
  * everything home-relative is a getter, so each read reflects the current `AGENT_HOME`.
  */
 export const FOLDERS = {
-  ROOT: PLUGIN_ROOT,
-  TEMPLATES: resolve(PLUGIN_ROOT, 'templates'),
+  ROOT: PLUGIN_SOURCE_ROOT,
+  TEMPLATES: resolve(PLUGIN_SOURCE_ROOT, 'templates'),
   get HOME() {
     return homeRoot();
   },

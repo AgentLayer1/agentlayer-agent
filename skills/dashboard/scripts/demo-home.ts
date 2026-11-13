@@ -19,6 +19,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { CLI_PATH, PLUGIN_SOURCE_ROOT } from '../../../src/shared/naming';
 
 const args = process.argv.slice(2);
 const flag = (name: string): string | undefined =>
@@ -35,7 +36,7 @@ if (!outArg) {
 }
 const OUT = resolve(outArg);
 const AVATAR = flag('--avatar');
-const REPO = resolve(import.meta.dir, '..', '..', '..');
+const REPO = PLUGIN_SOURCE_ROOT;
 const TZ = 'America/New_York';
 const PUBLIC_HOME = '/home/alex';
 const PUBLIC_PLUGIN = '/home/alex/.claude/plugins/marketplaces/agentlayer';
@@ -1046,7 +1047,7 @@ git('init', '-q');
 git('add', '-A');
 git('commit', '-q', '-m', 'Sync: update knowledge');
 
-const render = spawnSync(process.execPath, [join(REPO, 'src', 'cli.ts'), 'dashboard'], {
+const render = spawnSync(process.execPath, [CLI_PATH, 'dashboard'], {
   cwd: HOME_DIR,
   env: {
     PATH: `${shimDir}:${dirname(process.execPath)}:/opt/homebrew/bin:/usr/bin:/bin`,

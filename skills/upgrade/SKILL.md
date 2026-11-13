@@ -621,10 +621,9 @@ on relaunch; say so in the Step 6 report. The subagent panel needs nothing here:
 its own `subagentStatusLine`.
 
 **Check the user-global auto-mode block (built-in invariant, every run).** The recommended
-block lives in the init skill's auto-mode section, and it moves with the plugin (0.4.0 added
-`AGENTS.md`, the operating manual, to the Agent Knowledge Base allow and the Identity File
-Replacement soft-deny). A copy the operator pasted earlier goes stale silently, and from
-then on every write to the file the new rule names is judged as Instruction Poisoning.
+block lives in the init skill's auto-mode section, and it moves with the plugin. A copy the
+operator pasted earlier goes stale silently, and from then on every write to the file the new
+rule names is judged as Instruction Poisoning.
 Never transcribe the block or compare its prose by eye — generate and check it:
 
 ```bash

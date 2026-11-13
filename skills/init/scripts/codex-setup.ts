@@ -32,6 +32,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { CLI_FILE, PLUGIN_SOURCE_ROOT } from '../../../src/shared/naming';
 import { readTextIfExists } from '../../../src/shared/text';
 
 interface HookItem {
@@ -62,7 +63,7 @@ if (!home) {
   process.exit(2);
 }
 const homeDir = resolve(home);
-const pluginRoot = resolve(flag('plugin-root') ?? resolve(import.meta.dir, '..', '..', '..'));
+const pluginRoot = resolve(flag('plugin-root') ?? PLUGIN_SOURCE_ROOT);
 const claudeUserSettingsPath = flag('claude-user-settings') ?? resolve(homedir(), '.claude', 'settings.json');
 const userConfigPath = flag('codex-user-config') ?? resolve(homedir(), '.codex', 'config.toml');
 const hooksPath = resolve(homeDir, '.codex', 'hooks.json');
@@ -81,7 +82,7 @@ const readJson = (path: string): Record<string, unknown> => {
 const expandTilde = (path: string): string => path.replace(/^~(?=$|\/)/, homedir());
 
 /** The agent's names, from the manifest of the checkout being wired, else this one. */
-const manifestPath = [pluginRoot, resolve(import.meta.dir, '..', '..', '..')]
+const manifestPath = [pluginRoot, PLUGIN_SOURCE_ROOT]
   .map((root) => resolve(root, '.claude-plugin', 'plugin.json'))
   .find((path) => existsSync(path));
 const manifest = readJson(String(manifestPath));
@@ -228,7 +229,7 @@ const quote = (value: string): string => {
   return `"${value}"`;
 };
 const command = (rest: string): string =>
-  `bun ${quote(resolve(pluginRoot, 'src', 'cli.ts'))} ${rest} --home=${quote(homeDir)}`;
+  `bun ${quote(resolve(pluginRoot, CLI_FILE))} ${rest} --home=${quote(homeDir)}`;
 const entry = (commandLine: string, timeout: number, extra: Partial<HookItem> = {}, matcher = ''): HookGroup => ({
   matcher,
   hooks: [{ type: 'command', command: commandLine, timeout, ...extra }]
