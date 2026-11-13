@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'claude-code/testing';
 import type { Engine } from 'claude-code/testing';
 
-import { BAND_PROPS, CLI, PLUGIN, QUESTION_MS, SKILL_MS, STATS_TOOL, fakeHost, machine } from './fake-host';
+import { AGENT, BAND_PROPS, PLUGIN, QUESTION_MS, SKILL_MS, STATS_TOOL, fakeHost, machine } from './fake-host';
 import type { FakeHost } from './fake-host';
 
-const MCP = `mcp__plugin_${PLUGIN}_${CLI}__` as const;
+const MCP = `mcp__plugin_${PLUGIN}_${AGENT}__` as const;
 const SURFACES = ['terminal', 'desktop'] as const;
 
 const startSync = ($: Engine) => $.skill.prompt({ skill: `${PLUGIN}:sync`, text: 'SYNC PROTOCOL' });

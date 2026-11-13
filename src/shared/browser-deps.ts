@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import type { BrowserContext, BrowserContextOptions, BrowserType } from 'playwright';
 import { log } from './log';
+import { PLUGIN_SOURCE_ROOT } from './naming';
 
 export interface AcquiredContext {
   context: BrowserContext;
@@ -18,14 +19,14 @@ export async function getChromium(): Promise<BrowserType> {
     ({ chromium } = await import('playwright'));
   } catch {
     throw new Error(
-      'playwright package is not installed. Run `cd $CLAUDE_PLUGIN_ROOT && bun install` from a normal terminal.'
+      `playwright package is not installed. Run \`cd "${PLUGIN_SOURCE_ROOT}" && bun install\` from a normal terminal.`
     );
   }
   const binaryPath = chromium.executablePath();
   if (!binaryPath || !existsSync(binaryPath)) {
     throw new Error(
       "Chromium binary is missing — the plugin's postinstall didn't complete. " +
-        'Run `cd $CLAUDE_PLUGIN_ROOT && PLAYWRIGHT_BROWSERS_PATH=0 bunx playwright install chromium` from a normal terminal (outside Claude Code) so the download bypasses the sandbox.'
+        `Run \`cd "${PLUGIN_SOURCE_ROOT}" && PLAYWRIGHT_BROWSERS_PATH=0 bunx playwright install chromium\` from a normal terminal (outside Claude Code) so the download bypasses the sandbox.`
     );
   }
   return chromium;
@@ -68,7 +69,7 @@ export async function withBrowserLaunch<T>(launchFn: (timeout: number) => Promis
       throw new Error(
         'Chromium launched but is missing system libraries (libnss3, libgbm1, libasound2, …). ' +
           'On Linux/WSL2 these are not installed by default. Run once from a normal terminal:\n' +
-          '  sudo $CLAUDE_PLUGIN_ROOT/node_modules/.bin/playwright install-deps chromium\n' +
+          `  sudo "${PLUGIN_SOURCE_ROOT}/node_modules/.bin/playwright" install-deps chromium\n` +
           `Original error: ${message}`
       );
     }

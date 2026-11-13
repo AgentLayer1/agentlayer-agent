@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { HOME_MARKER_FILES, RUNTIME_DIR } from '@/shared/naming';
+import { HOME_MARKER_FILES, RUNTIME_DIR, agentSlug, pluginName } from '@/shared/naming';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DATA_DIR, HOME_MARKERS } from '../mods/manuals/repo';
@@ -21,6 +21,12 @@ describe('mods', () => {
 
   test('the setup prompt names a new agent the way the server does', () => {
     expect(MODS_DEFAULT_NAME).toBe(DEFAULT_AGENT_NAME);
+  });
+
+  test("the mods' tests spell the plugin and its server the way the manifest does", () => {
+    const fakeHost = readFileSync(resolve(import.meta.dir, '../mods/tests/fake-host.ts'), 'utf-8');
+    expect(fakeHost).toContain(`PLUGIN = '${pluginName()}'`);
+    expect(fakeHost).toContain(`AGENT = '${agentSlug()}'`);
   });
 
   test("/task's done and cancel act on exactly the statuses the task schema can close or cancel", () => {

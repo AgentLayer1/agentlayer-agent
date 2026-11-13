@@ -639,7 +639,7 @@ interface HookConfig {
   hooks?: Array<{ command?: string }>;
 }
 
-/** Reduce a hook command to a readable `<agent> <verb>` summary. */
+/** Reduce a hook command to a readable `cli.ts <verb>` summary. */
 const summarizeHookCommand = (command: string): string => {
   const match = command.match(/src\/cli\.ts"?\s+([a-z-]+(?:\s+--?[a-z-]+=?\S*)?)/);
   return match ? `cli.ts ${match[1]}` : command.split(/\s+/).slice(0, 3).join(' ');

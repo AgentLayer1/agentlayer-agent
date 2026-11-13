@@ -24,7 +24,7 @@ Verify the MCP server boots:
 
 ```bash
 bun src/server.ts
-# expect: "agent MCP server started — tools=24"
+# expect: "agent MCP server started — tools=<count>"
 ```
 
 Type-check:
@@ -36,7 +36,7 @@ bun run typecheck   # runs `tsc`
 Verify a hook script:
 
 ```bash
-bun ../scripts/session-start.ts
+bun src/cli.ts session-start --hook-protocol=claude
 # expect: JSON with `systemMessage` and `hookSpecificOutput` keys
 ```
 
@@ -72,7 +72,7 @@ A skill that is part of the agent's standing capability set lives here in plugin
 ## Adding an MCP tool
 
 1. Add a file under `src/tools/<your-tool>.ts` exporting a `tools: ToolDef[]` array. Use `defineTool({ name, description, inputSchema, handler })` from `@/shared/types`.
-2. Register it in `src/server.ts` by adding an import and spreading the array into the `TOOLS` constant.
+2. Register it in `src/tools/modules.ts` by adding an import and listing the module in `TOOL_MODULES`.
 3. Add the tool name to `skills/init/SKILL.md`'s `permissions.allow` list (use the `mcp__plugin_agentlayer_agent__<tool_name>` prefix). Pack-gated tools go in the matching `configure-skills` walk instead of the init baseline.
 4. `bun run typecheck` must pass before submitting.
 

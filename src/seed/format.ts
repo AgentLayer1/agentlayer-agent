@@ -26,7 +26,7 @@
  * ALLOWED_ROOTS — a hostile manifest cannot touch settings, secrets, or
  * anything else in the home.
  */
-import { AGENT_SLUG, FOLDERS, MCP_PREFIX, PLUGIN_NAME } from '@/config';
+import { FOLDERS, MCP_PREFIX, PLUGIN_NAME } from '@/config';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -296,7 +296,6 @@ export const PACKS: Record<string, PackDef> = {
         'slack_search',
         'slack_waiting'
       ]),
-      `Bash(${AGENT_SLUG} slack *)`,
       'WebFetch(domain:slack.com)',
       skill('slack')
     ],

@@ -293,8 +293,8 @@ fork isn't orphaned. Remote connections are refused; `database_fork` only acts o
 
 **Resolving the source connection (the generic seam):** the tool needs an `AGENT_DB_<NAME>`
 connection pointing at the repo's local Postgres server (e.g.
-`AGENT_DB_ACME=postgresql://postgres:@localhost:5432/acme` in **`.state/secrets/.env`** — since
-v0.3.0 credential env vars live there, not in `.claude/settings.local.json`). It defaults to the
+`AGENT_DB_ACME=postgresql://postgres:@localhost:5432/acme` in **`.state/secrets/.env`** —
+credential env vars live there, not in `.claude/settings.local.json`). It defaults to the
 first configured connection; when a repo has several, pick the right one in this order:
 
 1. A declaration in the **repo's `AGENTS.md`** (or its `CLAUDE.md`, root or `.claude/`) — a line of the form

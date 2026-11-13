@@ -80,11 +80,11 @@ describe('sync escalation', () => {
 });
 
 describe('upgrade escalation', () => {
-  test('a home behind the installed version nudges, with the version jump as a fact', async () => {
+  test('a home behind the installed version carries the version jump as a fact', async () => {
     const [notice] = await withHome({ ...versionAt(OLDER), ...syncedDaysAgo(0) }, () =>
       collectNotices()
     );
-    expect(notice?.level).toBe('nudge');
+    expect(notice?.id).toBe('upgrade');
     expect(notice?.facts[0]).toEqual({ text: `${OLDER} → ${PLUGIN_VERSION}`, tone: 'accent' });
   });
 

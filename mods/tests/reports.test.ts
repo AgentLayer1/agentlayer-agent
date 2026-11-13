@@ -2,10 +2,10 @@ import { describe, expect, test } from 'claude-code/testing';
 import type { Engine } from 'claude-code/testing';
 import type { On } from 'claude-code';
 
-import { BAND_PROPS, CLI, CODE, HOME, PLUGIN, USER_HOME, fakeHost, machine, run } from './fake-host';
+import { AGENT, BAND_PROPS, CODE, HOME, PLUGIN, USER_HOME, fakeHost, machine, run } from './fake-host';
 import type { FakeMachine } from './fake-host';
 
-const REPORT_WRITE = `mcp__plugin_${PLUGIN}_${CLI}__report_write` as const;
+const REPORT_WRITE = `mcp__plugin_${PLUGIN}_${AGENT}__report_write` as const;
 const EMPTY = 'No reports in this conversation yet.';
 
 const reportPath = (category: string, slug: string) => `${HOME}/reports/${category}/2026-03-10-0900-${slug}.md`;

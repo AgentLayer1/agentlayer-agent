@@ -37,7 +37,7 @@ Single-channel asks (`what happened in #team-eng today`) skip the multi-channel 
 
 ## Pre-flight
 
-Call `slack_whoami`. If it returns `connected: false` (never signed in), say `Run bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" slack auth from your terminal first (or /agentlayer:configure-skills → Slack)` and stop. If it errors with a refresh failure, the sign-in expired: say to re-run `agentlayer slack auth`, and stop. An `EACCES`/`EPERM` deny-gate message means something shelled out to the CLI: use the `slack_*` tools instead.
+Call `slack_whoami`. If it returns `connected: false` (never signed in), say `Run bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" slack auth from your terminal first (or /agentlayer:configure-skills → Slack)` and stop. If it errors with a refresh failure, the sign-in expired: say to re-run the same `slack auth` command, and stop. An `EACCES`/`EPERM` deny-gate message means something shelled out to the CLI: use the `slack_*` tools instead.
 
 ## Source of truth: `<HOME>/knowledge/concepts/slack-channels.md`
 

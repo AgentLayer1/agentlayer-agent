@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AGENT_SLUG } from '@/config';
+import { CLI_FILE } from '@/shared/naming';
 
 const ROOT = resolve(import.meta.dir, '..');
 const read = (rel: string) => JSON.parse(readFileSync(resolve(ROOT, rel), 'utf-8'));
@@ -33,6 +34,13 @@ describe('plugin manifests', () => {
         command: 'bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" statusline --subagent'
       }
     });
+  });
+
+  test('every hook and the status line run the one CLI file', () => {
+    const groups: { hooks: { command: string }[] }[][] = Object.values(read('hooks/claude.json').hooks);
+    const commands = [...groups.flat().flatMap((group) => group.hooks.map((hook) => hook.command)), read('settings.json').subagentStatusLine.command];
+    expect(commands.length).toBeGreaterThan(4);
+    commands.forEach((command) => expect(command).toStartWith(`bun "\${CLAUDE_PLUGIN_ROOT}/${CLI_FILE.replaceAll('\\', '/')}" `));
   });
 
   test('the repo doubles as a Codex marketplace listing this checkout as the plugin', () => {

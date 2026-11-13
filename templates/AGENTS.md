@@ -124,7 +124,7 @@ Tasks live at `{{PROJECTS_REL}}/<slug>/tasks/<id>-<slug>.md`. Each task is markd
 
 **Threads:** Append-only `## Thread` section using Obsidian callouts (`[!quote]` for your messages, `[!info]` for {{AGENT_NAME}}'s responses, `[!warning]` for automated actions).
 
-Drive tasks via the `task_*` MCP tools (the plugin's `agent` server) inside a session, or the plugin's CLI (`bun <plugin>/src/cli.ts task ...`) outside.
+Drive tasks via the `task_*` MCP tools (the plugin's `agent` server) inside a session, or the plugin's CLI outside one (`src/cli.ts task ...` in the plugin's folder, run with `bun`).
 
 ## Conventions
 

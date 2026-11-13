@@ -5,11 +5,11 @@ import type { AgentInfo, FsStat, On, ProcessRunResult } from 'claude-code';
 import type { Notice } from '../types';
 
 /**
- * The plugin's name as its manifest gives it, which a test has no filesystem to read; every name a
- * test spells (commands, tools, the CLI) derives from it.
+ * The plugin's name and its MCP server's key as the manifest gives them, which a test has no
+ * filesystem to read; every name a test spells (commands, tools) derives from them.
  */
 export const PLUGIN = 'agentlayer' as const;
-export const CLI = PLUGIN.replace(/^agent-/, '');
+export const AGENT = 'agent' as const;
 export const STATS_TOOL = `mcp__${PLUGIN}__sync_stats` as const;
 
 export const HOME = '/fixture/home';

@@ -330,7 +330,7 @@ report the resulting pair in Step 6. The user-global paste note no longer recomm
 effort derived from Claude. If Sol is unavailable to the operator, help them choose an available
 model and set it in the home config.
 
-Since 0.4.2 the generator also writes the home's permission posture from its Claude settings
+The generator also writes the home's permission posture from its Claude settings
 (a `[permissions.agent]` profile that denies the secrets store and `.env` reads, makes
 `.git` writable, and lists the code path and `additionalDirectories` as workspace roots) and
 `.codex/rules/agent.rules` (one prompt rule per `Bash(…)` entry in `permissions.ask`, and one forbidden rule per
