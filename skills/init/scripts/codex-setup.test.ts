@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { legacyEnvPrefix, pluginName } from '../../../mcp-server/src/shared/naming';
+import { legacyEnvPrefix, pluginName } from '../../../src/shared/naming';
 
 const PLUGIN_NAME = pluginName();
 const AGENT_SLUG = PLUGIN_NAME.replace(/^agent-/, '');
@@ -236,7 +236,7 @@ describe('codex-setup mcp registration', () => {
     expect(config.approvals_reviewer).toBe('user');
     expect(config.mcp_servers[AGENT_SLUG]).toEqual({
       command: 'bun',
-      args: [resolve(PLUGIN, 'mcp-server', 'src', 'server.ts')],
+      args: [resolve(PLUGIN, 'src', 'server.ts')],
       env: { AGENT_HOME: home, PLAYWRIGHT_BROWSERS_PATH: '0' }
     });
     expect(config.permissions[AGENT_SLUG].extends).toBe(':workspace');
@@ -402,7 +402,7 @@ describe('codex-setup mcp registration', () => {
         '',
         `[mcp_servers.${AGENT_SLUG}]`,
         'command = "bun"',
-        `args = ["/old/${AGENT_SLUG}/mcp-server/src/server.ts"]`,
+        `args = ["/old/${AGENT_SLUG}/src/server.ts"]`,
         '',
         `[mcp_servers.${AGENT_SLUG}.env]`,
         'AGENT_HOME = "/x"',
@@ -532,7 +532,7 @@ describe('codex-setup mcp registration', () => {
     const written = readFileSync(json.mcp.path, 'utf-8');
     expect(written.match(new RegExp(`\\[mcp_servers\\.("?)${AGENT_SLUG}\\1\\]`, 'g'))).toHaveLength(1);
     expect(Bun.TOML.parse(written)).toMatchObject({
-      mcp_servers: { [AGENT_SLUG]: { args: [resolve(PLUGIN, 'mcp-server', 'src', 'server.ts')] } }
+      mcp_servers: { [AGENT_SLUG]: { args: [resolve(PLUGIN, 'src', 'server.ts')] } }
     });
   });
 
@@ -691,7 +691,7 @@ describe('codex-setup pack servers', () => {
         '',
         `[mcp_servers.${AGENT_SLUG}]`,
         'command = "bun"',
-        `args = ["/old/${AGENT_SLUG}/mcp-server/src/server.ts"]`,
+        `args = ["/old/${AGENT_SLUG}/src/server.ts"]`,
         ''
       ].join('\n')
     );

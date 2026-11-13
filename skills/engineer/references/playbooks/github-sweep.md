@@ -29,7 +29,7 @@ Read-only against GitHub: nothing is posted, reviewed, resolved or submitted. Ev
    1. Validate and print the card arguments:
 
       ```bash
-      NODE_PATH="<skill dir>/../../mcp-server/node_modules" bun "<skill dir>/scripts/sweep-report.ts" card "<dir>/data.json"
+      NODE_PATH="<skill dir>/../../node_modules" bun "<skill dir>/scripts/sweep-report.ts" card "<dir>/data.json"
       ```
 
       Fix the data until it passes.
@@ -37,7 +37,7 @@ Read-only against GitHub: nothing is posted, reviewed, resolved or submitted. Ev
    3. Write the page beside the card:
 
       ```bash
-      NODE_PATH="<skill dir>/../../mcp-server/node_modules" bun "<skill dir>/scripts/sweep-report.ts" write "<dir>/data.json" "<the absolute path report_write returned>"
+      NODE_PATH="<skill dir>/../../node_modules" bun "<skill dir>/scripts/sweep-report.ts" write "<dir>/data.json" "<the absolute path report_write returned>"
       ```
 8. **Refresh attention.** Call `attention_write` with two queue groups from the same data, so the dashboard agrees with the page:
    - `My pull requests`: each of the operator's PRs, with `detail` saying owed count, conflicts, review decision and whether its description needs updating.

@@ -9,7 +9,7 @@
  */
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { basename, join, relative, resolve, sep } from 'node:path';
-import { readTextIfExists } from '../../../mcp-server/src/shared/text';
+import { readTextIfExists } from '../../../src/shared/text';
 
 const args = process.argv.slice(2);
 const flag = (name: string): string | undefined => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
@@ -20,12 +20,12 @@ if (homeFlag) {
 }
 // Read-only means no log file either: a scanner warning would otherwise write into the home.
 process.env.AGENT_LOG_FILE = 'off';
-const { FOLDERS } = await import('../../../mcp-server/src/config');
-const { agentHomePath, isAgentHome } = await import('../../../mcp-server/src/shared/env');
-const { daysBetween, todayDate } = await import('../../../mcp-server/src/shared/date');
-const { hashBuffer, splitFrontmatter } = await import('../../../mcp-server/src/knowledge/utils');
-const { discoverProjects, scanAllTasks, scanArchivedTasks } = await import('../../../mcp-server/src/tasks/scan');
-const { projectPins, readPins, surfaceFiles } = await import('../../../mcp-server/src/status/surfaces');
+const { FOLDERS } = await import('../../../src/config');
+const { agentHomePath, isAgentHome } = await import('../../../src/shared/env');
+const { daysBetween, todayDate } = await import('../../../src/shared/date');
+const { hashBuffer, splitFrontmatter } = await import('../../../src/knowledge/utils');
+const { discoverProjects, scanAllTasks, scanArchivedTasks } = await import('../../../src/tasks/scan');
+const { projectPins, readPins, surfaceFiles } = await import('../../../src/status/surfaces');
 
 if (!isAgentHome(agentHomePath())) {
   console.error(`not an agent home: ${agentHomePath()}`);

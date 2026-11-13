@@ -11,7 +11,7 @@
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { readText } from '../../../mcp-server/src/shared/text';
+import { readText } from '../../../src/shared/text';
 
 interface Section {
   heading: string;

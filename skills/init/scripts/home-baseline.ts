@@ -16,11 +16,11 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, relative, resolve, sep } from 'node:path';
-import { reconcileHomeGitignore } from '../../../mcp-server/src/home/gitignore';
-import { dataDirOf, pluginName, recordedPlugin, resolveEnv } from '../../../mcp-server/src/shared/naming';
-import { migrateGrant, migrateGrants } from '../../../mcp-server/src/shared/retired-skills';
-import { expandTilde, isInside } from '../../../mcp-server/src/shared/paths';
-import { readMergedSettings } from '../../../mcp-server/src/home/settings-scope';
+import { reconcileHomeGitignore } from '../../../src/home/gitignore';
+import { dataDirOf, pluginName, recordedPlugin, resolveEnv } from '../../../src/shared/naming';
+import { migrateGrant, migrateGrants } from '../../../src/shared/retired-skills';
+import { expandTilde, isInside } from '../../../src/shared/paths';
+import { readMergedSettings } from '../../../src/home/settings-scope';
 import { fencedJsonAfter } from './fenced-json';
 
 const args = process.argv.slice(2);

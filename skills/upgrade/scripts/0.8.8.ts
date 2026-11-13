@@ -27,8 +27,8 @@ import {
   writeFileSync
 } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
-import { FOLDERS, PLUGIN_NAME } from '../../../mcp-server/src/config';
-import { migrateGrants } from '../../../mcp-server/src/shared/retired-skills';
+import { FOLDERS, PLUGIN_NAME } from '../../../src/config';
+import { migrateGrants } from '../../../src/shared/retired-skills';
 
 const VERSION = '0.8.8';
 

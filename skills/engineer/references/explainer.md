@@ -10,14 +10,14 @@ An explanation worth more than a chat reply (an architecture walkthrough, a rese
 2. Write the body (shape below), then validate it. This parses every diagram, so fix the body until it passes:
 
    ```bash
-   NODE_PATH="<skill dir>/../../mcp-server/node_modules" bun "<skill dir>/scripts/explainer.ts" check "<body path>"
+   NODE_PATH="<skill dir>/../../node_modules" bun "<skill dir>/scripts/explainer.ts" check "<body path>"
    ```
 
 3. Save the card with `report_write` (usually `category: plans`): the verdict and the few points worth keeping, and a line saying the full page is the HTML beside it (same name, `.html`).
 4. Write the page beside the card, using the `path` `report_write` returned:
 
    ```bash
-   NODE_PATH="<skill dir>/../../mcp-server/node_modules" bun "<skill dir>/scripts/explainer.ts" write "<body path>" "<the absolute path report_write returned>"
+   NODE_PATH="<skill dir>/../../node_modules" bun "<skill dir>/scripts/explainer.ts" write "<body path>" "<the absolute path report_write returned>"
    ```
 
    To change the page, edit the body and run `write` again.

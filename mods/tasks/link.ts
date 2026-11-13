@@ -1,4 +1,4 @@
-// Ported from mcp-server/src/tasks/link.ts `rewriteLinks` (a mod can't import Node code): the same
+// Ported from src/tasks/link.ts `rewriteLinks` (a mod can't import Node code): the same
 // protected spans, but it writes markdown links for a terminal instead of wikilinks for Obsidian.
 
 export const MAY_HOLD_ID = /[a-z]{2}-\d/;

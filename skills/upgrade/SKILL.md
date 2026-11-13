@@ -135,7 +135,7 @@ no settings rename → continue to Step 1. Otherwise (a finding, a rename, or bo
 
 ## Step 0c — Host version gate
 
-The plugin is built against the Claude Code and Codex versions in `mcp-server/src/hosts.ts`,
+The plugin is built against the Claude Code and Codex versions in `src/hosts.ts`,
 with no backwards compatibility: an older host is refused, never shimmed.
 
 ```bash
@@ -262,7 +262,7 @@ Tell the user the backup path. If anything looks wrong afterward, they restore f
 ## Step 4 — Execute (auto for mandatory/additive/deps; ask for optional)
 
 **deps** — runs when a release requires it, and regardless of flags when
-`$PLUGIN_ROOT/mcp-server/node_modules` is missing, the normal state of a marketplace version
+`$PLUGIN_ROOT/node_modules` is missing, the normal state of a marketplace version
 folder right after `/plugin update`. Call `run_upgrade` with
 `{ install: true, pluginRoot: "<PLUGIN_ROOT>" }`, the real path substituted. The running
 server may still be the previous version's, from its own folder; `pluginRoot` points the
@@ -277,7 +277,7 @@ baseline, and hand the operator this command, then re-run the upgrade, which fin
 done and stamps:
 
 ```bash
-( cd "$PLUGIN_ROOT/mcp-server" && bun install )
+( cd "$PLUGIN_ROOT" && bun install )
 ```
 
 Never hand the install over and carry on as if it ran: the stamp would wait on a turn that may
@@ -323,7 +323,7 @@ never reorder or remove existing entries; a scalar the action names, a top-level
 stays; never touch operator keys like `hooks`/`theme`/`env` unless an action names them).
 Write back valid JSON. Idempotent:
 re-running adds nothing. Never add a `Skill(agent-kevin:<name>)` grant or MCP tool grant whose name is retired (the
-maps in `mcp-server/src/shared/retired-skills.ts`), whatever an older release's action names.
+maps in `src/shared/retired-skills.ts`), whatever an older release's action names.
 
 **codex wiring (always, when applicable)** — this home runs Codex when either holds:
 `$HOME_DIR/.codex/hooks.json` exists, or this session itself runs under Codex (the `<skill>`
@@ -592,7 +592,7 @@ bun "$PLUGIN_ROOT/skills/init/scripts/home-baseline.ts" --home "$HOME_DIR" --wri
 - **`settings.retiredGrants`** lists a retired skill's or tool's grant still in a list (an older release's
   `settings:` action can re-add one after a newer script mapped it): replace each `entry` with its
   `replacement` entries in the same `list` (a prefix rule keeps itself and gains the successors it
-  no longer reaches), and drop a successor from `allow` when it also sits in `ask` or `deny`. The retired names live in `RETIRED_SKILLS` and `RETIRED_TOOLS` in `mcp-server/src/shared/retired-skills.ts`.
+  no longer reaches), and drop a successor from `allow` when it also sits in `ask` or `deny`. The retired names live in `RETIRED_SKILLS` and `RETIRED_TOOLS` in `src/shared/retired-skills.ts`.
 - **`settings.plansDirectory`** is the value to set, `null` when the home already has one or when the reports root sits outside the home (Claude Code ignores a plans folder outside the project).
 - **`settings.idleCompaction`** is the value to set (`false`), `null` when either home file already
   sets the key, whatever its value.

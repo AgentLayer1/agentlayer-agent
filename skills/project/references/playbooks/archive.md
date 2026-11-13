@@ -22,7 +22,7 @@ Do these in order. Steps 1-3 are reversible; after step 4 (move), be deliberate.
 
 > **Path note:** Resolve the absolute path once at the top of your session:
 > ```bash
-> PROJECTS=$(bun -e 'import { FOLDERS } from "<plugin root>/mcp-server/src/config"; console.log(FOLDERS.PROJECTS)')
+> PROJECTS=$(bun -e 'import { FOLDERS } from "<plugin root>/src/config"; console.log(FOLDERS.PROJECTS)')
 > ```
 > Then use `$PROJECTS/<project>/...` in any file operation.
 
@@ -56,7 +56,7 @@ Do these in order. Steps 1-3 are reversible; after step 4 (move), be deliberate.
 ### 3. Strip references from active surfaces
 Check and edit each of these. Skip any that don't contain the project:
 
-- **No prefix de-registration needed** — the task prefix is derived from the filesystem (`getProjectPrefix()` in `mcp-server/src/tasks/scan.ts`), not stored in config. Once the folder moves to `archive/`, `discoverProjects()` stops seeing it and the prefix is gone automatically. There is no `PREFIX_MAP` to edit (the old hardcoded map in `config.ts` was removed).
+- **No prefix de-registration needed** — the task prefix is derived from the filesystem (`getProjectPrefix()` in `src/tasks/scan.ts`), not stored in config. Once the folder moves to `archive/`, `discoverProjects()` stops seeing it and the prefix is gone automatically. There is no `PREFIX_MAP` to edit (the old hardcoded map in `config.ts` was removed).
 - Grep for stragglers across the repo. Expected survivors (leave alone):
   - `knowledge/raw/sessions/*.md` — point-in-time records
   - `knowledge/raw/archive/` — historical archive

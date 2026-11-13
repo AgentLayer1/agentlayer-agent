@@ -80,11 +80,11 @@ Same `targets` / `step()` / params / `index.md` shape either way. Adding the HOM
 |---|---|
 | `lib/browser.ts` — launch, `ensureLoggedIn`, `step()`, `Target` | `flows/<flow>/index.ts` — entry + `targets` |
 | `lib/flow.ts` — `runFlow` harness | `flows/<flow>/*.ts` — building blocks |
-| `mcp-server/src/tools/browser-flows.ts` — dispatcher | `flows/<flow>/index.md` — guidance |
-| `BROWSER` group in `mcp-server/src/config.ts` | `flows/<flow>/assets/` — uploads |
+| `src/tools/browser-flows.ts` — dispatcher | `flows/<flow>/index.md` — guidance |
+| `BROWSER` group in `src/config.ts` | `flows/<flow>/assets/` — uploads |
 
 ## Notes
 
 - **Restart semantics:** adding/editing a flow or `lib/` needs no restart (spawned fresh per run). Changing the dispatcher tool (`tools/browser-flows.ts`) or `config.ts` requires restarting the session so the MCP server reloads.
-- **Playwright:** Chromium is the plugin's own bundled install (`PLAYWRIGHT_BROWSERS_PATH=0`); no global setup. If it's missing, run `cd mcp-server && bun install`.
+- **Playwright:** Chromium is the plugin's own bundled install (`PLAYWRIGHT_BROWSERS_PATH=0`); no global setup. If it's missing, run `bun install` in the plugin root.
 - **Selector tuning** is expected when a site changes — read the `*-FAILED.png` + the printed aria snapshot, fix the locator (prefer `getByRole`/`getByLabel`), re-run.

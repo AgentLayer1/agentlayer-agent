@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { agentHomePath, isAgentHome } from "../../../mcp-server/src/shared/env";
+import { agentHomePath, isAgentHome } from "../../../src/shared/env";
 import { commitBrain } from "./commit-brain";
 
 /**

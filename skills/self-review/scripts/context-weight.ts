@@ -11,14 +11,14 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import { readText } from '../../../mcp-server/src/shared/text';
+import { readText } from '../../../src/shared/text';
 
 const args = process.argv.slice(2);
 const homeFlag = args.indexOf('--home') === -1 ? undefined : args[args.indexOf('--home') + 1];
 // The config module resolves the home from AGENT_HOME, so an explicit --home is exported before it loads.
 if (homeFlag) process.env.AGENT_HOME = resolve(homeFlag);
-const { FILES, FOLDERS, staticContextFiles } = await import('../../../mcp-server/src/config');
-const { agentHomePath, isAgentHome } = await import('../../../mcp-server/src/shared/env');
+const { FILES, FOLDERS, staticContextFiles } = await import('../../../src/config');
+const { agentHomePath, isAgentHome } = await import('../../../src/shared/env');
 
 const home = agentHomePath();
 if (!isAgentHome(home)) {

@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { pluginName } from '../../../mcp-server/src/shared/naming';
+import { pluginName } from '../../../src/shared/naming';
 
 const PLUGIN_NAME = pluginName();
 const AGENT_SLUG = PLUGIN_NAME.replace(/^agent-/, '');

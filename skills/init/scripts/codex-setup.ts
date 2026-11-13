@@ -32,7 +32,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
-import { readTextIfExists } from '../../../mcp-server/src/shared/text';
+import { readTextIfExists } from '../../../src/shared/text';
 
 interface HookItem {
   type: string;
@@ -469,7 +469,7 @@ const serverTables = Object.entries(mirroredServers).flatMap(([name, server]) =>
 const agentTables = [
   `[mcp_servers.${agent}]`,
   'command = "bun"',
-  `args = [${tomlString(resolve(pluginRoot, 'mcp-server', 'src', 'server.ts'))}]`,
+  `args = [${tomlString(resolve(pluginRoot, 'src', 'server.ts'))}]`,
   ...keptEntries(['mcp_servers', agent], ['command', 'args', 'env', 'tools']),
   '',
   `[mcp_servers.${agent}.env]`,

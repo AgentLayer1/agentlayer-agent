@@ -5,7 +5,7 @@
  * invalid status or date; warnings (undated milestones, items attention pages skip) print but pass.
  */
 import { readFileSync } from 'node:fs';
-import { checkRoadmapHtml } from '../../../mcp-server/src/roadmap/data';
+import { checkRoadmapHtml } from '../../../src/roadmap/data';
 
 const path = process.argv[2];
 if (!path) {

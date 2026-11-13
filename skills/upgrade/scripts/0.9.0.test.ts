@@ -3,8 +3,8 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { RUNTIME_DIR, pluginName } from '../../../mcp-server/src/shared/naming';
-import { secretsReadBlocked } from '../../../mcp-server/src/shared/sandbox-probe';
+import { RUNTIME_DIR, pluginName } from '../../../src/shared/naming';
+import { secretsReadBlocked } from '../../../src/shared/sandbox-probe';
 
 const SCRIPT = resolve(import.meta.dir, '0.9.0.ts');
 const LAUNCHER = readFileSync(resolve(import.meta.dir, '..', '..', '..', 'templates', 'shell', 'agent.sh'), 'utf-8');

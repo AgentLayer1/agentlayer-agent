@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { join } from "node:path";
-import { FOLDERS } from "../../../mcp-server/src/config";
-import { agentHomePath, isAgentHome } from "../../../mcp-server/src/shared/env";
+import { FOLDERS } from "../../../src/config";
+import { agentHomePath, isAgentHome } from "../../../src/shared/env";
 import { reviewReads } from "./profiles";
 
 /**

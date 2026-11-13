@@ -5,12 +5,12 @@
  *   bun pr-report.ts write <data.json> <report.md>  write <report>.html beside the saved card and re-render the card
  *   bun pr-report.ts check <report.html>            re-validate a page
  * Every command parses the diagrams, so run it with NODE_PATH pointed at the plugin's
- * mcp-server/node_modules.
+ * node_modules.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
-import { isRecord, isScriptSafe, jsonBlock, readJsonBlock } from '../../../mcp-server/src/shared/json-block';
-import { escapeHtml } from '../../../mcp-server/src/status/html-primitives';
+import { isRecord, isScriptSafe, jsonBlock, readJsonBlock } from '../../../src/shared/json-block';
+import { escapeHtml } from '../../../src/status/html-primitives';
 import { diagramErrors } from './diagrams';
 
 export const BLOCK_ID = 'pr-report-data';

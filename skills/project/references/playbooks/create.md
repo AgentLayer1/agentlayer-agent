@@ -16,7 +16,7 @@ The 2-letter task prefix is **not an input** — it's derived from the slug (see
 
 ## Why this design
 - `<HOME>/projects/<slug>/` is the single source of truth. The `## Projects` table in `knowledge/index.md` is kept by hand, so step 4 adds the row.
-- The 2-letter prefix is **derived from the filesystem**, not registered anywhere. `getProjectPrefix()` in `mcp-server/src/tasks/scan.ts` prefers the most-used prefix among existing task filenames, and falls back to deriving from the slug for an empty project. The old hardcoded `TASKS.PREFIX_MAP` in `config.ts` is gone. Nothing to edit — the prefix exists the moment the folder does.
+- The 2-letter prefix is **derived from the filesystem**, not registered anywhere. `getProjectPrefix()` in `src/tasks/scan.ts` prefers the most-used prefix among existing task filenames, and falls back to deriving from the slug for an empty project. The old hardcoded `TASKS.PREFIX_MAP` in `config.ts` is gone. Nothing to edit — the prefix exists the moment the folder does.
 - Tasks folder exists from day one so `mcp__plugin_agent-kevin_kevin__task_scan` and the Obsidian dashboard don't special-case empty projects, and so prefix derivation has a directory to look at.
 
 ## Protocol
@@ -25,7 +25,7 @@ Steps 1–2 are reversible. After step 3 (folder creation), stay deliberate.
 
 > **Path note:** Resolve the absolute path once at the top of your session:
 > ```bash
-> PROJECTS=$(bun -e 'import { FOLDERS } from "<plugin root>/mcp-server/src/config"; console.log(FOLDERS.PROJECTS)')
+> PROJECTS=$(bun -e 'import { FOLDERS } from "<plugin root>/src/config"; console.log(FOLDERS.PROJECTS)')
 > ```
 > Then use `$PROJECTS/<slug>/...` in any file operation.
 

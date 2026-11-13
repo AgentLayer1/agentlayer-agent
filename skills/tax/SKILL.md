@@ -30,7 +30,7 @@ Keep every entity the operator files for (companies and their own return) ahead 
 
 ## Start
 
-1. Resolve the project: `PROJECTS=$(bun -e 'import { FOLDERS } from "'"${CLAUDE_SKILL_DIR}"'/../../mcp-server/src/config"; console.log(FOLDERS.PROJECTS)')`; the data lives in `$PROJECTS/tax/`. No `entities/` there yet means [setup](references/playbooks/setup.md) runs first, whatever was asked.
+1. Resolve the project: `PROJECTS=$(bun -e 'import { FOLDERS } from "'"${CLAUDE_SKILL_DIR}"'/../../src/config"; console.log(FOLDERS.PROJECTS)')`; the data lives in `$PROJECTS/tax/`. No `entities/` there yet means [setup](references/playbooks/setup.md) runs first, whatever was asked.
 2. Read the profile of each entity the task touches (`entities/<slug>.md`) and the country reference it names (`references/countries/<country>.md`). Rules, rates, and dates come from that file, never from memory.
 3. Match the task to a playbook and copy its steps into your todo list.
 

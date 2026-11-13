@@ -3,8 +3,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { hashBuffer } from '../../../mcp-server/src/knowledge/utils';
-import { RUNTIME_DIR, pluginName } from '../../../mcp-server/src/shared/naming';
+import { hashBuffer } from '../../../src/knowledge/utils';
+import { RUNTIME_DIR, pluginName } from '../../../src/shared/naming';
 
 const SCRIPT = join(import.meta.dir, 'brain-audit.ts');
 const TODAY = '2026-10-31';

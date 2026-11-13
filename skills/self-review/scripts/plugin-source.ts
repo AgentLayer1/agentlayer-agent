@@ -12,7 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
-import { agentHomePath } from '../../../mcp-server/src/shared/env';
+import { agentHomePath } from '../../../src/shared/env';
 
 const args = process.argv.slice(2);
 const flag = (name: string): string | undefined => {

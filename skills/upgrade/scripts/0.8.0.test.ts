@@ -14,8 +14,8 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { RUNTIME_DIR, legacyEnvPrefix, pluginName } from '../../../mcp-server/src/shared/naming';
-import { secretsReadBlocked } from '../../../mcp-server/src/shared/sandbox-probe';
+import { RUNTIME_DIR, legacyEnvPrefix, pluginName } from '../../../src/shared/naming';
+import { secretsReadBlocked } from '../../../src/shared/sandbox-probe';
 
 const SCRIPT = resolve(import.meta.dir, '0.8.0.ts');
 const LEGACY = legacyEnvPrefix();

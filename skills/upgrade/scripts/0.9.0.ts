@@ -16,10 +16,10 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join, relative, resolve } from 'node:path';
-import { FILES, FOLDERS, SUBSCRIPTION_MARKER } from '../../../mcp-server/src/config';
-import { isRecord } from '../../../mcp-server/src/shared/json-block';
-import { writeFileAtomic } from '../../../mcp-server/src/shared/utils';
-import { tildifyHome } from '../../../mcp-server/src/status/format';
+import { FILES, FOLDERS, SUBSCRIPTION_MARKER } from '../../../src/config';
+import { isRecord } from '../../../src/shared/json-block';
+import { writeFileAtomic } from '../../../src/shared/utils';
+import { tildifyHome } from '../../../src/status/format';
 
 const VERSION = '0.9.0';
 const TOKEN_KEY = 'CLAUDE_CODE_OAUTH_TOKEN';

@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { RUNTIME_DIR, pluginName } from '../../../mcp-server/src/shared/naming';
+import { RUNTIME_DIR, pluginName } from '../../../src/shared/naming';
 
 const SCRIPT = join(import.meta.dir, 'context-weight.ts');
 const dirs: string[] = [];

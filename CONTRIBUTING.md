@@ -16,7 +16,7 @@ Open an issue before architectural changes — Kevin's contract with `<HOME>/` m
 
 ```bash
 git clone https://github.com/AgentLayer1/agent-kevin
-cd agent-kevin/mcp-server
+cd agent-kevin
 bun install         # installs deps + downloads chromium via the postinstall hook
 ```
 
@@ -30,7 +30,7 @@ bun src/server.ts
 Type-check:
 
 ```bash
-cd mcp-server && bun run typecheck   # runs `tsc`
+bun run typecheck   # runs `tsc`
 ```
 
 Verify a hook script:
@@ -71,14 +71,14 @@ A skill that is part of Kevin's standing capability set lives here in plugin sou
 
 ## Adding an MCP tool
 
-1. Add a file under `mcp-server/src/tools/<your-tool>.ts` exporting a `tools: ToolDef[]` array. Use `defineTool({ name, description, inputSchema, handler })` from `@/shared/types`.
-2. Register it in `mcp-server/src/server.ts` by adding an import and spreading the array into the `TOOLS` constant.
+1. Add a file under `src/tools/<your-tool>.ts` exporting a `tools: ToolDef[]` array. Use `defineTool({ name, description, inputSchema, handler })` from `@/shared/types`.
+2. Register it in `src/server.ts` by adding an import and spreading the array into the `TOOLS` constant.
 3. Add the tool name to `skills/init/SKILL.md`'s `permissions.allow` list (use the `mcp__plugin_agent-kevin_kevin__<tool_name>` prefix). Pack-gated tools go in the matching `configure-skills` walk instead of the init baseline.
 4. `bun run typecheck` must pass before submitting.
 
 In the plugin's `.mcp.json`, `env` entries hold only host-owned interpolations (`${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`) or literal values. A server already inherits the session's environment, so never redeclare a user variable as `"X": "${X}"`.
 
-**Tests never touch a real agent home.** `mcp-server/bunfig.toml` preloads `src/test.ts` (and the root `bunfig.toml` preloads the same file, so a run from the repo root is covered too), which pins `AGENT_HOME` to a fresh throwaway tree for the whole run, so a suite that resolves a config path can't write into anyone's brain. A suite needing its own fixture home just sets `AGENT_HOME` (paths and secrets both resolve live, so import order doesn't matter) — save the preload's value and restore it afterwards rather than deleting the variable, or later suites fall back to resolving from cwd.
+**Tests never touch a real agent home.** The root `bunfig.toml` preloads `src/test.ts`, which pins `AGENT_HOME` to a fresh throwaway tree for the whole run, so a suite that resolves a config path can't write into anyone's brain. A suite needing its own fixture home just sets `AGENT_HOME` (paths and secrets both resolve live, so import order doesn't matter) — save the preload's value and restore it afterwards rather than deleting the variable, or later suites fall back to resolving from cwd.
 
 ## Refreshing the demo dashboard
 
@@ -99,10 +99,10 @@ It renders in isolation (its own `HOME`, environment, and working directory), re
 - Run `bun run typecheck` and verify the MCP server still boots before opening.
 - **No real names in shipped files.** Skills, templates, hooks, docs, tests, and the CHANGELOG use fictitious placeholders (`acme`, `Ada`), never a real client, employer, operator, or sibling project, and never at write time on the promise of a later sweep.
 - **Product docs are host-neutral.** Anything describing agent-kevin (docs, README, wizard copy) names skills bare, says "your host" for the CLI, and puts host-specific commands in per-host tabs, so a new host is a tab and a page, not a rewrite.
-- **Generated HTML pages share their chrome.** The Auto / Light / Dark switch (`mcp-server/src/shared/theme.ts`) and, on any page that draws Mermaid into `.diagram` boxes, the expand-and-zoom viewer (`mcp-server/src/shared/diagram-viewer.ts`) are blocks carried verbatim in each template's `<head>`. A new template that draws diagrams joins `DIAGRAM_TEMPLATES` and runs `bun mcp-server/src/shared/diagram-viewer.ts sync`; the block's test fails until it does.
+- **Generated HTML pages share their chrome.** The Auto / Light / Dark switch (`src/shared/theme.ts`) and, on any page that draws Mermaid into `.diagram` boxes, the expand-and-zoom viewer (`src/shared/diagram-viewer.ts`) are blocks carried verbatim in each template's `<head>`. A new template that draws diagrams joins `DIAGRAM_TEMPLATES` and runs `bun src/shared/diagram-viewer.ts sync`; the block's test fails until it does.
 - **Frontmatter the plugin writes is flat:** scalars and lists of scalars only, since Obsidian shows anything nested as raw JSON. `report_write` rejects a nested `extra` value and the knowledge lint flags one; structured data goes in the body.
-- **Frontmatter keys come from the host's docs.** Don't invent keys; `mcp-server/src/skills.test.ts` parses every `SKILL.md`, holds the description to 1,024 characters, and resolves relative links.
-- **Invocability:** see *Adding a new skill* above; `mcp-server/src/skills.test.ts` holds the slash-only set to `init`, `release` and `rename-agent`.
+- **Frontmatter keys come from the host's docs.** Don't invent keys; `src/skills.test.ts` parses every `SKILL.md`, holds the description to 1,024 characters, and resolves relative links.
+- **Invocability:** see *Adding a new skill* above; `src/skills.test.ts` holds the slash-only set to `init`, `release` and `rename-agent`.
 
 ## License
 

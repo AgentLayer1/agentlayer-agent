@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { THEME_BLOCK } from "../../../mcp-server/src/shared/theme";
+import { THEME_BLOCK } from "../../../src/shared/theme";
 import { type Books, booksAll, type CollectItem, type MonthBooks, MonthState } from "./books";
 import {
   addDays,

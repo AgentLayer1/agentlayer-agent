@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { isRecord, isScriptSafe, readJsonBlock } from '../../../mcp-server/src/shared/json-block';
+import { isRecord, isScriptSafe, readJsonBlock } from '../../../src/shared/json-block';
 import { BLOCK_ID, PAGE_TOKEN, TEMPLATE_PATH, cardMismatch, checkPage, relinkCard, renderCard, renderPage, reportArgs, statusOf, validate } from './pr-report';
 
 const TEMPLATE = readFileSync(TEMPLATE_PATH, 'utf-8');
@@ -74,7 +74,7 @@ const architecture = (): Data => ({
 });
 
 const run = (...args: string[]) => {
-  const proc = spawnSync(process.execPath, [SCRIPT, ...args], { env: { ...process.env, NODE_PATH: join(import.meta.dir, '..', '..', '..', 'mcp-server', 'node_modules') } });
+  const proc = spawnSync(process.execPath, [SCRIPT, ...args], { env: { ...process.env, NODE_PATH: join(import.meta.dir, '..', '..', '..', 'node_modules') } });
   return { status: proc.status, out: proc.stdout.toString(), err: proc.stderr.toString() };
 };
 

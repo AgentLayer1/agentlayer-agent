@@ -44,7 +44,7 @@ their slash commands still say `agent-kevin`.
 ## How the rename decides
 
 `scripts/rename-agent.ts` does all the reading and writing with the rule seed export
-uses (`renameAgent` in `mcp-server/src/shared/agent-name.ts`): exact case, whole word, and
+uses (`renameAgent` in `src/shared/agent-name.ts`): exact case, whole word, and
 never a name touching a letter, digit, `-`, `/` or `\`. So `Kevin's`, `_Kevin_` and `Kevin.`
 rename, while `~/Documents/Agents/Kevin/`, `Documents-Agents-Kevin.git`, `X-Kevin-Test` and a
 mention already inside the new name (`Kevin Prime`) stay. It reads only `.md` files, skips

@@ -61,7 +61,7 @@ Diff the paths to derive the `### Upgrade` block. Check each:
 **Dependencies** — did the MCP server's deps change?
 
 ```bash
-git -C "${CLAUDE_PLUGIN_ROOT}" diff <range> -- mcp-server/package.json mcp-server/bun.lock | grep -E '^\+' | grep -v '^\+\+\+' || echo "(no dep changes)"
+git -C "${CLAUDE_PLUGIN_ROOT}" diff <range> -- package.json bun.lock | grep -E '^\+' | grep -v '^\+\+\+' || echo "(no dep changes)"
 ```
 
 If any dependency was added/changed → `` `deps: required` `` naming the new packages.
@@ -95,7 +95,7 @@ severity, let the maintainer confirm/override:
 **Settings** — do new MCP tools or skills need `permissions.allow` entries?
 
 ```bash
-git -C "${CLAUDE_PLUGIN_ROOT}" diff <range> -- mcp-server/src/tools/ | grep -E "name:\s*'[a-z_]+'" || true   # new defineTool names
+git -C "${CLAUDE_PLUGIN_ROOT}" diff <range> -- src/tools/ | grep -E "name:\s*'[a-z_]+'" || true   # new defineTool names
 git -C "${CLAUDE_PLUGIN_ROOT}" diff --stat <range> -- skills/                                                 # new skill dirs
 ```
 
@@ -163,9 +163,9 @@ it "(Recommended)"), but the maintainer's choice wins.
 
 Then bump `version` in both manifests, `.claude-plugin/plugin.json` and
 `.codex-plugin/plugin.json`, to the chosen (or determined) value (edit that one field in
-each; `mcp-server/src/manifests.test.ts` fails when they drift).
+each; `src/manifests.test.ts` fails when they drift).
 
-> Note: `mcp-server/package.json` carries its own, separate `version` that is not used
+> Note: `package.json` carries its own, separate `version` that is not used
 > for plugin versioning and has drifted — leave it unless the maintainer asks to sync it.
 
 ## Step 4 — Write the CHANGELOG entry
@@ -186,7 +186,7 @@ Prepend a new entry **below** the `<!-- Add new releases below this line -->` ma
 - ...
 
 ### Upgrade
-- `deps: required` — new dep `foo`; run bun install in mcp-server.
+- `deps: required` — new dep `foo`; run bun install in the plugin root.
 - `settings: mandatory` — add permission `Skill(agent-kevin:foo)`.
 - `template/AGENTS.md: mandatory` — new "X" section.
 ```

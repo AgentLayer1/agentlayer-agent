@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { todayDate } from '../../../mcp-server/src/shared/date';
-import { agentHomePath, isAgentHome } from '../../../mcp-server/src/shared/env';
-import { dataDirOf } from '../../../mcp-server/src/shared/naming';
-import { writeFileAtomic } from '../../../mcp-server/src/shared/utils';
+import { todayDate } from '../../../src/shared/date';
+import { agentHomePath, isAgentHome } from '../../../src/shared/env';
+import { dataDirOf } from '../../../src/shared/naming';
+import { writeFileAtomic } from '../../../src/shared/utils';
 
 /**
  * Record the operator's answer to sync's "self-review is due" question: `tomorrow` holds it

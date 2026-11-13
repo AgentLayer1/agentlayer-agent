@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseFrontmatter } from "../../../mcp-server/src/tasks/schema";
+import { parseFrontmatter } from "../../../src/tasks/schema";
 import { type Entity, EntityKind } from "./calendar";
 import { type CloseRecord, type Gap, loadCloses } from "./closes";
 import { type LedgerRow, LedgerType, loadLedger } from "./liability";

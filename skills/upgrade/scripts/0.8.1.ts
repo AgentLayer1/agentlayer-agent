@@ -24,7 +24,7 @@ import {
   writeFileSync
 } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
-import { KNOWLEDGE } from '../../../mcp-server/src/config';
+import { KNOWLEDGE } from '../../../src/config';
 
 const VERSION = '0.8.1';
 

@@ -33,7 +33,7 @@ browser_flows  flow=hacker-news  params={ count: 10 }
 The window opens, the flow runs (pausing for a manual login only if its target has `auth`), then the tool returns the output tail + the flow's `index.md` as `guidance` — read it. Screenshots land in `reports/captures/browser/<env>/<flow>/<run>/`. Relay the `▸` lines and the final `✅`/`✗`.
 
 If the headed browser ever fails to launch even from the server, fall back to a real terminal:
-`NODE_PATH="$PWD/mcp-server/node_modules" PLAYWRIGHT_BROWSERS_PATH=0 AGENT_HOME=<home> bun run skills/browser-flows/flows/<flow>/index.ts …`
+`NODE_PATH="$PWD/node_modules" PLAYWRIGHT_BROWSERS_PATH=0 AGENT_HOME=<home> bun run skills/browser-flows/flows/<flow>/index.ts …`
 
 ### Flow params
 
@@ -69,8 +69,8 @@ A flow resolves each field `params.x ?? process.env.SECRET ?? config.x ?? defaul
 |---|---|
 | `lib/browser.ts` — headed persistent launch, `ensureLoggedIn`, `step()`, the `Target` type | `flows/<flow>/index.ts` — entry, owning its `targets` (urls + optional `auth`) |
 | `lib/flow.ts` — `runFlow(targets, handler)` harness (arg parse, env→target, launch, login-wait, cleanup) | `flows/<flow>/*.ts` — the flow's building blocks (e.g. `stories.ts`, `types.ts`) |
-| `mcp-server/src/tools/browser-flows.ts` — generic folder dispatcher | `flows/<flow>/index.md` — guidance · `flows/<flow>/assets/` — upload templates |
-| `BROWSER` group in `mcp-server/src/config.ts` | |
+| `src/tools/browser-flows.ts` — generic folder dispatcher | `flows/<flow>/index.md` — guidance · `flows/<flow>/assets/` — upload templates |
+| `BROWSER` group in `src/config.ts` | |
 
 The dispatcher lists any `flows/<dir>/index.ts`. Compose a flow from small blocks so variants reuse the overlap. Screenshots are scoped per run under `reports/captures/browser/<env>/<flow>/<run>/`.
 
@@ -91,7 +91,7 @@ import { log, type Target } from 'lib/browser';
 ```
 
 Built-in flows use the relative form (`../../lib/flow`). Everything else — `targets`, `step()`, params, `index.md` — is identical. Bash fallback for a HOME flow adds the extra root:
-`NODE_PATH="$PWD/mcp-server/node_modules:$PWD/skills/browser-flows" … bun run <HOME>/scripts/browser/<flow>/index.ts …`
+`NODE_PATH="$PWD/node_modules:$PWD/skills/browser-flows" … bun run <HOME>/scripts/browser/<flow>/index.ts …`
 
 Editing an existing flow needs no restart (spawned fresh per run); **adding the HOME root or changing the dispatcher does** — restart the session so the MCP server reloads.
 

@@ -137,7 +137,7 @@ const isUserTurn = (record: SessionRecord): boolean => record.type === 'user' &&
  * A checkpoint reply is the attention checklist: a `✓` step line plus a `▶` now, `▷ next:` or `★` line.
  * A checkpoint-all report carries the same lines under its `## ` bucket headings, which a single
  * checkpoint never has, and is every session's work rather than this one's. The dashboard's
- * `radarSummary` (mcp-server/src/status/radar-refs.ts) reads the same glyphs.
+ * `radarSummary` (src/status/radar-refs.ts) reads the same glyphs.
  */
 const isCheckpoint = (text: string): boolean =>
   /^✓ /m.test(text) && /^(?:▶ |▷ next:|★ )/m.test(text) && !/^## /m.test(text);

@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import { FOLDERS } from "../../../mcp-server/src/config";
-import { todayDate } from "../../../mcp-server/src/shared/date";
-import { parseFrontmatter } from "../../../mcp-server/src/tasks/schema";
+import { FOLDERS } from "../../../src/config";
+import { todayDate } from "../../../src/shared/date";
+import { parseFrontmatter } from "../../../src/tasks/schema";
 
 /**
  * Deadline engine for the tax skill. Reads entity profiles from <projects>/tax/entities/*.md,

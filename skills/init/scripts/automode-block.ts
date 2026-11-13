@@ -13,7 +13,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
-import { pluginName } from '../../../mcp-server/src/shared/naming';
+import { pluginName } from '../../../src/shared/naming';
 import { fencedJsonAfter } from './fenced-json';
 
 const args = process.argv.slice(2);

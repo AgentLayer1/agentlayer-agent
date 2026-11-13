@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { RUNTIME_DIR, pluginName } from '../../../mcp-server/src/shared/naming';
+import { RUNTIME_DIR, pluginName } from '../../../src/shared/naming';
 import { selfReviewDue } from './self-review-due';
 
 const TODAY = '2026-10-31';

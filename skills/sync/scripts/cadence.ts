@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { FILES, FOLDERS } from "../../../mcp-server/src/config";
-import { todayDate } from "../../../mcp-server/src/shared/date";
-import { dataDirOf } from "../../../mcp-server/src/shared/naming";
-import { agentHomePath, isAgentHome } from "../../../mcp-server/src/shared/env";
+import { FILES, FOLDERS } from "../../../src/config";
+import { todayDate } from "../../../src/shared/date";
+import { dataDirOf } from "../../../src/shared/naming";
+import { agentHomePath, isAgentHome } from "../../../src/shared/env";
 import { routinesDue } from "../../helpdesk/scripts/profiles";
 import { loadEntities, pendingCloses } from "../../tax/scripts/calendar";
 import { type ReviewWatermark, selfReviewDue } from "./self-review-due";

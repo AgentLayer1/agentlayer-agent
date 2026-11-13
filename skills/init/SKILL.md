@@ -120,7 +120,7 @@ if [ "$AGENT_PLATFORM" = "macos" ] && ! command -v brew >/dev/null 2>&1; then
 fi
 # Without node_modules the plugin's server still starts on Bun's auto-install, but only
 # `bun install` runs the postinstall that downloads Chromium for the browser tools.
-test -d "${CLAUDE_PLUGIN_ROOT}/mcp-server/node_modules" || echo "DEPS_MISSING"
+test -d "${CLAUDE_PLUGIN_ROOT}/node_modules" || echo "DEPS_MISSING"
 printf 'MISSING: %s\n' "${MISSING[@]}"
 ```
 
@@ -151,7 +151,7 @@ Act on the result **before** anything else:
   > 🛑 **One-time install first** (~150 MB, most of it the browser the web tools use). In a normal terminal, not this session, run:
   >
   > ```bash
-  > cd "<PLUGIN_ROOT>/mcp-server" && bun install
+  > cd "<PLUGIN_ROOT>" && bun install
   > ```
   >
   > Then `/exit`, relaunch from this folder, and run `/agent-kevin:init` again. The relaunch is what connects the plugin's server.
@@ -179,7 +179,7 @@ Default: abort. The preservation guards below in Step 7 are what make these clai
 
 ## Step 0b — Host version gate
 
-The plugin is built against the Claude Code, Codex and bun versions in `mcp-server/src/hosts.ts`,
+The plugin is built against the Claude Code, Codex and bun versions in `src/hosts.ts`,
 with no backwards compatibility. Check before scaffolding anything:
 
 ```bash

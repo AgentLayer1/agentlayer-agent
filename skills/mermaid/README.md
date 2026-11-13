@@ -24,11 +24,11 @@ Tier 1 proves it renders. Tier 2 proves it looks right (dark-theme legibility, l
 ## Validator, run directly
 
 ```bash
-NODE_PATH="${CLAUDE_PLUGIN_ROOT}/mcp-server/node_modules" \
+NODE_PATH="${CLAUDE_PLUGIN_ROOT}/node_modules" \
   bun run "${CLAUDE_PLUGIN_ROOT}/skills/mermaid/scripts/validate.ts" <file...>
 ```
 
-Deps (`mermaid`, `jsdom`) are vendored in `mcp-server/node_modules`. No network at runtime. The `mermaid` dependency is pinned in `mcp-server/package.json`; the server itself never imports it, so it is disk cost only, not runtime weight.
+Deps (`mermaid`, `jsdom`) are vendored in `node_modules`. No network at runtime. The `mermaid` dependency is pinned in the plugin's `package.json`; the server itself never imports it, so it is disk cost only, not runtime weight.
 
 ## Not a hook
 

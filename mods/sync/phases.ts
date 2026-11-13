@@ -1,4 +1,4 @@
-// Pure data and reducers, no 'claude-code' import: mcp-server's bun suite imports this file to
+// Pure data and reducers, no 'claude-code' import: the server's bun suite imports this file to
 // check the table against skills/sync/SKILL.md.
 
 interface Phase {

@@ -7,9 +7,9 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { readRoadmapHtml } from '../../../mcp-server/src/roadmap/data';
-import { getChromium } from '../../../mcp-server/src/shared/browser-deps';
-import { RUNTIME_DIR } from '../../../mcp-server/src/shared/naming';
+import { readRoadmapHtml } from '../../../src/roadmap/data';
+import { getChromium } from '../../../src/shared/browser-deps';
+import { RUNTIME_DIR } from '../../../src/shared/naming';
 import { evaluateLiteral, findLiteral, migrateHome, migrateHtml } from './0.5.3';
 
 /** The roadmap template as it shipped before this release, still on a const ROADMAP literal. */

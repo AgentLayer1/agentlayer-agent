@@ -12,10 +12,10 @@
  * inline import) so the global-shim pollution stays contained to this
  * short-lived process instead of leaking into the MCP server.
  *
- * Deps (mermaid, jsdom) resolve from the plugin's mcp-server/node_modules;
+ * Deps (mermaid, jsdom) resolve from the plugin's node_modules;
  * invoke with NODE_PATH pointed there (see SKILL.md). No network at runtime.
  *
- *   NODE_PATH="$CLAUDE_PLUGIN_ROOT/mcp-server/node_modules" \
+ *   NODE_PATH="$CLAUDE_PLUGIN_ROOT/node_modules" \
  *     bun run "$CLAUDE_PLUGIN_ROOT/skills/mermaid/scripts/validate.ts" <file...>
  */
 

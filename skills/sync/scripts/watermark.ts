@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { dataDirOf } from "../../../mcp-server/src/shared/naming";
-import { agentHomePath, isAgentHome } from "../../../mcp-server/src/shared/env";
+import { dataDirOf } from "../../../src/shared/naming";
+import { agentHomePath, isAgentHome } from "../../../src/shared/env";
 
 /**
  * Stamp a cadence watermark: `bun watermark.ts <key> <YYYY-MM-DD>` (`goals-week`,

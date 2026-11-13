@@ -28,7 +28,7 @@ Chat-only diagrams are out of scope: a Mermaid block pasted into a chat reply re
 2. **Run the validator** against that file:
 
    ```bash
-   NODE_PATH="${CLAUDE_PLUGIN_ROOT}/mcp-server/node_modules" \
+   NODE_PATH="${CLAUDE_PLUGIN_ROOT}/node_modules" \
      bun run "${CLAUDE_PLUGIN_ROOT}/skills/mermaid/scripts/validate.ts" <file>
    ```
 
@@ -45,7 +45,7 @@ Chat-only diagrams are out of scope: a Mermaid block pasted into a chat reply re
 3. **On FAIL:** read the error and the offending block, consult [references.md](references.md) for the common causes (reserved-word ids, `<`/`>` in labels, unclosed shapes), fix the block, re-run. Loop until `ALL n CLEAN`.
 4. **Only present the file once Tier 1 is clean.** A diagram that fails to parse does not go to review.
 
-If the script errors that `mermaid` or `jsdom` cannot be resolved, the plugin's server deps are not installed: run `bun install` in `${CLAUDE_PLUGIN_ROOT}/mcp-server` (redirect bun's cache with `BUN_INSTALL_CACHE_DIR="$(mktemp -d "$TMPDIR/bun-cache-XXXXXX")" TMPDIR="$TMPDIR"` if the sandbox blocks the default tempdir).
+If the script errors that `mermaid` or `jsdom` cannot be resolved, the plugin's server deps are not installed: run `bun install` in `${CLAUDE_PLUGIN_ROOT}` (redirect bun's cache with `BUN_INSTALL_CACHE_DIR="$(mktemp -d "$TMPDIR/bun-cache-XXXXXX")" TMPDIR="$TMPDIR"` if the sandbox blocks the default tempdir).
 
 ## Tier 2: visual review (when it matters)
 

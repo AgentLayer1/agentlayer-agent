@@ -1,8 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { STOREFRONTS } from "../../../mcp-server/src/appstore/storefronts";
-import { HELPDESKS, type HelpdeskName } from "../../../mcp-server/src/helpdesk/types";
-import { isoWeekOf } from "../../../mcp-server/src/tasks/horizon";
+import { STOREFRONTS } from "../../../src/appstore/storefronts";
+import { HELPDESKS, type HelpdeskName } from "../../../src/helpdesk/types";
+import { isoWeekOf } from "../../../src/tasks/horizon";
 
 /**
  * Queue profiles: `projects/<slug>/helpdesk.md`, one per support queue, written by the operator.

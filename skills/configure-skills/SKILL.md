@@ -215,14 +215,14 @@ If `PLAYWRIGHT_MISSING`, tell the user:
 
 ```
 Playwright isn't on the path — finish the plugin's initial install:
-  cd ${CLAUDE_PLUGIN_ROOT}/mcp-server && bun install
+  cd ${CLAUDE_PLUGIN_ROOT} && bun install
 If chromium download fails (macOS sandbox/XPC walls), run that command in a normal terminal outside Claude Code.
 ```
 
 **Linux / WSL2 only — install the system libraries.** The chromium *binary* downloads fine, but on a fresh Linux distro (including WSL2) it links against system shared libs (`libnss3`, `libgbm1`, `libasound2`, …) that aren't installed by default and don't ship with the OS the way they do on macOS. Without them the binary is present but `chromium.launch()` fails at runtime with a missing-`.so` error. This step can't run in postinstall (it needs `sudo`), so on `wsl`/`linux` homes tell the user to run it once:
 
 ```
-sudo ${CLAUDE_PLUGIN_ROOT}/mcp-server/node_modules/.bin/playwright install-deps chromium
+sudo ${CLAUDE_PLUGIN_ROOT}/node_modules/.bin/playwright install-deps chromium
 ```
 
 (Skip this on macOS — the libraries are part of the OS there.)
@@ -247,7 +247,7 @@ Connects Kevin to one or more Postgres databases. Three read-only MCP tools (`da
 > Give each a short connection name (lowercase, e.g. `app`, `analytics`, `local`). You can list several comma-separated, and add more later by re-running this walk. The name is just a label — you'll paste the actual connection string into your editor afterward.
 
 For each name the user gives:
-- Normalize it the way the tool resolves connections: upper-case and replace every non-alphanumeric character with `_`, then prefix `AGENT_DB_`. So `analytics` → `AGENT_DB_ANALYTICS`, `read-replica` → `AGENT_DB_READ_REPLICA`. (This matches `envKeyFor` in the plugin's `mcp-server/src/tools/database.ts`; the tool lowercases the suffix back to the connection name.)
+- Normalize it the way the tool resolves connections: upper-case and replace every non-alphanumeric character with `_`, then prefix `AGENT_DB_`. So `analytics` → `AGENT_DB_ANALYTICS`, `read-replica` → `AGENT_DB_READ_REPLICA`. (This matches `envKeyFor` in the plugin's `src/tools/database.ts`; the tool lowercases the suffix back to the connection name.)
 - Ensure the secret store exists (§D.1) and tell the user to add an `AGENT_DB_<NAME>=<connection string>` line to `.state/secrets/.env` in their editor. Claude doesn't read/write the gated file, so re-running to add a connection just surfaces the line(s) to add — it never clobbers existing ones.
 
 If the user adds zero connections, still grant the tool permissions and note that `database_list` will report none until they add an `AGENT_DB_<NAME>` env var.

@@ -1,4 +1,4 @@
-import { daysBetween } from '../../../mcp-server/src/shared/date';
+import { daysBetween } from '../../../src/shared/date';
 
 export interface ReviewWatermark {
   lastRun?: string;

@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { MCP_PREFIX, PLUGIN_NAME } from '../../../mcp-server/src/config';
+import { MCP_PREFIX, PLUGIN_NAME } from '../../../src/config';
 
 const SCRIPT = resolve(import.meta.dir, '0.8.8.ts');
 const OLD = `${MCP_PREFIX}focus_write`;

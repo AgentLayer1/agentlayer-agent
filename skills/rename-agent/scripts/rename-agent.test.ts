@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pluginName, RUNTIME_DIR } from '../../../mcp-server/src/shared/naming';
+import { pluginName, RUNTIME_DIR } from '../../../src/shared/naming';
 
 const SCRIPT = join(import.meta.dir, 'rename-agent.ts');
 const dirs: string[] = [];

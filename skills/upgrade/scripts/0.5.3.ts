@@ -21,14 +21,14 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import type { Browser } from 'playwright';
-import { FOLDERS } from '../../../mcp-server/src/config';
+import { FOLDERS } from '../../../src/config';
 import {
   LEGACY_LITERAL,
   readRoadmapHtml,
   ROADMAP_PARSE_LINE,
   roadmapDataBlock
-} from '../../../mcp-server/src/roadmap/data';
-import { getChromium, withBrowserLaunch } from '../../../mcp-server/src/shared/browser-deps';
+} from '../../../src/roadmap/data';
+import { getChromium, withBrowserLaunch } from '../../../src/shared/browser-deps';
 
 const VERSION = '0.5.3';
 const VIEWPORT = { width: 1440, height: 900 };

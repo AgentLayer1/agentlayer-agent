@@ -2,10 +2,10 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { isAbsolute, join, relative } from "node:path";
-import { HOME_BINDING_KEY, recordedGitDir, stampClaims } from "../../../mcp-server/src/home/git-dir-record";
-import { agentHomePath, env, isAgentHome } from "../../../mcp-server/src/shared/env";
-import { RUNTIME_DIR } from "../../../mcp-server/src/shared/naming";
-import { expandTilde } from "../../../mcp-server/src/shared/paths";
+import { HOME_BINDING_KEY, recordedGitDir, stampClaims } from "../../../src/home/git-dir-record";
+import { agentHomePath, env, isAgentHome } from "../../../src/shared/env";
+import { RUNTIME_DIR } from "../../../src/shared/naming";
+import { expandTilde } from "../../../src/shared/paths";
 
 /**
  * Brain committer for sync — commits the HOME repo's pending changes as grouped,

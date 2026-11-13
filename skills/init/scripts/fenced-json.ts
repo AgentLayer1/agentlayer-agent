@@ -1,4 +1,4 @@
-import { toLf } from '../../../mcp-server/src/shared/text';
+import { toLf } from '../../../src/shared/text';
 
 const OPEN = '```json\n';
 

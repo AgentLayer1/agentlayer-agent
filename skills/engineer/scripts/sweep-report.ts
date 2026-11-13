@@ -7,8 +7,8 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
-import { isRecord, isScriptSafe, jsonBlock, readJsonBlock } from '../../../mcp-server/src/shared/json-block';
-import { escapeHtml } from '../../../mcp-server/src/status/html-primitives';
+import { isRecord, isScriptSafe, jsonBlock, readJsonBlock } from '../../../src/shared/json-block';
+import { escapeHtml } from '../../../src/status/html-primitives';
 
 export const BLOCK_ID = 'sweep-report-data';
 export const PAGE_TOKEN = '{{sweep-report-page}}';

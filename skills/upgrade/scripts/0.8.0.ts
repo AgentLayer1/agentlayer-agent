@@ -42,7 +42,7 @@ import {
 } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join, relative, resolve } from 'node:path';
-import { RUNTIME_DIR, isOwnDataDir, legacyEnvPrefix, pluginName } from '../../../mcp-server/src/shared/naming';
+import { RUNTIME_DIR, isOwnDataDir, legacyEnvPrefix, pluginName } from '../../../src/shared/naming';
 
 const VERSION = '0.8.0';
 

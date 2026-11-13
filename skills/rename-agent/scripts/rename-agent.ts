@@ -19,10 +19,10 @@ if (homeFlag) {
   process.env.AGENT_HOME = resolve(homeFlag);
 }
 process.env.AGENT_LOG_FILE = 'off';
-const { FOLDERS } = await import('../../../mcp-server/src/config');
-const { agentHomePath, isAgentHome } = await import('../../../mcp-server/src/shared/env');
+const { FOLDERS } = await import('../../../src/config');
+const { agentHomePath, isAgentHome } = await import('../../../src/shared/env');
 const { agentNameIn, FORMERLY_FIELD, formerNamesIn, NAME_FIELD, NAME_RE, renameAgent } =
-  await import('../../../mcp-server/src/shared/agent-name');
+  await import('../../../src/shared/agent-name');
 
 const fail = (message: string): never => {
   console.error(message);

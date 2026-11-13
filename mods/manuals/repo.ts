@@ -14,7 +14,7 @@ export const MAX_IMPORT_HOPS = 4;
 
 /**
  * The files whose presence in a data dir marks an agent home: the runtime's own
- * `HOME_MARKER_FILES` (mcp-server/src/shared/naming.ts), which a test keeps equal.
+ * `HOME_MARKER_FILES` (src/shared/naming.ts), which a test keeps equal.
  */
 export const HOME_MARKERS = ['version.json', 'knowledge.json'];
 

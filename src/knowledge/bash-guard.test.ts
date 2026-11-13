@@ -1,0 +1,321 @@
+import { describe, expect, test } from 'bun:test';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { homeRelativeLeak, shellGuard } from './bash-guard';
+
+const root = mkdtempSync(join(tmpdir(), 'bash-guard-'));
+const home = join(root, 'Agents', 'Scout');
+const repo = join(root, 'Developer', 'acme');
+mkdirSync(join(home, 'projects'), { recursive: true });
+mkdirSync(repo, { recursive: true });
+process.on('exit', () => rmSync(root, { recursive: true, force: true }));
+
+describe('homeRelativeLeak', () => {
+  test('flags a home tree written relatively from a cwd outside the home', () => {
+    expect(
+      homeRelativeLeak(
+        "mkdir -p projects/blog-dev/posts && cat > projects/blog-dev/posts/outline.md <<'EOF'",
+        repo,
+        home
+      )
+    ).toBe('projects/blog-dev/posts');
+    expect(homeRelativeLeak('echo hi >> knowledge/memory/index.md', repo, home)).toBe('knowledge/memory/index.md');
+    expect(homeRelativeLeak("cat > 'reports/plans/a b.md'", repo, home)).toBe('reports/plans/a b.md');
+    expect(homeRelativeLeak('touch ./reports/x.md', repo, home)).toBe('./reports/x.md');
+  });
+
+  test('follows a cd inside the command, so a single-line drift is caught from the home', () => {
+    expect(homeRelativeLeak(`cd ${repo} && mkdir -p projects/x && echo hi > projects/x/note.md`, home, home)).toBe(
+      'projects/x'
+    );
+    expect(homeRelativeLeak(`cd ${repo}; echo x > knowledge/index.md`, home, home)).toBe('knowledge/index.md');
+    expect(homeRelativeLeak(`pushd ${repo} && echo x > projects/y.md`, home, home)).toBe('projects/y.md');
+    expect(homeRelativeLeak(`cd ../../Developer/acme && touch projects/z`, home, home)).toBe('projects/z');
+    expect(homeRelativeLeak(`(cd -- "${repo}" && echo x > projects/sub.md)`, home, home)).toBe('projects/sub.md');
+  });
+
+  test('a cd back into the home clears the drift', () => {
+    expect(homeRelativeLeak(`cd ${home} && echo x > projects/TASKS.md`, repo, home)).toBeUndefined();
+    expect(homeRelativeLeak(`cd ${repo} && pwd && cd ${home} && touch projects/a`, home, home)).toBeUndefined();
+  });
+
+  test('a cd to a value the shell computes leaves the cwd unknown, which allows', () => {
+    expect(homeRelativeLeak('cd "$AGENT_HOME" && echo x > projects/a.md', repo, home)).toBeUndefined();
+    expect(homeRelativeLeak('cd $(git rev-parse --show-toplevel) && touch projects/a', repo, home)).toBeUndefined();
+    expect(homeRelativeLeak('cd - && touch projects/a', repo, home)).toBeUndefined();
+  });
+
+  test('reads and mentions are not writes', () => {
+    expect(homeRelativeLeak('cat knowledge/memory/index.md', repo, home)).toBeUndefined();
+    expect(homeRelativeLeak("grep -rn 'projects/' src", repo, home)).toBeUndefined();
+    expect(homeRelativeLeak('git commit -m "docs: note projects/ layout"', repo, home)).toBeUndefined();
+    expect(
+      homeRelativeLeak("cat > notes.md <<'EOF'\nSee knowledge/index.md for the map.\nEOF", repo, home)
+    ).toBeUndefined();
+    expect(homeRelativeLeak('git add . && git commit -m "projects/ done"', repo, home)).toBeUndefined();
+  });
+
+  test('only the paths a command writes count, not its text or what it reads', () => {
+    expect(homeRelativeLeak(`grep -rln "reports/reviews|plans" src 2>/dev/null`, repo, home)).toBeUndefined();
+    expect(homeRelativeLeak(`printf '%s' "reports/plans/a.md" > "$L"`, repo, home)).toBeUndefined();
+    expect(homeRelativeLeak("sed -i '' 's/reports/the/' notes.md", repo, home)).toBeUndefined();
+    expect(homeRelativeLeak('cp projects/a.md /tmp/b.md', repo, home)).toBeUndefined();
+    expect(homeRelativeLeak('cp notes.md projects/a.md', repo, home)).toBe('projects/a.md');
+    expect(homeRelativeLeak('make 2> reports/build.log', repo, home)).toBe('reports/build.log');
+    expect(homeRelativeLeak('echo hi >| knowledge/x.md', repo, home)).toBe('knowledge/x.md');
+  });
+
+  test("a quoted '>' is an argument, and a subshell's cd stays in the subshell", () => {
+    expect(homeRelativeLeak("grep -c '>' reports/a.md", repo, home)).toBeUndefined();
+    expect(homeRelativeLeak(`(cd ${repo} && true); echo hi > projects/a.md`, home, home)).toBeUndefined();
+    expect(homeRelativeLeak(`echo $(cd ${repo}) > projects/a.md`, home, home)).toBeUndefined();
+    expect(homeRelativeLeak(`(cd ${repo}; echo hi > projects/a.md)`, home, home)).toBe('projects/a.md');
+  });
+
+  test('allows the same writes from the home or a directory inside it', () => {
+    expect(homeRelativeLeak('mkdir -p projects/blog-dev/posts', home, home)).toBeUndefined();
+    expect(homeRelativeLeak('echo x > knowledge/index.md', join(home, 'projects'), home)).toBeUndefined();
+    expect(homeRelativeLeak('cd projects && touch a', home, home)).toBeUndefined();
+  });
+
+  test('allows absolute and variable-rooted paths from anywhere', () => {
+    expect(homeRelativeLeak(`echo x > ${home}/projects/TASKS.md`, repo, home)).toBeUndefined();
+    expect(homeRelativeLeak('tee "$HOME_DIR/knowledge/a.md"', repo, home)).toBeUndefined();
+    expect(homeRelativeLeak('cp a ~/Documents/Agents/Scout/projects/', repo, home)).toBeUndefined();
+  });
+
+  test("allows a tree the effective cwd really has, because that one is the repo's", () => {
+    mkdirSync(join(repo, 'projects'), { recursive: true });
+    expect(homeRelativeLeak('touch projects/api/x', repo, home)).toBeUndefined();
+    expect(homeRelativeLeak(`cd ${repo} && mkdir projects/api`, home, home)).toBeUndefined();
+  });
+
+  test('ignores words that merely contain a tree name', () => {
+    expect(homeRelativeLeak('mkdir reports-archive', repo, home)).toBeUndefined();
+    expect(homeRelativeLeak('echo x > myprojects/a.md', repo, home)).toBeUndefined();
+  });
+});
+
+const claude = (command: string, cwd = home): string | undefined => shellGuard(command, cwd, home, 'claude');
+
+describe('shellGuard: directory drift', () => {
+  test('refuses a top-level cd that leaves the session outside the home', () => {
+    expect(claude(`cd ${repo} && git status`)).toContain(`working directory at ${repo}`);
+    expect(claude(`cd ${repo}; ls`)).toContain('carries over');
+    expect(claude(`pushd ${repo}`)).toContain('Blocked');
+    expect(claude(`{ cd ${repo}; }`)).toContain('Blocked');
+    expect(claude('cd')).toContain('Blocked');
+  });
+
+  test('refuses a computed target, since the session could land anywhere', () => {
+    expect(claude('cd "$HOME_DIR" && ls')).toContain('a directory the shell computes');
+    expect(claude('cd - && ls')).toContain('Blocked');
+    expect(claude('popd')).toContain('Blocked');
+    expect(claude('make', repo)).toContain('because an earlier cd moved it');
+  });
+
+  test('refuses a top-level cd into a folder inside the home, and hands back the subshell form', () => {
+    expect(claude('cd projects && ls')).toContain('( cd projects && ls\n)');
+    expect(claude(`cd ${home}/knowledge && grep -rn x .`)).toContain(`working directory to ${home}/knowledge`);
+    expect(claude(`cd projects && echo ${'x'.repeat(2000)}`)).not.toContain('x'.repeat(2000));
+    expect(claude(`cd ${home}`)).toBeUndefined();
+    expect(claude(`cd ${home} && ls`)).toBeUndefined();
+  });
+
+  test('refuses any command while the session has already drifted, until it returns', () => {
+    expect(claude('git status', repo)).toContain(`working directory is ${repo}`);
+    expect(claude(`cd ${home}`, repo)).toBeUndefined();
+    expect(claude(`cd ${home} && git status`, repo)).toBeUndefined();
+  });
+
+  test('allows a cd that does not outlive the command', () => {
+    expect(claude(`git -C ${repo} status`)).toBeUndefined();
+    expect(claude(`(cd ${repo} && make)`)).toBeUndefined();
+    expect(claude(`ROOT=$(cd ${repo} && pwd) && echo "$ROOT"`)).toBeUndefined();
+    expect(claude(`cd ${repo} && make && cd ${home}`)).toBeUndefined();
+    expect(claude(`echo "cd ${repo}"`)).toBeUndefined();
+    expect(claude(`cat > notes.md <<'EOF'\ncd ${repo}\nEOF`)).toBeUndefined();
+  });
+
+  test('a folder inside the home whose name starts with .. is still inside', () => {
+    expect(claude('ls', join(home, '..cache'))).toBeUndefined();
+  });
+
+  test('prints a quoted cd back to the home', () => {
+    expect(claude('git status', repo)).toContain(`Run cd "${home}" first`);
+  });
+
+  test('expands $HOME like ~, and treats ~user and a quoted $HOME as unknown', () => {
+    expect(claude('cd $HOME && ls')).toContain(`working directory at ${homedir()}`);
+    expect(claude('cd ${HOME}/x')).toContain('Blocked');
+    expect(claude('cd ~root')).toContain('a directory the shell computes');
+    expect(claude("cd '$HOME'")).toContain('a directory the shell computes');
+  });
+
+  test('reads a symlinked spelling of the home as the home', () => {
+    const linked = join(root, 'linked-home');
+    symlinkSync(home, linked);
+    expect(shellGuard('git status', join(linked, 'projects'), home, 'claude')).toBeUndefined();
+    expect(shellGuard('git status', home, linked, 'claude')).toBeUndefined();
+  });
+
+  test('is skipped for a session launched outside the home, which a pinned home still reaches', () => {
+    expect(shellGuard('git status', repo, home, 'claude', { launch: repo })).toBeUndefined();
+    expect(shellGuard(`cd ${root}`, repo, home, 'claude', { launch: repo })).toBeUndefined();
+    expect(shellGuard('git status', repo, home, 'claude', { launch: home })).toContain('earlier cd');
+  });
+
+  test('is skipped under Codex, which starts every command in the workspace', () => {
+    expect(shellGuard(`cd ${repo} && git status`, home, home, 'codex')).toBeUndefined();
+  });
+});
+
+describe('shellGuard: shared temp dir', () => {
+  test('refuses finding scratch by pattern', () => {
+    expect(claude('ls -d /tmp/claude-501/mmd-* | head -1')).toContain('by pattern');
+    expect(claude('bun run /tmp/claude-501/jsdom-*/check.ts')).toContain('by pattern');
+    expect(claude('W=$(ls -td "$TMPDIR"/radar-* | head -1)')).toContain('by pattern');
+    expect(claude('rm -rf /private/tmp/claude-501/demo-?')).toContain('by pattern');
+  });
+
+  test('allows a pattern inside one known folder, and looking at the temp dir itself', () => {
+    expect(claude('ls /tmp/claude-501/mirror-Eq5mgg/0003-*')).toBeUndefined();
+    expect(claude('ls -d /private/tmp/claude-501/bundled-skills/*/*/types/claude-code.d.ts')).toBeUndefined();
+    expect(claude('echo "TMPDIR=$TMPDIR"; ls -ld "$TMPDIR"')).toBeUndefined();
+  });
+
+  test('refuses a hand-picked $TMPDIR name, whatever the command does with it', () => {
+    expect(claude('echo x > "$TMPDIR/orig-$$"')).toContain('hand-picked name');
+    expect(claude('cat $TMPDIR/prompt.md')).toContain('hand-picked name');
+    expect(claude('mkdir -p "${TMPDIR}/pull-7d/out"')).toContain('hand-picked name');
+    expect(claude('bun x.ts --out="${TMPDIR:-/tmp}/report.json"')).toContain('hand-picked name');
+  });
+
+  test('allows mktemp and the path it printed', () => {
+    expect(claude('T=$(mktemp "$TMPDIR/note-XXXXXX") && echo x > "$T" && git commit -F "$T"')).toBeUndefined();
+    expect(claude('W=$(mktemp -d "${TMPDIR}/run-XXXXXX") && mkdir -p "$W/pages"')).toBeUndefined();
+    expect(claude('cat /tmp/claude-501/run-tKyadL/pages/good.html')).toBeUndefined();
+    expect(claude(`find "$W" -name '*.png'`)).toBeUndefined();
+    expect(claude("grep -rn 'tmp/*' src")).toBeUndefined();
+  });
+
+  test('a $TMPDIR in single quotes is text, not a path', () => {
+    expect(claude("grep -rn '$TMPDIR/prompt.md' templates/")).toBeUndefined();
+    expect(claude("ls '$TMPDIR/mmd-*'")).toBeUndefined();
+    expect(claude('cat \\$TMPDIR/prompt.md')).toBeUndefined();
+    expect(claude('cat "$TMPDIR/prompt.md"')).toContain('hand-picked name');
+  });
+
+  test('only TMPDIR itself is the temp dir', () => {
+    expect(claude('cat ${TMPDIRX}/prompt.md')).toBeUndefined();
+  });
+
+  test('a pattern after a --flag= is still a pattern', () => {
+    expect(claude('bun x.ts --out=$TMPDIR/run-*')).toContain('by pattern');
+  });
+
+  test('applies under Codex too', () => {
+    expect(shellGuard('ls -d /tmp/x-* | head -1', home, home, 'codex')).toContain('by pattern');
+  });
+});
+
+describe('shellGuard: forward-only git', () => {
+  test('refuses rewriting a commit and a merge that drops the other side', () => {
+    expect(claude('git commit --amend -m x')).toContain('forward-only');
+    expect(claude(`git -C ${repo} commit --amend --no-edit`)).toContain('commit --amend');
+    expect(claude('git merge -s ours feature')).toContain('Blocked');
+    expect(claude('git merge -sours feature')).toContain('Blocked');
+    expect(claude('git merge --strategy=ours feature')).toContain('Blocked');
+    expect(claude('git merge -X ours feature')).toContain('Blocked');
+    expect(claude('git merge --strategy-option ours feature')).toContain('Blocked');
+  });
+
+  test('refuses every stash that changes the shared list', () => {
+    expect(claude('git stash')).toContain('shared by every worktree');
+    expect(claude('git stash pop')).toContain('Blocked');
+    expect(claude('git stash clear')).toContain('Blocked');
+    expect(claude(`git -C ${repo} stash drop stash@{0}`)).toContain('Blocked');
+    expect(claude('git -c core.pager=cat stash push -uk -m wip')).toContain('Blocked');
+  });
+
+  test('allows the forward-only forms', () => {
+    expect(claude('git commit -F msg.txt')).toBeUndefined();
+    expect(claude('git merge --ff-only feature')).toBeUndefined();
+    expect(claude('git merge -X theirs feature')).toBeUndefined();
+    expect(claude('git stash list')).toBeUndefined();
+    expect(claude('git stash show -p stash@{0}')).toBeUndefined();
+    expect(claude('git log --format=%s -- amend.md')).toBeUndefined();
+    expect(claude('echo "git commit --amend"')).toBeUndefined();
+  });
+
+  test('applies under Codex too', () => {
+    expect(shellGuard('git commit --amend', home, home, 'codex')).toContain('Blocked');
+  });
+});
+
+describe('shellGuard: gates', () => {
+  test("refuses a commit, merge or push the gate before it can't stop", () => {
+    expect(claude('( pnpm lint ); git commit -F m')).toContain('&&');
+    expect(claude('bun test; git commit -F m')).toContain('Blocked');
+    expect(claude('bun run lint:check\ngit push')).toContain('Blocked');
+    expect(claude('pnpm typecheck | tail -5 && git commit -F m')).toContain('pipe');
+    expect(claude('bun test || true && git commit -F m')).toContain('Blocked');
+    expect(claude('( pnpm lint; echo done ) && git merge --ff-only b')).toContain('Blocked');
+    expect(claude('npx prettier --check . & git commit -F m')).toContain('Blocked');
+    expect(claude('pnpm lint | grep "$(date)" && git commit -F m')).toContain('pipe');
+    expect(claude('npm test; (git commit -m x)')).toContain('Blocked');
+    expect(claude('npm test; ( echo a && git commit -F m )')).toContain('Blocked');
+  });
+
+  test('allows a gate joined with &&, a pipefail pipe, and a commit with no gate before it', () => {
+    expect(claude('pnpm lint && git commit -F m')).toBeUndefined();
+    expect(claude('M=$(mktemp) && bun test && git add -A && git commit -F "$M"')).toBeUndefined();
+    expect(claude('set -o pipefail; pnpm typecheck | tail -5 && git commit -F m')).toBeUndefined();
+    expect(claude('bun test 2>&1 && git commit -F m')).toBeUndefined();
+    expect(claude('echo x; git commit -F m')).toBeUndefined();
+    expect(claude('bun test; git status')).toBeUndefined();
+    expect(claude('bun test && git commit -m "$(printf a; echo b)"')).toBeUndefined();
+    expect(claude('bun test && ( git add -A; git commit -F m )')).toBeUndefined();
+    expect(claude('( pnpm lint ) && ( make a; make b ) && git commit -F m')).toBeUndefined();
+  });
+
+  test('applies under Codex too', () => {
+    expect(shellGuard('bun test; git commit -F m', home, home, 'codex')).toContain('Blocked');
+  });
+});
+
+describe('shellGuard on native Windows', () => {
+  const winHome = 'C:\\Users\\acme\\Documents\\Agents\\Scout';
+  const winRepo = 'C:\\Users\\acme\\Developer\\shop';
+  const onWindows = (command: string, cwd = winHome, host: 'claude' | 'codex' = 'claude'): string | undefined =>
+    shellGuard(command, cwd, winHome, host, { platform: 'win32' });
+
+  test('reads Git Bash and Cygwin drive paths as the drive they name', () => {
+    expect(onWindows('cd /c/Users/acme/Developer/shop && git status')).toContain('Blocked');
+    expect(onWindows('cd /cygdrive/c/Users/acme/Developer/shop')).toContain('Blocked');
+    expect(onWindows('cd /c/Users/acme/Documents/Agents/Scout', winRepo)).toBeUndefined();
+    expect(onWindows('cd /c/Users/acme/Documents/Agents/Scout/projects && ls')).toContain('Blocked');
+  });
+
+  test('takes drive-letter paths with either slash, in any case', () => {
+    expect(onWindows('cd "C:\\Users\\acme\\Developer\\shop"')).toContain('Blocked');
+    expect(onWindows("cd 'c:/users/acme/documents/agents/scout'", winRepo)).toBeUndefined();
+  });
+
+  test('a cwd the host reports in Git Bash form is still the home', () => {
+    expect(onWindows('git status', '/c/Users/acme/Documents/Agents/Scout')).toBeUndefined();
+    expect(onWindows('git status', '/c/Users/acme/Developer/shop')).toContain('because an earlier cd moved it');
+  });
+
+  test('a subshell cd and the temp-dir rules work the same in Git Bash', () => {
+    expect(onWindows('(cd /c/Users/acme/Developer/shop && make)')).toBeUndefined();
+    expect(onWindows('ls -d /tmp/mmd-* | head -1')).toContain('by pattern');
+  });
+
+  test("leaves Codex's PowerShell commands alone", () => {
+    expect(onWindows('Set-Location C:\\Users\\acme\\Developer\\shop; git status', winHome, 'codex')).toBeUndefined();
+    expect(onWindows('Get-ChildItem /tmp/mmd-* | Select-Object -First 1', winHome, 'codex')).toBeUndefined();
+    expect(onWindows('Write-Output "line`nnext"', winHome, 'codex')).toBeUndefined();
+  });
+});
