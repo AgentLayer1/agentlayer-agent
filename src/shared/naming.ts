@@ -53,6 +53,9 @@ export const PLUGIN_SOURCE_ROOT = pluginRootAbove(import.meta.dir);
 
 const MANIFEST_PATH = resolve(PLUGIN_SOURCE_ROOT, MANIFEST_FILE);
 
+/** The CLI that hooks, the status line and the operator's terminal run, relative to the plugin root. */
+export const CLI_FILE = join('src', 'cli.ts');
+
 const brokenManifest = (reason: string, cause?: unknown): Error =>
   new Error(
     `Cannot read this plugin's name: ${reason} (${MANIFEST_PATH}). Its data dir can't be recognised ` +

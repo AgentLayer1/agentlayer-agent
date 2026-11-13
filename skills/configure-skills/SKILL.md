@@ -706,13 +706,13 @@ For *No*, hand over these steps verbatim. They're done once per workspace, by an
 
 With a Client ID in hand (pasted, or from *Yes*), plant it in `$SETTINGS_FILE` `env` as `AGENT_SLACK_CLIENT_ID` with §D.2 **Set value**. *Skip* ends the walk with nothing granted.
 
-**(1) Grant** via §E: the seven read tools `mcp__plugin_agent-kevin_kevin__slack_whoami`, `..._slack_channels`, `..._slack_history`, `..._slack_batch_history`, `..._slack_thread`, `..._slack_search` and `..._slack_waiting`; `Bash(kevin slack *)` (for `auth`); `WebFetch(domain:slack.com)` (follows a pasted permalink, which without Slack cookies only ever reaches public pages); and `Skill(agent-kevin:slack)`, so the skill runs on "slack pulse" without a confirm prompt.
+**(1) Grant** via §E: the seven read tools `mcp__plugin_agent-kevin_kevin__slack_whoami`, `..._slack_channels`, `..._slack_history`, `..._slack_batch_history`, `..._slack_thread`, `..._slack_search` and `..._slack_waiting`; `WebFetch(domain:slack.com)` (follows a pasted permalink, which without Slack cookies only ever reaches public pages); and `Skill(agent-kevin:slack)`, so the skill runs on "slack pulse" without a confirm prompt.
 
 **(2) Auth, from a terminal outside the agent.** The OAuth callback binds a localhost port, which the sandbox blocks, so the operator runs it. Resolve the CLI path first (under Codex, `CLAUDE_PLUGIN_ROOT` is this skill's base directory two levels up):
 
 ```bash
-AGENT_BIN="${CLAUDE_PLUGIN_ROOT}/bin/kevin"
-test -x "$AGENT_BIN" || echo "AGENT_BIN_MISSING: $AGENT_BIN"
+AGENT_CLI="${CLAUDE_PLUGIN_ROOT}/src/cli.ts"
+test -f "$AGENT_CLI" || echo "AGENT_CLI_MISSING: $AGENT_CLI"
 ```
 
 Then hand over, with both paths filled in:
@@ -720,7 +720,7 @@ Then hand over, with both paths filled in:
 > **One-time Slack sign-in, in your own terminal (about 30 seconds)**
 >
 > 1. Open a new terminal window, not this session.
-> 2. Paste: `cd <HOME_DIR> && <AGENT_BIN> slack auth`
+> 2. Paste: `cd <HOME_DIR> && bun <AGENT_CLI> slack auth`
 > 3. Your browser opens Slack's authorize page. Click **Allow**, then close the tab once it says you're signed in.
 > 4. The terminal prints `{"ok": true, ...}`. Come back and say **done** (or paste the error).
 
@@ -736,7 +736,7 @@ Wait for the answer. On an error, explain it (common: `AGENT_SLACK_CLIENT_ID` no
 ✅ Slack pack activated.
 
 Client ID:          AGENT_SLACK_CLIENT_ID in settings.local.json (public, not a secret)
-Tool permissions:   slack_whoami, slack_channels, slack_history, slack_batch_history, slack_thread, slack_search, slack_waiting · Bash(kevin slack *) · WebFetch(domain:slack.com) · Skill(agent-kevin:slack)
+Tool permissions:   slack_whoami, slack_channels, slack_history, slack_batch_history, slack_thread, slack_search, slack_waiting · WebFetch(domain:slack.com) · Skill(agent-kevin:slack)
 Signed in:          <@user in workspace | deferred | failed: <error>>
 Tokens:             <HOME>/.state/secrets/slack/slack-tokens.json (0600)
 Channel map:        <HOME>/knowledge/concepts/slack-channels.md (<bootstrapped, N channels | already there, left alone>)
@@ -925,7 +925,7 @@ Print per library: install status + symlink path + upstream LICENSE first-line. 
 - Revoke `appstore_reviews` from `permissions.allow` (§E remove helper). There are no keys. `.state/appstore/` holds only what the tool learned about storefronts; leave it unless the operator asks.
 
 **Slack deconfigure:**
-- Revoke the seven `slack_*` tool grants (`slack_whoami`, `slack_channels`, `slack_history`, `slack_batch_history`, `slack_thread`, `slack_search`, `slack_waiting`), `Bash(kevin slack *)`, `WebFetch(domain:slack.com)` and `Skill(agent-kevin:slack)` from `permissions.allow` (§E remove helper).
+- Revoke the seven `slack_*` tool grants (`slack_whoami`, `slack_channels`, `slack_history`, `slack_batch_history`, `slack_thread`, `slack_search`, `slack_waiting`), `WebFetch(domain:slack.com)` and `Skill(agent-kevin:slack)` from `permissions.allow` (§E remove helper).
 - `AskUserQuestion`: "Delete your local Slack token at `<HOME>/.state/secrets/slack/slack-tokens.json`?" (Yes/No). The file is deny-gated, so on yes hand the operator `rm -f <HOME_DIR>/.state/secrets/slack/slack-tokens.json` to run themselves. Tokens are per account, so teammates are unaffected. To revoke on Slack's side too: the workspace's **Authorized apps** settings → the app → **Revoke**.
 - `AGENT_SLACK_CLIENT_ID` and `knowledge/concepts/slack-channels.md` stay: the first is public and shared by the workspace, the second is the operator's.
 

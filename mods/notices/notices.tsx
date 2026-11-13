@@ -49,7 +49,7 @@ const parseNotices = (text: string): Notice[] | null => {
 
 // The session root, not its cwd: a shell `cd` in a turn moves the cwd out of the home.
 async function runCli($: EngineInterface, args: readonly string[]): Promise<string> {
-  const { exitCode, stdout, stderr } = await $.process.run(cliArgv($.plugin.root, $.plugin.name, args), {
+  const { exitCode, stdout, stderr } = await $.process.run(cliArgv($.plugin.root, args), {
     cwd: await $.session.root()
   });
   if (exitCode !== 0) {

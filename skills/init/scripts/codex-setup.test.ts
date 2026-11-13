@@ -9,11 +9,11 @@ const PLUGIN_NAME = pluginName();
 const AGENT_SLUG = PLUGIN_NAME.replace(/^agent-/, '');
 
 const SCRIPT = resolve(import.meta.dir, 'codex-setup.ts');
-const CLI = resolve(import.meta.dir, '..', '..', '..', 'bin', `${AGENT_SLUG}`);
+const CLI = resolve(import.meta.dir, '..', '..', '..', 'src', 'cli.ts');
 const HOME = resolve('/Users/ada/Agents/Scout');
 const PLUGIN = resolve(`/opt/${AGENT_SLUG}`);
 const command = (rest: string, home = HOME, plugin = PLUGIN): string =>
-  `bun "${resolve(plugin, 'bin', AGENT_SLUG)}" ${rest} --home="${home}"`;
+  `bun "${resolve(plugin, 'src', 'cli.ts')}" ${rest} --home="${home}"`;
 const dirs: string[] = [];
 const scratch = (): string => {
   const dir = mkdtempSync(join(tmpdir(), 'codex-setup-'));
@@ -123,7 +123,7 @@ describe('codex-setup hooks', () => {
             hooks: [
               {
                 type: 'command',
-                command: `AGENT_HOME=/x bun /old/${AGENT_SLUG}/bin/${AGENT_SLUG} session-start --hook-protocol=codex --slice=1/12`,
+                command: `AGENT_HOME=/x bun /old/${AGENT_SLUG}/src/cli.ts session-start --hook-protocol=codex --slice=1/12`,
                 timeout: 15
               }
             ]
@@ -133,7 +133,7 @@ describe('codex-setup hooks', () => {
             hooks: [
               {
                 type: 'command',
-                command: `AGENT_HOME='/x' bun '/old/${AGENT_SLUG}/bin/${AGENT_SLUG}' session-start --hook-protocol=codex --slice=2/12`,
+                command: `AGENT_HOME='/x' bun '/old/${AGENT_SLUG}/src/cli.ts' session-start --hook-protocol=codex --slice=2/12`,
                 timeout: 15
               }
             ]
@@ -145,7 +145,7 @@ describe('codex-setup hooks', () => {
             hooks: [
               {
                 type: 'command',
-                command: `AGENT_HOME=/x bun /old/${AGENT_SLUG}/bin/${AGENT_SLUG} session-capture --mode=session-end --hook-protocol=codex --detach`,
+                command: `AGENT_HOME=/x bun /old/${AGENT_SLUG}/src/cli.ts session-capture --mode=session-end --hook-protocol=codex --detach`,
                 timeout: 3
               }
             ]

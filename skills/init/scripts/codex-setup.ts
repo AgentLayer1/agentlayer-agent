@@ -220,7 +220,7 @@ const mirroredServers = Object.fromEntries(
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
 /** A hook command of ours, whichever checkout (quoted or not) it points at. */
-const AGENT_COMMAND = new RegExp(`bin[\\\\/]${agent}["']? (session-(start|capture)|guard) .*--hook-protocol=codex`);
+const AGENT_COMMAND = /src[\\/]cli\.ts["']? (session-(start|capture)|guard) .*--hook-protocol=codex/;
 /** Double quotes are the one quoting sh and PowerShell agree on; a path either shell would expand inside them is refused. */
 const quote = (value: string): string => {
   if (/["$`]/.test(value)) {
@@ -229,7 +229,7 @@ const quote = (value: string): string => {
   return `"${value}"`;
 };
 const command = (rest: string): string =>
-  `bun ${quote(resolve(pluginRoot, 'bin', agent))} ${rest} --home=${quote(homeDir)}`;
+  `bun ${quote(resolve(pluginRoot, 'src', 'cli.ts'))} ${rest} --home=${quote(homeDir)}`;
 const entry = (commandLine: string, timeout: number, extra: Partial<HookItem> = {}, matcher = ''): HookGroup => ({
   matcher,
   hooks: [{ type: 'command', command: commandLine, timeout, ...extra }]

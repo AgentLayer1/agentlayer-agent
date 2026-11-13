@@ -21,7 +21,7 @@ that name in this file, and they are not treated the same:
   a sentence addressed to the operator, substitute it. Before Step 1b the name isn't
   known yet, so say "your agent" rather than guessing.
 - **The plugin.** `agent-kevin`, `/agent-kevin:*`, `.state/`,
-  `kevin-avatar.jpg`, `bin/kevin`. These are the product and its namespace, not the
+  `kevin-avatar.jpg`. These are the product and its namespace, not the
   persona. They stay exactly as written no matter what the operator picks.
 
 ---
@@ -184,7 +184,7 @@ with no backwards compatibility. Check before scaffolding anything:
 
 ```bash
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-<SKILL_BASE_DIR>/../..}"   # Claude Code fills the variable in; under Codex replace <SKILL_BASE_DIR> with this skill's base directory
-bun "$PLUGIN_ROOT/bin/kevin" hosts            # add --codex when this session runs under Codex
+bun "$PLUGIN_ROOT/src/cli.ts" hosts            # add --codex when this session runs under Codex
 ```
 
 `ok: true` → continue. Otherwise print each `outdated` or required-`absent` host with its `update`
@@ -860,7 +860,7 @@ The bigger privacy setting lives in the operator's Claude account, not a file. O
 **`statusLine` — the footer, the Claude side of the Codex `[tui]` table.** Kevin renders it (`kevin statusline`: model, folder, branch on line one; context bar, cost with the hourly rate, session time, and the Pro/Max rate-limit windows on line two). The command names this checkout, so it goes in `settings.local.json`, never the shared file; never type it — generate it and merge the object it prints:
 
 ```bash
-bun "$PLUGIN_ROOT/bin/kevin" statusline --setting
+bun "$PLUGIN_ROOT/src/cli.ts" statusline --setting
 ```
 
 Set when absent from both home files: an operator's own `statusLine` in either is kept, and the user-level one is never touched — the home's settings outrank it in sessions started here, which is the point: this home shows its agent's footer, every other directory keeps the operator's own. A version-pinned plugin cache moves on every release, so `$upgrade` re-points the command, and the SessionStart context flags a stale one until it does. The subagent panel needs no wiring: the plugin ships its `subagentStatusLine` itself. Both take effect on relaunch.
@@ -1269,7 +1269,7 @@ Concrete approach: `Read` the existing file (treat as `{}` if absent), build the
 | GitHub-gated | `github_pr_*`, `github_run_*`, `github_issue_*`, `github_fast_forward` | configure-skills A.2d (GitHub walk) |
 | Helpdesk-gated | `helpdesk_connections`, `helpdesk_tickets`, `helpdesk_ticket`, `helpdesk_attachment`, `helpdesk_accounts`, `helpdesk_lookups`, `helpdesk_stats`, `helpdesk_note`, `helpdesk_assign` | configure-skills A.2g (Helpdesk walk) |
 | App Store-gated | `appstore_reviews` | configure-skills A.2h (App Store walk) |
-| Slack-gated | `slack_*`, `Bash(kevin slack *)`, `WebFetch(domain:slack.com)` | configure-skills A.2i (Slack walk, which also runs the OAuth sign-in) |
+| Slack-gated | `slack_*`, `WebFetch(domain:slack.com)` | configure-skills A.2i (Slack walk, which also runs the OAuth sign-in) |
 
 The allow list also carries a **skill** grant for every skill but two. Skills register regardless of permissions: the grant only suppresses the confirm prompt on model invocation (whether Kevin auto-fires the skill or one skill invokes another through the Skill tool). Every skill is model-invocable except `init`, `release` and `rename-agent`, so the operator asks in plain words ("brief me", "set today's goals", "how's my site ranking", "review 142") and never has to remember a slash name. The playbook skills route inside themselves: `briefing` (morning, evening, pulse), `goals` (day, week, month, year), `seo` (audit, console, speed, serp, rank), `seed` (export, import), `project` (create, archive), `attention` and `engineer`. A skill that writes still asks before it writes: `seed` import's `seed_import` tool sits in `ask`, `project` confirms before creating or archiving, and `configure-skills`, `self-review` and the goals interviews confirm each change. A pack skill that fires on a home without its keys stops at the first missing-key error and names the `/agent-kevin:configure-skills` walk that fixes it; `seo` spends SerpAPI credit only on an explicit SERP ask or an audit anomaly.
 
@@ -1401,7 +1401,7 @@ If Step 5 URL synthesis surfaced anything that fills or contradicts this skeleto
 
 Also write `.claude/settings.local.json`: this machine's half of the settings (see **Two files, split by owner** above). Init writes these keys into it:
 
-- **`statusLine`**: the object `bun "$PLUGIN_ROOT/bin/kevin" statusline --setting` prints, set when neither home file has one.
+- **`statusLine`**: the object `bun "$PLUGIN_ROOT/src/cli.ts" statusline --setting` prints, set when neither home file has one.
 - **`enabledPlugins`**: `"agent-kevin@<MARKETPLACE>": true`, set even if the key already exists with a different value (the operator just ran init, so they want it enabled). `<MARKETPLACE>` is the name the plugin was installed under: for a marketplace install `${CLAUDE_PLUGIN_ROOT}` is a version-pinned cache path `…/plugins/cache/<MARKETPLACE>/agent-kevin/<version>` (`agentlayer` from the public marketplace); for a clone (Option B/C) it is the `name` in `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/marketplace.json`, `agentdev-kevin`. A key naming a marketplace that is not registered enables nothing. Other plugin entries pass through untouched.
 - **The code-root pair** from **Reaching the code tree** above, when `CODE_ROOT` is set: `permissions.additionalDirectories` and `sandbox.filesystem.allowWrite`, both `["<CODE_ROOT>"]`.
 - **The custom-folder grants** from Step 5c, when a path is outside the home.
@@ -1432,7 +1432,7 @@ The rule: **init owns env keys that are universal to every operator; configure-s
 
   ```json
   {
-    "statusLine": "<the object printed by `bun \"$PLUGIN_ROOT/bin/kevin\" statusline --setting`, unless either home file already has one>",
+    "statusLine": "<the object printed by `bun \"$PLUGIN_ROOT/src/cli.ts\" statusline --setting`, unless either home file already has one>",
     "enabledPlugins": {
       "agent-kevin@<MARKETPLACE>": true
     },
@@ -1776,7 +1776,7 @@ Blank line, then the **Next** heading (same style as Ready), then the relaunch p
 > claude
 > ```
 >
-> **Running Codex from this home?** Relaunch with `codex` instead, trust the folder when asked (that is what lets Codex read the home's `.codex/config.toml`, where Kevin's MCP server is registered), run `/hooks`, and trust the 4 Kevin entries (the ones whose command runs `bin/kevin`: `session-start`, `session-capture` twice, `guard`). Until then, Codex starts without Kevin's context and captures nothing. Skills are invoked with `$name` there (`$briefing`, `$sync`); the plugin itself installs with `codex plugin marketplace add <PLUGIN_DIR>` then `codex plugin add agent-kevin@agentdev-kevin`.
+> **Running Codex from this home?** Relaunch with `codex` instead, trust the folder when asked (that is what lets Codex read the home's `.codex/config.toml`, where Kevin's MCP server is registered), run `/hooks`, and trust the 4 Kevin entries (the ones whose command runs `src/cli.ts`: `session-start`, `session-capture` twice, `guard`). Until then, Codex starts without Kevin's context and captures nothing. Skills are invoked with `$name` there (`$briefing`, `$sync`); the plugin itself installs with `codex plugin marketplace add <PLUGIN_DIR>` then `codex plugin add agent-kevin@agentdev-kevin`.
 >
 > **Watch for a marketplace trust prompt.** On first relaunch, Claude Code asks "this project wants to register a marketplace and enable a plugin — trust it?" **Accept it.** If you dismiss/miss the prompt, the plugin won't load and the SessionStart banner won't appear — recover by running:
 >

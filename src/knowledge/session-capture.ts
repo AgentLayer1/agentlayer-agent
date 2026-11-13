@@ -1,10 +1,10 @@
 /**
  * Harness-agnostic session-capture core. Used by:
- *  - Claude Code's SessionEnd / PreCompact hooks via `bin/kevin session-capture --hook-protocol=claude`.
- *  - Codex CLI's SessionEnd hook via `bin/kevin session-capture --hook-protocol=codex`
+ *  - Claude Code's SessionEnd / PreCompact hooks via `src/cli.ts session-capture --hook-protocol=claude`.
+ *  - Codex CLI's SessionEnd hook via `src/cli.ts session-capture --hook-protocol=codex`
  *    (`--format=codex` reads its rollout JSONL).
  *  - Future harnesses — each adds a transcript-format adapter + a
- *    `--hook-protocol=<host>` envelope in `bin/kevin`.
+ *    `--hook-protocol=<host>` envelope in `src/cli.ts`.
  *
  * This module knows nothing about hook envelopes (stdin/stdout JSON shapes) —
  * that's the CLI wrapper's job. It takes plain args, applies self-defer +

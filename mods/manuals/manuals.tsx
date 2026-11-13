@@ -71,7 +71,7 @@ async function grants($: EngineInterface): Promise<string[]> {
  */
 async function dataDirName($: EngineInterface): Promise<string> {
   if (dataDirCache === undefined) {
-    const { exitCode, stdout } = await $.process.run(cliArgv($.plugin.root, $.plugin.name, ['ping']), {
+    const { exitCode, stdout } = await $.process.run(cliArgv($.plugin.root, ['ping']), {
       cwd: await $.session.root()
     });
     dataDirCache = exitCode === 0 ? dataDirNameIn(stdout) : '';

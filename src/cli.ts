@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 /**
  * `kevin` CLI — task + knowledge ops from outside Claude Code.
  *
@@ -49,46 +48,40 @@
  *   kevin slack thread <channel> <thread_ts>
  *   kevin slack search <query> [--in=<channel>] [--since=7d]
  */
-import { resolve } from 'node:path';
+import { pluginName } from '@/shared/naming';
 
-// Resolve plugin root from this script's location so the CLI works whether
-// you invoke it via bin/kevin, /full/path/to/bin/kevin, or the plugin PATH.
-const PLUGIN_ROOT = resolve(import.meta.dir, '..');
-process.env.AGENT_PLUGIN_ROOT ??= PLUGIN_ROOT;
-
-// Stage process.env for the whole CLI run: hydrate every .claude/settings*.json
+// Stage the environment for the whole CLI run: hydrate every .claude/settings*.json
 // `env` block on the ancestor path (nearest wins) so per-project paths
 // (AGENT_HOME, AGENT_KNOWLEDGE, ...) apply without shell-rc duplication, then
 // anchor AGENT_HOME through the shared resolver. Order matches Claude Code:
 // settings.local.json (machine-specific) overrides settings.json (committed);
-// existing shell env always wins. Every server import in this file is dynamic
-// for two reasons that outlive any env-ordering concern: the specifiers are
-// computed from PLUGIN_ROOT (a static import can't take a computed specifier), and
-// it keeps each CLI invocation to the one subsystem it needs instead of loading
+// existing shell env always wins. Every server import below is dynamic, which
+// keeps each CLI invocation to the one subsystem it needs instead of loading
 // all of them. Staging env first is no longer load-bearing — config resolves paths
 // live and secret loading re-keys on the home — but it stays because it's the
 // order a reader expects. A `--home=PATH` argument anywhere on the line pins
 // AGENT_HOME first: the Codex hooks pass the home that way because their command
 // line has to parse under sh and PowerShell alike, and an env prefix does not.
 async function loadProjectEnv(): Promise<void> {
-  const home = process.argv.find((arg) => arg.startsWith('--home='))?.slice('--home='.length);
-  if (home) process.env.AGENT_HOME = home;
   // Settings first, through the side-effect-free loader: importing shared/env resolves the
   // home and loads secrets on import, which would freeze a home a settings block meant to set.
-  const { loadSettingsEnv } = await import(resolve(PLUGIN_ROOT, 'src/shared/settings-env'));
+  const { loadSettingsEnv, pinHome } = await import('@/shared/settings-env');
+  const home = process.argv.find((arg) => arg.startsWith('--home='))?.slice('--home='.length);
+  if (home) pinHome(home);
   loadSettingsEnv(process.cwd());
-  const { agentHomePath } = await import(resolve(PLUGIN_ROOT, 'src/shared/env'));
+  const { agentHomePath } = await import('@/shared/env');
   agentHomePath();
 }
 // The status line re-runs on every render tick and takes its folder from the payload, so it
 // skips the settings walk and the home gate every other verb needs.
 if (process.argv[2] === 'statusline') {
-  const { runStatusLine } = await import(resolve(PLUGIN_ROOT, 'src/statusline/run'));
+  const { runStatusLine } = await import('@/statusline/run');
   await runStatusLine(process.argv.slice(3), import.meta.path);
   process.exit(0);
 }
 
 await loadProjectEnv();
+const { env } = await import('@/shared/env');
 
 const [, , group, command, ...args] = process.argv;
 
@@ -139,7 +132,6 @@ function parseHookInput(raw: string): HookInput {
   }
 }
 
-const { pluginName } = await import(resolve(PLUGIN_ROOT, 'src/shared/naming'));
 const PLUGIN = pluginName();
 const CLI = PLUGIN.replace(/^agent-/, '');
 const PLUGIN_TITLE = `Agent-${CLI.replace(/^./, (first) => first.toUpperCase())}`;
@@ -292,13 +284,13 @@ async function run(): Promise<void> {
   // One info line per CLI invocation so file logs reveal user-invoked vs
   // MCP-invoked traffic. Lazy-imported because @/shared/log resolves AGENT_HOME
   // and we want loadProjectEnv() to have run first.
-  const { log } = await import(resolve(PLUGIN_ROOT, 'src/shared/log'));
+  const { log } = await import('@/shared/log');
   if (group !== 'guard') {
     // guard runs before every shell command; logging each run would drown the file.
     log.with('cli').info(`${group}${command ? ` ${command}` : ''}${args.length ? ` ${args.join(' ')}` : ''}`);
   }
 
-  const { FOLDERS, TIMEZONE, isInitialized } = await import(resolve(PLUGIN_ROOT, 'src/config'));
+  const { FOLDERS, TIMEZONE, isInitialized } = await import('@/config');
 
   if (group === 'ping') {
     console.log(
@@ -322,7 +314,7 @@ async function run(): Promise<void> {
 
   // Runs before a home exists: init gates on it before scaffolding anything.
   if (group === 'hosts') {
-    const { checkHosts, requiredHosts } = await import(resolve(PLUGIN_ROOT, 'src/hosts'));
+    const { checkHosts, requiredHosts } = await import('@/hosts');
     const report = checkHosts(requiredHosts(FOLDERS.HOME, [command, ...args].includes('--codex')));
     console.log(JSON.stringify(report, null, 2));
     process.exit(report.ok ? 0 : 1);
@@ -348,7 +340,7 @@ async function run(): Promise<void> {
   // home state.
   const HOMELESS_OK = new Set(['session-start', 'session-capture', 'guard', 'worktree']);
   if (!isInitialized() && !HOMELESS_OK.has(group)) {
-    const { RUNTIME_DIR } = await import(resolve(PLUGIN_ROOT, 'src/shared/naming'));
+    const { RUNTIME_DIR } = await import('@/shared/naming');
     console.error(
       `${group}: ${FOLDERS.HOME} is not this agent's home (no ${RUNTIME_DIR}/version.json recording ${PLUGIN} there).\n` +
         `The home is resolved from the current directory, so this is what you get when\n` +
@@ -359,10 +351,9 @@ async function run(): Promise<void> {
   }
 
   if (group === 'task') {
-    const TASKS = 'src/tasks';
     switch (command) {
       case 'query': {
-        const { queryTasks } = await import(resolve(PLUGIN_ROOT, `${TASKS}/scan`));
+        const { queryTasks } = await import('@/tasks/scan');
         const filters: Record<string, string> = {};
         for (const k of ['status', 'priority', 'project']) {
           const v = flag(k);
@@ -381,7 +372,7 @@ async function run(): Promise<void> {
       case 'get': {
         const id = args[0];
         if (!id) throw new Error(`Usage: ${CLI} task get <id>`);
-        const { findTaskById } = await import(resolve(PLUGIN_ROOT, `${TASKS}/scan`));
+        const { findTaskById } = await import('@/tasks/scan');
         const task = findTaskById(id);
         if (!task) {
           console.error(`Task not found: ${id}`);
@@ -397,7 +388,7 @@ async function run(): Promise<void> {
         if (!project || !title || !description) {
           throw new Error('Required: --project --title --description');
         }
-        const { createTask } = await import(resolve(PLUGIN_ROOT, `${TASKS}/mutate`));
+        const { createTask } = await import('@/tasks/mutate');
         const res = createTask({
           project,
           title,
@@ -425,7 +416,7 @@ async function run(): Promise<void> {
         }
         if (flagArr('labels').length) fields.labels = flagArr('labels');
         if (flagArr('depends_on').length) fields.depends_on = flagArr('depends_on');
-        const { updateTask } = await import(resolve(PLUGIN_ROOT, `${TASKS}/mutate`));
+        const { updateTask } = await import('@/tasks/mutate');
         updateTask(id, fields);
         console.log(JSON.stringify({ ok: true, written: Object.keys(fields) }));
         return;
@@ -433,7 +424,7 @@ async function run(): Promise<void> {
       case 'close': {
         const id = args[0];
         if (!id) throw new Error(`Usage: ${CLI} task close <id>`);
-        const { closeTask } = await import(resolve(PLUGIN_ROOT, `${TASKS}/mutate`));
+        const { closeTask } = await import('@/tasks/mutate');
         closeTask(id);
         console.log(JSON.stringify({ ok: true }));
         return;
@@ -442,14 +433,14 @@ async function run(): Promise<void> {
         const id = args[0];
         const message = flag('message');
         if (!id || !message) throw new Error(`Usage: ${CLI} task thread <id> --message=...`);
-        const { appendThread } = await import(resolve(PLUGIN_ROOT, `${TASKS}/mutate`));
+        const { appendThread } = await import('@/tasks/mutate');
         appendThread(id, 'me', message, (flag('type') as 'quote' | 'info' | 'warning') ?? 'info');
         console.log(JSON.stringify({ ok: true }));
         return;
       }
       case 'scan': {
-        const { scanAllTasks, scanArchivedTasks } = await import(resolve(PLUGIN_ROOT, `${TASKS}/scan`));
-        const { resolveTasks } = await import(resolve(PLUGIN_ROOT, `${TASKS}/resolve`));
+        const { scanAllTasks, scanArchivedTasks } = await import('@/tasks/scan');
+        const { resolveTasks } = await import('@/tasks/resolve');
         const all = scanAllTasks();
         const result = resolveTasks(all, scanArchivedTasks());
         console.log(JSON.stringify({ scanned: all.length, ...result }, null, 2));
@@ -461,7 +452,7 @@ async function run(): Promise<void> {
   }
 
   if (group === 'compile') {
-    const compile = await import(resolve(PLUGIN_ROOT, 'src/knowledge/compile'));
+    const compile = await import('@/knowledge/compile');
     switch (command) {
       case 'status':
         console.log(JSON.stringify(await compile.getStatus(), null, 2));
@@ -483,7 +474,7 @@ async function run(): Promise<void> {
   if (group === 'knowledge') {
     switch (command) {
       case 'lint': {
-        const { run } = await import(resolve(PLUGIN_ROOT, 'src/knowledge/lint'));
+        const { run } = await import('@/knowledge/lint');
         const summary = await run({ fixMode: args.includes('--fix') });
         console.log(JSON.stringify(summary, null, 2));
         if (summary.status === 'error') process.exit(1);
@@ -495,10 +486,9 @@ async function run(): Promise<void> {
   }
 
   if (group === 'seed') {
-    const SEED = 'src/seed';
     switch (command) {
       case 'scan': {
-        const { scanSeed } = await import(resolve(PLUGIN_ROOT, `${SEED}/scan`));
+        const { scanSeed } = await import('@/seed/scan');
         console.log(JSON.stringify(scanSeed(), null, 2));
         return;
       }
@@ -508,14 +498,14 @@ async function run(): Promise<void> {
         if (!include.length || !name) {
           throw new Error(`Usage: ${CLI} seed export --include=path1,path2 --name=AGENT [--out=PATH]`);
         }
-        const { exportSeed } = await import(resolve(PLUGIN_ROOT, `${SEED}/export`));
+        const { exportSeed } = await import('@/seed/export');
         console.log(JSON.stringify(exportSeed({ include, agentName: name, out: flag('out') }), null, 2));
         return;
       }
       case 'import': {
         const bundlePath = args.find((a) => !a.startsWith('--'));
         if (!bundlePath) throw new Error(`Usage: ${CLI} seed import <bundlePath> [--overwrite] [--dry-run]`);
-        const { importSeed } = await import(resolve(PLUGIN_ROOT, `${SEED}/import`));
+        const { importSeed } = await import('@/seed/import');
         console.log(
           JSON.stringify(importSeed({ bundlePath, overwrite: bool('overwrite'), dryRun: bool('dry-run') }), null, 2)
         );
@@ -532,8 +522,8 @@ async function run(): Promise<void> {
     // self-loads the data-dir secrets/.env on first read — no manual preload needed.
     // Like worktree/database_fork, these run outside the Bash sandbox — this CLI
     // path is the real-terminal entry point.
-    const { tools: readTools } = await import(resolve(PLUGIN_ROOT, 'src/tools/database'));
-    const { tools: forkTools } = await import(resolve(PLUGIN_ROOT, 'src/tools/database-fork'));
+    const { tools: readTools } = await import('@/tools/database');
+    const { tools: forkTools } = await import('@/tools/database-fork');
     const byName = new Map([...readTools, ...forkTools].map((tool) => [tool.name, tool] as const));
     const call = async (name: string, params: Record<string, unknown>): Promise<void> => {
       const tool = byName.get(name);
@@ -600,9 +590,9 @@ async function run(): Promise<void> {
     const input: HookInput = raw.trim() ? parseHookInput(raw) : {};
     const commandText = input.tool_input?.command;
     if (typeof commandText !== 'string' || !input.cwd) return;
-    const { shellGuard } = await import(resolve(PLUGIN_ROOT, 'src/knowledge/bash-guard'));
+    const { shellGuard } = await import('@/knowledge/bash-guard');
     const host = [command, ...args].includes('--hook-protocol=codex') ? 'codex' : 'claude';
-    const refusal = shellGuard(commandText, input.cwd, FOLDERS.HOME, host, { launch: process.env.CLAUDE_PROJECT_DIR });
+    const refusal = shellGuard(commandText, input.cwd, FOLDERS.HOME, host, { launch: env('CLAUDE_PROJECT_DIR') });
     if (refusal) {
       console.error(refusal);
       process.exit(2);
@@ -622,13 +612,11 @@ async function run(): Promise<void> {
       throw new Error(`Unknown --hook-protocol: ${hookProtocol} (supported: claude, codex)`);
     }
 
-    const { sessionStart, sessionStartCodex } = await import(
-      resolve(PLUGIN_ROOT, 'src/knowledge/session-start')
-    );
+    const { sessionStart, sessionStartCodex } = await import('@/knowledge/session-start');
     // Only Claude Code's terminal is known to render the banner's color and to draw the mods' prompt row;
     // the banner leaves nudges and alerts to the row once the row has shown it fetches them.
-    const isTerminal = hookProtocol === 'claude' && process.env.CLAUDE_CODE_ENTRYPOINT === 'cli';
-    const { rowDraws } = await import(resolve(PLUGIN_ROOT, 'src/notices/notices'));
+    const isTerminal = hookProtocol === 'claude' && env('CLAUDE_CODE_ENTRYPOINT') === 'cli';
+    const { rowDraws } = await import('@/notices/notices');
     const result =
       hookProtocol === 'codex'
         ? await sessionStartCodex()
@@ -695,7 +683,7 @@ async function run(): Promise<void> {
       transcriptPath = parsed.transcript_path ?? '';
       // Claude reports the shell's cwd, which a Bash `cd` moves; the session lives where
       // it was launched, which the host exports separately. Codex's cwd is stable.
-      cwd = (hookProtocol === 'claude' ? process.env.CLAUDE_PROJECT_DIR : undefined) ?? parsed.cwd ?? '';
+      cwd = (hookProtocol === 'claude' ? env('CLAUDE_PROJECT_DIR') : undefined) ?? parsed.cwd ?? '';
       sessionId = parsed.session_id ?? 'unknown';
     } else if (hookProtocol) {
       throw new Error(`Unknown --hook-protocol: ${hookProtocol}`);
@@ -710,7 +698,7 @@ async function run(): Promise<void> {
       throw new Error(`Unknown --format: ${formatFlag} (supported: claude, codex)`);
     }
 
-    const { captureSession } = await import(resolve(PLUGIN_ROOT, 'src/knowledge/session-capture'));
+    const { captureSession } = await import('@/knowledge/session-capture');
     const result = await captureSession({
       transcriptPath,
       cwd,
@@ -752,7 +740,7 @@ async function run(): Promise<void> {
         process.stdin.on('end', () => resolveFn(data));
       });
     }
-    const { capture } = await import(resolve(PLUGIN_ROOT, 'src/knowledge/capture'));
+    const { capture } = await import('@/knowledge/capture');
     const result = await capture({
       text,
       file: localFlag('file'),
@@ -766,11 +754,12 @@ async function run(): Promise<void> {
   }
 
   if (group === 'notices') {
-    const { OUTCOMES, recordOutcome, stampRow } = await import(resolve(PLUGIN_ROOT, 'src/notices/ledger'));
+    const { OUTCOMES, recordOutcome, stampRow } = await import('@/notices/ledger');
     if (command === 'record') {
       const id = args.find((arg) => !arg.startsWith('--'));
-      const outcome = flag('outcome');
-      if (!id || !/^[a-z][a-z0-9-]*$/.test(id) || !OUTCOMES.includes(outcome)) {
+      const requested = flag('outcome');
+      const outcome = OUTCOMES.find((known) => known === requested);
+      if (!id || !/^[a-z][a-z0-9-]*$/.test(id) || !outcome) {
         console.error(`Usage: ${CLI} notices record <id> --outcome=${OUTCOMES.join('|')}`);
         process.exit(1);
       }
@@ -779,27 +768,27 @@ async function run(): Promise<void> {
       stampRow();
     }
     // `record` prints the list too, so a snooze redraws from the one call.
-    const { collectNotices } = await import(resolve(PLUGIN_ROOT, 'src/notices/notices'));
+    const { collectNotices } = await import('@/notices/notices');
     console.log(JSON.stringify(await collectNotices()));
     return;
   }
 
   if (group === 'prune') {
-    const { pruneMemory } = await import(resolve(PLUGIN_ROOT, 'src/knowledge/prune'));
+    const { pruneMemory } = await import('@/knowledge/prune');
     await pruneMemory();
     console.log(JSON.stringify({ ok: true }));
     return;
   }
 
   if (group === 'links') {
-    const { rewriteAllWikilinks } = await import(resolve(PLUGIN_ROOT, 'src/knowledge/links'));
+    const { rewriteAllWikilinks } = await import('@/knowledge/links');
     const modified = await rewriteAllWikilinks();
     console.log(JSON.stringify({ modified, count: modified.length }, null, 2));
     return;
   }
 
   if (group === 'slack') {
-    const { runSlackCommand } = await import(resolve(PLUGIN_ROOT, 'src/slack/cli'));
+    const { runSlackCommand } = await import('@/slack/cli');
     await runSlackCommand(command, args);
     return;
   }
@@ -807,7 +796,7 @@ async function run(): Promise<void> {
   if (group === 'dashboard') {
     // The Agent OS dashboard replaced the old terminal TUI: regenerate
     // TASKS.md + <HOME>/dashboard.html and print where the snapshot landed.
-    const { rebuildDashboards } = await import(resolve(PLUGIN_ROOT, 'src/status/html'));
+    const { rebuildDashboards } = await import('@/status/html');
     console.log(JSON.stringify(await rebuildDashboards(), null, 2));
     return;
   }
@@ -824,7 +813,7 @@ async function run(): Promise<void> {
       if (!repoPath) {
         throw new Error(`Usage: ${CLI} worktree list <repoPath>`);
       }
-      const { listWorktrees } = await import(resolve(PLUGIN_ROOT, 'src/worktree/setup'));
+      const { listWorktrees } = await import('@/worktree/setup');
       console.log(JSON.stringify(listWorktrees({ repoPath }), null, 2));
       return;
     }
@@ -835,7 +824,7 @@ async function run(): Promise<void> {
       if (!worktreePath) {
         throw new Error(`Usage: ${CLI} worktree remove <worktreePath> [--delete-branch] [--force] [--dry-run]`);
       }
-      const { removeWorktree } = await import(resolve(PLUGIN_ROOT, 'src/worktree/setup'));
+      const { removeWorktree } = await import('@/worktree/setup');
       console.log(
         JSON.stringify(
           removeWorktree({
@@ -856,7 +845,7 @@ async function run(): Promise<void> {
     if (!repoPath || !branch) {
       throw new Error(`Usage: ${CLI} worktree <repoPath> --branch=BRANCH [--base=REF] [--slug=SLUG] [--extra=sub1,sub2]`);
     }
-    const { setupWorktree } = await import(resolve(PLUGIN_ROOT, 'src/worktree/setup'));
+    const { setupWorktree } = await import('@/worktree/setup');
     console.log(
       JSON.stringify(
         setupWorktree({ repoPath, branch, baseBranch: flag('base'), slug: flag('slug'), extraInstalls: flagArr('extra') }),

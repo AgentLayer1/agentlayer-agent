@@ -29,7 +29,7 @@ import { assembleContext } from '@/context';
 import { drainDeferredCaptures } from '@/knowledge/session-capture';
 import { BANNER, BANNER_LINES, BANNER_TAG, stripAnsi } from '@/shared/banner';
 import { log as baseLog } from '@/shared/log';
-import { RUNTIME_DIR, resolveEnv } from '@/shared/naming';
+import { RUNTIME_DIR } from '@/shared/naming';
 import { readText } from '@/shared/text';
 import { existsSync } from 'node:fs';
 import { relative, resolve, sep } from 'node:path';
@@ -136,7 +136,7 @@ export async function sessionStartCodex(): Promise<SessionStartResult> {
     });
   const additionalContext =
     [
-      `<!-- ${AGENT_SLUG} static context · harness: codex · plugin root: ${resolveEnv('AGENT_PLUGIN_ROOT') ?? 'unknown'} (a skill that writes ${'$'}{CLAUDE_PLUGIN_ROOT} means this path) · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs $upgrade · delivered by the plugin's SessionStart hook because Codex has no @-import -->`,
+      `<!-- ${AGENT_SLUG} static context · harness: codex · plugin root: ${FOLDERS.ROOT} (a skill that writes ${'$'}{CLAUDE_PLUGIN_ROOT} means this path) · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs $upgrade · delivered by the plugin's SessionStart hook because Codex has no @-import -->`,
       ...files,
       ...lane.parts
     ].join('\n\n') + '\n';

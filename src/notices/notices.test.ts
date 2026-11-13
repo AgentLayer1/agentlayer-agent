@@ -189,7 +189,7 @@ describe('the ledger', () => {
   });
 
   test('`notices record` reads the id wherever it sits among the flags, and refuses a flag as one', async () => {
-    const cli = resolve(import.meta.dir, '..', '..', 'bin', pluginName().replace(/^agent-/, ''));
+    const cli = resolve(import.meta.dir, '..', 'cli.ts');
     const result = await withHome({ ...versionAt(PLUGIN_VERSION) }, async () => {
       const home = process.env.AGENT_HOME ?? '';
       const run = (...args: string[]) =>

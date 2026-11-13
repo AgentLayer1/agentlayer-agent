@@ -30,7 +30,7 @@ import { type ChangelogEntry, getUpgradeStatus, parseChangelog, type UpgradeStat
 import { readCadence } from '@/shared/cadence';
 import { nowISO, nowTime, todayDate } from '@/shared/date';
 import { agentDisplayName } from '@/shared/agent-name';
-import { legacyEnvPrefix } from '@/shared/naming';
+import { CLI_FILE, legacyEnvPrefix } from '@/shared/naming';
 import { routerPlaybooks } from '@/shared/playbooks';
 import { env } from '@/shared/env';
 import {
@@ -642,7 +642,7 @@ interface HookConfig {
 
 /** Reduce a hook command to a readable `<agent> <verb>` summary. */
 const summarizeHookCommand = (command: string): string => {
-  const match = command.match(new RegExp(`bin/${AGENT_SLUG}"?\\s+([a-z-]+(?:\\s+--?[a-z-]+=?\\S*)?)`));
+  const match = command.match(/src\/cli\.ts"?\s+([a-z-]+(?:\s+--?[a-z-]+=?\S*)?)/);
   return match ? `${AGENT_SLUG} ${match[1]}` : command.split(/\s+/).slice(0, 3).join(' ');
 };
 
@@ -1454,11 +1454,11 @@ const collectLint = (): LintReport => {
   };
 };
 
-/** Parse the bin CLI's HELP template literal into sections of cmd/desc rows. */
+/** Parse the CLI's HELP template literal into sections of cmd/desc rows. */
 const collectCli = (): CliSection[] => {
   let content = '';
   try {
-    content = readText(resolve(FOLDERS.ROOT, 'bin', AGENT_SLUG));
+    content = readText(resolve(FOLDERS.ROOT, CLI_FILE));
   } catch {
     return [];
   }

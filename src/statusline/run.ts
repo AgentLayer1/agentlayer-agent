@@ -57,9 +57,9 @@ const print = (text: string): Promise<number> => Bun.write(Bun.stdout, text);
  * `--setting` prints the settings entry that runs this very script, for init and upgrade to
  * merge; `--subagent` renders the subagent panel rows; otherwise the two-line footer.
  */
-export const runStatusLine = async (args: string[], binPath: string): Promise<void> => {
+export const runStatusLine = async (args: string[], cliPath: string): Promise<void> => {
   if (args.includes('--setting')) {
-    await print(`${JSON.stringify({ statusLine: statusLineSetting(binPath) }, null, 2)}\n`);
+    await print(`${JSON.stringify({ statusLine: statusLineSetting(cliPath) }, null, 2)}\n`);
     return;
   }
   const raw = await Bun.stdin.text();

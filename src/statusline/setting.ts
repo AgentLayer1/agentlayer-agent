@@ -6,7 +6,7 @@
  * on screen saying why.
  */
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
-import { basename, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { pluginName } from '../shared/naming';
 
 export interface StatusLineSetting {
@@ -23,17 +23,14 @@ const quote = (value: string): string => {
 };
 
 /** Forward slashes on every platform: Git Bash on Windows eats the backslashes in a settings command. */
-export const statusLineSetting = (binPath: string): StatusLineSetting => ({
+export const statusLineSetting = (cliPath: string): StatusLineSetting => ({
   type: 'command',
-  command: `bun ${quote(binPath.replaceAll('\\', '/'))} statusline`
+  command: `bun ${quote(cliPath.replaceAll('\\', '/'))} statusline`
 });
 
-/** The path a command of ours points at, when it is ours (`bun "<root>/bin/<agent>" statusline`). */
-export const commandBinPath = (command: string, agent: string): string | undefined => {
-  const name = agent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = new RegExp(`^bun "?(.+?[\\\\/]bin[\\\\/]${name})"? statusline(?:\\s|$)`).exec(command.trim());
-  return match?.[1];
-};
+/** The path a command of ours points at, when it is ours (`bun "<root>/src/cli.ts" statusline`). */
+export const commandCliPath = (command: string): string | undefined =>
+  /^bun "?(.+?[\\/]src[\\/]cli\.ts)"? statusline(?:\s|$)/.exec(command.trim())?.[1];
 
 /** Symlink-free, so a checkout reached through a link never reads as a different plugin. */
 const canonical = (path: string): string => {
@@ -57,7 +54,7 @@ const commandIn = (path: string): unknown => {
  * Why the home's status line will not render from this checkout, or nothing when it is
  * absent, the operator's own, or already current. The local file wins, as it does in Claude Code.
  */
-export const statusLineDrift = (claudeDir: string, binPath: string): string | undefined => {
+export const statusLineDrift = (claudeDir: string, cliPath: string): string | undefined => {
   const source = ['settings.local.json', 'settings.json']
     .map((name) => ({
       name,
@@ -65,7 +62,7 @@ export const statusLineDrift = (claudeDir: string, binPath: string): string | un
     }))
     .find(({ command }) => command !== undefined);
   if (!source || typeof source.command !== 'string') return undefined;
-  const pinned = commandBinPath(source.command, basename(binPath));
-  if (pinned === undefined || canonical(pinned) === canonical(binPath)) return undefined;
-  return `\`.claude/${source.name}\` runs the status line from \`${pinned}\`, not this plugin (\`${resolve(binPath)}\`), so the footer stays blank — run \`/${pluginName()}:upgrade\` to re-point it`;
+  const pinned = commandCliPath(source.command);
+  if (pinned === undefined || canonical(pinned) === canonical(cliPath)) return undefined;
+  return `\`.claude/${source.name}\` runs the status line from \`${pinned}\`, not this plugin (\`${resolve(cliPath)}\`), so the footer stays blank — run \`/${pluginName()}:upgrade\` to re-point it`;
 };

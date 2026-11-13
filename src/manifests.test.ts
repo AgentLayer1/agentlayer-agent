@@ -30,7 +30,7 @@ describe('plugin manifests', () => {
     expect(read('settings.json')).toEqual({
       subagentStatusLine: {
         type: 'command',
-        command: `bun "\${CLAUDE_PLUGIN_ROOT}/bin/${claude.name.replace(/^agent-/, '')}" statusline --subagent`
+        command: 'bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" statusline --subagent'
       }
     });
   });

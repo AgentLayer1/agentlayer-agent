@@ -1046,7 +1046,7 @@ git('init', '-q');
 git('add', '-A');
 git('commit', '-q', '-m', 'Sync: update knowledge');
 
-const render = spawnSync(process.execPath, [join(REPO, 'bin', AGENT), 'dashboard'], {
+const render = spawnSync(process.execPath, [join(REPO, 'src', 'cli.ts'), 'dashboard'], {
   cwd: HOME_DIR,
   env: {
     PATH: `${shimDir}:${dirname(process.execPath)}:/opt/homebrew/bin:/usr/bin:/bin`,

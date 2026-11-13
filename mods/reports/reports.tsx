@@ -68,7 +68,7 @@ async function home($: EngineInterface): Promise<string | undefined> {
     return homeCache.home;
   }
   const lookup = $.process
-    .run(cliArgv($.plugin.root, $.plugin.name, ['ping']), { cwd: await $.session.root() })
+    .run(cliArgv($.plugin.root, ['ping']), { cwd: await $.session.root() })
     .then(({ exitCode, stdout }) => {
       const parsed: unknown = exitCode === 0 ? JSON.parse(stdout) : undefined;
       // Outside a home the CLI still names a folder, but says it isn't one.

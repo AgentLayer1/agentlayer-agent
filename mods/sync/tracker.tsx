@@ -58,13 +58,13 @@ async function runQuiet($: EngineInterface, argv: readonly string[]): Promise<st
 }
 
 async function measureCompile($: EngineInterface) {
-  return parseCompile(await runQuiet($, cliArgv($.plugin.root, $.plugin.name, ['compile', 'status'])));
+  return parseCompile(await runQuiet($, cliArgv($.plugin.root, ['compile', 'status'])));
 }
 
 async function snapshot($: EngineInterface): Promise<SyncSnapshot> {
   const [compile, tasks, brain] = await Promise.all([
     measureCompile($),
-    runQuiet($, cliArgv($.plugin.root, $.plugin.name, ['task', 'scan'])),
+    runQuiet($, cliArgv($.plugin.root, ['task', 'scan'])),
     runQuiet($, ['bun', `${$.plugin.root}/skills/self-review/scripts/brain-audit.ts`])
   ]);
   return { compile, tasks: parseTasks(tasks), brain: parseBrain(brain) };

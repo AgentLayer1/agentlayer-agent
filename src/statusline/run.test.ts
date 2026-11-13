@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { AGENT_SLUG } from '@/config';
 
-const CLI = resolve(import.meta.dir, '..', '..', 'bin', `${AGENT_SLUG}`);
+const CLI = resolve(import.meta.dir, '..', 'cli.ts');
 const dirs: string[] = [];
 const scratch = (): string => {
   const dir = mkdtempSync(join(tmpdir(), 'statusline-run-'));

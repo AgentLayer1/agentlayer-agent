@@ -29,3 +29,8 @@ export function loadSettingsEnv(start: string): void {
     dir = parent;
   }
 }
+
+/** Pins the home a caller named on its own command line, ahead of anything a settings file says. */
+export const pinHome = (home: string): void => {
+  process.env.AGENT_HOME = home;
+};

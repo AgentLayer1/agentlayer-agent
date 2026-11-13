@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing';
 import type { Engine } from 'claude-code/testing';
 
-import { BAND_PROPS, CLI, HOME, PLUGIN, fakeHost, machine, run } from './fake-host';
+import { BAND_PROPS, HOME, PLUGIN, fakeHost, machine, run } from './fake-host';
 
 describe('commands', () => {
   test('/capture runs the plugin CLI from the session root', async ($, on) => {
@@ -12,10 +12,10 @@ describe('commands', () => {
     expect(host.cwd.at(-1)).toBe(HOME);
   });
 
-  test('the CLI is named after the plugin, not the agent', async ($, on) => {
+  test('the CLI is the file the hooks run, whatever the agent is called', async ($, on) => {
     const host = fakeHost(on);
     await run($, 'capture', 'x');
-    expect(host.argv.at(-1)?.[1]?.endsWith(`/bin/${CLI}`)).toBe(true);
+    expect(host.argv.at(-1)?.[1]?.endsWith('/src/cli.ts')).toBe(true);
   });
 
   test('/lesson routes to the feedback log', async ($, on) => {

@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { FILES, FOLDERS, PLUGIN_VERSION, staticContextFiles } from '@/config';
-import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
+import { CLI_FILE, HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
 import { sessionStart, sessionStartCodex } from '@/knowledge/session-start';
 import { recordOutcome } from '@/notices/ledger';
 import { ANSI, stripAnsi } from '@/shared/banner';
@@ -94,8 +94,8 @@ describe('sessionStart', () => {
     expect(result.additionalContext).not.toContain('Operating manual layout');
   });
 
-  const staleBin = `/cache/${pluginName()}/0.0.1/bin/${pluginName().replace(/^agent-/, '')}`;
-  const staleStatusLine = JSON.stringify({ statusLine: statusLineSetting(staleBin) });
+  const staleCli = `/cache/${pluginName()}/0.0.1/src/cli.ts`;
+  const staleStatusLine = JSON.stringify({ statusLine: statusLineSetting(staleCli) });
 
   test('a stale status line on a current home is flagged, since upgrade is the only pointer to the fix', async () => {
     const result = await withHome(
@@ -108,7 +108,7 @@ describe('sessionStart', () => {
     );
     expect(result.systemMessage).toContain('status line');
     expect(result.systemMessage).not.toContain('Upgrade:');
-    expect(result.additionalContext).toContain(staleBin);
+    expect(result.additionalContext).toContain(staleCli);
   });
 
   test('a stale status line stays quiet while an upgrade is due, which re-points it', async () => {
@@ -122,7 +122,7 @@ describe('sessionStart', () => {
     );
     expect(result.systemMessage).toContain('Upgrade:');
     expect(result.systemMessage).not.toContain('status line');
-    expect(result.additionalContext).not.toContain(staleBin);
+    expect(result.additionalContext).not.toContain(staleCli);
   });
 
   test('codex protocol: the payload carries the identity files with file markers and the dynamic lane', async () => {
@@ -332,7 +332,7 @@ describe('sessionStart', () => {
         const out = execFileSync(
           'bun',
           [
-            resolve(FOLDERS.ROOT, 'bin', pluginName().replace(/^agent-/, '')),
+            resolve(FOLDERS.ROOT, CLI_FILE),
             'session-start',
             '--hook-protocol=claude',
             `--home=${home}`

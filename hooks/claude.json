@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/bin/kevin\" session-start --hook-protocol=claude",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/src/cli.ts\" session-start --hook-protocol=claude",
             "timeout": 15
           }
         ]
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/bin/kevin\" session-capture --mode=session-end --hook-protocol=claude",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/src/cli.ts\" session-capture --mode=session-end --hook-protocol=claude",
             "timeout": 30
           }
         ]
@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/bin/kevin\" session-capture --mode=pre-compact --hook-protocol=claude",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/src/cli.ts\" session-capture --mode=pre-compact --hook-protocol=claude",
             "timeout": 30
           }
         ]
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/bin/kevin\" guard --hook-protocol=claude",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/src/cli.ts\" guard --hook-protocol=claude",
             "timeout": 5
           }
         ]

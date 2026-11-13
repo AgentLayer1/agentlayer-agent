@@ -139,7 +139,7 @@ The plugin is built against the Claude Code and Codex versions in `src/hosts.ts`
 with no backwards compatibility: an older host is refused, never shimmed.
 
 ```bash
-bun "$PLUGIN_ROOT/bin/kevin" hosts            # add --codex when this session runs under Codex
+bun "$PLUGIN_ROOT/src/cli.ts" hosts            # add --codex when this session runs under Codex
 ```
 
 It prints `{ ok, hosts: [{ name, required, installed, floor, state, update }] }` and exits 1 when
@@ -620,17 +620,17 @@ surface the exact JSON block for each file for them to paste and carry it into t
 as a `manual:` note.
 
 **Re-point the status line (built-in invariant, every run).** The home's `statusLine` runs
-`bin/kevin statusline` from the plugin checkout, and a
+`src/cli.ts statusline` from the plugin checkout, and a
 version-pinned plugin cache moves on every release, so a stale path leaves the footer blank with
 nothing on screen saying why (the SessionStart context flags it until fixed). Generate the current
 entry, never type it:
 
 ```bash
-bun "$PLUGIN_ROOT/bin/kevin" statusline --setting
+bun "$PLUGIN_ROOT/src/cli.ts" statusline --setting
 ```
 
 Claude Code uses the `statusLine` in `settings.local.json` when it has one, else the one in
-`settings.json`. If that one's command runs `bin/kevin statusline` from another path, replace the
+`settings.json`. If that one's command runs `src/cli.ts statusline` from another path, replace the
 object with the printed one in the file that holds it; if neither file has a `statusLine`, add it to
 `settings.local.json`, since the command names this machine's checkout; anything else is the
 operator's own line and is kept. Same write discipline as the `ask` backfill above (in-memory merge, the

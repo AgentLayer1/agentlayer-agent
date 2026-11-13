@@ -16,7 +16,7 @@
 import { describe, expect, test } from 'bun:test';
 import { AGENT_SLUG, FILES, FOLDERS, PLUGIN_NAME } from '@/config';
 import { pluginName } from '@/shared/naming';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const PROBE = '/tmp/kevin-config-probe';
@@ -107,8 +107,7 @@ describe("the agent's names", () => {
     expect(json('mods', '.claude-plugin', 'plugin.json').name).toBe(PLUGIN_NAME);
   });
 
-  test("the slug names the CLI and the agent's own MCP server in the manifest", () => {
-    expect(existsSync(resolve(checkout, 'bin', AGENT_SLUG))).toBe(true);
+  test("the slug names the agent's own MCP server in the manifest", () => {
     expect(Object.keys(json('.claude-plugin', 'plugin.json').mcpServers as object)).toContain(AGENT_SLUG);
   });
 
