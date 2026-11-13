@@ -5,7 +5,7 @@ Stand up a new project so it shows up in the knowledge index, the task CLI, and 
 ## When to use
 - User explicitly asks to create, start, or spin up a new project
 - The work genuinely needs its own folder: multiple docs, tasks, or a long-lived deliverable
-- **Don't use for:** one-off tasks (those go in an existing project's `tasks/`) or quick research notes (drop them under `<HOME>/knowledge/raw/inbox/` — or use `agentlayer capture` — for compilation)
+- **Don't use for:** one-off tasks (those go in an existing project's `tasks/`) or quick research notes (drop them under `<HOME>/knowledge/raw/inbox/` — or use the `capture` tool — for compilation)
 
 ## Inputs (ask if missing, don't guess)
 - `<name>` — human title (e.g., "Garden Planner")

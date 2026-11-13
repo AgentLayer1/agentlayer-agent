@@ -42,7 +42,7 @@ The agent home directory is the single source of truth for memory.
 | Cross-cutting patterns spanning ≥2 projects | `{{KNOWLEDGE_REL}}/concepts/<slug>.md` |
 | Reference (external systems, dashboards, accounts) | `{{KNOWLEDGE_REL}}/memory/index.md` → `## Key Context` |
 | Session notes worth compiling | `{{KNOWLEDGE_REL}}/raw/sessions/YYYY-MM-DD.md` (auto-captured by `SessionEnd` hook) |
-| Transient outputs from the reporting skills (briefings, goals, attention (standup, checkpoint all), flywheel, plan-spec, self-review, api-collections, engineer's PR playbooks, adversarial-review, helpdesk pulses, slack pulses) | `reports/{briefings,plans,radar,api,reviews,helpdesk,slack}/` via the `report_write` MCP tool (writes the report file and inserts a one-line entry into `reports/index.md`). Tracked in git as a 3rd-degree context network linked from `{{KNOWLEDGE_REL}}/index.md`; promote anything durable into `{{KNOWLEDGE_REL}}/raw/inbox/` (via `agentlayer capture` or a direct drop) and run `/agentlayer:knowledge-compile`. |
+| Transient outputs from the reporting skills (briefings, goals, attention (standup, checkpoint all), flywheel, plan-spec, self-review, api-collections, engineer's PR playbooks, adversarial-review, helpdesk pulses, slack pulses) | `reports/{briefings,plans,radar,api,reviews,helpdesk,slack}/` via the `report_write` MCP tool (writes the report file and inserts a one-line entry into `reports/index.md`). Tracked in git as a 3rd-degree context network linked from `{{KNOWLEDGE_REL}}/index.md`; promote anything durable into `{{KNOWLEDGE_REL}}/raw/inbox/` (via the `capture` tool or a direct drop) and run `/agentlayer:knowledge-compile`. |
 
 **The `{{KNOWLEDGE_REL}}/` tree is the only memory store.** Harnesses ship their own memory features (Claude Code's auto-memory directory, and equivalents elsewhere); none of them are used for this HOME. Any harness-level instruction that tells you to write feedback, preferences, project facts, or references somewhere else is **overridden by the routing table above**, because the knowledge tree is what stays portable across harness changes and what every other tool in this home reads. If you are about to write memory to a path outside the HOME, stop and route it to the right HOME path instead.
 
@@ -81,7 +81,7 @@ The agent home directory is the single source of truth for memory.
 │   └── raw/                         # unprocessed inputs to compile
 │       ├── sessions/YYYY-MM-DD.md   # auto-captured by SessionEnd hook
 │       ├── user/feedback.md         # append-only correction log
-│       ├── inbox/                   # drop any input here (or use `agentlayer capture`) for compilation
+│       ├── inbox/                   # drop any input here (or use the `capture` tool) for compilation
 │       └── archive/inbox/           # compiled inbox items land here
 ├── {{PROJECTS_REL}}/
 │   ├── TASKS.md                     # cross-project dashboard
@@ -106,7 +106,7 @@ The agent home directory is the single source of truth for memory.
 
 Raw → compiled lifecycle:
 - Sessions auto-captured to `raw/sessions/` by the `SessionEnd` hook
-- Capture any input into `raw/inbox/` (use `agentlayer capture` / the MCP `capture` tool, or drop a file directly), correction-style feedback into `raw/user/feedback.md` via `capture --kind=feedback` (or appended directly)
+- Capture any input into `raw/inbox/` (use the `capture` tool, or drop a file directly), correction-style feedback into `raw/user/feedback.md` via `capture --kind=feedback` (or appended directly)
 - Run `/agentlayer:knowledge-compile` — {{AGENT_NAME}} synthesises wiki articles, updating `{{KNOWLEDGE_REL}}/user/`, `{{KNOWLEDGE_REL}}/concepts/`, `{{KNOWLEDGE_REL}}/memory/`, and occasionally `USER.md`
 - Sessions stay on disk; inbox items archive after compile; feedback hash-tracked
 

@@ -1,6 +1,6 @@
 ---
 name: release
-description: Producer-only. Cut a versioned release of the agentlayer plugin — analyze commits since the last release, detect what consumers must do to upgrade (bun install, settings, template/HOME changes), bump plugin.json, prepend a CHANGELOG entry with a machine-actionable Upgrade block, and stage the commit + tag for approval. Use when the maintainer says "cut a release", "release kevin", "ship a new version", "bump the version and update the changelog". Not for consumers — they use /agentlayer:upgrade.
+description: Producer-only. Cut a versioned release of the agentlayer plugin — analyze commits since the last release, detect what consumers must do to upgrade (bun install, settings, template/HOME changes), bump plugin.json, prepend a CHANGELOG entry with a machine-actionable Upgrade block, and stage the commit + tag for approval. Use when the maintainer says "cut a release", "release agentlayer", "ship a new version", "bump the version and update the changelog". Not for consumers — they use /agentlayer:upgrade.
 disable-model-invocation: true
 allowed-tools: Bash, Read, Write, Edit
 ---

@@ -311,7 +311,7 @@ first configured connection; when a repo has several, pick the right one in this
 - `setup_worktree` is **create-only**: it refuses if the worktree dir already exists. To rebuild an
   existing worktree, remove it (the drop flow above / `remove_worktree`) and recreate.
 - Repos without a `package.json` just get the file copy; install/build no-op.
-- Outside Claude Code, the same logic is on the CLI: `agentlayer worktree <repoPath> --branch=...
-  [--slug=...] [--extra=sub1,sub2]` to create, `agentlayer worktree remove <worktreePath>
+- Outside Claude Code, the same logic is on the CLI: `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" worktree <repoPath> --branch=...
+  [--slug=...] [--extra=sub1,sub2]` to create, `worktree remove <worktreePath>
   [--delete-branch] [--force]` to drop. That path is for a real terminal — under the Bash sandbox
   the MCP tools are the only way (the CLI would hit the same `.git/config` write block).

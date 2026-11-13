@@ -300,7 +300,7 @@ export const PACKS: Record<string, PackDef> = {
       'WebFetch(domain:slack.com)',
       skill('slack')
     ],
-    // Auth is a per-operator OAuth ceremony (`agentlayer slack auth`), not a plantable key.
+    // Auth is a per-operator OAuth ceremony (the CLI's `slack auth`), not a plantable key.
     secretKeys: [],
     settingsEnv: ['AGENT_SLACK_CLIENT_ID']
   }

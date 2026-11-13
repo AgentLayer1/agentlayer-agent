@@ -6,7 +6,7 @@
  * checks are filesystem-pure and free to run.
  *
  * Entry points:
- *   CLI:        `agentlayer knowledge lint [--fix]`
+ *   CLI:        the CLI's `knowledge lint [--fix]`
  *   MCP tool:   `knowledge_lint` (defined in tools/knowledge.ts)
  *   Library:    import { run } from "./lint";  run({ fixMode })
  *

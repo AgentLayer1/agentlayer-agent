@@ -855,7 +855,7 @@ Write project settings so the plugin auto-loads on subsequent launches AND the *
 
 The bigger privacy setting lives in the operator's Claude account, not a file. On Free, Pro and Max, Anthropic trains on chats and Claude Code sessions unless the operator turns it off, and keeps them up to 5 years instead of 30 days: claude.ai → their name → Settings → Privacy → **Help improve Claude** → off (the same path in the mobile app). Team, Enterprise and API accounts aren't trained on unless the organization opts in. Step 9 reminds them.
 
-**`statusLine` — the footer, the Claude side of the Codex `[tui]` table.** Kevin renders it (`agentlayer statusline`: model, folder, branch on line one; context bar, cost with the hourly rate, session time, and the Pro/Max rate-limit windows on line two). The command names this checkout, so it goes in `settings.local.json`, never the shared file; never type it — generate it and merge the object it prints:
+**`statusLine` — the footer, the Claude side of the Codex `[tui]` table.** Kevin renders it (`src/cli.ts statusline`: model, folder, branch on line one; context bar, cost with the hourly rate, session time, and the Pro/Max rate-limit windows on line two). The command names this checkout, so it goes in `settings.local.json`, never the shared file; never type it — generate it and merge the object it prints:
 
 ```bash
 bun "$PLUGIN_ROOT/src/cli.ts" statusline --setting
@@ -1400,7 +1400,7 @@ If Step 5 URL synthesis surfaced anything that fills or contradicts this skeleto
 Also write `.claude/settings.local.json`: this machine's half of the settings (see **Two files, split by owner** above). Init writes these keys into it:
 
 - **`statusLine`**: the object `bun "$PLUGIN_ROOT/src/cli.ts" statusline --setting` prints, set when neither home file has one.
-- **`enabledPlugins`**: `"agentlayer@<MARKETPLACE>": true`, set even if the key already exists with a different value (the operator just ran init, so they want it enabled). `<MARKETPLACE>` is the name the plugin was installed under: for a marketplace install `${CLAUDE_PLUGIN_ROOT}` is a version-pinned cache path `…/plugins/cache/<MARKETPLACE>/agent-kevin/<version>` (`agentlayer` from the public marketplace); for a clone (Option B/C) it is the `name` in `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/marketplace.json`, `agentlayer-dev`. A key naming a marketplace that is not registered enables nothing. Other plugin entries pass through untouched.
+- **`enabledPlugins`**: `"agentlayer@<MARKETPLACE>": true`, set even if the key already exists with a different value (the operator just ran init, so they want it enabled). `<MARKETPLACE>` is the name the plugin was installed under: for a marketplace install `${CLAUDE_PLUGIN_ROOT}` is a version-pinned cache path `…/plugins/cache/<MARKETPLACE>/agentlayer/<version>` (`agentlayer` from the public marketplace); for a clone (Option B/C) it is the `name` in `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/marketplace.json`, `agentlayer-dev`. A key naming a marketplace that is not registered enables nothing. Other plugin entries pass through untouched.
 - **The code-root pair** from **Reaching the code tree** above, when `CODE_ROOT` is set: `permissions.additionalDirectories` and `sandbox.filesystem.allowWrite`, both `["<CODE_ROOT>"]`.
 - **The custom-folder grants** from Step 5c, when a path is outside the home.
 - **`env`**: `AGENT_HOME_TIMEZONE` from Step 4 (always written — the SessionStart hook compares it against the live machine timezone and flags the operator as traveling when they differ) and the **optional** primary-codebase pair from Step 4b, written only when a path was actually captured.
@@ -1501,7 +1501,7 @@ Cross-cutting patterns spanning ≥2 projects. Synthesized insights, not project
 
 ## Reports (transient skill outputs — 3rd-degree context)
 
-- [reports/index](../reports/index.md) — dated audit trail of all skill outputs (briefings, plans, etc.). Read-only network of links; not absorbed into memory or concepts. Promote anything durable into `raw/inbox/` (via `agentlayer capture --file=...` or a direct drop) and compile. File is auto-created by `report_write` on the first reporting-skill call.
+- [reports/index](../reports/index.md) — dated audit trail of all skill outputs (briefings, plans, etc.). Read-only network of links; not absorbed into memory or concepts. Promote anything durable into `raw/inbox/` (via the `capture` tool or a direct drop) and compile. File is auto-created by `report_write` on the first reporting-skill call.
 
 ## Projects
 
@@ -1513,7 +1513,7 @@ Cross-project task dashboard: [projects/TASKS.md](../projects/TASKS.md).
 
 - `raw/sessions/YYYY-MM-DD.md` — auto-captured session transcripts (single file per day, no suffixes)
 - `raw/user/feedback.md` — append-only correction + reaction log; compiled into [[memory/index]] `## Learnings`
-- `raw/inbox/` — drop any input here (or use `agentlayer capture`) for compile to distill into concepts
+- `raw/inbox/` — drop any input here (or use the `capture` tool) for compile to distill into concepts
 - `raw/archive/inbox/` — compiled inbox items land here post-archive
 ```
 
@@ -1710,7 +1710,7 @@ Blank line, then the status block as plain prose (one row per line, two-space gu
 > ✅ Identity      SOUL.md · IDENTITY.md · USER.md
 > ✅ Operating manual   `<MANUAL_PATH>` (+ `.claude/CLAUDE.md`, the Claude Code bridge that `@-imports` it and the above)
 > ✅ Plugin reg    .claude/settings.local.json (auto-loads agentlayer next launch — no `--plugin-dir` needed)
-> ✅ Status line   .claude/settings.local.json → `agentlayer statusline` (model · folder · branch / context · cost · time · rate limits; shows on relaunch)
+> ✅ Status line   .claude/settings.local.json → `src/cli.ts statusline` (model · folder · branch / context · cost · time · rate limits; shows on relaunch)
 > `<CODEX_HOOKS_ROW>`
 > ✅ Knowledge     `<FACET_FILES_FILLED>/5` facets populated `<from blog · LinkedIn · GitHub, if Step 5 ran>`
 > `<WORLD_ROW>`

@@ -1,54 +1,54 @@
 /**
- * `agentlayer` CLI — task + knowledge ops from outside Claude Code.
+ * The plugin's CLI (`bun src/cli.ts <group> …`): task + knowledge ops from outside Claude Code.
  *
  * Subcommands:
- *   agentlayer ping
- *   agentlayer capture [text] [--file=PATH] [--url=URL] [--kind=inbox|feedback] [--title=...] [--label=...] [--stdin]
- *   agentlayer session-capture --mode=session-end|pre-compact [--hook-protocol=claude|codex] [--transcript=PATH --cwd=PATH --session-id=X] [--format=claude|codex] [--home=PATH]
- *   agentlayer session-start [--hook-protocol=claude|codex] [--home=PATH]
- *   agentlayer statusline [--subagent|--setting]
- *   agentlayer guard [--hook-protocol=claude|codex] [--home=PATH]   (PreToolUse hook: refuses a home-tree write from a drifted cwd, a cd that moves the session, shared-temp misuse, history-rewriting git, a gate that can't stop its commit)
- *   agentlayer task query [--project=NAME] [--status=...] [--priority=P0-P3]
- *   agentlayer task get <id>
- *   agentlayer task create --project=NAME --title=... --description=... [--priority=P2]
- *   agentlayer task update <id> [--status=...] [--priority=...] [--title=...] [--due=YYYY-MM-DD]
- *   agentlayer task close <id>
- *   agentlayer task thread <id> --message=... [--type=quote|info|warning]
- *   agentlayer task scan
+ *   ping
+ *   capture [text] [--file=PATH] [--url=URL] [--kind=inbox|feedback] [--title=...] [--label=...] [--stdin]
+ *   session-capture --mode=session-end|pre-compact [--hook-protocol=claude|codex] [--transcript=PATH --cwd=PATH --session-id=X] [--format=claude|codex] [--home=PATH]
+ *   session-start [--hook-protocol=claude|codex] [--home=PATH]
+ *   statusline [--subagent|--setting]
+ *   guard [--hook-protocol=claude|codex] [--home=PATH]   (PreToolUse hook: refuses a home-tree write from a drifted cwd, a cd that moves the session, shared-temp misuse, history-rewriting git, a gate that can't stop its commit)
+ *   task query [--project=NAME] [--status=...] [--priority=P0-P3]
+ *   task get <id>
+ *   task create --project=NAME --title=... --description=... [--priority=P2]
+ *   task update <id> [--status=...] [--priority=...] [--title=...] [--due=YYYY-MM-DD]
+ *   task close <id>
+ *   task thread <id> --message=... [--type=quote|info|warning]
+ *   task scan
  *
- *   agentlayer compile status
- *   agentlayer compile next          (prints the next work item JSON — doesn't synthesise)
- *   agentlayer compile write <itemId>
+ *   compile status
+ *   compile next          (prints the next work item JSON — doesn't synthesise)
+ *   compile write <itemId>
  *
- *   agentlayer notices               (what to nudge the operator about, most important first)
- *   agentlayer notices record <id> --outcome=acted|snoozed
+ *   notices               (what to nudge the operator about, most important first)
+ *   notices record <id> --outcome=acted|snoozed
  *
- *   agentlayer prune
- *   agentlayer links
- *   agentlayer dashboard
- *   agentlayer worktree <repoPath> --branch=BRANCH [--base=REF] [--slug=SLUG] [--extra=sub1,sub2]
- *   agentlayer worktree list <repoPath>
+ *   prune
+ *   links
+ *   dashboard
+ *   worktree <repoPath> --branch=BRANCH [--base=REF] [--slug=SLUG] [--extra=sub1,sub2]
+ *   worktree list <repoPath>
  *
- *   agentlayer knowledge lint [--fix]
+ *   knowledge lint [--fix]
  *
- *   agentlayer seed scan
- *   agentlayer seed export --include=path1,path2 --name=AGENT [--out=PATH]
- *   agentlayer seed import <bundlePath> [--overwrite] [--dry-run]
+ *   seed scan
+ *   seed export --include=path1,path2 --name=AGENT [--out=PATH]
+ *   seed import <bundlePath> [--overwrite] [--dry-run]
  *
- *   agentlayer database list
- *   agentlayer database schema --connection=NAME [--table=T] [--schema=S] [--database=DB]
- *   agentlayer database query --connection=NAME --sql="SELECT ..." [--database=DB] [--timeout=MS]
- *   agentlayer database fork [--connection=NAME] [--source=DB] [--fork=NAME] [--cwd=PATH] [--repoint-env] [--env-var=DATABASE_URL] [--force] [--terminate-source] [--drop]
+ *   database list
+ *   database schema --connection=NAME [--table=T] [--schema=S] [--database=DB]
+ *   database query --connection=NAME --sql="SELECT ..." [--database=DB] [--timeout=MS]
+ *   database fork [--connection=NAME] [--source=DB] [--fork=NAME] [--cwd=PATH] [--repoint-env] [--env-var=DATABASE_URL] [--force] [--terminate-source] [--drop]
  *
- *   agentlayer slack auth
- *   agentlayer slack whoami
- *   agentlayer slack list-channels
- *   agentlayer slack history <channel> [--since=24h] [--limit=100]
- *   agentlayer slack batch-history <ch1,ch2,...> [--since=24h] [--limit=100]
- *   agentlayer slack thread <channel> <thread_ts>
- *   agentlayer slack search <query> [--in=<channel>] [--since=7d]
+ *   slack auth
+ *   slack whoami
+ *   slack list-channels
+ *   slack history <channel> [--since=24h] [--limit=100]
+ *   slack batch-history <ch1,ch2,...> [--since=24h] [--limit=100]
+ *   slack thread <channel> <thread_ts>
+ *   slack search <query> [--in=<channel>] [--since=7d]
  */
-import { pluginName } from '@/shared/naming';
+import { CLI_COMMAND, pluginName } from '@/shared/naming';
 
 // Stage the environment for the whole CLI run: hydrate every .claude/settings*.json
 // `env` block on the ancestor path (nearest wins) so per-project paths
@@ -133,10 +133,10 @@ function parseHookInput(raw: string): HookInput {
 }
 
 const PLUGIN = pluginName();
-const CLI = PLUGIN;
+const CLI = CLI_COMMAND;
 
 const HELP = `\
-${CLI} CLI
+${PLUGIN} CLI
 
 Usage:
   ${CLI} <group> <command> [flags]
@@ -722,7 +722,7 @@ async function run(): Promise<void> {
   if (group === 'capture') {
     // Combine command + args so flags can land anywhere after `capture`. The
     // first non-flag arg (if any) is treated as inline positional text, so
-    // `agentlayer capture "the thought"` works without --text=.
+    // `capture "the thought"` works without --text=.
     const allArgs = [command, ...args].filter((a): a is string => Boolean(a));
     const localFlag = (name: string): string | undefined => {
       const f = allArgs.find((a) => a.startsWith(`--${name}=`));

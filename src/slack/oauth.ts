@@ -11,7 +11,7 @@
  */
 import { agentDisplayName } from '@/shared/agent-name';
 import { log as baseLog } from '@/shared/log';
-import { pluginName } from '@/shared/naming';
+import { CLI_COMMAND, pluginName } from '@/shared/naming';
 import { writeJsonAtomic } from '@/shared/utils';
 import {
   REFRESH_THRESHOLD_SECONDS,
@@ -29,7 +29,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-const AGENT_CLI = pluginName();
+const AGENT_CLI = CLI_COMMAND;
 
 const log = baseLog.slack.with('oauth');
 

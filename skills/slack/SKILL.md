@@ -10,7 +10,7 @@ allowed-tools: mcp__plugin_agentlayer_agent__slack_whoami, mcp__plugin_agentlaye
 
 Read-only access to Slack, built on the Slack pack's `slack_*` MCP tools (per-operator user-token OAuth, no DMs, no writes). This skill handles the **multi-channel composition** Kevin does on natural-language queries; the MCP tools do the reads.
 
-**Reads go through MCP tools, not the `agentlayer slack` CLI over Bash.** The token lives under the deny-gated `.state/secrets/`, which the Bash sandbox can't read; the MCP server runs unsandboxed, so the tools read it fine.
+**Reads go through MCP tools, not the CLI's `slack` commands over Bash.** The token lives under the deny-gated `.state/secrets/`, which the Bash sandbox can't read; the MCP server runs unsandboxed, so the tools read it fine.
 
 | Read | MCP tool |
 |---|---|
@@ -22,7 +22,7 @@ Read-only access to Slack, built on the Slack pack's `slack_*` MCP tools (per-op
 | Search | `slack_search` (`query`, `in`, `since`) |
 | What's waiting, and channels missing from the map | `slack_waiting` (`channels`, `since`, `after`) |
 
-`agentlayer slack auth` stays a CLI command (interactive OAuth) that the operator runs from their own terminal, walked through by `/agentlayer:configure-skills` → Slack. The skill never shells out for reads.
+`bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" slack auth` stays a CLI command (interactive OAuth) that the operator runs from their own terminal, walked through by `/agentlayer:configure-skills` → Slack. The skill never shells out for reads.
 
 ## Invocation
 
@@ -37,7 +37,7 @@ Single-channel asks (`what happened in #team-eng today`) skip the multi-channel 
 
 ## Pre-flight
 
-Call `slack_whoami`. If it returns `connected: false` (never signed in), say `Run agentlayer slack auth from your terminal first (or /agentlayer:configure-skills → Slack)` and stop. If it errors with a refresh failure, the sign-in expired: say to re-run `agentlayer slack auth`, and stop. An `EACCES`/`EPERM` deny-gate message means something shelled out to the CLI: use the `slack_*` tools instead.
+Call `slack_whoami`. If it returns `connected: false` (never signed in), say `Run bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" slack auth from your terminal first (or /agentlayer:configure-skills → Slack)` and stop. If it errors with a refresh failure, the sign-in expired: say to re-run `agentlayer slack auth`, and stop. An `EACCES`/`EPERM` deny-gate message means something shelled out to the CLI: use the `slack_*` tools instead.
 
 ## Source of truth: `<HOME>/knowledge/concepts/slack-channels.md`
 
@@ -176,7 +176,7 @@ Skip empty categories. Nothing actionable: `Slack — all clear (<window>, <N> c
 
 - ❌ Reading DMs, or trying to. The token lacks the scope and the tools don't expose it.
 - ❌ Searching for a file or attachment: `slack_search` doesn't index them, so a miss proves nothing. Ask for the message link.
-- ❌ Shelling out to `agentlayer slack history|thread|search` for reads. Use the tools.
+- ❌ Shelling out to the CLI's `slack history|thread|search` for reads. Use the tools.
 - ❌ Drafting replies to send. This skill surfaces; the operator decides and posts.
 - ❌ Quoting more than one line of any message. Slack is a pointer, not a quote source.
 - ❌ Moving channels the operator placed, or nagging about triage below 7 uncategorized.
@@ -189,5 +189,5 @@ Skip empty categories. Nothing actionable: `Slack — all clear (<window>, <N> c
 ## Notes
 
 - Every read logs to `<HOME>/.state/logs/app.log` under `[💬 slack]`.
-- Refresh tokens expire after 30 days unused. A refresh error from `slack_whoami` means re-running `agentlayer slack auth`.
+- Refresh tokens expire after 30 days unused. A refresh error from `slack_whoami` means re-running `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" slack auth`.
 - The operator's edits to `slack-channels.md` are theirs: Kevin appends, never rewrites.

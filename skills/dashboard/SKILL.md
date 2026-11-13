@@ -108,5 +108,5 @@ and the attention pages follow.
   env var in `.claude/settings.local.json` (`{path}` placeholder, e.g.
   `markedit://open?path={path}`); defaults to
   `obsidian://open?path={path}&paneType=tab` (new Obsidian tab, dashboard stays put).
-- Every `/agentlayer:sync` also refreshes the dashboard; `agentlayer dashboard`
+- Every `/agentlayer:sync` also refreshes the dashboard; `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" dashboard`
   does the same from a terminal.

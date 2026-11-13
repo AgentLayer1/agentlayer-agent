@@ -11,9 +11,9 @@ import {
 import { getWaiting } from '@/slack/waiting';
 import { defineTool, type ToolDef } from '@/shared/types';
 import { z } from 'zod';
-import { pluginName } from '@/shared/naming';
+import { CLI_COMMAND } from '@/shared/naming';
 
-const AGENT_CLI = pluginName();
+const AGENT_CLI = CLI_COMMAND;
 
 const SINCE = z
   .string()

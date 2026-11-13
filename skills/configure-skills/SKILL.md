@@ -89,7 +89,7 @@ If nothing is ticked, cancel and return to Step 1. Otherwise run the matching su
 
 ### A.2a — SEO pack walk
 
-**Tool-name prefix convention** — important: the plugin bundles a single MCP server (`agent`), so all its tools use the **plugin-namespaced** prefix `mcp__plugin_agentlayer_agent__<tool>` (e.g., `mcp__plugin_agentlayer_agent__serpapi_search`, `mcp__plugin_agentlayer_agent__web_search`). The shorter `mcp__kevin__<tool>` form looks correct but won't match anything at runtime — Claude Code prefixes plugin-provided servers with `plugin_<plugin-name>_<server-name>`. Tools from servers registered in `<HOME>/.mcp.json` use the plain `mcp__<server>__<tool>` form — the Xcode pack (A.2f) is the one first-party pack that registers there, so its grants read `mcp__xcode__<tool>`. The "Permissions to grant" column below uses the correct form for each.
+**Tool-name prefix convention** — important: the plugin bundles a single MCP server (`agent`), so all its tools use the **plugin-namespaced** prefix `mcp__plugin_agentlayer_agent__<tool>` (e.g., `mcp__plugin_agentlayer_agent__serpapi_search`, `mcp__plugin_agentlayer_agent__web_search`). The shorter `mcp__agent__<tool>` form looks correct but won't match anything at runtime — Claude Code prefixes plugin-provided servers with `plugin_<plugin-name>_<server-name>`. Tools from servers registered in `<HOME>/.mcp.json` use the plain `mcp__<server>__<tool>` form — the Xcode pack (A.2f) is the one first-party pack that registers there, so its grants read `mcp__xcode__<tool>`. The "Permissions to grant" column below uses the correct form for each.
 
 | Capability (`seo` playbook) | Backed by | Required key(s) | Extra permission to grant |
 |---|---|---|---|
@@ -742,7 +742,7 @@ Tokens:             <HOME>/.state/secrets/slack/slack-tokens.json (0600)
 Channel map:        <HOME>/knowledge/concepts/slack-channels.md (<bootstrapped, N channels | already there, left alone>)
 
 Try: "slack pulse". The attention queue and sync now show the replies you owe, external threads waiting an hour or more, and channels you join that the map doesn't list yet.
-Refresh tokens expire after 30 days unused; re-run `agentlayer slack auth` then.
+Refresh tokens expire after 30 days unused; re-run `bun <AGENT_CLI> slack auth` then.
 ```
 
 ---
@@ -1067,7 +1067,7 @@ Example final shape — `/init` always-on baseline + both SEO and Browser activa
 ```
 
 **Prefix rule** (use this whenever you need to know how a tool surfaces to permissions.allow):
-- Plugin-bundled MCP tools (from the plugin manifest's `mcpServers.<name>`): `mcp__plugin_agentlayer_<server>__<tool>`. The plugin bundles a single server: `kevin` (its tools include `web_search`, which wraps the Perplexity Search API, and the `github_*` tools).
+- Plugin-bundled MCP tools (from the plugin manifest's `mcpServers.<name>`): `mcp__plugin_agentlayer_<server>__<tool>`. The plugin bundles a single server: `agent` (its tools include `web_search`, which wraps the Perplexity Search API, and the `github_*` tools).
 - Standalone MCP servers registered in `<HOME>/.mcp.json` (the Xcode pack's `xcode` server, plus any the user adds): `mcp__<server>__<tool>`
 
 **Revoke** (remove entries — deconfigure path):

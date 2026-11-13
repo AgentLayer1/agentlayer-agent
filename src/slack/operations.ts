@@ -2,14 +2,14 @@
  * Shared read-only Slack orchestration — channel resolution, user-name
  * hydration, and message formatting on top of the raw `client.ts` primitives.
  *
- * Both entry points consume these: the `agentlayer slack` CLI (cli.ts, wraps the
+ * Both entry points consume these: the CLI's `slack` commands (cli.ts, wraps the
  * results in stdout rendering) and the `slack_*` MCP tools (tools/slack.ts,
  * return the structured results directly). Keeping the orchestration here means
  * the two surfaces can never drift — and the MCP tools run inside the
  * unsandboxed server process, so they read the deny-gated token file that a
- * sandboxed `agentlayer slack` shell cannot.
+ * sandboxed shell running the CLI's `slack` commands cannot.
  */
-import { pluginName } from '@/shared/naming';
+import { CLI_COMMAND } from '@/shared/naming';
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -182,7 +182,7 @@ export type Whoami = SignedIn | { connected: false; hint: string };
 
 export async function getWhoami(): Promise<Whoami> {
   if (!existsSync(slackTokensFile())) {
-    const cli = pluginName();
+    const cli = CLI_COMMAND;
     return { connected: false, hint: `No Slack sign-in yet. Run \`${cli} slack auth\` from your own terminal.` };
   }
   const tokens = loadTokens();

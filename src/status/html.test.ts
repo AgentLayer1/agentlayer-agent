@@ -177,7 +177,7 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
       entries: [{ cmd: 'status', desc: 'Rebuild the Agent OS dashboard at <HOME>/dashboard.html' }]
     }
   ],
-  hooks: { count: 1, entries: [{ event: 'SessionStart', command: 'agentlayer session-start' }] },
+  hooks: { count: 1, entries: [{ event: 'SessionStart', command: 'cli.ts session-start' }] },
   mods: {
     features: [
       {

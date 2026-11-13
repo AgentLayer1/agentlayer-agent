@@ -1,5 +1,5 @@
 /**
- * `agentlayer statusline`: Claude Code's status-line JSON in on stdin, the rendered rows out.
+ * The CLI's `statusline`: Claude Code's status-line JSON in on stdin, the rendered rows out.
  * Runs on every render tick, so it stays clear of the home resolution and settings walk the
  * rest of the CLI does: the folder comes from the payload, the emoji from the launch
  * directory's IDENTITY.md, the branch from one bounded git call, and the palette from Claude

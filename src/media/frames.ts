@@ -1,6 +1,6 @@
 /**
  * Frame extraction from local video via ffmpeg — the domain logic behind the
- * `video_frames` MCP tool and (potentially) a `agentlayer video-frames` CLI verb.
+ * `video_frames` MCP tool and (potentially) a `video-frames` CLI verb.
  *
  * Runs ffmpeg out-of-band (the MCP server sits outside the Bash seatbelt), so it
  * reads videos in seatbelt-protected dirs (~/Downloads, ~/Desktop, ~/Documents)

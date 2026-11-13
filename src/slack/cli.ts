@@ -1,13 +1,13 @@
 /**
- * `agentlayer slack` subcommands — read-only Slack access for agentlayer.
+ * The CLI's `slack` subcommands — read-only Slack access for agentlayer.
  *
- *   agentlayer slack auth                                  One-time per-operator OAuth (PKCE)
- *   agentlayer slack whoami                                Print authenticated Slack identity
- *   agentlayer slack list-channels                         List channels operator is a member of
- *   agentlayer slack history <channel> [--since=24h] [--limit=100] [--out=<file>]
- *   agentlayer slack batch-history <ch1,ch2,...> [--since=24h] [--limit=100] [--out=<dir>]
- *   agentlayer slack thread <channel> <thread_ts>
- *   agentlayer slack search <query> [--in=<channel>] [--since=7d]
+ *   slack auth                                  One-time per-operator OAuth (PKCE)
+ *   slack whoami                                Print authenticated Slack identity
+ *   slack list-channels                         List channels operator is a member of
+ *   slack history <channel> [--since=24h] [--limit=100] [--out=<file>]
+ *   slack batch-history <ch1,ch2,...> [--since=24h] [--limit=100] [--out=<dir>]
+ *   slack thread <channel> <thread_ts>
+ *   slack search <query> [--in=<channel>] [--since=7d]
  *
  * Global flag: --format=json|markdown (default: json)
  *
@@ -33,9 +33,9 @@ import {
   writeHistoryFile
 } from './operations';
 import { runAuthFlow } from './oauth';
-import { pluginName } from '@/shared/naming';
+import { CLI_COMMAND, pluginName } from '@/shared/naming';
 
-const AGENT_CLI = pluginName();
+const AGENT_CLI = CLI_COMMAND;
 
 const log = baseLog.slack.with('cli');
 

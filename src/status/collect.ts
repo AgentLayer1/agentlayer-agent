@@ -11,7 +11,6 @@
  * through repoRelative()/tildify so absolute machine paths never leak.
  */
 import {
-  AGENT_SLUG,
   FILES,
   FOLDERS,
   HOME_TIMEZONE,
@@ -643,7 +642,7 @@ interface HookConfig {
 /** Reduce a hook command to a readable `<agent> <verb>` summary. */
 const summarizeHookCommand = (command: string): string => {
   const match = command.match(/src\/cli\.ts"?\s+([a-z-]+(?:\s+--?[a-z-]+=?\S*)?)/);
-  return match ? `${AGENT_SLUG} ${match[1]}` : command.split(/\s+/).slice(0, 3).join(' ');
+  return match ? `cli.ts ${match[1]}` : command.split(/\s+/).slice(0, 3).join(' ');
 };
 
 const collectHooks = (): StatusSnapshot['hooks'] => {
