@@ -44,8 +44,6 @@ graph LR
 
 Every session is captured on exit. Captured sessions compile into a wiki. The wiki loads before you type a word in the next session. That loop is the whole product.
 
-> *Kevin is named after the loyal minion. Helpful, enthusiastic, a little nerdy.*
-
 ---
 
 ## Quick start
