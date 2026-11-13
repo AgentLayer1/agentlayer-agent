@@ -1,54 +1,8 @@
 /**
  * The plugin's CLI (`bun src/cli.ts <group> …`): task + knowledge ops from outside Claude Code.
- *
- * Subcommands:
- *   ping
- *   capture [text] [--file=PATH] [--url=URL] [--kind=inbox|feedback] [--title=...] [--label=...] [--stdin]
- *   session-capture --mode=session-end|pre-compact [--hook-protocol=claude|codex] [--transcript=PATH --cwd=PATH --session-id=X] [--format=claude|codex] [--home=PATH]
- *   session-start [--hook-protocol=claude|codex] [--home=PATH]
- *   statusline [--subagent|--setting]
- *   guard [--hook-protocol=claude|codex] [--home=PATH]   (PreToolUse hook: refuses a home-tree write from a drifted cwd, a cd that moves the session, shared-temp misuse, history-rewriting git, a gate that can't stop its commit)
- *   task query [--project=NAME] [--status=...] [--priority=P0-P3]
- *   task get <id>
- *   task create --project=NAME --title=... --description=... [--priority=P2]
- *   task update <id> [--status=...] [--priority=...] [--title=...] [--due=YYYY-MM-DD]
- *   task close <id>
- *   task thread <id> --message=... [--type=quote|info|warning]
- *   task scan
- *
- *   compile status
- *   compile next          (prints the next work item JSON — doesn't synthesise)
- *   compile write <itemId>
- *
- *   notices               (what to nudge the operator about, most important first)
- *   notices record <id> --outcome=acted|snoozed
- *
- *   prune
- *   links
- *   dashboard
- *   worktree <repoPath> --branch=BRANCH [--base=REF] [--slug=SLUG] [--extra=sub1,sub2]
- *   worktree list <repoPath>
- *
- *   knowledge lint [--fix]
- *
- *   seed scan
- *   seed export --include=path1,path2 --name=AGENT [--out=PATH]
- *   seed import <bundlePath> [--overwrite] [--dry-run]
- *
- *   database list
- *   database schema --connection=NAME [--table=T] [--schema=S] [--database=DB]
- *   database query --connection=NAME --sql="SELECT ..." [--database=DB] [--timeout=MS]
- *   database fork [--connection=NAME] [--source=DB] [--fork=NAME] [--cwd=PATH] [--repoint-env] [--env-var=DATABASE_URL] [--force] [--terminate-source] [--drop]
- *
- *   slack auth
- *   slack whoami
- *   slack list-channels
- *   slack history <channel> [--since=24h] [--limit=100]
- *   slack batch-history <ch1,ch2,...> [--since=24h] [--limit=100]
- *   slack thread <channel> <thread_ts>
- *   slack search <query> [--in=<channel>] [--since=7d]
+ * `HELP` below lists every subcommand.
  */
-import { CLI_COMMAND, pluginName } from '@/shared/naming';
+import { CLI_COMMAND, RUNTIME_DIR, pluginName } from '@/shared/naming';
 
 // Stage the environment for the whole CLI run: hydrate every .claude/settings*.json
 // `env` block on the ancestor path (nearest wins) so per-project paths
@@ -133,13 +87,12 @@ function parseHookInput(raw: string): HookInput {
 }
 
 const PLUGIN = pluginName();
-const CLI = CLI_COMMAND;
 
 const HELP = `\
 ${PLUGIN} CLI
 
 Usage:
-  ${CLI} <group> <command> [flags]
+  ${CLI_COMMAND} <group> <command> [flags]
 
 Groups:
   ping                              Print resolved paths + timezone (sanity check)
@@ -172,7 +125,7 @@ Capture commands:
   capture "the thought"             Write inline text to raw/inbox/<ts>-<slug>.md (next compile distils it)
   capture --file=PATH               Capture a file's contents into raw/inbox/
   capture --url=URL                 Fetch a URL, strip HTML noise (<script>/<style>/<head>), store with source: url:<url> in frontmatter
-  capture --stdin                   Read content from stdin (e.g. \`pbpaste | ${CLI} capture --stdin\`)
+  capture --stdin                   Read content from stdin (e.g. \`pbpaste | ${CLI_COMMAND} capture --stdin\`)
   capture ... --kind=feedback       Append to raw/user/feedback.md instead of inbox/ (corrections/preferences)
   capture ... --title=X --label=Y   Optional metadata (slug source + frontmatter label)
 
@@ -258,20 +211,20 @@ Environment:
   AGENT_TIMEZONE=<tz>               Override timezone (default: system tz)
 
 Examples:
-  ${CLI} capture "remember to follow up with the accountant on the annual filing"
-  ${CLI} capture --file=~/notes/board-meeting.md --title="Board meeting 2026-05-28"
-  ${CLI} capture --url=https://docs.anthropic.com/en/docs/claude-code/overview
-  pbpaste | ${CLI} capture --stdin --title="Clipped article"
-  ${CLI} capture --kind=feedback "don't propose git push for local-only repos"
-  ${CLI} task query --status=active
-  ${CLI} task create --project=blog-dev --title="Draft launch post" --description="..." --priority=P1
-  ${CLI} dashboard
-  ${CLI} worktree /path/to/repo --branch=feat/my-thing
-  ${CLI} knowledge lint --fix
-  ${CLI} compile status
-  ${CLI} database list
-  ${CLI} database query --connection=app --sql="select count(*) from users"
-  ${CLI} database fork --connection=app --cwd=/path/to/worktree --repoint-env
+  ${CLI_COMMAND} capture "remember to follow up with the accountant on the annual filing"
+  ${CLI_COMMAND} capture --file=~/notes/board-meeting.md --title="Board meeting 2026-05-28"
+  ${CLI_COMMAND} capture --url=https://docs.anthropic.com/en/docs/claude-code/overview
+  pbpaste | ${CLI_COMMAND} capture --stdin --title="Clipped article"
+  ${CLI_COMMAND} capture --kind=feedback "don't propose git push for local-only repos"
+  ${CLI_COMMAND} task query --status=active
+  ${CLI_COMMAND} task create --project=blog-dev --title="Draft launch post" --description="..." --priority=P1
+  ${CLI_COMMAND} dashboard
+  ${CLI_COMMAND} worktree /path/to/repo --branch=feat/my-thing
+  ${CLI_COMMAND} knowledge lint --fix
+  ${CLI_COMMAND} compile status
+  ${CLI_COMMAND} database list
+  ${CLI_COMMAND} database query --connection=app --sql="select count(*) from users"
+  ${CLI_COMMAND} database fork --connection=app --cwd=/path/to/worktree --repoint-env
 `;
 
 async function run(): Promise<void> {
@@ -339,12 +292,11 @@ async function run(): Promise<void> {
   // home state.
   const HOMELESS_OK = new Set(['session-start', 'session-capture', 'guard', 'worktree']);
   if (!isInitialized() && !HOMELESS_OK.has(group)) {
-    const { RUNTIME_DIR } = await import('@/shared/naming');
     console.error(
       `${group}: ${FOLDERS.HOME} is not this agent's home (no ${RUNTIME_DIR}/version.json recording ${PLUGIN} there).\n` +
         `The home is resolved from the current directory, so this is what you get when\n` +
         `the CLI runs outside one. Run it from inside the home, or point it at one:\n` +
-        `  AGENT_HOME=/path/to/home ${CLI} ${group}${command ? ` ${command}` : ''}`
+        `  AGENT_HOME=/path/to/home ${CLI_COMMAND} ${group}${command ? ` ${command}` : ''}`
     );
     process.exit(1);
   }
@@ -370,7 +322,7 @@ async function run(): Promise<void> {
       }
       case 'get': {
         const id = args[0];
-        if (!id) throw new Error(`Usage: ${CLI} task get <id>`);
+        if (!id) throw new Error(`Usage: ${CLI_COMMAND} task get <id>`);
         const { findTaskById } = await import('@/tasks/scan');
         const task = findTaskById(id);
         if (!task) {
@@ -407,7 +359,7 @@ async function run(): Promise<void> {
       }
       case 'update': {
         const id = args[0];
-        if (!id) throw new Error(`Usage: ${CLI} task update <id> --field=value ...`);
+        if (!id) throw new Error(`Usage: ${CLI_COMMAND} task update <id> --field=value ...`);
         const fields: Record<string, string | string[]> = {};
         for (const k of ['status', 'priority', 'title', 'due', 'horizon', 'blocked_by', 'parent', 'issue', 'description']) {
           const v = flag(k);
@@ -422,7 +374,7 @@ async function run(): Promise<void> {
       }
       case 'close': {
         const id = args[0];
-        if (!id) throw new Error(`Usage: ${CLI} task close <id>`);
+        if (!id) throw new Error(`Usage: ${CLI_COMMAND} task close <id>`);
         const { closeTask } = await import('@/tasks/mutate');
         closeTask(id);
         console.log(JSON.stringify({ ok: true }));
@@ -431,7 +383,7 @@ async function run(): Promise<void> {
       case 'thread': {
         const id = args[0];
         const message = flag('message');
-        if (!id || !message) throw new Error(`Usage: ${CLI} task thread <id> --message=...`);
+        if (!id || !message) throw new Error(`Usage: ${CLI_COMMAND} task thread <id> --message=...`);
         const { appendThread } = await import('@/tasks/mutate');
         appendThread(id, 'me', message, (flag('type') as 'quote' | 'info' | 'warning') ?? 'info');
         console.log(JSON.stringify({ ok: true }));
@@ -461,7 +413,7 @@ async function run(): Promise<void> {
         return;
       case 'write': {
         const itemId = args[0];
-        if (!itemId) throw new Error(`Usage: ${CLI} compile write <itemId>`);
+        if (!itemId) throw new Error(`Usage: ${CLI_COMMAND} compile write <itemId>`);
         console.log(JSON.stringify(await compile.markComplete(itemId), null, 2));
         return;
       }
@@ -495,7 +447,7 @@ async function run(): Promise<void> {
         const include = flagArr('include');
         const name = flag('name');
         if (!include.length || !name) {
-          throw new Error(`Usage: ${CLI} seed export --include=path1,path2 --name=AGENT [--out=PATH]`);
+          throw new Error(`Usage: ${CLI_COMMAND} seed export --include=path1,path2 --name=AGENT [--out=PATH]`);
         }
         const { exportSeed } = await import('@/seed/export');
         console.log(JSON.stringify(exportSeed({ include, agentName: name, out: flag('out') }), null, 2));
@@ -503,7 +455,7 @@ async function run(): Promise<void> {
       }
       case 'import': {
         const bundlePath = args.find((a) => !a.startsWith('--'));
-        if (!bundlePath) throw new Error(`Usage: ${CLI} seed import <bundlePath> [--overwrite] [--dry-run]`);
+        if (!bundlePath) throw new Error(`Usage: ${CLI_COMMAND} seed import <bundlePath> [--overwrite] [--dry-run]`);
         const { importSeed } = await import('@/seed/import');
         console.log(
           JSON.stringify(importSeed({ bundlePath, overwrite: bool('overwrite'), dryRun: bool('dry-run') }), null, 2)
@@ -546,7 +498,7 @@ async function run(): Promise<void> {
         const connection = flag('connection');
         const sql = flag('sql');
         if (!connection || !sql) {
-          throw new Error(`Usage: ${CLI} database query --connection=NAME --sql="SELECT ..." [--database=X] [--timeout=MS]`);
+          throw new Error(`Usage: ${CLI_COMMAND} database query --connection=NAME --sql="SELECT ..." [--database=X] [--timeout=MS]`);
         }
         const timeout = flag('timeout');
         await call('database_query', {
@@ -642,26 +594,10 @@ async function run(): Promise<void> {
       return f?.slice(name.length + 3);
     };
 
-    // `--exclude` used to suppress capture for a listed path, and only mattered
-    // for the user-level hook this plugin no longer supports. Silently ignoring
-    // it would quietly widen what gets captured for anyone whose old
-    // `~/.claude/settings.json` hook is still installed — including the sibling-
-    // agent and Ring-1 paths they excluded on purpose. Say so instead.
-    if (allArgs.some((a) => a === '--exclude' || a.startsWith('--exclude='))) {
-      log
-        .with('cli')
-        .warn(
-          '--exclude is gone along with user-level hook support, and is being ignored. ' +
-            'Capture now comes only from the plugin hooks, which run solely in this agent\'s own home. ' +
-            'Delete the session-capture hooks from ~/.claude/settings.json — while they remain, ' +
-            'sessions you meant to exclude are being captured.'
-        );
-    }
-
     const mode = localFlag('mode');
     if (mode !== 'session-end' && mode !== 'pre-compact') {
       throw new Error(
-        `Usage: ${CLI} session-capture --mode=session-end|pre-compact [--hook-protocol=claude|codex] [--transcript=PATH --cwd=PATH --session-id=X] [--format=claude|codex]`
+        `Usage: ${CLI_COMMAND} session-capture --mode=session-end|pre-compact [--hook-protocol=claude|codex] [--transcript=PATH --cwd=PATH --session-id=X] [--format=claude|codex]`
       );
     }
 
@@ -759,7 +695,7 @@ async function run(): Promise<void> {
       const requested = flag('outcome');
       const outcome = OUTCOMES.find((known) => known === requested);
       if (!id || !/^[a-z][a-z0-9-]*$/.test(id) || !outcome) {
-        console.error(`Usage: ${CLI} notices record <id> --outcome=${OUTCOMES.join('|')}`);
+        console.error(`Usage: ${CLI_COMMAND} notices record <id> --outcome=${OUTCOMES.join('|')}`);
         process.exit(1);
       }
       recordOutcome(id, outcome);
@@ -810,7 +746,7 @@ async function run(): Promise<void> {
     if (command === 'list') {
       const repoPath = args.find((a) => !a.startsWith('--'));
       if (!repoPath) {
-        throw new Error(`Usage: ${CLI} worktree list <repoPath>`);
+        throw new Error(`Usage: ${CLI_COMMAND} worktree list <repoPath>`);
       }
       const { listWorktrees } = await import('@/worktree/setup');
       console.log(JSON.stringify(listWorktrees({ repoPath }), null, 2));
@@ -821,7 +757,7 @@ async function run(): Promise<void> {
     if (command === 'remove') {
       const worktreePath = args.find((a) => !a.startsWith('--'));
       if (!worktreePath) {
-        throw new Error(`Usage: ${CLI} worktree remove <worktreePath> [--delete-branch] [--force] [--dry-run]`);
+        throw new Error(`Usage: ${CLI_COMMAND} worktree remove <worktreePath> [--delete-branch] [--force] [--dry-run]`);
       }
       const { removeWorktree } = await import('@/worktree/setup');
       console.log(
@@ -842,7 +778,7 @@ async function run(): Promise<void> {
     const repoPath = command;
     const branch = flag('branch');
     if (!repoPath || !branch) {
-      throw new Error(`Usage: ${CLI} worktree <repoPath> --branch=BRANCH [--base=REF] [--slug=SLUG] [--extra=sub1,sub2]`);
+      throw new Error(`Usage: ${CLI_COMMAND} worktree <repoPath> --branch=BRANCH [--base=REF] [--slug=SLUG] [--extra=sub1,sub2]`);
     }
     const { setupWorktree } = await import('@/worktree/setup');
     console.log(

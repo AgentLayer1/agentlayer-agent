@@ -31,6 +31,7 @@ import { BANNER_LINES, bannerTag } from '@/shared/banner';
 import { daysBetween } from '@/shared/date';
 import { jsonBlock } from '@/shared/json-block';
 import { RUNTIME_DIR } from '@/shared/naming';
+import { DEFAULT_AGENT_EMOJI } from '@/shared/persona';
 import { THEME_BLOCK } from '@/shared/theme';
 import { issueLabel } from '@/tasks/issue';
 import type {
@@ -66,7 +67,7 @@ export const PAGES = [
   { id: 'scheduler', icon: '⏰', label: 'Scheduler' },
   { id: 'capabilities', icon: '🧩', label: 'Capabilities' },
   { id: 'profile', icon: '👤', label: 'Profile', hidden: true },
-  { id: 'persona', icon: '🐙', label: 'Persona' },
+  { id: 'persona', icon: DEFAULT_AGENT_EMOJI, label: 'Persona' },
   { id: 'system', icon: '⚙️', label: 'System' },
   { id: 'status', icon: '🩺', label: 'Status', hidden: true }
 ] as const;

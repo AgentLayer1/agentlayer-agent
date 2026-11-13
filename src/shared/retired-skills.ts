@@ -43,7 +43,6 @@ const ruleName = (entry: string): { name: string; prefix?: string } | null => {
   return inner.endsWith(' *') || inner.endsWith(':*') ? { name: inner, prefix: inner.slice(0, -2) } : { name: inner };
 };
 
-
 /**
  * What a permissions entry becomes once `plugin`'s retired skills and tools are gone, or null when it reaches none.
  * A rule for one retired skill becomes its successor's, wildcard kept. A prefix rule that also reached

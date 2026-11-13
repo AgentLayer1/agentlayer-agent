@@ -1,18 +1,9 @@
-import { join } from 'node:path';
-
-interface MermaidValidator {
-  parseMermaid: (source: string) => Promise<{ ok: boolean; error?: string }>;
-}
-
-// mermaid resolves only at run time; a non-literal path keeps tsc from following it.
-const VALIDATOR = join(import.meta.dir, '..', '..', 'mermaid', 'scripts', 'validate.ts');
-
 /** One error line per diagram that Mermaid can't parse, prefixed with its label. */
 export const diagramErrors = async (diagrams: { label: string; source: string }[]): Promise<string[]> => {
   if (!diagrams.length) {
     return [];
   }
-  const { parseMermaid }: MermaidValidator = await import(VALIDATOR);
+  const { parseMermaid } = await import('../../mermaid/scripts/validate');
   const results = await Promise.all(
     diagrams.map(async ({ label, source }) => {
       const result = await parseMermaid(source);

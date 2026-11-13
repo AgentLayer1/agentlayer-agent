@@ -29,7 +29,6 @@ import { chmodSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-const AGENT_CLI = CLI_COMMAND;
 
 const log = baseLog.slack.with('oauth');
 
@@ -90,9 +89,9 @@ function assertReadOnlyScopes(scopeString: string): void {
   if (violations.length > 0) {
     throw new Error(
       `Refusing token with non-read scopes: ${violations.join(', ')}. ` +
-        `The ${AGENT_CLI} slack CLI is read-only by design. Re-create the Slack app at https://api.slack.com/apps ` +
+        `The ${CLI_COMMAND} slack CLI is read-only by design. Re-create the Slack app at https://api.slack.com/apps ` +
         `with ONLY user-token scopes from the read-only set (channels:history, channels:read, groups:history, ` +
-        `groups:read, users:read, search:read) and re-run \`${AGENT_CLI} slack auth\`.`
+        `groups:read, users:read, search:read) and re-run \`${CLI_COMMAND} slack auth\`.`
     );
   }
 }
@@ -100,7 +99,7 @@ function assertReadOnlyScopes(scopeString: string): void {
 export function loadTokens(): SlackTokens {
   const tokensPath = slackTokensFile();
   if (!existsSync(tokensPath)) {
-    throw new Error(`Slack tokens not found at ${tokensPath}. Run \`${AGENT_CLI} slack auth\` to authenticate.`);
+    throw new Error(`Slack tokens not found at ${tokensPath}. Run \`${CLI_COMMAND} slack auth\` to authenticate.`);
   }
   let raw: string;
   try {
@@ -110,7 +109,7 @@ export function loadTokens(): SlackTokens {
     if (code === 'EACCES' || code === 'EPERM') {
       throw new Error(
         `Slack tokens at ${tokensPath} exist but can't be read (${code}). This is the secrets deny-gate: ` +
-          `call the slack_* MCP tools (which run in the unsandboxed MCP server), not the \`${AGENT_CLI} slack\` CLI over a sandboxed shell.`
+          `call the slack_* MCP tools (which run in the unsandboxed MCP server), not the \`${CLI_COMMAND} slack\` CLI over a sandboxed shell.`
       );
     }
     throw error;
@@ -119,7 +118,7 @@ export function loadTokens(): SlackTokens {
     return JSON.parse(raw);
   } catch {
     throw new Error(
-      `Slack tokens file at ${tokensPath} is corrupted. Delete it and re-run \`${AGENT_CLI} slack auth\`.`
+      `Slack tokens file at ${tokensPath} is corrupted. Delete it and re-run \`${CLI_COMMAND} slack auth\`.`
     );
   }
 }
@@ -166,7 +165,7 @@ async function refreshTokens(current: SlackTokens): Promise<SlackTokens> {
   if (!data.ok || !access_token) {
     throw new Error(
       `Token refresh failed: ${data.error ?? 'unknown'}. ` +
-        `Refresh tokens expire after 30 days of inactivity — re-run \`${AGENT_CLI} slack auth\` to re-authenticate.`
+        `Refresh tokens expire after 30 days of inactivity — re-run \`${CLI_COMMAND} slack auth\` to re-authenticate.`
     );
   }
 
@@ -214,7 +213,7 @@ export async function runAuthFlow(): Promise<SlackTokens> {
         server.close();
         reject(
           new Error(
-            `OAuth timed out after 5 minutes — re-run \`${AGENT_CLI} slack auth\` and complete the browser flow.`
+            `OAuth timed out after 5 minutes — re-run \`${CLI_COMMAND} slack auth\` and complete the browser flow.`
           )
         );
       },

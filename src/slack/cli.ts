@@ -35,7 +35,6 @@ import {
 import { runAuthFlow } from './oauth';
 import { CLI_COMMAND, pluginName } from '@/shared/naming';
 
-const AGENT_CLI = CLI_COMMAND;
 
 const log = baseLog.slack.with('cli');
 
@@ -53,10 +52,10 @@ function out(value: unknown, format: Format, mdRenderer?: () => string): void {
 }
 
 export const SLACK_HELP = `\
-${AGENT_CLI} slack — Read-only Slack access for ${pluginName()}
+${CLI_COMMAND} slack — Read-only Slack access for ${pluginName()}
 
 Usage:
-  ${AGENT_CLI} slack <command> [args] [flags]
+  ${CLI_COMMAND} slack <command> [args] [flags]
 
 Commands:
   auth                                One-time per-operator OAuth (PKCE)
@@ -112,7 +111,7 @@ async function cmdListChannels(_args: string[], format: Format): Promise<void> {
 async function cmdHistory(args: string[], format: Format): Promise<void> {
   const channelArg = args[0];
   if (!channelArg)
-    throw new Error(`Usage: ${AGENT_CLI} slack history <channel> [--since=24h] [--limit=100] [--out=<file>]`);
+    throw new Error(`Usage: ${CLI_COMMAND} slack history <channel> [--since=24h] [--limit=100] [--out=<file>]`);
   const limitFlag = parseFlag(args, 'limit');
   const sinceFlag = parseFlag(args, 'since');
   const history = await getHistory({
@@ -137,7 +136,7 @@ async function cmdHistory(args: string[], format: Format): Promise<void> {
 async function cmdBatchHistory(args: string[], format: Format): Promise<void> {
   const channelsArg = args[0];
   if (!channelsArg) {
-    throw new Error(`Usage: ${AGENT_CLI} slack batch-history <ch1,ch2,...> [--since=24h] [--limit=100] [--out=<dir>]`);
+    throw new Error(`Usage: ${CLI_COMMAND} slack batch-history <ch1,ch2,...> [--since=24h] [--limit=100] [--out=<dir>]`);
   }
   const limitFlag = parseFlag(args, 'limit');
   const sinceFlag = parseFlag(args, 'since');
@@ -179,7 +178,7 @@ async function cmdThread(args: string[], format: Format): Promise<void> {
   const channelArg = args[0];
   const threadTs = args[1];
   if (!channelArg || !threadTs) {
-    throw new Error(`Usage: ${AGENT_CLI} slack thread <channel> <thread_ts>`);
+    throw new Error(`Usage: ${CLI_COMMAND} slack thread <channel> <thread_ts>`);
   }
   const thread = await getThread({ channel: channelArg, thread_ts: threadTs });
   log.info(`thread #${thread.channel}/${threadTs} → ${thread.count} messages`);
@@ -188,7 +187,7 @@ async function cmdThread(args: string[], format: Format): Promise<void> {
 
 async function cmdSearch(args: string[], format: Format): Promise<void> {
   const query = args[0];
-  if (!query) throw new Error(`Usage: ${AGENT_CLI} slack search <query> [--in=<channel>] [--since=7d]`);
+  if (!query) throw new Error(`Usage: ${CLI_COMMAND} slack search <query> [--in=<channel>] [--since=7d]`);
   const result = await searchSlack({ query, in: parseFlag(args, 'in'), since: parseFlag(args, 'since') });
   log.info(`search "${result.query}" → ${result.matches.length}/${result.total} matches`);
   out(
@@ -240,7 +239,7 @@ export async function runSlackCommand(command: string | undefined, args: string[
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log.error(`${command} failed: ${message}`, err);
-    process.stderr.write(`${AGENT_CLI} slack ${command}: ${message}\n`);
+    process.stderr.write(`${CLI_COMMAND} slack ${command}: ${message}\n`);
     process.exit(1);
   }
 }

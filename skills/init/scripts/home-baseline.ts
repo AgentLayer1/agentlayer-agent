@@ -17,7 +17,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, relative, resolve, sep } from 'node:path';
 import { reconcileHomeGitignore } from '../../../src/home/gitignore';
-import { dataDirOf, pluginName, recordedPlugin, resolveEnv } from '../../../src/shared/naming';
+import { PLUGIN_SOURCE_ROOT, dataDirOf, pluginName, recordedPlugin, resolveEnv } from '../../../src/shared/naming';
 import { migrateGrant, migrateGrants } from '../../../src/shared/retired-skills';
 import { expandTilde, isInside } from '../../../src/shared/paths';
 import { readMergedSettings } from '../../../src/home/settings-scope';
@@ -35,7 +35,7 @@ if (!homeFlag) {
 }
 const home = resolve(homeFlag);
 const claudeDir = resolve(flag('claude-dir') ?? process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude'));
-const pluginRoot = resolve(import.meta.dir, '..', '..', '..');
+const pluginRoot = PLUGIN_SOURCE_ROOT;
 const PLUGIN = pluginName();
 const write = args.includes('--write');
 

@@ -36,15 +36,6 @@ import { ownDataDir, resolveEnv } from '@/shared/naming';
 import { appendFileSync, existsSync, mkdirSync, renameSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-/** `resolveEnv` that can't throw — a broken manifest degrades to the shared name. */
-const readEnv = (key: string): string | undefined => {
-  try {
-    return resolveEnv(key);
-  } catch {
-    return process.env[key]?.trim() || undefined;
-  }
-};
-
 // ── Types ─────────────────────────────────────────────────────────────
 
 type Level = 'debug' | 'info' | 'warn' | 'error';
@@ -58,7 +49,7 @@ const LEVEL_ORDER: Record<Level, number> = {
 
 // ── Config ────────────────────────────────────────────────────────────
 
-let minLevel: Level = ((readEnv('AGENT_LOG_LEVEL') ?? process.env.LOG_LEVEL) as Level) ?? 'info';
+let minLevel: Level = ((resolveEnv('AGENT_LOG_LEVEL') ?? process.env.LOG_LEVEL) as Level) ?? 'info';
 const MAX_LOG_BYTES = 5 * 1024 * 1024;
 
 /**
@@ -67,7 +58,7 @@ const MAX_LOG_BYTES = 5 * 1024 * 1024;
  * to log a line). `AGENT_LOG_FILE` tells us where to write; `=off` disables.
  */
 function resolveLogFile(): string | null {
-  const configured = readEnv('AGENT_LOG_FILE');
+  const configured = resolveEnv('AGENT_LOG_FILE');
   if (configured === 'off') return null;
   if (configured) return resolve(configured);
   // Default: <HOME>/<data-dir>/logs/app.log — the same path @/config derives, so
@@ -82,7 +73,7 @@ function resolveLogFile(): string | null {
   // it. stderr still carries every line; file output waits for a home that
   // genuinely exists, and is this plugin's.
   try {
-    const dataDir = ownDataDir(readEnv('AGENT_HOME')?.replace(/\/$/, '') ?? process.cwd());
+    const dataDir = ownDataDir(resolveEnv('AGENT_HOME')?.replace(/\/$/, '') ?? process.cwd());
     return dataDir ? resolve(dataDir, 'logs', 'app.log') : null;
   } catch {
     return null; // a broken manifest can't confirm the home — stderr only
