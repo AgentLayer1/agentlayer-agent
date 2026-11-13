@@ -46,6 +46,10 @@ Every session is captured on exit. Captured sessions compile into a wiki. The wi
 
 ---
 
+## Why an octopus
+
+Meet Oppi 🐙. An octopus keeps eight arms busy at once, and each arm does some of its own thinking: about two-thirds of its neurons sit in the arms. Its central brain still holds it all together. That's the agent: many jobs in flight, each handled with some independence, and one brain that remembers all of it. Octopuses are also among the cleverest animals around: they solve puzzles and use tools. Call your agent whatever you like; Oppi is just who shows up first.
+
 ## Quick start
 
 You need **Bun ≥ 1.4.4**, **Git**, and a host: **Claude Code** or **Codex**. Full prerequisites, the local clone install, and Windows notes are in [Install](https://agentlayer.one/docs/getting-started/install).
