@@ -5,6 +5,7 @@
  *   bun mcp-server/src/shared/theme.ts sync   rewrite the block in every themed template
  */
 
+import { PLUGIN_SOURCE_ROOT } from '@/shared/naming';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -122,13 +123,12 @@ export const themeBlockOf = (html: string): string | null => BLOCK.exec(html)?.[
 export const withThemeBlock = (html: string): string => html.replace(BLOCK, () => THEME_BLOCK);
 
 if (import.meta.main) {
-  const pluginRoot = join(import.meta.dir, '..', '..', '..');
   if (process.argv[2] !== 'sync') {
     console.error('usage: bun theme.ts sync');
     process.exit(1);
   }
   THEMED_TEMPLATES.forEach((relative) => {
-    const path = join(pluginRoot, relative);
+    const path = join(PLUGIN_SOURCE_ROOT, relative);
     const html = readFileSync(path, 'utf-8');
     if (themeBlockOf(html) === null) {
       console.error(`${relative}: no ${START} … ${END} block in <head>`);

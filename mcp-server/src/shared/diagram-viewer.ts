@@ -7,6 +7,7 @@
  *   bun mcp-server/src/shared/diagram-viewer.ts sync   rewrite the block in every template that draws diagrams
  */
 
+import { PLUGIN_SOURCE_ROOT } from '@/shared/naming';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -228,13 +229,12 @@ export const diagramViewerBlockOf = (html: string): string | null => BLOCK.exec(
 export const withDiagramViewerBlock = (html: string): string => html.replace(BLOCK, () => DIAGRAM_VIEWER_BLOCK);
 
 if (import.meta.main) {
-  const pluginRoot = join(import.meta.dir, '..', '..', '..');
   if (process.argv[2] !== 'sync') {
     console.error('usage: bun diagram-viewer.ts sync');
     process.exit(1);
   }
   DIAGRAM_TEMPLATES.forEach((relative) => {
-    const path = join(pluginRoot, relative);
+    const path = join(PLUGIN_SOURCE_ROOT, relative);
     const html = readFileSync(path, 'utf-8');
     if (diagramViewerBlockOf(html) === null) {
       console.error(`${relative}: no ${START} … ${END} block in <head>`);

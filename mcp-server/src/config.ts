@@ -1,10 +1,10 @@
-import { dataDirOf } from '@/shared/naming';
+import { PLUGIN_SOURCE_ROOT, dataDirOf } from '@/shared/naming';
 import { agentHomePath, env, isAgentHome, loadedSecretKeyNames } from '@/shared/env';
 import { expandTilde } from '@/shared/paths';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const PLUGIN_ROOT = env('AGENT_PLUGIN_ROOT') ?? resolve(import.meta.dir, '..', '..');
+const PLUGIN_ROOT = env('AGENT_PLUGIN_ROOT') ?? PLUGIN_SOURCE_ROOT;
 
 const fromEnv = (key: string, fallback: string) => expandTilde(env(key) || fallback);
 

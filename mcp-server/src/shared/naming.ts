@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 
 /**
  * Agent naming — the bottom of the config stack: how env keys resolve, the name
@@ -28,9 +28,30 @@ import { resolve } from 'node:path';
 let cachedPluginName: string | undefined;
 let cachedEnvPrefix: string | undefined;
 
-// Resolved relative to this file, never an env var: wherever this code runs
-// from (repo checkout, marketplace cache, fork) IS the plugin whose name it is.
-const MANIFEST_PATH = resolve(import.meta.dir, '..', '..', '..', '.claude-plugin', 'plugin.json');
+const MANIFEST_FILE = join('.claude-plugin', 'plugin.json');
+
+/**
+ * The nearest folder at or above `dir` that holds a plugin manifest.
+ * Throws when there is none, since code outside a plugin has no root to name.
+ */
+export const pluginRootAbove = (dir: string): string => {
+  if (existsSync(join(dir, MANIFEST_FILE))) {
+    return dir;
+  }
+  const parent = dirname(dir);
+  if (parent === dir) {
+    throw new Error(`No ${MANIFEST_FILE} at or above this code, so the plugin root can't be found.`);
+  }
+  return pluginRootAbove(parent);
+};
+
+/**
+ * The folder this plugin's code runs from: a repo checkout, a marketplace cache or a fork.
+ * Found from this file, never an env var, so it is always the plugin whose code this is.
+ */
+export const PLUGIN_SOURCE_ROOT = pluginRootAbove(import.meta.dir);
+
+const MANIFEST_PATH = resolve(PLUGIN_SOURCE_ROOT, MANIFEST_FILE);
 
 const brokenManifest = (reason: string, cause?: unknown): Error =>
   new Error(

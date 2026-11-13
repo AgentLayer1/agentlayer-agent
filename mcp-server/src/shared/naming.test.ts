@@ -1,8 +1,16 @@
 import { afterAll, describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { RUNTIME_DIR, dataDirOf, legacyEnvPrefix, ownDataDir, pluginName } from './naming';
+import {
+  PLUGIN_SOURCE_ROOT,
+  RUNTIME_DIR,
+  dataDirOf,
+  legacyEnvPrefix,
+  ownDataDir,
+  pluginName,
+  pluginRootAbove,
+} from './naming';
 
 describe('legacyEnvPrefix', () => {
   // The fork seam, asserted in one place — every other test builds legacy key names
@@ -53,5 +61,32 @@ describe('ownDataDir', () => {
     const home = homeWith({});
     expect(ownDataDir(home)).toBeUndefined();
     expect(dataDirOf(home)).toBe(resolve(home, RUNTIME_DIR));
+  });
+});
+
+describe('pluginRootAbove', () => {
+  const roots: string[] = [];
+  afterAll(() => roots.forEach((root) => rmSync(root, { recursive: true, force: true })));
+
+  test('finds the folder holding the manifest from any depth below it', () => {
+    const root = realpathSync(mkdtempSync(resolve(tmpdir(), 'plugin-root-')));
+    roots.push(root);
+    const deep = resolve(root, 'a', 'b', 'c');
+    mkdirSync(deep, { recursive: true });
+    mkdirSync(resolve(root, '.claude-plugin'));
+    writeFileSync(resolve(root, '.claude-plugin', 'plugin.json'), '{}');
+    expect(pluginRootAbove(deep)).toBe(root);
+    expect(pluginRootAbove(root)).toBe(root);
+  });
+
+  test('throws when no folder above holds a manifest', () => {
+    const bare = realpathSync(mkdtempSync(resolve(tmpdir(), 'plugin-root-bare-')));
+    roots.push(bare);
+    expect(() => pluginRootAbove(bare)).toThrow('plugin root');
+  });
+
+  test('this plugin runs from the folder that holds its skills and hooks', () => {
+    expect(existsSync(resolve(PLUGIN_SOURCE_ROOT, 'skills'))).toBe(true);
+    expect(existsSync(resolve(PLUGIN_SOURCE_ROOT, 'hooks'))).toBe(true);
   });
 });
