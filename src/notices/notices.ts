@@ -66,6 +66,9 @@ export const syncLevel = (age: number | null): NoticeLevel | null => {
   return age >= SYNC_DAYS.hint ? 'hint' : null;
 };
 
+/** A home two or more releases behind is an alert; one behind is a nudge. */
+export const upgradeLevel = (releasesBehind: number): NoticeLevel => (releasesBehind >= 2 ? 'alert' : 'nudge');
+
 const upgradeNotice: NoticeSource = async () => {
   const status = getUpgradeStatus();
   if (status.state === 'current') {
@@ -84,7 +87,7 @@ const upgradeNotice: NoticeSource = async () => {
   }
   return {
     ...base,
-    level: status.releasesBehind >= 2 ? 'alert' : 'nudge',
+    level: upgradeLevel(status.releasesBehind),
     title: 'Upgrade ready',
     facts: [
       { text: `${status.baseline} → ${status.installed}`, tone: 'accent' },

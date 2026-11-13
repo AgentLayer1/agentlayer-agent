@@ -94,13 +94,15 @@ const CHANGELOG_PATH = resolve(FOLDERS.ROOT, 'CHANGELOG.md');
 /** Parse the plugin-root CHANGELOG.md into structured entries, newest first.
  *  Best-effort: a missing/garbled file yields []. */
 export const parseChangelog = (): ChangelogEntry[] => {
-  let raw: string;
   try {
-    raw = readFileSync(CHANGELOG_PATH, 'utf-8');
+    return parseChangelogText(readFileSync(CHANGELOG_PATH, 'utf-8'));
   } catch {
     return [];
   }
+};
 
+/** CHANGELOG text into structured entries, newest first. */
+export const parseChangelogText = (raw: string): ChangelogEntry[] => {
   const lines = raw.split(/\r?\n/);
   const entries: ChangelogEntry[] = [];
   let current: ChangelogEntry | null = null;
@@ -165,8 +167,11 @@ export const getUpgradeStatus = (): UpgradeStatus => {
   if (compareSemver(baseline, installed) >= 0) {
     return { state: 'current', baseline, installed, releasesBehind: 0 };
   }
-  const behind = parseChangelog().filter(
-    (entry) => compareSemver(entry.version, baseline) > 0 && compareSemver(entry.version, installed) <= 0
-  ).length;
-  return { state: 'pending', baseline, installed, releasesBehind: behind || 1 };
+  return { state: 'pending', baseline, installed, releasesBehind: releasesBetween(parseChangelog(), baseline, installed) };
 };
+
+/** Releases after `baseline` up to `installed`; at least one, since the two versions differ. */
+export const releasesBetween = (entries: readonly ChangelogEntry[], baseline: string, installed: string): number =>
+  entries.filter(
+    (entry) => compareSemver(entry.version, baseline) > 0 && compareSemver(entry.version, installed) <= 0
+  ).length || 1;

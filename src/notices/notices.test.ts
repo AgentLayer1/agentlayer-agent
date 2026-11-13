@@ -6,10 +6,9 @@ import { resolve } from 'node:path';
 import { FILES, PLUGIN_VERSION } from '@/config';
 import { nowISO, todayDate } from '@/shared/date';
 import { RUNTIME_DIR, pluginName } from '@/shared/naming';
-import { compareSemver, parseChangelog } from '@/version';
 import { readLedger, recordOutcome, stampRow } from './ledger';
 import type { Notice } from './notices';
-import { DOWNGRADE_AFTER, applyLedger, collectNotices, rowDraws, syncLevel } from './notices';
+import { DOWNGRADE_AFTER, applyLedger, collectNotices, rowDraws, syncLevel, upgradeLevel } from './notices';
 
 const withHome = async <T>(files: Record<string, string>, fn: () => Promise<T>): Promise<T> => {
   const home = mkdtempSync(resolve(tmpdir(), 'notices-test-'));
@@ -35,11 +34,8 @@ const versionAt = (version: string) => ({
 const syncedDaysAgo = (days: number) => ({
   'cadence.json': JSON.stringify({ sync: nowISO(new Date(Date.now() - days * 86_400_000)) })
 });
-const previousRelease = parseChangelog()
-  .map((entry) => entry.version)
-  .filter((version) => compareSemver(version, PLUGIN_VERSION) < 0)
-  .sort(compareSemver)
-  .at(-1);
+/** Older than any release, so a home recorded at it always has an upgrade waiting. */
+const OLDER = '0.0.1';
 
 const fixture: Notice = {
   id: 'fixture',
@@ -84,18 +80,16 @@ describe('sync escalation', () => {
 });
 
 describe('upgrade escalation', () => {
-  test('one release behind nudges, with the version jump as a fact', async () => {
-    expect(previousRelease).toBeDefined();
-    const [notice] = await withHome({ ...versionAt(previousRelease ?? ''), ...syncedDaysAgo(0) }, () =>
+  test('a home behind the installed version nudges, with the version jump as a fact', async () => {
+    const [notice] = await withHome({ ...versionAt(OLDER), ...syncedDaysAgo(0) }, () =>
       collectNotices()
     );
     expect(notice?.level).toBe('nudge');
-    expect(notice?.facts[0]).toEqual({ text: `${previousRelease} → ${PLUGIN_VERSION}`, tone: 'accent' });
+    expect(notice?.facts[0]).toEqual({ text: `${OLDER} → ${PLUGIN_VERSION}`, tone: 'accent' });
   });
 
-  test('two or more releases behind alerts', async () => {
-    const [notice] = await withHome({ ...versionAt('0.0.1'), ...syncedDaysAgo(0) }, () => collectNotices());
-    expect(notice?.level).toBe('alert');
+  test('two or more releases behind alerts', () => {
+    expect([upgradeLevel(1), upgradeLevel(2), upgradeLevel(5)]).toEqual(['nudge', 'alert', 'alert']);
   });
 
   test('a home with no recorded version nudges to turn tracking on', async () => {
@@ -107,7 +101,7 @@ describe('upgrade escalation', () => {
   });
 
   test('leads sync whatever their levels, since the upgrade ends in a sync', async () => {
-    const quiet = await withHome({ ...versionAt(previousRelease ?? ''), ...syncedDaysAgo(9) }, () => collectNotices());
+    const quiet = await withHome({ ...versionAt(OLDER), ...syncedDaysAgo(9) }, () => collectNotices());
     expect(quiet.map((notice) => [notice.id, notice.level])).toEqual([
       ['upgrade', 'nudge'],
       ['sync', 'alert']
