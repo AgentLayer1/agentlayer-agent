@@ -1,6 +1,6 @@
 ---
 name: dashboard
-description: Refresh and open the Agent OS dashboard — a static HTML mission-control page covering today's attention view and activity, work across projects, sessions, Kevin's brain, reports, capabilities, and system internals. A refresh snapshots the latest Claude Code sessions and regenerates both dashboard.html and projects/TASKS.md from current state, without the heavy sync work (no compile, flywheel, or briefing). Use when the user says "refresh the dashboard", "update the dashboard", "open the dashboard", or wants the big picture of what Kevin is and what's going on. Also "pin this report".
+description: Refresh and open the Agent OS dashboard — a static HTML mission-control page covering today's attention view and activity, work across projects, sessions, the agent's brain, reports, capabilities, and system internals. A refresh snapshots the latest Claude Code sessions and regenerates both dashboard.html and projects/TASKS.md from current state, without the heavy sync work (no compile, flywheel, or briefing). Use when the user says "refresh the dashboard", "update the dashboard", "open the dashboard", or wants the big picture of what the agent is and what's going on. Also "pin this report".
 allowed-tools: mcp__plugin_agentlayer_agent__dashboard, Skill(agentlayer:attention), Bash, Read, Edit, Write
 ---
 

@@ -695,7 +695,7 @@ ${radios}
 <main class="panels">
 ${panels}
 </main>
-<footer>Figures are Kevin's running estimate from the ledger and the published rates, for planning. Your tax agent's computation is the one that's filed.</footer>
+<footer>Figures are your agent's running estimate from the ledger and the published rates, for planning. Your tax agent's computation is the one that's filed.</footer>
 </div>
 </body>
 </html>

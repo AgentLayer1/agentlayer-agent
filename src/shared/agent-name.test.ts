@@ -1,4 +1,5 @@
-import { DEFAULT_AGENT_NAME, agentDisplayName, agentFormerNames, renameAgent, withoutFormerNames } from '@/shared/agent-name';
+import { agentDisplayName, agentFormerNames, renameAgent, withoutFormerNames } from '@/shared/agent-name';
+import { DEFAULT_AGENT_NAME } from '@/shared/persona';
 import { describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

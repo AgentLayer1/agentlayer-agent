@@ -75,7 +75,7 @@ echo "installed=$INSTALLED baseline=${BASELINE:-<none>} available=${AVAILABLE:-<
 ls "$PLUGIN_ROOT/CHANGELOG.md" >/dev/null 2>&1 || echo "NO CHANGELOG"
 ```
 
-Confirm `$HOME_DIR` is a real Kevin home (its `.state/version.json` records this plugin). If not, stop and tell
+Confirm `$HOME_DIR` is a real agent home (its `.state/version.json` records this plugin). If not, stop and tell
 the user to run this from their agent home (or set `AGENT_HOME`).
 
 **`GIT_CHECKOUT` → bring the plugin code current before reading versions.** Call
@@ -309,7 +309,7 @@ maps in `src/shared/retired-skills.ts`), whatever an older release's action name
 
 **codex wiring (always, when applicable)** — this home runs Codex when either holds:
 `$HOME_DIR/.codex/hooks.json` exists, or this session itself runs under Codex (the `<skill>`
-block wrapper; no Kevin context or tools yet is the symptom of an unwired home), so a home
+block wrapper; no agent context or tools yet is the symptom of an unwired home), so a home
 first run from Codex is wired then. When it holds, generate or regenerate the hooks and the
 `[mcp_servers.agent]` registration in `$HOME_DIR/.codex/config.toml` so both point at the
 checkout that just loaded (a version-pinned plugin cache moves on every release; under
@@ -358,7 +358,7 @@ bun "$PLUGIN_ROOT/skills/init/scripts/codex-user-config.ts" --home "$HOME_DIR" -
 
 On native Windows (Git Bash, where `uname -s` starts with `MINGW` or `MSYS`) the step runs
 the same way; add one line to the report that Codex on Windows is unverified (the wiring is
-shaped to parse under the PowerShell Codex uses there, but Kevin's skills are bash).
+shaped to parse under the PowerShell Codex uses there, but the agent's skills are bash).
 
 `hooks.changed: true` means the hook commands are new or moved and Codex does not trust them
 yet: carry the re-trust line into the Step 6 report, and for a first wiring add the two
@@ -680,8 +680,8 @@ One concise summary:
   `ask` to keep it out), each privacy opt-out added, and the traffic kill removed from which file,
   with `/design`, artifacts and Remote Control back from the next session
 - **Codex hooks re-trust, whenever the regeneration reported `changed: true`:** "Run
-  `/hooks` in your next Codex session from this home and trust the 4 Kevin entries;
-  until then Codex starts without Kevin's context and captures nothing." Verbatim, every time.
+  `/hooks` in your next Codex session from this home and trust the 4 agent entries;
+  until then Codex starts without the agent's context and captures nothing." Verbatim, every time.
 
 **Mention the first-session lag when the harness version moved.** Claude Code's built-in
 auto-mode default only takes hold from the *second* session after an upgrade that

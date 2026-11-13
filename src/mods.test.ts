@@ -8,7 +8,7 @@ import { isValidTransition } from './tasks/schema';
 import type { TaskStatus } from './shared/types';
 import { MOD_FEATURES } from '../mods/shared/catalog';
 import { DEFAULT_AGENT_NAME as MODS_DEFAULT_NAME } from '../mods/shared/agent';
-import { DEFAULT_AGENT_NAME } from '@/shared/agent-name';
+import { DEFAULT_AGENT_NAME } from '@/shared/persona';
 
 describe('mods', () => {
   test("the instruction loader marks an agent home with the runtime's own marker files", () => {

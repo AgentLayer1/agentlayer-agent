@@ -3,7 +3,7 @@ name: browser-flows
 description: >
   Drive a website in a VISIBLE browser to run real, repeatable flows end to end —
   scrape a page into structured data, fill a form, or click through a multi-step
-  task. Kevin opens a headed Chrome and (only when a flow needs it) waits for you
+  task. The agent opens a headed Chrome and (only when a flow needs it) waits for you
   to log in by hand — your real session, no API keys. Flows are pluggable, one
   folder each; `hacker-news` is the reference example. Triggers on plain
   instructions like "digest the top Hacker News stories", naming a flow, or
@@ -53,11 +53,11 @@ The axis is **fixture vs secret**, not a single file. A flow reads from three pl
 
 A flow resolves each field `params.x ?? process.env.SECRET ?? config.x ?? default`.
 
-**config.json** is the everyday QA surface — structured test data you (and Kevin) can see and edit. Most sandbox QA lives entirely here; `.env` stays empty. The harness auto-loads it beside the flow's `index.ts` and hands it to the flow as `config` (declare a `Config` interface and call `runFlow<Config>(...)` for type safety). It's committed, so keep only non-secret fixtures in it.
+**config.json** is the everyday QA surface — structured test data you (and the agent) can see and edit. Most sandbox QA lives entirely here; `.env` stays empty. The harness auto-loads it beside the flow's `index.ts` and hands it to the flow as `config` (declare a `Config` interface and call `runFlow<Config>(...)` for type safety). It's committed, so keep only non-secret fixtures in it.
 
 **`.env`** is the thin secret overlay for the day a value must NOT be readable or committed (a real card against staging, a live password). The dispatcher loads it and injects it into **that flow's child alone** (scoped — one flow's secrets never reach another); the flow reads it from `process.env`. Values never pass through a param, never enter the conversation, and are unreadable by the agent's own Read/Bash. The run result lists the loaded key **names** only.
 
-- `.env` is always in **HOME**, never the plugin repo — beside a HOME flow's `index.ts`, or a same-named folder holding just `.env` for a built-in flow. The loader **refuses** anything under `.state/secrets/`, so a flow can't reach Kevin's own operational keys (genuinely-shared secrets go in `.state/secrets/.env`, inherited by all flows and overridden by a flow's own `.env`).
+- `.env` is always in **HOME**, never the plugin repo — beside a HOME flow's `index.ts`, or a same-named folder holding just `.env` for a built-in flow. The loader **refuses** anything under `.state/secrets/`, so a flow can't reach the agent's own operational keys (genuinely-shared secrets go in `.state/secrets/.env`, inherited by all flows and overridden by a flow's own `.env`).
 - Ship a committed `.env.example` (the one `.env*` git tracks) listing the secret keys a flow expects; the real `.env` stays local.
 - A flow author's one rule: read secrets from `process.env`, and **never `log()` a secret value** — flow stdout is captured into the result.
 

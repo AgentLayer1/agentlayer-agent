@@ -66,7 +66,7 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
     kind: 'AI assistant (Claude Code plugin)',
     vibe: 'Sharp but approachable, slightly funny.',
     emoji: '🍌',
-    avatar: 'assets/kevin-avatar.jpg',
+    avatar: 'assets/oppi-avatar.jpg',
     bio: 'A personal AI assistant that runs as a Claude Code plugin.',
     identitySections: [{ title: 'Core Role', lines: ['General-purpose personal assistant'] }],
     soulSections: [{ title: 'Vibe', lines: ['Concise by default. Walls of text are a crime.'] }]
@@ -549,19 +549,19 @@ describe('renderDashboardHtml', () => {
     const base = makeSnapshot();
     const renamed = renderDashboardHtml({ ...base, persona: { ...base.persona, name: 'Scout', emoji: '🦉' } });
     expect(renamed).toContain('===SCOUT=== 🦉');
-    expect(renamed).not.toContain('===KEVIN===');
+    expect(renamed).not.toContain('===OPPI===');
     const noEmoji = renderDashboardHtml({ ...base, persona: { ...base.persona, name: 'Scout', emoji: '' } });
-    expect(noEmoji).toContain('===SCOUT=== 🍌');
+    expect(noEmoji).toContain('===SCOUT=== 🐙');
     const unfilled = renderDashboardHtml({
       ...base,
       persona: { ...base.persona, name: 'Scout', emoji: '{{AGENT_EMOJI}}' }
     });
-    expect(unfilled).toContain('===SCOUT=== 🍌');
+    expect(unfilled).toContain('===SCOUT=== 🐙');
   });
 
   test('persona page renders Kevin from IDENTITY/SOUL, not file names', () => {
     const html = renderDashboardHtml(makeSnapshot());
-    expect(html).toContain('src="assets/kevin-avatar.jpg"');
+    expect(html).toContain('src="assets/oppi-avatar.jpg"');
     expect(html).toContain('Sharp but approachable, slightly funny.');
     expect(html).toContain('A personal AI assistant that runs as a Claude Code plugin.');
     expect(html).toContain('Concise by default. Walls of text are a crime.');

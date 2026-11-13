@@ -4,7 +4,7 @@ Drive a real website in a **visible browser** to run repeatable, end-to-end flow
 
 ## What it is
 
-A Claude Code skill that exposes one MCP tool, **`browser_flows`**, which runs a *flow* — a small TypeScript program that drives Playwright. Flows live one-folder-each under `flows/`. The skill is manual-invoke only (`/agentlayer:browser-flows`); Kevin calls the tool with a flow name + params.
+A Claude Code skill that exposes one MCP tool, **`browser_flows`**, which runs a *flow* — a small TypeScript program that drives Playwright. Flows live one-folder-each under `flows/`. The skill is manual-invoke only (`/agentlayer:browser-flows`); the agent calls the tool with a flow name + params.
 
 The reference flow is **`hacker-news`** — scrape the HN front page into a digest. Copy it to build your own.
 

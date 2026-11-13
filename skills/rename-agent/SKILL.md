@@ -12,7 +12,7 @@ Change what this agent calls itself. The display name is data in `IDENTITY.md`; 
 namespace is code in the plugin manifest. This skill moves the first and never the
 second.
 
-> **The home folder keeps its name.** A home at `~/Documents/Agents/Kevin` stays there:
+> **The home folder keeps its name.** A home at `~/Documents/Agents/Vega` stays there:
 > session history, the brain's version history and the home's settings are all keyed to
 > that path, and moving it is a separate manual job this skill never does. Tell the
 > operator this before Step 2.
@@ -31,7 +31,7 @@ Two gates, both intentional: don't "fix" either by adding a grant.
 | Markdown in `SOUL.md`, `AGENTS.md`, `USER.md`, `.claude/CLAUDE.md`, `.claude/rules/` | Dated records: `reports/`, `knowledge/raw/` (sessions, feedback, inbox), and every `archive/` folder |
 | Markdown in `knowledge/` and `projects/` | Anything that isn't markdown: code, HTML (a roadmap, an issued letter), JSON |
 | `projects/TASKS.md` and `dashboard.html`, regenerated | Custom skills in `.claude/skills/`: listed for the operator, never written |
-| | `/agent-kevin:*` slash commands and `mcp__plugin_agent-kevin_kevin__*` tool names |
+| | `/agentlayer:*` slash commands and `mcp__plugin_agentlayer_agent__*` tool names |
 
 Dated records keep the name they were written under. The `- **Formerly:**` line in
 `IDENTITY.md`, loaded every session and read by the compile prompts, is what tells the
@@ -39,15 +39,15 @@ agent that the old name in them means itself.
 
 The slash commands and tool names are plumbing from the plugin manifest; changing them
 means forking the plugin and giving up clean updates. Say so if the operator asks why
-their slash commands still say `agent-kevin`.
+their slash commands still say `agentlayer`.
 
 ## How the rename decides
 
 `scripts/rename-agent.ts` does all the reading and writing with the rule seed export
 uses (`renameAgent` in `src/shared/agent-name.ts`): exact case, whole word, and
-never a name touching a letter, digit, `-`, `/` or `\`. So `Kevin's`, `_Kevin_` and `Kevin.`
-rename, while `~/Documents/Agents/Kevin/`, `Documents-Agents-Kevin.git`, `X-Kevin-Test` and a
-mention already inside the new name (`Kevin Prime`) stay. It reads only `.md` files, skips
+never a name touching a letter, digit, `-`, `/` or `\`. So `Vega's`, `_Vega_` and `Vega.`
+rename, while `~/Documents/Agents/Vega/`, `Documents-Agents-Vega.git`, `X-Vega-Test` and a
+mention already inside the new name (`Vega Prime`) stay. It reads only `.md` files, skips
 hidden folders other than the bridge and rules, any file that isn't clean UTF-8 (a rewrite
 would mangle it), and every symlink, so a file shared beyond this home is never written
 through; a symlinked `IDENTITY.md` stops the run. Don't reproduce it with `sed`, `perl` or `rg`.
@@ -90,7 +90,7 @@ it in parts until you've seen all of it:
 
 Read every `hits` line, not the count. The one false-positive class is the old name
 meaning something other than this agent: a person, a character the agent was named
-after ("Inspired by the minion Kevin"), a product or repo that shares the name, a quoted
+after (a character in a film or book), a product or repo that shares the name, a quoted
 upstream doc. Show the operator the totals and each line you'd keep as-is, and agree on
 the keep list before writing. A keep covers the whole line: when one line names both this
 agent and someone else, keep it and fix the agent's mention with `Edit` after Step 3.
@@ -121,7 +121,7 @@ header from the `Name`, `Kind`, `Vibe` (or `Register`) and `Emoji` fields and th
 image in the file; the session banner shows the `Name`, the status line and `/today` the `Emoji`.
 
 - `- **Emoji:** <new>` if they want a different one.
-- **Keeping the old image:** if its filename carries the old name (`kevin-avatar.jpg`),
+- **Keeping the old image:** if its filename carries the old name (`vega-avatar.jpg`),
   rename the file with plain `mv` (never `git mv`, which stages in the operator's repo) to
   `assets/<newname-lowercased>-avatar.<ext>` and repoint both the `![...](path)`
   line and the `- **Avatar:**` line.
@@ -147,11 +147,11 @@ the agent can't write. Then hand back, in a few lines:
 
 ## Notes
 
-- **Future upgrades respect this.** `/agent-kevin:upgrade` resolves `{{AGENT_NAME}}` in
+- **Future upgrades respect this.** `/agentlayer:upgrade` resolves `{{AGENT_NAME}}` in
   the shipped templates from this home's `IDENTITY.md` before diffing, so template
   changes arrive phrased in the new name and never propose reverting it.
 - **Multiple homes from one plugin** are a supported setup (a work agent and a personal
-  one, same `agent-kevin` install). They stay isolated by location, not by name, so
+  one, same `agentlayer` install). They stay isolated by location, not by name, so
   renaming one has no effect on the other.
 - **This is not a fork.** If the operator actually wants their own slash-command
   namespace, that's a plugin fork: change `name` in

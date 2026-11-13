@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="assets/kevin-avatar.jpg" alt="Kevin" width="180" />
+<img src="assets/oppi-avatar.jpg" alt="AgentLayer" width="180" />
 
-# Agent Kevin 🍌
+# AgentLayer
 
 **Your personal AI assistant, as a Claude Code or Codex plugin.**
 One markdown folder, one plugin, a brain that learns who you are session after session.
@@ -22,9 +22,9 @@ One markdown folder, one plugin, a brain that learns who you are session after s
 
 ---
 
-## What is Kevin?
+## What is it?
 
-Kevin is a portable, file-based personal AI assistant that plugs into the agent CLI you already use, [Claude Code](https://docs.claude.com/en/docs/claude-code) or [OpenAI Codex](https://developers.openai.com/codex). Everything that makes Kevin *Kevin* (personality, memory, knowledge, projects, tasks) lives in your own directory as plain markdown. Any AI can read it. You can browse it in Obsidian or Finder. If you ever want to leave, you take the folder and go.
+AgentLayer is a portable, file-based personal AI assistant that plugs into the agent CLI you already use, [Claude Code](https://docs.claude.com/en/docs/claude-code) or [OpenAI Codex](https://developers.openai.com/codex). Everything that makes your agent yours (personality, memory, knowledge, projects, tasks) lives in your own directory as plain markdown. Any AI can read it. You can browse it in Obsidian or Finder. If you ever want to leave, you take the folder and go.
 
 It is not a chat wrapper. It is an operating system for personal AI:
 
@@ -32,7 +32,7 @@ It is not a chat wrapper. It is an operating system for personal AI:
 - A **33-skill library**, related work grouped into one skill with playbooks (briefing, goals, SEO, attention, engineering), covering onboarding, version history, project lifecycle, a daily attention view with standup and a session radar, goals from the day to the year, morning and evening briefings, tax deadlines and bookkeeping, a support queue pulse and reply drafts, trip planning, worktree setup, API-request drafting, read-only SEO auditing, and audio and video transcripts and summaries.
 - A **knowledge pipeline** that turns every conversation into structured, queryable memory.
 - **Opt-in packs** (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, Slack) and a bridge to community skill libraries via [skills.sh](https://skills.sh).
-- **You drive.** Ask in plain words and Kevin picks the skill and playbook; nothing runs unasked, and you never have to remember a command.
+- **You drive.** Ask in plain words and your agent picks the skill and playbook; nothing runs unasked, and you never have to remember a command.
 
 ```mermaid
 graph LR
@@ -53,7 +53,7 @@ You need **Bun ≥ 1.4.4**, **Git**, and a host: **Claude Code** or **Codex**. F
 Pick a home for the brain, then install the plugin from it:
 
 ```bash
-mkdir -p ~/Documents/Agents/Kevin && cd ~/Documents/Agents/Kevin
+mkdir -p ~/Documents/Agents/Oppi && cd ~/Documents/Agents/Oppi
 ```
 
 | Claude Code | Codex |
@@ -91,7 +91,7 @@ This README is the short version. Everything lives at **[agentlayer.one/docs](ht
 ## Highlights
 
 <div align="center">
-<img src="assets/dashboard.png" alt="Kevin Agent OS dashboard" width="720" />
+<img src="assets/dashboard.png" alt="Agent OS dashboard" width="720" />
 </div>
 
 - **Memory that compounds.** Hooks capture every session; the `knowledge-compile` skill distils them into user facets, concept articles, and active memory that load next launch. → [The brain](https://agentlayer.one/docs/platform/the-brain)
@@ -105,7 +105,7 @@ This README is the short version. Everything lives at **[agentlayer.one/docs](ht
 - **Multiple homes, multiple personas.** One plugin install, separate brains, told apart by the launch folder. → [Multiple agents](https://agentlayer.one/docs/platform/multiple-agents)
 - **Hand an agent to a teammate.** A seed bundle carries persona, curated knowledge, and setup with fork semantics; credentials travel as names only. → [Seed bundles](https://agentlayer.one/docs/platform/seed-bundles)
 - **Subscription-billed.** The MCP server returns prompts; your session does the thinking on your host's plan. → [Hosts](https://agentlayer.one/docs/agent/hosts#billing)
-- **Private by construction.** Secrets in a deny-gated store Kevin cannot read, transcripts redacted before they persist. → [Privacy](https://agentlayer.one/docs/about/privacy)
+- **Private by construction.** Secrets in a deny-gated store the agent cannot read, transcripts redacted before they persist. → [Privacy](https://agentlayer.one/docs/about/privacy)
 
 ---
 
@@ -117,7 +117,7 @@ Pull the new plugin version on your host (`/plugin update agentlayer@agentlayer`
 
 ## Contributing
 
-Pull requests welcome: new opt-in packs, read-mostly MCP tools, platform hardening, docs. Open an issue first for architectural changes; Kevin's contract with the markdown home is intentional. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Pull requests welcome: new opt-in packs, read-mostly MCP tools, platform hardening, docs. Open an issue first for architectural changes; the plugin's contract with the markdown home is intentional. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

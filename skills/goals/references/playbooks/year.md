@@ -1,6 +1,6 @@
 # Year — outcomes quarter by quarter (`/goals year`)
 
-The longest planning horizon Kevin keeps. Quarters, not weeks: each quarter gets 1-3 outcomes with a falsifiable end-of-quarter check. Monthly themes ladder up into these; weekly goals ladder into monthly.
+The longest planning horizon the agent keeps. Quarters, not weeks: each quarter gets 1-3 outcomes with a falsifiable end-of-quarter check. Monthly themes ladder up into these; weekly goals ladder into monthly.
 
 ## Which quarters to plan
 

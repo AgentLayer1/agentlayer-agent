@@ -2,9 +2,9 @@
  * Fills dashboard.html with a StatusSnapshot — the Agent OS dashboard at
  * `<HOME>/dashboard.html`.
  *
- * Life-OS framing: a left sidebar (Kevin's wordmark + pages + operator card)
+ * Life-OS framing: a left sidebar (the agent's wordmark + pages + operator card)
  * and operator-first pages — Today, Work, Sessions, Brain, Reports,
- * Capabilities, Profile (the operator), Persona (Kevin), System.
+ * Capabilities, Profile (the operator), Persona (the agent), System.
  *
  * Markdown links open through a configurable app URL template (obsidian://
  * by default, e.g. markedit:// via the MARKDOWN_URL env var) so tasks,
@@ -66,7 +66,7 @@ export const PAGES = [
   { id: 'scheduler', icon: '⏰', label: 'Scheduler' },
   { id: 'capabilities', icon: '🧩', label: 'Capabilities' },
   { id: 'profile', icon: '👤', label: 'Profile', hidden: true },
-  { id: 'persona', icon: '🍌', label: 'Persona' },
+  { id: 'persona', icon: '🐙', label: 'Persona' },
   { id: 'system', icon: '⚙️', label: 'System' },
   { id: 'status', icon: '🩺', label: 'Status', hidden: true }
 ] as const;
@@ -1483,7 +1483,7 @@ const pageProfile = (snap: StatusSnapshot): string => {
   const avatar = operator.avatar ? `<img src="${esc(operator.avatar)}" alt="${esc(operator.name || 'avatar')}">` : '';
   const head = `<div class="persona-head">${avatar}<div><div class="p-name">${esc(operator.name || 'Operator')}</div><div class="p-kind">${operatorTimezone(operator)}</div><div class="p-vibe">${esc(operator.headline || 'The operator profile grows as you work together.')}</div></div></div>`;
 
-  // The compiled profile facet, section by section — the page Kevin would
+  // The compiled profile facet, section by section — the page the agent would
   // write about you, not a list of file names.
   const profileSections = operator.profileSections
     .map((profileSection) =>

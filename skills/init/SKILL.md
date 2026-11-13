@@ -1,6 +1,6 @@
 ---
 name: init
-description: Guided first-run onboarding for the agentlayer plugin. Walks through Kevin's character (SOUL), role (IDENTITY), your basics (name, timezone), an optional web pull from your blog/site/LinkedIn/etc., your projects, goals, company and documents, and communication style — then scaffolds AGENTS.md (the harness-neutral operating manual), .claude/CLAUDE.md (the Claude Code bridge that @-imports it plus the identity stack), SOUL.md, IDENTITY.md, USER.md, .claude/settings.json, and seeds four system-architecture concept articles into knowledge/concepts/. If an AGENTS.md already exists at the home directory, Kevin's manual is appended to it; a pre-existing CLAUDE.md is never touched. Skill packs are configured inline at the end or via /agentlayer:configure-skills any time later. Invoke once after installing the plugin.
+description: Guided first-run onboarding for the agentlayer plugin. Walks through the agent's character (SOUL), role (IDENTITY), your basics (name, timezone), an optional web pull from your blog/site/LinkedIn/etc., your projects, goals, company and documents, and communication style — then scaffolds AGENTS.md (the harness-neutral operating manual), .claude/CLAUDE.md (the Claude Code bridge that @-imports it plus the identity stack), SOUL.md, IDENTITY.md, USER.md, .claude/settings.json, and seeds four system-architecture concept articles into knowledge/concepts/. If an AGENTS.md already exists at the home directory, the agent's manual is appended to it; a pre-existing CLAUDE.md is never touched. Skill packs are configured inline at the end or via /agentlayer:configure-skills any time later. Invoke once after installing the plugin.
 disable-model-invocation: true
 allowed-tools: Read, Write, Edit, AskUserQuestion, WebFetch, mcp__plugin_agentlayer_agent__codex_setup, mcp__plugin_agentlayer_agent__home_history, mcp__plugin_agentlayer_agent__run_upgrade, Bash(mkdir *), Bash(cp *), Bash(cat *), Bash(ls *), Bash(find *), Bash(git config *), Bash(readlink *), Bash(uname *), Bash(date *), Bash(echo *), Bash(test *), Bash([ *), Bash(grep *), Bash(printf *), Bash(sed *), Bash(bun *), Bash(unzip -l *)
 ---
@@ -11,24 +11,22 @@ allowed-tools: Read, Write, Edit, AskUserQuestion, WebFetch, mcp__plugin_agentla
 
 Guided onboarding. Follow the steps in order — each step's answers become defaults for later ones.
 
-**On the name "Kevin" below.** This plugin ships a default persona called Kevin, and
-Step 1b lets the operator call their agent something else. Two different things wear
-that name in this file, and they are not treated the same:
+**On "the agent" below.** A new agent is called Oppi until the operator picks a name in
+Step 1b. Two different things are named in this file, and they are not treated the same:
 
 - **The agent's display name.** Every prompt, banner, and status line you show the
   operator, and every word you write into `SOUL.md` / `IDENTITY.md` / `USER.md` /
-  `AGENTS.md`, uses `<AGENT_NAME>` from Step 1b. Where the prose below says "Kevin" in
-  a sentence addressed to the operator, substitute it. Before Step 1b the name isn't
+  `AGENTS.md`, uses `<AGENT_NAME>` from Step 1b. Where the prose below says "the agent"
+  in a sentence addressed to the operator, use that name. Before Step 1b the name isn't
   known yet, so say "your agent" rather than guessing.
-- **The plugin.** `agentlayer`, `/agentlayer:*`, `.state/`,
-  `kevin-avatar.jpg`. These are the product and its namespace, not the
-  persona. They stay exactly as written no matter what the operator picks.
+- **The plugin.** `agentlayer`, `/agentlayer:*`, `.state/`. These are the product and its
+  namespace, not the persona. They stay exactly as written no matter what the operator picks.
 
 ---
 
 ## Step 0 — Resolve HOME and check idempotency
 
-Kevin's home is **the current working directory** — whatever directory the user launched `claude` from (`AGENT_HOME` overrides it; set it only on a machine with exactly one agent home, see Step 9). The convention for a fresh home is **`~/Documents/Agents/<AgentName>`**: the brain lives in Documents as a browsable vault, and code repos live flat in a separate tree (e.g. `~/Developer/<Org>/<repo>`) — never inside the home. Init scaffolds into cwd only, so when cwd isn't where the home should live, the fix is to relaunch from the right directory, not to scaffold remotely.
+The agent's home is **the current working directory** — whatever directory the user launched `claude` from (`AGENT_HOME` overrides it; set it only on a machine with exactly one agent home, see Step 9). The convention for a fresh home is **`~/Documents/Agents/<AgentName>`**: the brain lives in Documents as a browsable vault, and code repos live flat in a separate tree (e.g. `~/Developer/<Org>/<repo>`) — never inside the home. Init scaffolds into cwd only, so when cwd isn't where the home should live, the fix is to relaunch from the right directory, not to scaffold remotely.
 
 ```bash
 HOME_DIR="${AGENT_HOME:-$PWD}"
@@ -51,9 +49,9 @@ any project the plugin is installed into, and init appends to it when it does.)
 
 Act on the probes before anything else:
 
-- **`CWD_IS_A_REPO`** — cwd is inside a git work tree that isn't a Kevin home: almost certainly a code repo, and scaffolding a brain into a repo pollutes it (SOUL.md, knowledge/, `.state/` all land in the working tree). `AskUserQuestion`:
+- **`CWD_IS_A_REPO`** — cwd is inside a git work tree that isn't an agent home: almost certainly a code repo, and scaffolding a brain into a repo pollutes it (SOUL.md, knowledge/, `.state/` all land in the working tree). `AskUserQuestion`:
 
-  > **This looks like a code repo, not a home for Kevin's brain.** You launched `claude` in `<HOME_DIR>`, which is a git repository without a Kevin scaffold. Where should the home live?
+  > **This looks like a code repo, not a home for the agent's brain.** You launched `claude` in `<HOME_DIR>`, which is a git repository without an agent scaffold. Where should the home live?
   > - **`~/Documents/Agents/<AgentName>` (recommended)** — exit, `mkdir -p` it, relaunch `claude` there, re-run `/agentlayer:init`
   > - **Here anyway** — I understand the scaffold lands inside this repo
 
@@ -80,11 +78,11 @@ echo "AGENT_PLATFORM=$AGENT_PLATFORM"
 
 Carry `$AGENT_PLATFORM` and `$PLATFORM_LABEL` through the rest of the walk.
 
-**Detect the harness.** Kevin runs under Claude Code or OpenAI Codex, and a few later steps differ by host. Codex wraps this skill's text in a `<skill>` block with a `<path>`, invokes skills as `$name`, and delivers Kevin's identity stack as a `developer` message whose first line reads `<!-- kevin static context · harness: codex …`; Claude Code prefixes the skill with `Base directory for this skill:` and loads the stack through the `.claude/CLAUDE.md` `@-imports`. Set `AGENT_HARNESS` to `codex` or `claude` and carry it through the walk.
+**Detect the harness.** The agent runs under Claude Code or OpenAI Codex, and a few later steps differ by host. Codex wraps this skill's text in a `<skill>` block with a `<path>`, invokes skills as `$name`, and delivers the agent's identity stack as a `developer` message whose first line reads `<!-- agent static context · harness: codex …`; Claude Code prefixes the skill with `Base directory for this skill:` and loads the stack through the `.claude/CLAUDE.md` `@-imports`. Set `AGENT_HARNESS` to `codex` or `claude` and carry it through the walk.
 
 **Resolve the plugin checkout.** `$PLUGIN_ROOT` is the directory this skill loaded from: two levels above the skill's base directory (the `Base directory for this skill:` line under Claude Code, the `<skill>` block's `<path>` under Codex). Under Claude Code that is the same path as `${CLAUDE_PLUGIN_ROOT}`; wherever a later step says `${CLAUDE_PLUGIN_ROOT}`, use `$PLUGIN_ROOT`.
 
-**Check prerequisites — bail early if a show-stopper is missing.** Kevin's MCP server, all four hooks, and the CLI launch via `bun`, so it's a hard requirement; `git` backs the version-controlled knowledge tree, the session git-activity context, and worktrees. `python3` is **optional but recommended** — Kevin is TypeScript-first, but some tooling and integrations still reach for Python, so having it on PATH avoids friction later. `uv` is **recommended** alongside it: the manual runs Python scripts through `uv run --with <packages>`, and without `uv` the agent is left with `pip`, which the Python guard below denies. On macOS both `git` and `python3` come with the Xcode Command Line Tools (`xcode-select --install`); neither needs Homebrew. `gh` is **conditional**: nothing else uses it, but every GitHub-pack tool shells out to it — including `github_fast_forward`, which is what keeps the code checkouts current during `/agentlayer:sync`. It is not bundled with Claude Code or this plugin, so on macOS it means Homebrew (`brew install gh`) and on Windows winget (`winget install --id GitHub.cli`). Probing it here turns a mid-session throw into a note the operator can act on before they tick the pack. `poppler` is **optional** as well: the Read tool renders PDF pages through its `pdftoppm` binary, so install it (macOS `brew install poppler`, Linux `poppler-utils`, Windows `winget install --id oschwartz10612.Poppler`) if you want Kevin to read PDF files. On **native Windows**, Kevin runs through **Git Bash** (the shell Claude Code uses for its Bash tool) — that's the supported Windows path and supplies the POSIX environment Kevin's commands assume; **WSL2** also works if you prefer a full Linux userland.
+**Check prerequisites — bail early if a show-stopper is missing.** The agent's MCP server, all four hooks, and the CLI launch via `bun`, so it's a hard requirement; `git` backs the version-controlled knowledge tree, the session git-activity context, and worktrees. `python3` is **optional but recommended** — the agent is TypeScript-first, but some tooling and integrations still reach for Python, so having it on PATH avoids friction later. `uv` is **recommended** alongside it: the manual runs Python scripts through `uv run --with <packages>`, and without `uv` the agent is left with `pip`, which the Python guard below denies. On macOS both `git` and `python3` come with the Xcode Command Line Tools (`xcode-select --install`); neither needs Homebrew. `gh` is **conditional**: nothing else uses it, but every GitHub-pack tool shells out to it — including `github_fast_forward`, which is what keeps the code checkouts current during `/agentlayer:sync`. It is not bundled with Claude Code or this plugin, so on macOS it means Homebrew (`brew install gh`) and on Windows winget (`winget install --id GitHub.cli`). Probing it here turns a mid-session throw into a note the operator can act on before they tick the pack. `poppler` is **optional** as well: the Read tool renders PDF pages through its `pdftoppm` binary, so install it (macOS `brew install poppler`, Linux `poppler-utils`, Windows `winget install --id oschwartz10612.Poppler`) if you want the agent to read PDF files. On **native Windows**, the agent runs through **Git Bash** (the shell Claude Code uses for its Bash tool) — that's the supported Windows path and supplies the POSIX environment the agent's commands assume; **WSL2** also works if you prefer a full Linux userland.
 
 ```bash
 # Probe FUNCTIONALLY, never with `command -v`. On macOS /usr/bin/git and
@@ -95,9 +93,9 @@ Carry `$AGENT_PLATFORM` and `$PLATFORM_LABEL` through the rest of the walk.
 # Verified 2026-08-05: with the developer dir unresolvable, `command -v git`
 # passes while `git --version` exits 1.
 MISSING=()
-bun --version >/dev/null 2>&1 || MISSING+=("bun  — runs Kevin's MCP server, hooks, and CLI · https://bun.sh")
+bun --version >/dev/null 2>&1 || MISSING+=("bun  — runs the agent's MCP server, hooks, and CLI · https://bun.sh")
 git --version >/dev/null 2>&1 || MISSING+=("git  — version-controls your knowledge tree, powers worktrees · https://git-scm.com")
-python3 --version >/dev/null 2>&1 || echo "NOTE: python3 not found (optional but recommended — occasionally needed for tooling/interop even though Kevin is TypeScript-first)."
+python3 --version >/dev/null 2>&1 || echo "NOTE: python3 not found (optional but recommended — occasionally needed for tooling/interop even though the agent is TypeScript-first)."
 uv --version >/dev/null 2>&1 || echo "NOTE: uv not found (recommended — the manual runs Python scripts through 'uv run --with <packages>', a throwaway environment per run, so no Python on this machine gets packages installed: https://docs.astral.sh/uv)."
 command -v pdftoppm >/dev/null 2>&1 || echo "NOTE: pdftoppm not found (optional — install poppler so the Read tool can render PDFs: macOS 'brew install poppler', Linux 'poppler-utils', Windows 'winget install --id oschwartz10612.Poppler', then confirm 'pdftoppm -v' in a new terminal)."
 command -v gh >/dev/null 2>&1 || echo "NOTE: gh not found (needed ONLY if you activate the GitHub pack at Step 8 — that pack's tools, including the sync code-refresh, shell out to it: macOS 'brew install gh', Windows 'winget install --id GitHub.cli', https://cli.github.com)."
@@ -110,7 +108,7 @@ if [ "$AGENT_PLATFORM" = "macos" ] && ! xcode-select -p >/dev/null 2>&1; then
   echo "XCODE_CLT_MISSING"
 fi
 
-# Homebrew is NOT a Kevin dependency — nothing here ever calls it. It's only the
+# Homebrew is NOT an agent dependency — nothing here ever calls it. It's only the
 # install path for gh/poppler on macOS, so it's worth a line just when one of
 # those is actually missing and the operator would otherwise hit a second wall.
 if [ "$AGENT_PLATFORM" = "macos" ] && ! command -v brew >/dev/null 2>&1; then
@@ -138,7 +136,7 @@ Act on the result **before** anything else:
 
 - **`MISSING` non-empty** — print the block below verbatim (one line per missing tool) and **STOP**:
 
-  > 🛑 **Missing prerequisites.** Kevin can't run until these are installed:
+  > 🛑 **Missing prerequisites.** The agent can't run until these are installed:
   >
   > `<each MISSING line>`
   >
@@ -191,7 +189,7 @@ gets settings and hooks the host cannot honour.
 
 ## Step 1 — Banner + intro
 
-Print the welcome banner inside a fenced code block (the fence preserves the ASCII art literally). Its last line is `===<NAME>=== <EMOJI>`: the home's own name in capitals and its emoji from IDENTITY.md on a re-run, `===KEVIN=== 🍌` on a fresh home:
+Print the welcome banner inside a fenced code block (the fence preserves the ASCII art literally). Its last line is `===<NAME>=== <EMOJI>`: the home's own name in capitals and its emoji from IDENTITY.md on a re-run, `===OPPI=== 🐙` on a fresh home:
 
 ````
 ```
@@ -202,13 +200,13 @@ Print the welcome banner inside a fenced code block (the fence preserves the ASC
 ```
 ````
 
-Then below the banner, plain prose (no leading whitespace, no numbered lists — the question-mark glyph signals "step Kevin will ask you about"):
+Then below the banner, plain prose (no leading whitespace, no numbered lists — the question-mark glyph signals "a step the agent will ask you about"):
 
 > Welcome. Your agent will set up here: `<HOME_DIR>`.
 >
 > This onboarding takes about 5 minutes and walks through seven steps:
 >
-> ❓ What to call your agent (default: Kevin)
+> ❓ What to call your agent (default: Oppi)
 > ❓ Starting from a teammate's seed bundle? (applied automatically after the scaffold)
 > ❓ <AGENT_NAME>'s character, accept or refine
 > ❓ <AGENT_NAME>'s role, accept or refine
@@ -228,14 +226,14 @@ Then below the banner, plain prose (no leading whitespace, no numbered lists —
 
 ## Step 1b — Name the agent
 
-The plugin is called `agentlayer`, but the agent it scaffolds does not have to be
-called Kevin. The **display name** (what it calls itself, what the dashboard renders,
+The plugin is called `agentlayer`, and the agent it scaffolds is called Oppi unless the
+operator picks another name. The **display name** (what it calls itself, what the dashboard renders,
 how you address it) is pure data in `IDENTITY.md`. The **namespace** (`/agentlayer:`
 commands, the `.state/` data dir, MCP tool names) comes from the
 plugin manifest and stays put either way. Renaming costs nothing and breaks nothing.
 
-**On a re-init, the current name is the default, not `Kevin`.** Step 0's re-run path
-overwrites `IDENTITY.md`, `SOUL.md`, `USER.md` and `AGENTS.md`, so offering `Kevin` to
+**On a re-init, the current name is the default, not `Oppi`.** Step 0's re-run path
+overwrites `IDENTITY.md`, `SOUL.md`, `USER.md` and `AGENTS.md`, so offering `Oppi` to
 an operator who renamed their agent would quietly rename it back and rewrite every one
 of those files around the old name. Read what's there first:
 
@@ -243,29 +241,29 @@ of those files around the old name. Read what's there first:
 grep -m1 '^- \*\*Name:\*\*' "$HOME_DIR/IDENTITY.md" 2>/dev/null
 ```
 
-Whatever that returns is the default below. Only fall back to `Kevin` when the file or
+Whatever that returns is the default below. Only fall back to `Oppi` when the file or
 the field is absent (a genuinely fresh home).
 
 Ask it plainly with `AskUserQuestion`:
 
 > **What should this agent be called?**
-> - **`<current-or-Kevin>`** (recommended) — keep it as is
+> - **`<current-or-Oppi>`** (recommended) — keep it as is
 > - **Something else** — type a name; the agent introduces itself that way from here on
 
 Then, only when the answer is NOT the default:
 
-> **An emoji for it?** (default `🍌`) — shows up in the banner and the dashboard header.
+> **An emoji for it?** (default `🐙`) — shows up in the banner and the dashboard header.
 >
-> **An avatar?** Paste a local path or URL, or `skip`. The plugin ships Kevin's avatar;
+> **An avatar?** Paste a local path or URL, or `skip`. The plugin ships Oppi's avatar;
 > a differently-named agent has none, so `skip` is a fine answer and leaves the image
 > out of `IDENTITY.md` entirely.
 
 Stage three values for Steps 2, 3 and 7:
 
-- `AGENT_NAME` — the answer, or `Kevin`
-- `AGENT_EMOJI` — the answer, or `🍌`
+- `AGENT_NAME` — the answer, or `Oppi`
+- `AGENT_EMOJI` — the answer, or `🐙`
 - `AGENT_AVATAR` — the home-relative path the image will land at, which Step 7 then
-  copies to. Default name: `assets/kevin-avatar.jpg`. Renamed with an image:
+  copies to. Default name: `assets/oppi-avatar.jpg`. Renamed with an image:
   `assets/<name-lowercased>-avatar.<ext>`. Renamed without one: empty.
 
 Decide the path here, not in Step 7 — Step 3 writes it into `IDENTITY.md` before Step 7
@@ -286,7 +284,7 @@ anyone having to remember which character breaks which stage.
 Everything downstream keys off `AGENT_NAME`: it fills `{{AGENT_NAME}}` in every
 template, and `/agentlayer:upgrade` reads it back out of `IDENTITY.md` on every future
 update so template changes arrive phrased in this agent's name instead of proposing
-"Kevin" back. An operator can also change their mind later with
+"Oppi" back. An operator can also change their mind later with
 `/agentlayer:rename-agent`.
 
 ---
@@ -324,7 +322,7 @@ asked, ask it in plain text and wait.
 
 ---
 
-## Step 2 — Kevin's SOUL (character)
+## Step 2 — The agent's SOUL (character)
 
 Read the bundled template:
 
@@ -333,7 +331,7 @@ cat "${CLAUDE_PLUGIN_ROOT}/templates/SOUL.md"
 ```
 
 The template carries `{{AGENT_NAME}}`. Substitute the Step 1b name into the staged
-content before writing, and use that name (not "Kevin") in everything you say to the
+content before writing, and use that name (not "Oppi") in everything you say to the
 user from here on.
 
 Summarize in one sentence: *"Default: Sharp, direct, opinionated. Concise. Calls things out when wrong. Doesn't over-apologize."* Then `AskUserQuestion`:
@@ -347,7 +345,7 @@ If **Refine**: take the redirect, edit the staged SOUL content (light touch — 
 
 ---
 
-## Step 3 — Kevin's IDENTITY (role)
+## Step 3 — The agent's IDENTITY (role)
 
 Read the bundled template:
 
@@ -364,7 +362,7 @@ Summarize: *"Default: AI assistant for learning, planning, research, coding."* T
 > - Life-management + planning focus
 > - Custom — describe in one sentence
 
-Adjust the staged IDENTITY's `## Core Role` to match. Leave `## Operational Pattern` empty (Kevin grows it over time).
+Adjust the staged IDENTITY's `## Core Role` to match. Leave `## Operational Pattern` empty (the agent grows it over time).
 
 Resolve the identity tokens from Step 1b: `{{AGENT_NAME}}`, `{{AGENT_EMOJI}}`, and
 `{{AGENT_AVATAR}}`. **When no avatar was staged, delete the whole `![...]({{AGENT_AVATAR}})`
@@ -401,7 +399,7 @@ Stage answers for the USER.md write.
 
 ## Step 4b — Where your code lives (optional)
 
-If you use Kevin for coding or technical work, capturing your **primary codebase** path lets Kevin ground code-related tasks against it (bug fixes, reviews, tracing behavior) and surface its recent git activity in every session's context. Skip freely if Kevin is purely for writing, research, or planning — Kevin works fine with no codebase set.
+If you use the agent for coding or technical work, capturing your **primary codebase** path lets the agent ground code-related tasks against it (bug fixes, reviews, tracing behavior) and surface its recent git activity in every session's context. Skip freely if the agent is purely for writing, research, or planning — the agent works fine with no codebase set.
 
 Best-effort inference — only suggest a default when it's unambiguous (exactly one git repo across the common dev roots), since a generic agent can't know which of many repos is "primary":
 
@@ -419,7 +417,7 @@ done
 
 Plain chat (NOT `AskUserQuestion` — the answer is a freeform absolute path):
 
-> **Absolute path to your primary codebase?** Optional — reply `skip` if Kevin isn't for coding, or set it later in `<HOME>/.claude/settings.local.json` under `env.AGENT_CODE_PATH`. Inferred default: `<CODE_DEFAULT>` (blank if nothing obvious found).
+> **Absolute path to your primary codebase?** Optional — reply `skip` if the agent isn't for coding, or set it later in `<HOME>/.claude/settings.local.json` under `env.AGENT_CODE_PATH`. Inferred default: `<CODE_DEFAULT>` (blank if nothing obvious found).
 
 Parse the user's next message:
 
@@ -439,7 +437,7 @@ Freeform multi-URL input. **Do NOT use `AskUserQuestion` here** — its `Other` 
 
 Emit this as a regular assistant message and wait for the user's next turn:
 
-> **Optional — paste any URLs about you** (newline- or space-separated). Examples: personal site/blog, LinkedIn, GitHub, X/Mastodon, podcast page, talks. Kevin fetches each, synthesises durable facts into `knowledge/user/*.md`, and cites the source URL inline. (LinkedIn and X block bots — for those Kevin asks for a quick export instead of fetching.)
+> **Optional — paste any URLs about you** (newline- or space-separated). Examples: personal site/blog, LinkedIn, GitHub, X/Mastodon, podcast page, talks. The agent fetches each, synthesises durable facts into `knowledge/user/*.md`, and cites the source URL inline. (LinkedIn and X block bots — for those the agent asks for a quick export instead of fetching.)
 >
 > Reply with the URLs, or say `skip` to continue with empty stubs.
 
@@ -466,7 +464,7 @@ For every remaining URL, `WebFetch` and synthesise into staged content:
 - Code host (GitHub, GitLab, etc.) → augment `skills.md` (languages, repos) + `interests.md` (project themes)
 - Social / posts → light tone signal only into `preferences.md`. No post-content extraction.
 
-Sort URLs by their inferred type — Kevin decides which facet each lands in based on content, not the order the user pasted them.
+Sort URLs by their inferred type — the agent decides which facet each lands in based on content, not the order the user pasted them.
 
 **Rules:**
 - Frontmatter: `title`, `sources` (URL list), `created`, `updated` (today)
@@ -482,7 +480,7 @@ Sort URLs by their inferred type — Kevin decides which facet each lands in bas
 
 Plain chat (NOT `AskUserQuestion`, since the answer is freeform):
 
-> **Optional — paste a path or URL for your avatar.** If you give a local path, Kevin copies it to `<HOME>/knowledge/user/assets/avatar.<ext>`. If you give a URL, Kevin downloads it the same place. Either way, Kevin adds an `Avatar:` field to your staged `knowledge/user/profile.md` pointing at the local copy so it shows up in Obsidian. Reply with the path/URL or `skip`.
+> **Optional — paste a path or URL for your avatar.** If you give a local path, the agent copies it to `<HOME>/knowledge/user/assets/avatar.<ext>`. If you give a URL, the agent downloads it the same place. Either way, the agent adds an `Avatar:` field to your staged `knowledge/user/profile.md` pointing at the local copy so it shows up in Obsidian. Reply with the path/URL or `skip`.
 
 Parse the next user message:
 - `skip` (case-insensitive) → no-op, jump to Step 5c.
@@ -500,7 +498,7 @@ Stage `Avatar: knowledge/user/assets/avatar.<ext>` into the eventual `knowledge/
 > **Where should `knowledge/`, `projects/`, and `reports/` live?** Default keeps them inside your agent home. Override if you want to:
 > - sync via a cloud-synced folder (`<CLOUD_EXAMPLE>` — a path outside the home)
 > - keep them in a separate git repo
-> - share `projects/` across multiple Kevin homes
+> - share `projects/` across multiple agent homes
 >
 > - Default: inside `<HOME>` (recommended)
 > - Specify custom paths
@@ -568,7 +566,7 @@ If Step 5 surfaced a tone signal, use it as a default. Otherwise no default.
 
 `AskUserQuestion`:
 
-> **How do you want Kevin to talk to you?**
+> **How do you want the agent to talk to you?**
 > - Direct + technical
 > - Step-by-step walkthrough
 > - Encouraging + simple
@@ -597,7 +595,7 @@ These drive the news in your briefings: the briefing skill's morning brief reads
 
 Plain chat (NOT `AskUserQuestion` — this is an open-ended list, and the recommend-then-refine flow matches Steps 5/5b/5c). Emit the proposal as a bullet list and wait for the user's next turn:
 
-> **Signal topics for your briefings.** These are the subjects Kevin tracks with web search each morning so your briefing carries news that's actually relevant to you. Based on what you've told me, here's a starter set:
+> **Signal topics for your briefings.** These are the subjects the agent tracks with web search each morning so your briefing carries news that's actually relevant to you. Based on what you've told me, here's a starter set:
 >
 > - `<topic 1>`
 > - `<topic 2>`
@@ -613,9 +611,9 @@ Parse the next message: if `looks good` → keep the proposal; if edits/addition
 
 For Codex, the shipped default is **Sol High** (`gpt-6.1-sol`, reasoning effort `high`). Step 7c writes this pair into the home's `.codex/config.toml`, filling each missing key and preserving existing home-level choices. Tell the operator that these home settings take precedence over their global Codex model and effort; they can change either locally. Model and effort are not part of the user-global paste note.
 
-Kevin's project settings pin which Claude model powers this home. `AskUserQuestion`:
+The agent's project settings pin which Claude model powers this home. `AskUserQuestion`:
 
-> **Which model should Kevin run on?**
+> **Which model should the agent run on?**
 > - **Opus (Recommended)** — strong judgment for an agent trusted with your knowledge base, and stretches a usage-limited plan further.
 > - **Fable** — Anthropic's most capable tier, one step up; spends plan usage faster.
 
@@ -673,18 +671,18 @@ Note: do **not** create `.claude/skills/` here. Third-party skill libraries are 
 
 Copy the agent's avatar into `assets/`, the home's media folder, where `IDENTITY.md` links it.
 
-**Default name** — ship the bundled Kevin avatar:
+**Default name** — ship the bundled Oppi avatar:
 
 ```bash
-cp "${CLAUDE_PLUGIN_ROOT}/assets/kevin-avatar.jpg" "$HOME_DIR/assets/kevin-avatar.jpg"
+cp "${CLAUDE_PLUGIN_ROOT}/assets/oppi-avatar.jpg" "$HOME_DIR/assets/oppi-avatar.jpg"
 ```
 
-`AGENT_AVATAR=assets/kevin-avatar.jpg`.
+`AGENT_AVATAR=assets/oppi-avatar.jpg`.
 
 **Renamed agent with an avatar staged in Step 1b** — copy the operator's file to a
 name-matching destination (lowercase the name, keep the source extension), e.g.
 `assets/vega-avatar.png`, and set `AGENT_AVATAR` to that home-relative path.
-Don't ship Kevin's face under someone else's name.
+Don't ship Oppi's face under someone else's name.
 
 **Renamed agent, no avatar** — copy nothing and leave `AGENT_AVATAR` empty; Step 3
 already dropped the two image lines from `IDENTITY.md`.
@@ -697,7 +695,7 @@ cp "<user-avatar>" "$KNOWLEDGE_ROOT/user/assets/avatar.<ext>"
 
 (extension preserved from the source). The staged `knowledge/user/profile.md` should then reference that path in its frontmatter or top-of-body.
 
-Write the three identity files (Kevin-unique filenames — won't collide with anything pre-existing):
+Write the three identity files (filenames unique to an agent home, so they won't collide with anything pre-existing):
 
 - `$HOME_DIR/SOUL.md` ← staged content from Step 2
 - `$HOME_DIR/IDENTITY.md` ← staged content from Step 3
@@ -738,9 +736,9 @@ KNOWLEDGE_REL="$(relpath "$KNOWLEDGE_ROOT")"
 PROJECTS_REL="$(relpath "$PROJECTS_ROOT")"
 KNOWLEDGE_IMPORT="$(importpath "$KNOWLEDGE_REL")"
 PROJECTS_IMPORT="$(importpath "$PROJECTS_REL")"
-AGENT_NAME="<the name staged in Step 1b — literal, e.g. Kevin>"
+AGENT_NAME="<the name staged in Step 1b — literal, e.g. Oppi>"
 # {{SHELL}} fills the Toolchain "Shell:" line per OS. On Windows, Claude Code's Bash tool runs under
-# Git Bash (POSIX), not PowerShell, so Kevin's commands assume bash everywhere.
+# Git Bash (POSIX), not PowerShell, so the agent's commands assume bash everywhere.
 case "$AGENT_PLATFORM" in
   macos)   SHELL_NOTE='zsh, Homebrew at `/opt/homebrew`' ;;
   windows) SHELL_NOTE='Git Bash (the POSIX shell Claude Code uses for its Bash tool on Windows)' ;;
@@ -802,9 +800,9 @@ Any file listed still has an unresolved placeholder. Fix it before continuing �
 unsubstituted `{{AGENT_NAME}}` sits in the agent's own identity files and is read into
 context every session from then on.
 
-If `COLLISION="yes"`, note this for the Step 9 status block so the user knows the manual was appended below their existing `AGENTS.md`. Their instructions and Kevin's coexist in one file that every harness reads, and the `.claude/CLAUDE.md` bridge still pulls in the identity stack for Claude Code.
+If `COLLISION="yes"`, note this for the Step 9 status block so the user knows the manual was appended below their existing `AGENTS.md`. Their instructions and the agent's coexist in one file that every harness reads, and the `.claude/CLAUDE.md` bridge still pulls in the identity stack for Claude Code.
 
-Write a `.gitignore` so the home dir is safe to track in git out of the box. **Collision-aware**: if one already exists, don't overwrite — but append every template rule it lacks (`.claude/settings.local.json` holds local config, `.state/*` ignores the secrets dir + runtime tokens + logs while **tracking the `knowledge.json` compile cursor and the `version.json` template baseline**, `reports/captures/` keeps binary captures out of history, `.obsidian/workspace.json` churns on every Obsidian pane move). The first two must be gitignored or the user will leak secrets (`.state/secrets/` lives under `.state/*`) / churn on every Kevin run; the rest keep the working tree clean.
+Write a `.gitignore` so the home dir is safe to track in git out of the box. **Collision-aware**: if one already exists, don't overwrite — but append every template rule it lacks (`.claude/settings.local.json` holds local config, `.state/*` ignores the secrets dir + runtime tokens + logs while **tracking the `knowledge.json` compile cursor and the `version.json` template baseline**, `reports/captures/` keeps binary captures out of history, `.obsidian/workspace.json` churns on every Obsidian pane move). The first two must be gitignored or the user will leak secrets (`.state/secrets/` lives under `.state/*`) / churn on every agent run; the rest keep the working tree clean.
 
 Two records inside `.state/` must survive a clone or restore, so we un-ignore them while keeping the rest (tokens, logs) ignored: the compile cursor (`.state/knowledge.json`) is the *only* record of what's been ingested — rolled back (iCloud, restore, fresh clone), the next blind compile re-ingests everything and corrupts memory; the template baseline (`.state/version.json`) records which plugin version this home's scaffolded files are reconciled to — lost, upgrade-tracking resets to onboarding and the "you're behind" signal breaks.
 
@@ -820,13 +818,13 @@ Write project settings so the plugin auto-loads on subsequent launches AND the *
 
 **Two files, split by owner.** `settings.json` travels with the home (history commits it, a synced folder copies it, a seed carries its grants), so it holds the agent's policy and defaults: entries correct unchanged for a teammate on the same OS with another username and plugin install. `settings.local.json` is this machine's: the status line command (it names this checkout), the plugin's enable entry (it names the marketplace this machine installed from), grants for folders outside the home, and personal overrides. Claude Code reads the two as one (lists combine, a local value wins), so nothing is lost by the split, and whatever the operator adds to either file keeps working.
 
-**`plansDirectory` — unify plan-mode with reports.** Claude Code writes plan-mode artefacts to the path in `plansDirectory` (default `./.claude/plans`). Kevin's `self-review` skill also writes code-change plans under `<REPORTS_ROOT>/plans/`, so we point the harness at the same folder — one home for every plan. Compute it from the reports path resolved in Step 7: `./reports/plans` when `REPORTS_ROOT` is the default under `$HOME_DIR`, `./<path>/plans` when it is elsewhere inside the home, and **no key at all** when it is outside the home: Claude Code keeps its default when the path resolves outside the project, so an absolute value would do nothing. **Preserve any pre-existing value**: if the project `settings.json` already has a `plansDirectory`, omit the key from the scaffold and let the deep-merge below keep the operator's choice. (Note: `self-review`'s age-sweep filters to its own plans by frontmatter `skill: self-review`, so raw plan-mode dumps sharing the folder are ignored — see that skill.)
+**`plansDirectory` — unify plan-mode with reports.** Claude Code writes plan-mode artefacts to the path in `plansDirectory` (default `./.claude/plans`). The agent's `self-review` skill also writes code-change plans under `<REPORTS_ROOT>/plans/`, so we point the harness at the same folder — one home for every plan. Compute it from the reports path resolved in Step 7: `./reports/plans` when `REPORTS_ROOT` is the default under `$HOME_DIR`, `./<path>/plans` when it is elsewhere inside the home, and **no key at all** when it is outside the home: Claude Code keeps its default when the path resolves outside the project, so an absolute value would do nothing. **Preserve any pre-existing value**: if the project `settings.json` already has a `plansDirectory`, omit the key from the scaffold and let the deep-merge below keep the operator's choice. (Note: `self-review`'s age-sweep filters to its own plans by frontmatter `skill: self-review`, so raw plan-mode dumps sharing the folder are ignored — see that skill.)
 
 **`bashEditDiffEnabled` — see what Bash edited.** Under auto mode Claude Code routes file edits through the Bash tool, which hides the diff the Edit tool would have shown. This setting (Claude Code 2.1.269+) attaches a diff of the files a Bash command changed to that command's result, so a scripted edit stays reviewable in the transcript. Written when the operator's user-global settings don't set it.
 
 **`idleCompaction` — always written, never gap-filled.** Claude Code compacts a long conversation while the session sits idle, before the prompt cache expires, so a session you step away from comes back as a summary instead of its full transcript. `idleCompaction` = `false` turns that off; auto-compact when the context fills still runs. It goes in `settings.json` whatever the global settings say, and an existing value in either home file is the operator's and is kept. Upgrade reconciles the key on every run through `home-baseline.ts`, which reads the value from this paragraph.
 
-**Fill hardening gaps the operator's user-global settings don't cover.** Kevin ships a baseline of security + quality defaults (denies, sandbox, retention, render). Most operators won't have these in their user-global `~/.claude/settings.json` — for them, init must write the baseline into project settings so the protection is actually in effect. Operators who *do* already have these globally shouldn't get the same keys duplicated into the project — global already covers them, and re-writing them in project is redundant churn.
+**Fill hardening gaps the operator's user-global settings don't cover.** The agent ships a baseline of security + quality defaults (denies, sandbox, retention, render). Most operators won't have these in their user-global `~/.claude/settings.json` — for them, init must write the baseline into project settings so the protection is actually in effect. Operators who *do* already have these globally shouldn't get the same keys duplicated into the project — global already covers them, and re-writing them in project is redundant churn.
 
 **Logic: gap-fill, not mirror.** Before writing the scaffold, `Read` `~/.claude/settings.json` (treat as empty `{}` if absent). For each baseline key below, check whether the operator already has it globally. If global covers it, **omit the key from the project scaffold** — inheritance handles it. If global does not cover it, **write the baseline value into the project scaffold**. Each `env.*` key is gap-filled independently. Upgrade re-runs the test for `permissions.deny` and `sandbox` on every run (`home-baseline.ts`), so a home whose global coverage later disappears gets the baseline back.
 
@@ -855,7 +853,7 @@ Write project settings so the plugin auto-loads on subsequent launches AND the *
 
 The bigger privacy setting lives in the operator's Claude account, not a file. On Free, Pro and Max, Anthropic trains on chats and Claude Code sessions unless the operator turns it off, and keeps them up to 5 years instead of 30 days: claude.ai → their name → Settings → Privacy → **Help improve Claude** → off (the same path in the mobile app). Team, Enterprise and API accounts aren't trained on unless the organization opts in. Step 9 reminds them.
 
-**`statusLine` — the footer, the Claude side of the Codex `[tui]` table.** Kevin renders it (`src/cli.ts statusline`: model, folder, branch on line one; context bar, cost with the hourly rate, session time, and the Pro/Max rate-limit windows on line two). The command names this checkout, so it goes in `settings.local.json`, never the shared file; never type it — generate it and merge the object it prints:
+**`statusLine` — the footer, the Claude side of the Codex `[tui]` table.** The agent renders it (`src/cli.ts statusline`: model, folder, branch on line one; context bar, cost with the hourly rate, session time, and the Pro/Max rate-limit windows on line two). The command names this checkout, so it goes in `settings.local.json`, never the shared file; never type it — generate it and merge the object it prints:
 
 ```bash
 bun "$PLUGIN_ROOT/src/cli.ts" statusline --setting
@@ -1269,7 +1267,7 @@ Concrete approach: `Read` the existing file (treat as `{}` if absent), build the
 | App Store-gated | `appstore_reviews` | configure-skills A.2h (App Store walk) |
 | Slack-gated | `slack_*`, `WebFetch(domain:slack.com)` | configure-skills A.2i (Slack walk, which also runs the OAuth sign-in) |
 
-The allow list also carries a **skill** grant for every skill but two. Skills register regardless of permissions: the grant only suppresses the confirm prompt on model invocation (whether Kevin auto-fires the skill or one skill invokes another through the Skill tool). Every skill is model-invocable except `init`, `release` and `rename-agent`, so the operator asks in plain words ("brief me", "set today's goals", "how's my site ranking", "review 142") and never has to remember a slash name. The playbook skills route inside themselves: `briefing` (morning, evening, pulse), `goals` (day, week, month, year), `seo` (audit, console, speed, serp, rank), `seed` (export, import), `project` (create, archive), `attention` and `engineer`. A skill that writes still asks before it writes: `seed` import's `seed_import` tool sits in `ask`, `project` confirms before creating or archiving, and `configure-skills`, `self-review` and the goals interviews confirm each change. A pack skill that fires on a home without its keys stops at the first missing-key error and names the `/agentlayer:configure-skills` walk that fixes it; `seo` spends SerpAPI credit only on an explicit SERP ask or an audit anomaly.
+The allow list also carries a **skill** grant for every skill but two. Skills register regardless of permissions: the grant only suppresses the confirm prompt on model invocation (whether the agent auto-fires the skill or one skill invokes another through the Skill tool). Every skill is model-invocable except `init`, `release` and `rename-agent`, so the operator asks in plain words ("brief me", "set today's goals", "how's my site ranking", "review 142") and never has to remember a slash name. The playbook skills route inside themselves: `briefing` (morning, evening, pulse), `goals` (day, week, month, year), `seo` (audit, console, speed, serp, rank), `seed` (export, import), `project` (create, archive), `attention` and `engineer`. A skill that writes still asks before it writes: `seed` import's `seed_import` tool sits in `ask`, `project` confirms before creating or archiving, and `configure-skills`, `self-review` and the goals interviews confirm each change. A pack skill that fires on a home without its keys stops at the first missing-key error and names the `/agentlayer:configure-skills` walk that fixes it; `seo` spends SerpAPI credit only on an explicit SERP ask or an audit anomaly.
 
 **`init` and `release` stay slash-only** (`disable-model-invocation`, plus `agents/openai.yaml` with `policy.allow_implicit_invocation: false` for Codex, which ignores the flag, and the one-line operator-only guard): a first-run wizard and a version cut are never something to fire unasked. `release` keeps its grant so `/release` doesn't prompt.
 
@@ -1322,7 +1320,7 @@ These files hold my evolving long-form knowledge. {{AGENT_NAME}} reads them on d
 - [Interests](knowledge/user/interests.md)
 ```
 
-If Step 4b returned `skip`, omit the `## Where Things Live` section entirely — Kevin's a personal agent and many operators have no primary codebase, so an empty placeholder is just noise. The operator can add it later by setting `env.AGENT_CODE_PATH` and re-running compile.
+If Step 4b returned `skip`, omit the `## Where Things Live` section entirely — it's a personal agent and many operators have no primary codebase, so an empty placeholder is just noise. The operator can add it later by setting `env.AGENT_CODE_PATH` and re-running compile.
 
 `{{AVATAR_LINE}}` rendering:
 - If Step 5b staged a user avatar at `<KNOWLEDGE_ROOT>/user/assets/avatar.<ext>` → render `![Avatar](knowledge/user/assets/avatar.<ext>)` (path relative to `<HOME_DIR>`, where USER.md lives).
@@ -1337,7 +1335,7 @@ If Step 4b returned `skip`, omit the `## Where Things Live` section entirely —
 2. **File exists with body content AND Step 5 did NOT synthesise content for this facet**: skip the write entirely. Operator-curated content is preserved — this includes any edits the operator made to the shipped `preferences.md` skeleton.
 3. **File exists with body content AND Step 5 DID synthesise content for this facet**: `AskUserQuestion`:
 
-   > `knowledge/user/<facet>.md` already has content. The URLs you pasted in Step 5 synthesised a fresh version. How should Kevin handle this?
+   > `knowledge/user/<facet>.md` already has content. The URLs you pasted in Step 5 synthesised a fresh version. How should the agent handle this?
    >
    > - Keep existing (recommended) — discard the synthesised version, your file stays as-is
    > - Overwrite — replace with the synthesised version (existing content lost)
@@ -1361,7 +1359,7 @@ News/research topics to track for briefings and signals. Used by the morning bri
 
 This section is what powers the news clusters in every morning brief, so it must exist from day one even when Step 5 was skipped. **Bounded preservation exception:** if `profile.md` already has body content (case 2/3 above) but has **no** `## Signal Topics` heading, append this section to the end — additive only, never replacing existing content. If it already has one, leave it untouched (the operator or a prior compile owns it).
 
-**Why `preferences.md` ships with a skeleton**: it holds the operator's own tastes (how they like output, what they value, the tools they live in), not working rules. How Kevin works already lives in `AGENTS.md` and `SOUL.md`, and a working rule the operator states later goes to the feedback log, compiles into `## Learnings`, and graduates into the manual through self-review. The file is read on demand, never loaded every session. On re-run, edits are preserved by the body-content guard above.
+**Why `preferences.md` ships with a skeleton**: it holds the operator's own tastes (how they like output, what they value, the tools they live in), not working rules. How the agent works already lives in `AGENTS.md` and `SOUL.md`, and a working rule the operator states later goes to the feedback log, compiles into `## Learnings`, and graduates into the manual through self-review. The file is read on demand, never loaded every session. On re-run, edits are preserved by the body-content guard above.
 
 Shipped `preferences.md` skeleton:
 
@@ -1374,7 +1372,7 @@ updated: <YYYY-MM-DD>
 
 # Preferences
 
-> Your own tastes: how you like output, what you value, the tools you live in. How Kevin works lives in `AGENTS.md` and `SOUL.md`; a working rule you state goes to the feedback log, not here. Edit freely and delete what doesn't fit.
+> Your own tastes: how you like output, what you value, the tools you live in. How the agent works lives in `AGENTS.md` and `SOUL.md`; a working rule you state goes to the feedback log, not here. Edit freely and delete what doesn't fit.
 
 ## Output
 
@@ -1382,7 +1380,7 @@ updated: <YYYY-MM-DD>
 
 ## Values
 
-- _(What should Kevin weigh when trading things off: privacy, family, cost, time?)_
+- _(What should the agent weigh when trading things off: privacy, family, cost, time?)_
 
 ## Tools and environment
 
@@ -1390,7 +1388,7 @@ updated: <YYYY-MM-DD>
 
 ## Hard No
 
-_(Add anything Kevin should never do — sensitive content, off-limits topics, vendor lock-ins, etc. Leave empty if no hard rules apply.)_
+_(Add anything the agent should never do — sensitive content, off-limits topics, vendor lock-ins, etc. Leave empty if no hard rules apply.)_
 
 - _(empty)_
 ````
@@ -1407,11 +1405,11 @@ Also write `.claude/settings.local.json`: this machine's half of the settings (s
 
 Lists union with what the file already holds, deduped; existing scalars win except `enabledPlugins` as above. `Read` it first (treat as `{}` if absent) and `Write` the merged JSON, same as the shared file.
 
-**Secrets live in `.state/secrets/.env`, not here.** Credential pack keys (`PERPLEXITY_API_KEY`, `SERPAPI_KEY`, `OPENPAGERANK_API_KEY`, every `AGENT_DB_*`) go in the deny-gated `.state/secrets/.env` — `/agentlayer:configure-skills` ensures that file exists and tells the user which `KEY=value` lines to add (the file is deny-gated, so Claude can't write its contents; the user edits it). Kevin's config loader surfaces it into `process.env` at boot; the settings `env` block is no longer a secrets store. `GSC_SITE_URL` is the one pack key that **stays** in `settings.local.json` `env` — it's not a credential and two skills (`wordpress-rest`, and the `seo` skill's audit) read it straight from the Bash environment, which only the settings `env` block reaches. Google OAuth client JSON + tokens live in `.state/secrets/google/`. This keeps `settings.local.json` non-secret and an accurate audit trail of what the operator opted into.
+**Secrets live in `.state/secrets/.env`, not here.** Credential pack keys (`PERPLEXITY_API_KEY`, `SERPAPI_KEY`, `OPENPAGERANK_API_KEY`, every `AGENT_DB_*`) go in the deny-gated `.state/secrets/.env` — `/agentlayer:configure-skills` ensures that file exists and tells the user which `KEY=value` lines to add (the file is deny-gated, so Claude can't write its contents; the user edits it). The agent's config loader surfaces it into `process.env` at boot; the settings `env` block is no longer a secrets store. `GSC_SITE_URL` is the one pack key that **stays** in `settings.local.json` `env` — it's not a credential and two skills (`wordpress-rest`, and the `seo` skill's audit) read it straight from the Bash environment, which only the settings `env` block reaches. Google OAuth client JSON + tokens live in `.state/secrets/google/`. This keeps `settings.local.json` non-secret and an accurate audit trail of what the operator opted into.
 
 Env spelling: keys are written under their shared, agent-neutral `AGENT_*` names, the only names the plugin reads. The file's location already scopes them to this agent, and the HOME stays portable. A value in machine-wide `~/.claude/settings.json` reaches every agent home on the box, so per-home config always belongs in the home's own settings.
 
-The rule: **init owns env keys that are universal to every operator; configure-skills owns pack-gated env keys.** Kevin's universal-infra keys are `AGENT_HOME_TIMEZONE` and the optional codebase pair, so:
+The rule: **init owns env keys that are universal to every operator; configure-skills owns pack-gated env keys.** The agent's universal-infra keys are `AGENT_HOME_TIMEZONE` and the optional codebase pair, so:
 
 - **Step 4b captured a real path:** write `AGENT_CODE_PATH` and derive `AGENT_GIT_REPOS` by enumerating the main-checkout git repos beside it — one level under the code root, `.git` **directory** only so sibling worktrees (whose `.git` is a pointer file) don't flood the list (it surfaces those repos' recent git activity in the SessionStart `## Recent Git Activity` block, and the attention skill's checkpoint all radar scopes by the code root too — operators can append more later, `,/path/to/other/repo`, without touching plugin code).
 
@@ -1474,7 +1472,7 @@ updated: <YYYY-MM-DD>
 
 # Knowledge
 
-Master catalog of Kevin's compiled knowledge. Kevin keeps this current via `/agentlayer:knowledge-compile`.
+Master catalog of the agent's compiled knowledge. The agent keeps this current via `/agentlayer:knowledge-compile`.
 
 ## User (<NAME>)
 
@@ -1569,7 +1567,7 @@ _(empty — compile lists each `memory/YYYY-MM-DD.md` here, most recent first)_
 For `projects/TASKS.md`, write this scaffold — the task-list sections render automatically when the `dashboard` tool first runs (which the auto-rebuild on the user's first task creation will trigger):
 
 ```markdown
-> Tasks hub — auto-generated by Kevin from task frontmatter on every mutation. Do not edit this file directly: tasks change via the task tools, goals via the goals skill.
+> Tasks hub — auto-generated by the agent from task frontmatter on every mutation. Do not edit this file directly: tasks change via the task tools, goals via the goals skill.
 
 <!-- GOALS:START -->
 ## Daily Goals
@@ -1637,7 +1635,7 @@ Codex reads `AGENTS.md` natively but has no `@-import`, and as of Codex 0.153 a 
 bun "$PLUGIN_ROOT/skills/init/scripts/codex-setup.ts" --home "$HOME_DIR" --write
 ```
 
-If the operator once registered Kevin's server globally (`codex mcp add agent …`), remove that copy with `codex mcp remove agent` so the per-home registration is the only `agent`. The report is `{ hooks, mcp, rules, entries, profile, notes }`, each file as `{ path, changed }`: one `SessionStart` entry delivers the static context (registered with `additionalContextLimit: 0`, since Codex otherwise truncates a hook's context at about 2,500 tokens), a `SessionEnd` and a `PreCompact` entry capture the session (the second one before Codex compacts a long thread, as on Claude Code), a `PreToolUse` entry runs the cwd-drift guard (below), the `[mcp_servers.agent]` table launches the server with `AGENT_HOME` set, any stdio MCP server in `$HOME_DIR/.mcp.json` that a pack registered (the Xcode pack's `xcode`) or Claude Code runs (approved, not disabled) is mirrored into its own `[mcp_servers.<name>]` table so it reaches Codex whether it was added before or after (one using `${VAR}`, which Codex would not fill in, stays out with a note), and a `[tui]` table sets the footer status line (model with reasoning, directory, branch, approval mode, context used) unless the home already has one, and a `[skills]` table sets `max_context_tokens = 10000`, the most Codex allows for its per-turn skills catalog (the default is 2% of the model window, which trims the plugin's descriptions), unless the home already sets one. The posture is read from this home's Claude settings so the hosts never drift: a `[permissions.agent]` profile denies the model every read of `.state/secrets/` and of any `.env` (the MCP server still reads them itself), makes `.git` writable so commits stay routine, and lists the code path and any `additionalDirectories` as workspace roots; every `Bash(…)` pattern in `permissions.ask` becomes a `prefix_rule` that prompts the operator, the same gate Claude Code applies; `approvals_reviewer` stays `user` (a reviewer model denied named pushes and local commits on this plugin's tests, so it is opt-in). Other hooks, other MCP servers, other rules files, and other settings are preserved; `notes` names a policy key the operator set differently, which is kept. Under Codex (`AGENT_HARNESS=codex`) run it without asking. Under Claude Code, ask once, always, with `AskUserQuestion`: "Do you also run OpenAI Codex from this home?" (options: "Yes, wire it now" / "No, Claude Code only"). A yes runs the generator now and carries the Codex lines of the relaunch block into Step 9; a no writes nothing, and `$upgrade` run from a Codex session wires the home later. Never skip the question silently: a home that is never asked never gets wired, and the only other route is a manual generator run. On native Windows (`$AGENT_PLATFORM=windows`) it runs the same way (the hook commands carry the home as a double-quoted `--home=` argument, shaped to parse under sh and PowerShell alike), but say once that Codex on Windows is unverified: no Windows box has exercised the wiring, and Kevin's skills are bash while Codex runs its shell through PowerShell there.
+If the operator once registered the agent's server globally (`codex mcp add agent …`), remove that copy with `codex mcp remove agent` so the per-home registration is the only `agent`. The report is `{ hooks, mcp, rules, entries, profile, notes }`, each file as `{ path, changed }`: one `SessionStart` entry delivers the static context (registered with `additionalContextLimit: 0`, since Codex otherwise truncates a hook's context at about 2,500 tokens), a `SessionEnd` and a `PreCompact` entry capture the session (the second one before Codex compacts a long thread, as on Claude Code), a `PreToolUse` entry runs the cwd-drift guard (below), the `[mcp_servers.agent]` table launches the server with `AGENT_HOME` set, any stdio MCP server in `$HOME_DIR/.mcp.json` that a pack registered (the Xcode pack's `xcode`) or Claude Code runs (approved, not disabled) is mirrored into its own `[mcp_servers.<name>]` table so it reaches Codex whether it was added before or after (one using `${VAR}`, which Codex would not fill in, stays out with a note), and a `[tui]` table sets the footer status line (model with reasoning, directory, branch, approval mode, context used) unless the home already has one, and a `[skills]` table sets `max_context_tokens = 10000`, the most Codex allows for its per-turn skills catalog (the default is 2% of the model window, which trims the plugin's descriptions), unless the home already sets one. The posture is read from this home's Claude settings so the hosts never drift: a `[permissions.agent]` profile denies the model every read of `.state/secrets/` and of any `.env` (the MCP server still reads them itself), makes `.git` writable so commits stay routine, and lists the code path and any `additionalDirectories` as workspace roots; every `Bash(…)` pattern in `permissions.ask` becomes a `prefix_rule` that prompts the operator, the same gate Claude Code applies; `approvals_reviewer` stays `user` (a reviewer model denied named pushes and local commits on this plugin's tests, so it is opt-in). Other hooks, other MCP servers, other rules files, and other settings are preserved; `notes` names a policy key the operator set differently, which is kept. Under Codex (`AGENT_HARNESS=codex`) run it without asking. Under Claude Code, ask once, always, with `AskUserQuestion`: "Do you also run OpenAI Codex from this home?" (options: "Yes, wire it now" / "No, Claude Code only"). A yes runs the generator now and carries the Codex lines of the relaunch block into Step 9; a no writes nothing, and `$upgrade` run from a Codex session wires the home later. Never skip the question silently: a home that is never asked never gets wired, and the only other route is a manual generator run. On native Windows (`$AGENT_PLATFORM=windows`) it runs the same way (the hook commands carry the home as a double-quoted `--home=` argument, shaped to parse under sh and PowerShell alike), but say once that Codex on Windows is unverified: no Windows box has exercised the wiring, and the agent's skills are bash while Codex runs its shell through PowerShell there.
 
 Then print the user-level note: Codex ignores telemetry and provider keys in a project config, the analytics, feedback, animation, and update-check keys are the operator's own rather than the home's, the context window is a cost choice for every session on the machine (the note asks for the cap Codex's model catalog serves, since a larger request is clamped to it), and the plugin never writes a user-global file, so generate the paste-ready block and quote it in Step 9 verbatim:
 
@@ -1645,7 +1643,7 @@ Then print the user-level note: Codex ignores telemetry and provider keys in a p
 bun "$PLUGIN_ROOT/skills/init/scripts/codex-user-config.ts" --home "$HOME_DIR" --out "$HOME_DIR/.state/updates/codex-user-config.md"
 ```
 
-**Trust is the operator's step.** Codex reads a project's `.codex/config.toml` only for a trusted folder (it asks on first launch), and trusts hooks per command by content hash: an untrusted hook does not run at all (silently, under `codex exec`). Note for Step 9: the operator must trust the folder, then run `/hooks` in their next Codex session from this home and trust all four entries, or Codex sessions start without Kevin's context and are never captured.
+**Trust is the operator's step.** Codex reads a project's `.codex/config.toml` only for a trusted folder (it asks on first launch), and trusts hooks per command by content hash: an untrusted hook does not run at all (silently, under `codex exec`). Note for Step 9: the operator must trust the folder, then run `/hooks` in their next Codex session from this home and trust all four entries, or Codex sessions start without the agent's context and are never captured.
 
 ## Step 8 — Optional: configure skill packs
 
@@ -1658,7 +1656,7 @@ The scaffold is done. Before showing the final confirmation, offer to wire up AP
 >
 > - ☐ SEO pack (the seo skill: audit · Search Console · PageSpeed · SERP · rank; plus wordpress-rest)
 > - ☑ Browser pack **(recommended)** (browser screenshot/pdf/record + browser-flows + optional Perplexity search)
-> - ☐ Database pack (connect Kevin to one or more Postgres databases — read-only `database_list`/`database_schema`/`database_query` + `database_fork` to clone a local DB for risky schema work)
+> - ☐ Database pack (connect the agent to one or more Postgres databases — read-only `database_list`/`database_schema`/`database_query` + `database_fork` to clone a local DB for risky schema work)
 > - ☐ GitHub pack **(recommended when you gave a code path)** (PR, issue + GitHub Actions access — `github_pr_*` / `github_issue_*` / `github_run_*` — to review PRs/issues and diagnose failing CI builds, and the writes the token allows: issues and a PR's title or description, plus `github_fast_forward`, which is what keeps your checkouts current on every `/agentlayer:sync`; needs a token per repo owner (`GITHUB_TOKEN_<OWNER>`, or one `GITHUB_TOKEN`) **and** the `gh` CLI)
 > - ☐ Xcode pack (build, test, run and debug Apple apps + Swift packages through Apple's headless Xcode MCP server, with the sandbox and permission posture the toolchain needs; Xcode 27+, no API key)
 > - ☐ Slack pack (read-only Slack through your own account: pulses, the replies you owe, external threads waiting; needs a Slack app in your workspace, which the walk helps create, and a one-time sign-in from your terminal)
@@ -1668,7 +1666,7 @@ Default-select **Browser** (recommended — Playwright's capture tools work imme
 
 **Never show the Xcode row on Windows, WSL2 or Linux** — render it only when `$AGENT_PLATFORM` = `macos`. Apple's toolchain doesn't exist on those hosts, so drop the row entirely rather than offering a pack that can only fail; a Windows operator should never see it as a choice. Leave it unticked even on macOS: plenty of Mac operators never open Xcode, and the pack asks for two manual steps (a sandbox exclusion and a sudo enablement) that are wasted on them.
 
-**Also default-tick GitHub when Step 4b captured a real code path.** `github_fast_forward` is what keeps those checkouts current during `/agentlayer:sync`, and it needs a GitHub token; without the pack it returns `NOT_CONFIGURED` and the operator's code silently never refreshes — the one failure mode that degrades *answers* rather than surfacing an error, since Kevin keeps grounding confidently against a frozen checkout. An operator who just told init where their code lives has effectively asked for this. Leave it unticked when Step 4b returned `skip` (no checkout, nothing to fast-forward — the common case for a Kevin home). Either way it stays a tick the operator can clear.
+**Also default-tick GitHub when Step 4b captured a real code path.** `github_fast_forward` is what keeps those checkouts current during `/agentlayer:sync`, and it needs a GitHub token; without the pack it returns `NOT_CONFIGURED` and the operator's code silently never refreshes — the one failure mode that degrades *answers* rather than surfacing an error, since the agent keeps grounding confidently against a frozen checkout. An operator who just told init where their code lives has effectively asked for this. Leave it unticked when Step 4b returned `skip` (no checkout, nothing to fast-forward — the common case for an agent home). Either way it stays a tick the operator can clear.
 
 Behavior on the response:
 - **Each ticked option**: run the matching configure-skills section in order — SEO (A.2a) → Browser (A.2b) → Database (A.2c) → GitHub (A.2d) → Xcode (A.2f) → Slack (A.2i) → Third-party (F). The walks **never prompt for API key values or connection strings in chat** — they add MCP grants to `settings.json`, plant the `GSC_SITE_URL` placeholder, and ensure `.state/secrets/.env` exists. The user adds the secret lines + values via their editor after relaunch.
@@ -1689,7 +1687,7 @@ outcome for the `<HISTORY_ROW>` in Step 9. `AGENT_HISTORY=off` writes nothing.
 
 ## Step 9 — Confirmation
 
-Print the same banner as Step 1 for visual continuity, with `===<NAME>=== <EMOJI>` standing alone on its line (no trailing word): the name this run settled on, in capitals, and its emoji (`KEVIN` and 🍌 when the defaults were kept). The "Ready" line follows below, separated by a blank line.
+Print the same banner as Step 1 for visual continuity, with `===<NAME>=== <EMOJI>` standing alone on its line (no trailing word): the name this run settled on, in capitals, and its emoji (`OPPI` and 🐙 when the defaults were kept). The "Ready" line follows below, separated by a blank line.
 
 ````
 ```
@@ -1738,14 +1736,14 @@ Use ✅ for what landed and ⏳ for deferred (the hourglass implies "queued for 
 For the operating-manual row:
 - No collision: `<MANUAL_PATH>` = `AGENTS.md`
 - Collision detected (pre-existing project AGENTS.md): `<MANUAL_PATH>` = `AGENTS.md (appended)` — also append a callout line:
-  > ℹ️ Existing `AGENTS.md` detected at home — Kevin's operating manual was appended below your content, and `.claude/CLAUDE.md` bridges it for Claude Code. Review the combined file once; your prior text is untouched.
+  > ℹ️ Existing `AGENTS.md` detected at home — the agent's operating manual was appended below your content, and `.claude/CLAUDE.md` bridges it for Claude Code. Review the combined file once; your prior text is untouched.
 
 Blank line, then the **Next** heading (same style as Ready), then the relaunch prose. **Important: the user must exit and relaunch** so the new `.claude/settings.json` and `.claude/settings.local.json` are picked up by Claude Code:
 
 > 🚀 **Next**
 >
 > **Fill any secret/env values.** Two files, by sensitivity:
-> - **Secrets → `<HOME_DIR>/.state/secrets/.env`** (0600, deny-gated, gitignored; Kevin loads it into the environment at boot). If you ticked SEO / Browser / Database at Step 8, the walk created this file — add the lines you need (it's deny-gated, so you fill it yourself):
+> - **Secrets → `<HOME_DIR>/.state/secrets/.env`** (0600, deny-gated, gitignored; the agent loads it into the environment at boot). If you ticked SEO / Browser / Database at Step 8, the walk created this file — add the lines you need (it's deny-gated, so you fill it yourself):
 >   - `PERPLEXITY_API_KEY` — Browser pack, optional: briefings use the built-in web search without it; the key adds recency and country filters (sign up at https://perplexity.ai/settings/api)
 >   - `SERPAPI_KEY` — SEO pack (https://serpapi.com)
 >   - `OPENPAGERANK_API_KEY` — SEO pack (https://openpagerank.com)
@@ -1774,7 +1772,7 @@ Blank line, then the **Next** heading (same style as Ready), then the relaunch p
 > claude
 > ```
 >
-> **Running Codex from this home?** Relaunch with `codex` instead, trust the folder when asked (that is what lets Codex read the home's `.codex/config.toml`, where Kevin's MCP server is registered), run `/hooks`, and trust the 4 Kevin entries (the ones whose command runs `src/cli.ts`: `session-start`, `session-capture` twice, `guard`). Until then, Codex starts without Kevin's context and captures nothing. Skills are invoked with `$name` there (`$briefing`, `$sync`); the plugin itself installs with `codex plugin marketplace add <PLUGIN_DIR>` then `codex plugin add agentlayer@agentlayer-dev`.
+> **Running Codex from this home?** Relaunch with `codex` instead, trust the folder when asked (that is what lets Codex read the home's `.codex/config.toml`, where the agent's MCP server is registered), run `/hooks`, and trust the 4 agent entries (the ones whose command runs `src/cli.ts`: `session-start`, `session-capture` twice, `guard`). Until then, Codex starts without the agent's context and captures nothing. Skills are invoked with `$name` there (`$briefing`, `$sync`); the plugin itself installs with `codex plugin marketplace add <PLUGIN_DIR>` then `codex plugin add agentlayer@agentlayer-dev`.
 >
 > **Watch for a marketplace trust prompt.** On first relaunch, Claude Code asks "this project wants to register a marketplace and enable a plugin — trust it?" **Accept it.** If you dismiss/miss the prompt, the plugin won't load and the SessionStart banner won't appear — recover by running:
 >

@@ -104,4 +104,4 @@ If commands fail with "Tokens not minted" — the one-time OAuth dance hasn't be
 mcp__plugin_agentlayer_agent__google_auth
 ```
 
-This opens a browser, captures Google's consent, and persists the refresh token to `.state/secrets/google/google-tokens.json` (alongside the OAuth client JSON, in the deny-gated secrets dir) — **the same token serves Search Console and PageSpeed**, so you only run `auth` once. You handle this once per install; Kevin should not normally need to run `auth`.
+This opens a browser, captures Google's consent, and persists the refresh token to `.state/secrets/google/google-tokens.json` (alongside the OAuth client JSON, in the deny-gated secrets dir) — **the same token serves Search Console and PageSpeed**, so you only run `auth` once. You handle this once per install; the agent should not normally need to run `auth`.

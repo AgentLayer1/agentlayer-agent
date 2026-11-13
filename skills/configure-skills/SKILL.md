@@ -1,6 +1,6 @@
 ---
 name: configure-skills
-description: Configure Kevin's optional skill packs (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, Slack) or author a brand-new custom skill. The pack skills ship with the plugin and auto-load — this skill just wires up API keys, MCP server registrations, database connections, coding rules, and tool permissions. Custom-authored skills land in `<HOME>/.claude/skills/<name>/`. Invoked at the end of /agentlayer:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
+description: Configure the agent's optional skill packs (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, Slack) or author a brand-new custom skill. The pack skills ship with the plugin and auto-load — this skill just wires up API keys, MCP server registrations, database connections, coding rules, and tool permissions. Custom-authored skills land in `<HOME>/.claude/skills/<name>/`. Invoked at the end of /agentlayer:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
 allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), Bash(cp *), Bash(ls *), Bash(rm *), Bash(rmdir *), Bash(bunx skills *), Bash(test *), Bash(head *), Bash(command -v *), Bash(bun -e *), Bash(sw_vers *), Bash(xcode-select -p), Bash(xcodebuild -version), Bash(xcrun -f *), Bash(xcrun mcp-server status)
 ---
 
@@ -8,12 +8,12 @@ allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), B
 
 > **Plugin root.** Claude Code fills in `CLAUDE_PLUGIN_ROOT`; Codex leaves it unset. Under Codex, read every `CLAUDE_PLUGIN_ROOT` path in this skill and its playbooks as this skill's base directory two levels up (the `<skill>` block's `<path>`).
 
-This skill manages Kevin's optional capabilities. Use it to:
+This skill manages the agent's optional capabilities. Use it to:
 1. **Configure a pack** (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, or App Store) — writes API keys, registers MCP servers, sets up database connections, seeds coding rules, grants tool permissions
 2. **Deconfigure a pack** — revokes keys/MCP/permissions (the pack's SKILL.md files stay; they ship with the plugin)
 3. **Author a brand-new custom skill** — writes a new SKILL.md to your `<HOME>/.claude/skills/`
 
-> **What this skill does NOT do:** copy pack skills around. The `seo` skill, `wordpress-rest` (and the Browser pack's underlying MCP tools) are part of the plugin itself, `<plugin>/skills/*` auto-loads when the plugin is enabled. Configuring a pack means setting up the keys/servers/permissions those skills need to actually work. For authoring brand-new custom skills, use Claude Code's native `skill-creator` plugin (Kevin does not duplicate that surface). Third-party skill libraries install via skills.sh (Section F).
+> **What this skill does NOT do:** copy pack skills around. The `seo` skill, `wordpress-rest` (and the Browser pack's underlying MCP tools) are part of the plugin itself, `<plugin>/skills/*` auto-loads when the plugin is enabled. Configuring a pack means setting up the keys/servers/permissions those skills need to actually work. For authoring brand-new custom skills, use Claude Code's native `skill-creator` plugin (the agent does not duplicate that surface). Third-party skill libraries install via skills.sh (Section F).
 
 ---
 
@@ -37,7 +37,7 @@ mkdir -p "$HOME_DIR/.claude"
 **File-purpose summary** (wrong file = leaked secrets or unportable config):
 
 - `$PROJECT_SETTINGS` → permission allow-list (so configured tools don't trigger a confirm prompt on each use). Committable, non-secret.
-- `$SECRETS_ENV` → **API keys + DB connection strings** (dotenv `KEY=value` lines), `.state/secrets/.env`. 0600, deny-gated, gitignored; Kevin's config loader surfaces these into `process.env` at boot. This is where every credential goes.
+- `$SECRETS_ENV` → **API keys + DB connection strings** (dotenv `KEY=value` lines), `.state/secrets/.env`. 0600, deny-gated, gitignored; the agent's config loader surfaces these into `process.env` at boot. This is where every credential goes.
 - `$SETTINGS_FILE` → **private** runtime config in an `env` block (`AGENT_CODE_PATH`, `AGENT_GIT_REPOS`, `GSC_SITE_URL`, `MARKDOWN_URL`, tunables). Plant HOME-scoped keys under the shared `AGENT_*` names, the only ones the plugin reads. Gitignored because it's machine-local, **not** because it's a secrets store — credentials never go here. `GSC_SITE_URL` lives here because it's a site URL (not a credential) that Bash-based SEO skills read from the environment.
 - `$MCP_FILE` → `<HOME>/.mcp.json` at the project root (NOT inside `.claude/`). Claude Code reads project MCP servers from this exact location. A file at `.claude/mcp.json` is silently ignored.
 - `$SKILLS_DIR` → where third-party skill libraries (Section F) land. Pack skills do NOT live here, they live in the plugin source.
@@ -60,7 +60,7 @@ The data dir is the marker; it is the same one the resolver and every runtime gu
 > - Deconfigure a skill pack
 > - Cancel
 
-Branch into the matching section below. For authoring brand-new custom skills (not in this plugin and not on skills.sh), use Claude Code's native [`skill-creator`](https://github.com/anthropics/claude-plugins-official) plugin — Kevin does not duplicate that surface.
+Branch into the matching section below. For authoring brand-new custom skills (not in this plugin and not on skills.sh), use Claude Code's native [`skill-creator`](https://github.com/anthropics/claude-plugins-official) plugin — the agent does not duplicate that surface.
 
 ---
 
@@ -74,8 +74,8 @@ Branch into the matching section below. For authoring brand-new custom skills (n
 >
 > - ☐ SEO — the `seo` skill (audit, Search Console, PageSpeed, SERP, rank) and `wordpress-rest` (already loaded; this walks API key + permission setup)
 > - ☐ Browser **(recommended)** — Playwright tool permissions + optional Perplexity search (briefings fall back to the built-in web search without it)
-> - ☐ Database — connect Kevin to one or more Postgres databases (read-only `database_list`/`database_schema`/`database_query` + `database_fork` to clone a local DB for risky schema work)
-> - ☐ GitHub — PR, issue + GitHub Actions access (`github_pr_*` / `github_issue_*` / `github_run_*`), plus the writes your token allows (issues, a PR's title and description), so Kevin can review PRs, walk their own, and brief a second model on them or on any branch (the `engineer` skill's PR playbooks and the `adversarial-review` skill) and diagnose failing CI builds
+> - ☐ Database — connect the agent to one or more Postgres databases (read-only `database_list`/`database_schema`/`database_query` + `database_fork` to clone a local DB for risky schema work)
+> - ☐ GitHub — PR, issue + GitHub Actions access (`github_pr_*` / `github_issue_*` / `github_run_*`), plus the writes your token allows (issues, a PR's title and description), so the agent can review PRs, walk their own, and brief a second model on them or on any branch (the `engineer` skill's PR playbooks and the `adversarial-review` skill) and diagnose failing CI builds
 > - ☐ API — draft API requests as file-based collections you fire yourself (Bruno or Postman visual clients, or plain curl scripts). No keys or permissions; this walks the adapter setup.
 > - ☐ Xcode — build, test, run and debug Apple apps and Swift packages through Apple's Xcode MCP server, plus the sandbox and permission posture that makes the toolchain reachable. **macOS with Xcode 27 or later** (the headless server ships there). No API key.
 > - ☐ Helpdesk — read support tickets and leave private draft notes in SupportCandy or Pylon (`helpdesk_*`); a person sends every reply
@@ -231,7 +231,7 @@ After both pieces processed, print Browser pack summary.
 
 ### A.2c — Database pack walk
 
-Connects Kevin to one or more Postgres databases. Three read-only MCP tools (`database_list`, `database_schema`, `database_query`) plus one write tool, `database_fork` (clones a database via `CREATE DATABASE ... TEMPLATE` so you can make risky schema changes off a scratch copy — local servers only, remote hosts refused), are bundled with the plugin; this walk grants their permissions and sets up an **arbitrary number** of connections. Each connection is an `AGENT_DB_<NAME>` line whose value is a Postgres connection string. The connection string carries credentials, so it is **sensitive** — it lives in `.state/secrets/.env` (loaded into the environment at boot, where the db tools discover it); the walk only ensures that store exists, and the user adds the `AGENT_DB_<NAME>=<connection string>` line in their editor, never in chat.
+Connects the agent to one or more Postgres databases. Three read-only MCP tools (`database_list`, `database_schema`, `database_query`) plus one write tool, `database_fork` (clones a database via `CREATE DATABASE ... TEMPLATE` so you can make risky schema changes off a scratch copy — local servers only, remote hosts refused), are bundled with the plugin; this walk grants their permissions and sets up an **arbitrary number** of connections. Each connection is an `AGENT_DB_<NAME>` line whose value is a Postgres connection string. The connection string carries credentials, so it is **sensitive** — it lives in `.state/secrets/.env` (loaded into the environment at boot, where the db tools discover it); the walk only ensures that store exists, and the user adds the `AGENT_DB_<NAME>=<connection string>` line in their editor, never in chat.
 
 > **Never prompt for connection-string values in chat.** A Postgres URL embeds a password (`postgres://user:pass@host/db`). The walk collects connection *names* only and surfaces *which* `AGENT_DB_<NAME>` keys to fill in `<HOME>/.state/secrets/.env`. The session-capture redactor masks DB URLs (and exact-matches `.state/secrets/.env` values) as defense-in-depth, but the safe move is to keep the value off the wire entirely.
 
@@ -264,13 +264,13 @@ Each line is a Postgres connection string, e.g.:
   AGENT_DB_APP=postgres://user:pass@localhost:5432/app_dev
 
 Add these lines in <HOME>/.state/secrets/.env — never paste them into chat.
-Relaunch Claude Code, then run database_list to confirm Kevin sees them.
+Relaunch Claude Code, then run database_list to confirm the agent sees them.
 Add more connections any time by re-running this walk.
 ```
 
 ### A.2d — GitHub pack walk
 
-Gives Kevin GitHub access through eighteen MCP tools. Reads: list and view PRs and issues, review threads, diffs, and failing GitHub Actions runs with their failed-step logs. `github_fast_forward` fast-forwards the operator's local checkouts during sync, strictly forward-only, reporting rather than resolving anything dirty, diverged, or held by a worktree. Writes: open, edit, comment on and label issues (with screenshots or videos), open a PR from a pushed branch, replace a PR's title or description, and edit your own comments. The `engineer` skill's PR playbooks and the `adversarial-review` skill run on these tools. Nothing merges, closes, re-runs a workflow, or edits someone else's comment. The walk grants every tool except `github_pr_create`, which always asks; the token decides what a write may do, and a call the token isn't allowed gets a message naming the permission to add.
+Gives the agent GitHub access through eighteen MCP tools. Reads: list and view PRs and issues, review threads, diffs, and failing GitHub Actions runs with their failed-step logs. `github_fast_forward` fast-forwards the operator's local checkouts during sync, strictly forward-only, reporting rather than resolving anything dirty, diverged, or held by a worktree. Writes: open, edit, comment on and label issues (with screenshots or videos), open a PR from a pushed branch, replace a PR's title or description, and edit your own comments. The `engineer` skill's PR playbooks and the `adversarial-review` skill run on these tools. Nothing merges, closes, re-runs a workflow, or edits someone else's comment. The walk grants every tool except `github_pr_create`, which always asks; the token decides what a write may do, and a call the token isn't allowed gets a message naming the permission to add.
 
 **Why tokens, not `gh auth login`:** the tools shell out to `gh` from inside the MCP server (which runs outside the Claude Code sandbox, where `gh`'s keychain TLS would otherwise fail), and a fine-grained token reaches the repos of **one** owner (an org or a user) only, while a `gh` login holds one active account at a time. So the tokens live in `.state/secrets/.env`, one per owner, and every tool picks the one for the repo it is called on:
 
@@ -313,7 +313,7 @@ The tools are the capability surface: each exposes what the pack chose to expose
 **(2) Surface the PAT minting steps.** `AskUserQuestion`:
 
 > **Activate GitHub?**
-> Grants the `github_pr_*` / `github_issue_*` / `github_run_*` tool permissions, plus `github_fast_forward` — which fast-forwards your local checkouts' default branches during `/agentlayer:sync` (forward-only; never resolves a dirty, diverged, or worktree-held branch). Writes (issues, a PR's title and description) work only where your token allows them. Opening a PR asks you every time. Denies `gh` in Kevin's own shell, so GitHub goes through these tools. Ensures `.state/secrets/.env` exists. You add one token line per repo owner via your editor after this completes. Until you do, the tools use your own `gh auth login` if you have one, and `github_fast_forward` reports the repo as not configured.
+> Grants the `github_pr_*` / `github_issue_*` / `github_run_*` tool permissions, plus `github_fast_forward` — which fast-forwards your local checkouts' default branches during `/agentlayer:sync` (forward-only; never resolves a dirty, diverged, or worktree-held branch). Writes (issues, a PR's title and description) work only where your token allows them. Opening a PR asks you every time. Denies `gh` in the agent's own shell, so GitHub goes through these tools. Ensures `.state/secrets/.env` exists. You add one token line per repo owner via your editor after this completes. Until you do, the tools use your own `gh auth login` if you have one, and `github_fast_forward` reports the repo as not configured.
 >
 > - Yes — grant permissions + ensure placeholder
 > - Skip (no permission grant, no placeholder)
@@ -337,18 +337,18 @@ Then list the owners behind the configured checkouts, so the operator knows how 
 git -C "<path>" remote get-url origin
 ```
 
-Take the owner out of each GitHub remote (`git@github.com:<owner>/<repo>.git` or `https://github.com/<owner>/<repo>`), dedupe, and map each to its key (`my-org` → `GITHUB_TOKEN_MY_ORG`). With no checkouts configured, ask which owners' repos Kevin will read. One owner can use `GITHUB_TOKEN` instead; say so.
+Take the owner out of each GitHub remote (`git@github.com:<owner>/<repo>.git` or `https://github.com/<owner>/<repo>`), dedupe, and map each to its key (`my-org` → `GITHUB_TOKEN_MY_ORG`). With no checkouts configured, ask which owners' repos the agent will read. One owner can use `GITHUB_TOKEN` instead; say so.
 
 Then surface these steps verbatim, once per owner:
 
 1. Open [GitHub → Settings → Developer settings → Fine-grained tokens](https://github.com/settings/tokens?type=beta).
 2. **Generate new token.** Set **Resource owner** to that owner (your org, or your own account; self-approval is instant if you own the org). A fine-grained token reaches one owner's repos only, so repeat these steps for each owner.
 3. **Repository access:** select the specific repos (or all repos under that owner) — keep it as tight as the work needs.
-4. **Permissions → Repository permissions.** For reading, all **Read-only**: **Pull requests** · **Issues** · **Metadata** (required) · **Actions** · **Contents**. For writes, raise only what Kevin should do in that owner's repos: **Issues: Read and write** to open, edit, comment on and label issues; **Pull requests: Read and write** to change a PR's title or description. Attaching screenshots or videos needs nothing more on the token; the person behind it needs the Write role on the repo. A token with only the reads keeps the pack read-only.
+4. **Permissions → Repository permissions.** For reading, all **Read-only**: **Pull requests** · **Issues** · **Metadata** (required) · **Actions** · **Contents**. For writes, raise only what the agent should do in that owner's repos: **Issues: Read and write** to open, edit, comment on and label issues; **Pull requests: Read and write** to change a PR's title or description. Attaching screenshots or videos needs nothing more on the token; the person behind it needs the Write role on the repo. A token with only the reads keeps the pack read-only.
    - **Actions (Read)** is the one that covers workflow **runs**, logs, and artifacts — that's what "did this PR build pass / debug the red build" needs.
    - There is **no Checks permission** for fine-grained PATs — check runs are a GitHub App capability, absent from the docs' repository-permission list, so a PAT can never read them. Don't send the operator hunting for it. `github_pr_checks` reads `statusCheckRollup`, which mixes commit statuses with check runs, so it `403`s (`Resource not accessible by personal access token (node.statusCheckRollup.nodes.0)`) wherever CI reports as check runs — GitHub Actions does. **Commit statuses** is the lookalike in the picker and does *not* fix it: it covers only the legacy status half. Treat `github_pr_checks` as unavailable on a PAT and read build state from `github_run_list` / `github_run_view` under `Actions: Read` instead.
-   - Do **NOT** add **Workflows** — despite the name, that permission grants *write* access to the `.github/workflows/*.yml` files (editing the CI definitions), which Kevin never does. `Actions: Read` is the correct one for reading run status.
-   - **Contents (Read)** is what `git fetch` authenticates against, so `github_fast_forward` (sync step 0) needs it — and `github_pr_diff` too, since a PR diff returns file content. Without it both fail while the PR, issue, and run tools keep working fine. Verified against a live org: three different states all surface as `403` on the git endpoint — a PAT awaiting org approval, an approved PAT missing `Contents`, and (as `404 Repository not found`) a repo the token can't see at all. The status code won't tell you which, but **one probe will**: a pending token can only read *public* resources, so if the PR/issue tools return private data the token is already approved and `Contents` is the thing missing. `Contents: Read` grants no ability to push: that takes `Contents: Read and write`, which Kevin never needs.
+   - Do **NOT** add **Workflows** — despite the name, that permission grants *write* access to the `.github/workflows/*.yml` files (editing the CI definitions), which the agent never does. `Actions: Read` is the correct one for reading run status.
+   - **Contents (Read)** is what `git fetch` authenticates against, so `github_fast_forward` (sync step 0) needs it — and `github_pr_diff` too, since a PR diff returns file content. Without it both fail while the PR, issue, and run tools keep working fine. Verified against a live org: three different states all surface as `403` on the git endpoint — a PAT awaiting org approval, an approved PAT missing `Contents`, and (as `404 Repository not found`) a repo the token can't see at all. The status code won't tell you which, but **one probe will**: a pending token can only read *public* resources, so if the PR/issue tools return private data the token is already approved and `Contents` is the thing missing. `Contents: Read` grants no ability to push: that takes `Contents: Read and write`, which the agent never needs.
 5. Generate, copy the `github_pat_…` value.
 6. Ensure the secret store exists (§D.1) and add one line per owner in your editor, named for the owner:
    ```
@@ -363,7 +363,7 @@ Then surface these steps verbatim, once per owner:
 
 **Codex, when the home runs it.** If `<HOME>/.codex/hooks.json` exists, run the `codex_setup` MCP tool after the grants. It turns each `Bash(…)` deny into a `forbidden` rule in `.codex/rules/agent.rules`, so `gh` is blocked in a Codex session too; Codex has no per-tool allow list, so the tool grants need nothing there. Skip it in a home that never opted into Codex: a later Codex wiring reads the deny from the settings on its own.
 
-**(3) Repo defaulting (no config needed).** When a `github_*` call omits `repo`, Kevin derives `owner/repo` from the `origin` remote of `AGENT_CODE_PATH`, then the first `AGENT_GIT_REPOS` entry — the same codebase pair init writes. An explicit `owner/repo` argument always wins. So scope each owner's token to whatever those paths point at (plus any repo you'll name explicitly).
+**(3) Repo defaulting (no config needed).** When a `github_*` call omits `repo`, the agent derives `owner/repo` from the `origin` remote of `AGENT_CODE_PATH`, then the first `AGENT_GIT_REPOS` entry — the same codebase pair init writes. An explicit `owner/repo` argument always wins. So scope each owner's token to whatever those paths point at (plus any repo you'll name explicitly).
 
 **(4) Summary:**
 
@@ -416,12 +416,12 @@ Adapters:            Bruno (installed | install offered) · Postman (installed |
 Default collections: <HOME>/reports/api/bruno/  (open once in Bruno: Open Collection → this folder)
                      <HOME>/reports/api/postman/  (open once in Postman: Files → Open folder → this folder)
                      <HOME>/reports/api/curl/   (terminal-runnable scripts)
-Permissions granted: none needed — authoring writes files only; Kevin never sends requests
+Permissions granted: none needed — authoring writes files only; the agent never sends requests
 ```
 
 ### A.2f — Xcode pack walk
 
-**macOS with Xcode 27 or later.** Gives Kevin the ability to build, test, run, screenshot and debug Apple apps and Swift packages through **Apple's own Xcode MCP server**, running headless so no Xcode window is needed. Earlier Xcode versions ship only a bridge into a live Xcode process; the pack does not support them. Unlike the other packs this one is not about an API key: it is about reaching a toolchain the shell sandbox blocks. No credential is involved, so nothing here touches `.state/secrets/.env`.
+**macOS with Xcode 27 or later.** Gives the agent the ability to build, test, run, screenshot and debug Apple apps and Swift packages through **Apple's own Xcode MCP server**, running headless so no Xcode window is needed. Earlier Xcode versions ship only a bridge into a live Xcode process; the pack does not support them. Unlike the other packs this one is not about an API key: it is about reaching a toolchain the shell sandbox blocks. No credential is involved, so nothing here touches `.state/secrets/.env`.
 
 **Why an MCP server and not the shell.** The Claude Code seatbelt blocks `xcrun`'s cache in `/var/folders`, CoreSimulator's XPC connection, and SwiftPM's nested sandbox, so `xcodebuild`, `swift build`, `swift test` and `simctl` all fail inside it. MCP servers run outside that sandbox. Codex's Seatbelt fails identically ([openai/codex#4987](https://github.com/openai/codex/issues/4987)), which makes "Apple tooling goes through MCP, never the shell" an architectural rule rather than a Claude Code workaround. Same principle as `setup_worktree` and the `github_*` family.
 
@@ -512,7 +512,7 @@ And to `permissions.ask`, so each one waits for the operator:
 
 `simctl` needs it to reach CoreSimulatorService over XPC and write its log under `~/Library/Logs/CoreSimulator`; `xcodebuild` needs it for the keychain (distribution certificate) and DerivedData; `xctrace` needs it for Instruments' analysis cache under `/var/folders/…/C/com.apple.dt.InstrumentsCLI` (sandboxed, `xctrace version` answers but `xctrace list devices` and every recording abort with "Cannot create temporary directory for Instruments Analysis Core"). Nothing else leaves the sandbox — this is a per-command exclusion, not a sandbox disable.
 
-**Kevin does not write this line.** An agent widening its own sandbox reads as self-modification, and the auto-mode classifier refuses it (observed 2026-09-18, and correctly). So generate the paste-ready block and hand it over, following the `automode-block.ts` precedent — an operator instruction is a generated artifact, never a description:
+**The agent does not write this line.** An agent widening its own sandbox reads as self-modification, and the auto-mode classifier refuses it (observed 2026-09-18, and correctly). So generate the paste-ready block and hand it over, following the `automode-block.ts` precedent — an operator instruction is a generated artifact, never a description:
 
 1. Read `$PROJECT_SETTINGS`, `$SETTINGS_FILE` and the user-global `~/.claude/settings.json`. If none enables the sandbox, say so and stop here: the exclusion is unnecessary, and no file is written.
 2. `excludedCommands` merges across layers, so union the three files' arrays and compute only the *missing* entries. If all three patterns are already present, skip the rest of this step and say so.
@@ -618,7 +618,7 @@ Then relaunch Claude Code and check /mcp — `xcode` should be connected.
 
 ### A.2g — Helpdesk pack walk
 
-Gives Kevin a support helpdesk through one tool surface, whichever helpdesk it is: `helpdesk_connections` lists the configured helpdesks, `helpdesk_tickets` lists tickets updated in a window, `helpdesk_ticket` reads one ticket's whole conversation, `helpdesk_attachment` downloads a log or screenshot from it into a temp folder, `helpdesk_accounts` and `helpdesk_lookups` list accounts and reference data (statuses, categories, tags, teammates, macros), `helpdesk_stats` counts the open tickets updated in a window (numbers only, the read sync runs), `helpdesk_note` adds a **private note** that agents see and the customer never does, and `helpdesk_assign` assigns a ticket to a teammate (SupportCandy). Those are the pack's two writes, there so Kevin can leave a draft reply or a finding and hand the ticket to the person who sends it. No tool replies to a customer, changes a ticket's status or closes it. Tickets come back with the people on them (the customer, the assignee, each message's author) so the agent can find the account and answer by name. Two connectors ship: **SupportCandy** (the WordPress helpdesk plugin) and **Pylon**.
+Gives the agent a support helpdesk through one tool surface, whichever helpdesk it is: `helpdesk_connections` lists the configured helpdesks, `helpdesk_tickets` lists tickets updated in a window, `helpdesk_ticket` reads one ticket's whole conversation, `helpdesk_attachment` downloads a log or screenshot from it into a temp folder, `helpdesk_accounts` and `helpdesk_lookups` list accounts and reference data (statuses, categories, tags, teammates, macros), `helpdesk_stats` counts the open tickets updated in a window (numbers only, the read sync runs), `helpdesk_note` adds a **private note** that agents see and the customer never does, and `helpdesk_assign` assigns a ticket to a teammate (SupportCandy). Those are the pack's two writes, there so the agent can leave a draft reply or a finding and hand the ticket to the person who sends it. No tool replies to a customer, changes a ticket's status or closes it. Tickets come back with the people on them (the customer, the assignee, each message's author) so the agent can find the account and answer by name. Two connectors ship: **SupportCandy** (the WordPress helpdesk plugin) and **Pylon**.
 
 **(1) Pick the helpdesk(s)** (`AskUserQuestion`, multi-select): SupportCandy · Pylon. With both configured, each call names the one it means.
 
@@ -631,14 +631,14 @@ A named connection reads only its own keys and never borrows the default's, sinc
 
 **(2) Pick the level** (`AskUserQuestion`):
 
-> **What may Kevin do in the helpdesk?**
+> **What may the agent do in the helpdesk?**
 > - Read tickets, leave draft notes and assign tickets (Recommended) — grants every helpdesk tool
 > - Read only — grants `helpdesk_connections`, `helpdesk_tickets`, `helpdesk_ticket`, `helpdesk_attachment`, `helpdesk_accounts`, `helpdesk_lookups` and `helpdesk_stats`; no notes
 
 **(3) SupportCandy** — surface these steps verbatim; they happen on the WordPress site, as an admin:
 
 1. **Turn the REST API on:** SupportCandy → Settings → Advanced → REST API. While it's off the plugin registers no REST routes at all, so every call returns 404.
-2. **Make an agent role for the assistant:** SupportCandy → Agent Roles → add a role (e.g. "Assistant") that can **view tickets** and **view and add private notes**, and nothing else: no reply, no status or category changes, no delete. The plugin checks reply and private-note rights separately, so this role can leave notes but can't answer a customer, whatever is asked of it. For Kevin to assign tickets as well, also tick **Assign Agents** for the assignment states it should hand off (unassigned, and assigned to me).
+2. **Make an agent role for the assistant:** SupportCandy → Agent Roles → add a role (e.g. "Assistant") that can **view tickets** and **view and add private notes**, and nothing else: no reply, no status or category changes, no delete. The plugin checks reply and private-note rights separately, so this role can leave notes but can't answer a customer, whatever is asked of it. For the agent to assign tickets as well, also tick **Assign Agents** for the assignment states it should hand off (unassigned, and assigned to me).
 3. **Make a dedicated WordPress user** (Users → Add New, e.g. `support-assistant`) with the lowest WordPress role the site allows, then add it under SupportCandy → Agents with the role from step 2. Never reuse a person's login: every note it writes is attributed to this user.
 4. **Keep the API out of the page cache.** A caching plugin can save the answer to the assistant's API reads and hand it to anyone who asks for the same address, login or not, since the application password travels in a header rather than a cookie. Reads then go stale, and the ticket list is readable without a login. In LiteSpeed Cache, turn off **Cache → Cache REST API**, or add `/wp-json/supportcandy/` to **Excludes → Do Not Cache URIs**; then purge the cache. Other caching plugins have an equivalent exclude.
 5. **Create its application password:** Users → that user → Application Passwords → name it after this agent → Add, and copy the password. WordPress only offers this on an HTTPS site.
@@ -673,7 +673,7 @@ A 404 means the REST API is off; a 401 means the password, the username, or the 
 
 ### A.2h — App Store pack walk
 
-Gives Kevin `appstore_reviews`: any app's App Store reviews by its link or id, newest first, with rating counts, the app version and the storefront. It reads Apple's public review feed, so there is no key and no Apple account involved, and it never replies to a review. Reviews are kept per country storefront; the tool picks storefronts itself, starting with every one and learning where an app's reviews come from (`.state/appstore/<id>.json`). Apple's feed keeps about the 500 most recent reviews per storefront and now and then comes back blank: the tool says what it read, and a read where nothing came back gives no count rather than zero.
+Gives the agent `appstore_reviews`: any app's App Store reviews by its link or id, newest first, with rating counts, the app version and the storefront. It reads Apple's public review feed, so there is no key and no Apple account involved, and it never replies to a review. Reviews are kept per country storefront; the tool picks storefronts itself, starting with every one and learning where an app's reviews come from (`.state/appstore/<id>.json`). Apple's feed keeps about the 500 most recent reviews per storefront and now and then comes back blank: the tool says what it read, and a read where nothing came back gives no count rather than zero.
 
 **(1) Grant** via §E: `mcp__plugin_agentlayer_agent__appstore_reviews`.
 
@@ -691,16 +691,16 @@ To watch an app's reviews in a helpdesk pulse, add `appstore: <id>` to its queue
 
 ### A.2i — Slack pack walk
 
-Gives Kevin read-only Slack through the `slack_*` MCP tools: the `slack` skill's pulses, the attention queue's `Replies I owe` and `External threads waiting`, and sync's `🔔 Slack` block. Each operator authorizes their own Slack account with a **user token via PKCE OAuth**: Kevin sees only the channels that account can see. No bot, no DM scope, no write scope. Reads run in the unsandboxed MCP server, which can read the deny-gated token file; only the one-time `auth` runs in a terminal.
+Gives the agent read-only Slack through the `slack_*` MCP tools: the `slack` skill's pulses, the attention queue's `Replies I owe` and `External threads waiting`, and sync's `🔔 Slack` block. Each operator authorizes their own Slack account with a **user token via PKCE OAuth**: The agent sees only the channels that account can see. No bot, no DM scope, no write scope. Reads run in the unsandboxed MCP server, which can read the deny-gated token file; only the one-time `auth` runs in a terminal.
 
-**(0) Find the Slack app's Client ID.** Read `AGENT_SLACK_CLIENT_ID` from `$SETTINGS_FILE` `env` (only that key). If it's set and not empty, a teammate or an earlier run already created the app: skip to (1). Otherwise ask with `AskUserQuestion`: **"Does your Slack workspace already have an app for Kevin?"**, with the options *Yes, I have its Client ID* / *No, walk me through creating one* / *Skip Slack for now*.
+**(0) Find the Slack app's Client ID.** Read `AGENT_SLACK_CLIENT_ID` from `$SETTINGS_FILE` `env` (only that key). If it's set and not empty, a teammate or an earlier run already created the app: skip to (1). Otherwise ask with `AskUserQuestion`: **"Does your Slack workspace already have an app for the agent?"**, with the options *Yes, I have its Client ID* / *No, walk me through creating one* / *Skip Slack for now*.
 
 For *No*, hand over these steps verbatim. They're done once per workspace, by anyone allowed to create apps there:
 
 > 1. Open <https://api.slack.com/apps> → **Create New App** → **From scratch**. Name it after your agent and pick your workspace.
-> 2. **OAuth & Permissions** → **User Token Scopes** (not Bot Token Scopes): add `channels:history`, `channels:read`, `groups:history`, `groups:read`, `users:read` and `search:read`. Nothing else: Kevin refuses a token with any write or DM scope.
+> 2. **OAuth & Permissions** → **User Token Scopes** (not Bot Token Scopes): add `channels:history`, `channels:read`, `groups:history`, `groups:read`, `users:read` and `search:read`. Nothing else: The agent refuses a token with any write or DM scope.
 > 3. **OAuth & Permissions** → **Redirect URLs**: add `http://localhost`.
-> 4. **OAuth & Permissions** → **Advanced token security via PKCE**: turn it **on**. Slack says this can't be undone, and it's what lets Kevin sign in without a client secret.
+> 4. **OAuth & Permissions** → **Advanced token security via PKCE**: turn it **on**. Slack says this can't be undone, and it's what lets the agent sign in without a client secret.
 > 5. **Basic Information** → copy the **Client ID** (it's public, not a secret) and paste it here.
 > 6. If your workspace requires admin approval, **Install to Workspace** and have an admin approve it once. Teammates don't need to repeat any of this.
 
@@ -912,7 +912,7 @@ Print per library: install status + symlink path + upstream LICENSE first-line. 
 - Revoke the GitHub tool grants from `permissions.allow` (§E remove helper): `github_pr_list`, `github_pr_view`, `github_pr_comments`, `github_pr_diff`, `github_pr_checks`, `github_run_list`, `github_run_view`, `github_run_log`, `github_issue_list`, `github_issue_view`, `github_sweep`, `github_fast_forward`, `github_issue_create`, `github_issue_comment`, `github_issue_update`, `github_pr_update`, `github_comment_update`. Always-on core stays.
 - Note: this also disables `sync` step 0, so the code checkouts stop being fast-forwarded (the rest of the sync chain is unaffected).
 - `AskUserQuestion`: "Also remove the GitHub tokens from `.state/secrets/.env`?" (Yes/No). If yes, tell the user to delete `GITHUB_TOKEN` and every `GITHUB_TOKEN_<OWNER>` line in their editor (§D.1 — Claude can't edit the gated file). If no, leave them (harmless once the perms are revoked).
-- `AskUserQuestion`: "Let Kevin run `gh` in its own shell again?" (No, keep it denied (Recommended) / Yes). Only on yes, remove `Bash(gh)` and `Bash(gh *)` from `permissions.deny` (§E deny helper, remove), then run `codex_setup` if `<HOME>/.codex/hooks.json` exists so Codex's forbidden rule goes too; removing a deny widens what the agent can run, so it is never the default.
+- `AskUserQuestion`: "Let the agent run `gh` in its own shell again?" (No, keep it denied (Recommended) / Yes). Only on yes, remove `Bash(gh)` and `Bash(gh *)` from `permissions.deny` (§E deny helper, remove), then run `codex_setup` if `<HOME>/.codex/hooks.json` exists so Codex's forbidden rule goes too; removing a deny widens what the agent can run, so it is never the default.
 - The operator's `gh auth login` is theirs: `gh auth logout` ends it.
 
 **Helpdesk deconfigure:**
@@ -973,7 +973,7 @@ OPENPAGERANK_API_KEY=<your key>
 AGENT_DB_MAIN=<postgres connection string>
 ```
 
-Never paste the values in chat. Kevin's config loader reads the file at boot and surfaces the keys
+Never paste the values in chat. The agent's config loader reads the file at boot and surfaces the keys
 into `process.env`; ad-hoc Bash that Claude spawns never loads it — that's the point.
 
 **Deactivation** — tell the user to delete the matching `KEY=` line(s) from `.state/secrets/.env`
@@ -1079,7 +1079,7 @@ Example final shape — `/init` always-on baseline + both SEO and Browser activa
 
 **Deny** (a pack that routes a capability through its tools, such as GitHub's `Bash(gh)` / `Bash(gh *)`): the same steps as Grant and Revoke, on `permissions.deny` instead of `permissions.allow`. Deny wins over `ask` and `allow` in every mode, so only write entries the pack's walk names.
 
-**Why `settings.json` (not `settings.local.json`):** these aren't secrets — they're "the user opted into this pack, so its tools shouldn't trigger a confirm prompt." Putting them in `settings.json` keeps them committable (no harm in sharing across machines if the user clones their Kevin home).
+**Why `settings.json` (not `settings.local.json`):** these aren't secrets — they're "the user opted into this pack, so its tools shouldn't trigger a confirm prompt." Putting them in `settings.json` keeps them committable (no harm in sharing across machines if the user clones their agent home).
 
 ---
 

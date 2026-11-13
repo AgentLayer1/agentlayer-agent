@@ -5,7 +5,7 @@ description: Query WordPress content via the public WP REST API — posts, pages
 
 # WordPress REST API
 
-Plain HTTP, no auth, no plugin. Every WordPress site exposes the REST API at `/wp-json/wp/v2/` for published content. This skill documents the endpoints Kevin actually uses.
+Plain HTTP, no auth, no plugin. Every WordPress site exposes the REST API at `/wp-json/wp/v2/` for published content. This skill documents the endpoints the agent actually uses.
 
 > **Not a dispatch plugin.** Call the WP REST API with `curl` directly. There is no `bun run dispatch wordpress-rest` — that command will fail.
 
@@ -155,5 +155,5 @@ curl -s "$WP/wp-json/wp/v2/custom_product?shop_cleaning_category=$kitchen_id&per
 - ✅ Shop progress tracking (product counts, brand pages live)
 - ✅ Content freshness audits (`modified` dates)
 - ❌ Reading SEO title/meta — use Playwright scrape instead
-- ❌ Writing anything — Kevin is strictly read-only on NN
+- ❌ Writing anything — the agent is strictly read-only on NN
 - ❌ User/author data — requires auth; not needed for current workflows

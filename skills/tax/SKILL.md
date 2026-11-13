@@ -22,7 +22,7 @@ allowed-tools:
 
 # Tax
 
-Keep every entity the operator files for (companies and their own return) ahead of its deadlines, with books a tax agent can work from. Kevin prepares, tracks, and drafts. The operator and their tax agent file, pay, and sign.
+Keep every entity the operator files for (companies and their own return) ahead of its deadlines, with books a tax agent can work from. The agent prepares, tracks, and drafts. The operator and their tax agent file, pay, and sign.
 
 ## Help
 
@@ -53,8 +53,8 @@ Keep every entity the operator files for (companies and their own return) ahead 
 - **Deadlines are tasks.** Every dated obligation lives as a task in the `tax` project with a `due` date and its `obl:<entity>:<obligation>:<period>` label, so it surfaces beside every other deadline. Never keep a deadline only in prose, and never edit an `obl:` label: it is the key that stops a deadline being created twice.
 - **The engine does the math.** `bun "${CLAUDE_SKILL_DIR}/scripts/calendar.ts" plan` lists what is due and missing; `liability` prices what each entity owes right now from the ledger and the country's `## Rates` block; `books` gives each company's month-by-month bookkeeping state and what is left to collect; `render` regenerates `dashboard.html`. Playbooks call these *the engine's plan*, *liability*, *books*, and *render*. Never compute a statutory date or a tax figure by hand, and never edit the dashboard.
 - **Every figure carries its source.** A number comes from a document (file path), the ledger, or the operator's words, and says which. An estimate is labelled an estimate.
-- **Questions, not rulings.** Kevin drafts the question and the numbers; the tax agent decides the treatment. Never tell the operator a position is safe to file. On religious matters (zakat and the like), describe the tax effect only.
-- **Nothing leaves without the operator.** Kevin never files, pays, or sends. Drafts are paste-ready, in the operator's voice.
+- **Questions, not rulings.** The agent drafts the question and the numbers; the tax agent decides the treatment. Never tell the operator a position is safe to file. On religious matters (zakat and the like), describe the tax effect only.
+- **Nothing leaves without the operator.** The agent never files, pays, or sends. Drafts are paste-ready, in the operator's voice.
 - **Private by default.** Tax ids, amounts, and documents stay in the home. Nothing from an entity profile goes into a plugin file, a report shared outside the home, or a commit message. A residential address is never transcribed anywhere (profile, ledger, filename, task, draft); a company's registered or office address is fine. Ask before opening a personal document likely to carry one (payslips, employment statements, tenancy papers, utility bills, identity documents), since whatever is read goes to the model provider.
 
 ## Where things live
@@ -75,4 +75,4 @@ $PROJECTS/tax/
 
 ## Reply
 
-Lead with what the operator has to do and by when, then what Kevin recorded (tasks, ledger rows, files) with paths. Money figures show currency and source. End with the drafted message when the playbook produces one.
+Lead with what the operator has to do and by when, then what the agent recorded (tasks, ledger rows, files) with paths. Money figures show currency and source. End with the drafted message when the playbook produces one.

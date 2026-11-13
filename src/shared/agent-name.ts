@@ -1,4 +1,5 @@
 import { FILES } from '@/config';
+import { DEFAULT_AGENT_NAME } from '@/shared/persona';
 import { readText } from '@/shared/text';
 
 /**
@@ -22,9 +23,6 @@ export const agentDisplayName = (): string => {
   if (name && !name.includes('{{')) return name;
   return DEFAULT_AGENT_NAME;
 };
-
-/** The name a new agent wakes up with until the operator picks its own. */
-export const DEFAULT_AGENT_NAME = 'Oppi';
 
 /**
  * The names this agent went by before a rename, oldest first, from `IDENTITY.md`'s
@@ -56,9 +54,9 @@ export const FORMERLY_FIELD = /^(.*?\*\*Formerly:\*\*)[ \t]*(.*?)[ \t]*$/m;
 
 /**
  * Swap one agent name for another as a whole word, in exact case. A name touching a letter,
- * digit, `-`, `/` or `\` is part of a path or identifier (`~/Documents/Agents/Kevin`,
- * `C:\Agents\Kevin`, `Documents-Agents-Kevin.git`, `X-Kevin-Test`) and stays. When the new name
- * contains the old one (`Kevin Prime`), a mention already inside it stays too, so a rerun
+ * digit, `-`, `/` or `\` is part of a path or identifier (`~/Documents/Agents/Vega`,
+ * `C:\Agents\Vega`, `Documents-Agents-Vega.git`, `X-Vega-Test`) and stays. When the new name
+ * contains the old one (`Vega Prime`), a mention already inside it stays too, so a rerun
  * can't rename it twice.
  */
 export const renameAgent = (text: string, from: string, to: string): string => {

@@ -41,7 +41,7 @@ export const TRAILING_SEPARATOR_RE = new RegExp(`${ESCAPED_SEPARATOR}\\s*$`);
 // the SessionStart tail regexes above key off it, so date / turn-range /
 // markers are appended only as suffix fields):
 //
-//   ### Session (11:02) [7c1e0d5a-…-4f2b] · 2026-06-03 · ~/Kevin · turns 9–15 · claude: claude-opus-5 · ↩ continues 2026-06-01
+//   ### Session (11:02) [7c1e0d5a-…-4f2b] · 2026-06-03 · ~/Oppi · turns 9–15 · claude: claude-opus-5 · ↩ continues 2026-06-01
 //
 // The turn range makes every block self-describing — capture and compile
 // can reconstruct the whole session index from headers alone.

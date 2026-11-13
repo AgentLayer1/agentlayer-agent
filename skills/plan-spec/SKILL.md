@@ -182,7 +182,7 @@ The spec must be structured so Claude can consume it as an implementation plan. 
 
 ### Output
 
-**In a Kevin home** (the `mcp__plugin_agentlayer_agent__report_write` tool is available), call it. It writes the spec under `<HOME>/reports/plans/` and adds a one-line entry to `<HOME>/reports/index.md` under today's date in one atomic call, so the next session sees the spec:
+**In an agent home** (the `mcp__plugin_agentlayer_agent__report_write` tool is available), call it. It writes the spec under `<HOME>/reports/plans/` and adds a one-line entry to `<HOME>/reports/index.md` under today's date in one atomic call, so the next session sees the spec:
 
 ```
 report_write({

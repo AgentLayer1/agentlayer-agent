@@ -89,7 +89,7 @@ scripts:
 
 ## Flows — multi-step chains (sign-in → onboarding → checkout → activation)
 
-A flow is a **folder of ordered requests that carry values forward**, built on native Postman features: `order`, `afterResponse` scripts, `pm.variables`, and the **Collection Runner**. Kevin authors the folder; the operator runs it from the folder's **Run** in the app. (`curl_run` is single-request verification only, never a flow runner.)
+A flow is a **folder of ordered requests that carry values forward**, built on native Postman features: `order`, `afterResponse` scripts, `pm.variables`, and the **Collection Runner**. The agent authors the folder; the operator runs it from the folder's **Run** in the app. (`curl_run` is single-request verification only, never a flow runner.)
 
 - **One folder per flow** (`postman/collections/<app>/checkout/`), requests ordered 1000, 2000, 3000 in run order.
 - **Carry values forward with `pm.variables.set`**: Postman scopes it to the current request or collection run, so a sign-in stores the token and later steps read `{{sessionToken}}` for that run only.
@@ -117,4 +117,4 @@ Fresh project root: scaffold `postman/collections/<app>/.resources/definition.ya
 2. Stay in **Local View** (bottom left), where the files are; Cloud View is the synced copy and isn't touched.
 3. Add each `{{vault:KEY}}` the report lists to **Vault** before sending.
 
-A workspace connects to one folder at a time, so the personal default gets its own workspace (e.g. "Agent Kevin").
+A workspace connects to one folder at a time, so the personal default gets its own workspace (e.g. "<agent name>").

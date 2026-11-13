@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Kevin MCP Server — entrypoint.
+ * The plugin MCP server — entrypoint.
  * stdio transport; spawned by Claude Code from the plugin manifest, by Codex from the
  * home's `.codex/config.toml` registration (see `skills/init/scripts/codex-setup.ts`).
  *

@@ -8,7 +8,7 @@ allowed-tools: mcp__plugin_agentlayer_agent__slack_whoami, mcp__plugin_agentlaye
 
 # Slack
 
-Read-only access to Slack, built on the Slack pack's `slack_*` MCP tools (per-operator user-token OAuth, no DMs, no writes). This skill handles the **multi-channel composition** Kevin does on natural-language queries; the MCP tools do the reads.
+Read-only access to Slack, built on the Slack pack's `slack_*` MCP tools (per-operator user-token OAuth, no DMs, no writes). This skill handles the **multi-channel composition** the agent does on natural-language queries; the MCP tools do the reads.
 
 **Reads go through MCP tools, not the CLI's `slack` commands over Bash.** The token lives under the deny-gated `.state/secrets/`, which the Bash sandbox can't read; the MCP server runs unsandboxed, so the tools read it fine.
 
@@ -51,7 +51,7 @@ updated: <date>
 
 # Slack Channels
 
-How Kevin groups your Slack workspace. Auto-populated on first auth; new
+How the agent groups your Slack workspace. Auto-populated on first auth; new
 channels you join land in **Uncategorized** for triage.
 
 ## Team
@@ -190,4 +190,4 @@ Skip empty categories. Nothing actionable: `Slack — all clear (<window>, <N> c
 
 - Every read logs to `<HOME>/.state/logs/app.log` under `[💬 slack]`.
 - Refresh tokens expire after 30 days unused. A refresh error from `slack_whoami` means re-running `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" slack auth`.
-- The operator's edits to `slack-channels.md` are theirs: Kevin appends, never rewrites.
+- The operator's edits to `slack-channels.md` are theirs: The agent appends, never rewrites.

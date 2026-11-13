@@ -21,9 +21,9 @@
   ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "Kevin",
+    "displayName": "AgentLayer",
     "shortDescription": "Portable, file-based personal AI assistant",
-    "longDescription": "Kevin keeps a local markdown brain: identity files, a compiled wiki, active memory, and a task system. Every session is captured and compiled back into that brain, so the next session, in Codex or Claude Code, picks up where the last one left off.",
+    "longDescription": "Your agent keeps a local markdown brain: identity files, a compiled wiki, active memory, and a task system. Every session is captured and compiled back into that brain, so the next session, in Codex or Claude Code, picks up where the last one left off.",
     "developerName": "AgentLayer",
     "category": "Productivity",
     "capabilities": [

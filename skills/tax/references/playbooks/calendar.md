@@ -9,7 +9,7 @@
    - `due`: the occurrence's `due`, unchanged
    - `priority`: `P1` when due within 14 days or already overdue, else `P2`
    - `labels`: `tax`, `entity:<slug>`, and the occurrence's `label` exactly as printed
-   - `description`: what the obligation is, the note and source from the profile, who acts (operator, tax agent, Kevin), and what "done" means (filed, paid, confirmed by the agent)
+   - `description`: what the obligation is, the note and source from the profile, who acts (operator, tax agent, the agent), and what "done" means (filed, paid, confirmed by the agent)
 3. **Overdue ones get a thread line** saying the deadline passed before it was tracked, and what to do now (file late, confirm with the tax agent). Don't hide them; a missed deadline caught today is cheaper than one caught by the authority.
 4. **Pending closes are a nudge, not a task:** name the entity and month and point at `/tax close`.
 5. **Render:** the engine's `render` rewrites `$PROJECTS/tax/dashboard.html`. Run it last, so the page reflects the tasks just created.

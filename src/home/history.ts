@@ -338,7 +338,7 @@ const historyFolderFor = (home: string, historyEnv: HistoryEnv): string => {
 
 /**
  * The home's location as a folder name, so several homes never share one: its path under the user's
- * home (or its absolute path elsewhere) with separators as dashes, e.g. `Documents-Agents-Kevin`.
+ * home (or its absolute path elsewhere) with separators as dashes, e.g. `Documents-Agents-Oppi`.
  */
 const pathName = (home: string, userHome: string): string => {
   const real = canonicalPath(home);

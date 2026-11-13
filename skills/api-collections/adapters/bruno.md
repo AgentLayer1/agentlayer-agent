@@ -41,7 +41,7 @@ One collection per root; apps/clients are **folders inside it**, so the operator
 opencollection: 1.0.0
 
 info:
-  name: Agent Kevin
+  name: <agent name>
 
 extensions:
   bruno:
@@ -64,7 +64,7 @@ extensions:
 
 ## Flows — multi-step chains (sign-in → onboarding → checkout → activation)
 
-A flow is a **folder of ordered requests that carry values forward** — built entirely on **native Bruno features** (`bru.setVar`/`getVar`, `after-response` scripts, `seq` ordering, the Runner), all documented in the vendored `../references/bruno-ai-context.md`. Nothing custom, nothing chained through Kevin: **Kevin authors the folder; the operator runs it in the Bruno app's Runner.** (`curl_run` is single-request verification only — never a flow runner.) Be fluent at composing these; model them, don't invent machinery:
+A flow is a **folder of ordered requests that carry values forward** — built entirely on **native Bruno features** (`bru.setVar`/`getVar`, `after-response` scripts, `seq` ordering, the Runner), all documented in the vendored `../references/bruno-ai-context.md`. Nothing custom, nothing chained through the agent: **The agent authors the folder; the operator runs it in the Bruno app's Runner.** (`curl_run` is single-request verification only — never a flow runner.) Be fluent at composing these; model them, don't invent machinery:
 
 - **One folder per flow** (`<app>/checkout/`), requests numbered by `seq` in run order.
 - **Carry values forward** with `bru.setVar` in an `after-response` script; later requests read them as `{{var}}`. A sign-in stores the token/cookie; onboarding stores the created id; checkout reads both.

@@ -1,5 +1,5 @@
 /**
- * Output formatters — JSON (default) and markdown (Kevin-friendly).
+ * Output formatters — JSON (default) and markdown (agent-friendly).
  */
 import type { FormattedMessage, SlackChannel, SlackMessage, SlackUser } from './types';
 

@@ -1,6 +1,6 @@
 ---
 name: sync
-description: End-to-end refresh — fast-forward configured code repos, compile pending raw inputs, lint and fix the wiki, run a flywheel pass, surface what needs attention (a pending plugin upgrade, a planning or review skill that's come due), optionally chain into a morning or evening briefing, refresh attention and both dashboards, snapshot the brain at both ends when the HOME repo is local-only, and close with concrete next steps to act on now or queue as a task. Run anytime to bring Kevin's state fully current in one consolidated update. Heavier than a briefing pulse, lighter than running each skill by hand.
+description: End-to-end refresh — fast-forward configured code repos, compile pending raw inputs, lint and fix the wiki, run a flywheel pass, surface what needs attention (a pending plugin upgrade, a planning or review skill that's come due), optionally chain into a morning or evening briefing, refresh attention and both dashboards, snapshot the brain at both ends when the HOME repo is local-only, and close with concrete next steps to act on now or queue as a task. Run anytime to bring the agent's state fully current in one consolidated update. Heavier than a briefing pulse, lighter than running each skill by hand.
 allowed-tools: mcp__plugin_agentlayer_agent__github_fast_forward, mcp__plugin_agentlayer_agent__helpdesk_connections, mcp__plugin_agentlayer_agent__helpdesk_stats, mcp__plugin_agentlayer_agent__appstore_reviews, mcp__plugin_agentlayer_agent__github_sweep, mcp__plugin_agentlayer_agent__compile_status, mcp__plugin_agentlayer_agent__compile_next, mcp__plugin_agentlayer_agent__compile_write, mcp__plugin_agentlayer_agent__knowledge_lint, mcp__plugin_agentlayer_agent__memory_prune, mcp__plugin_agentlayer_agent__links_rewrite, mcp__plugin_agentlayer_agent__dashboard, mcp__plugin_agentlayer_agent__report_write, mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_get, mcp__plugin_agentlayer_agent__task_scan, mcp__plugin_agentlayer_agent__task_update, mcp__plugin_agentlayer_agent__task_thread, mcp__plugin_agentlayer_agent__task_close, mcp__plugin_agentlayer_agent__task_create, mcp__plugin_agentlayer_agent__web_search, WebSearch, Skill(agentlayer:attention), Skill(agentlayer:goals), Skill(agentlayer:roadmap), Skill(agentlayer:self-review), Skill(agentlayer:engineer), Skill(agentlayer:slack), AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash
 ---
 
@@ -41,13 +41,13 @@ It is step 12's committer making one commit, `Sync: save the home before the run
 
 ### 0. Refresh the code checkouts
 
-Fast-forward the default branches of every repo Kevin grounds against, so the rest of the run — and the operator's next question about how something works — reads current code instead of whatever was on disk the last time someone thought to pull. This is the whole reason a non-technical operator never has to learn git: sync is the one command, and code freshness rides along with it. Engineers get it too, so `main` isn't three weeks stale in a checkout they only use for reference.
+Fast-forward the default branches of every repo the agent grounds against, so the rest of the run — and the operator's next question about how something works — reads current code instead of whatever was on disk the last time someone thought to pull. This is the whole reason a non-technical operator never has to learn git: sync is the one command, and code freshness rides along with it. Engineers get it too, so `main` isn't three weeks stale in a checkout they only use for reference.
 
 ```
 mcp__plugin_agentlayer_agent__github_fast_forward
 ```
 
-No arguments: repos default to `AGENT_CODE_PATH` plus `AGENT_GIT_REPOS`. Both are optional — many operators run Kevin with no codebase at all, and the tool then reports an empty list, which reads as `💻 Code — none configured` and is skipped silently. It returns per-repo and per-branch status; read them into the `💻 Code` line.
+No arguments: repos default to `AGENT_CODE_PATH` plus `AGENT_GIT_REPOS`. Both are optional — many operators run the agent with no codebase at all, and the tool then reports an empty list, which reads as `💻 Code — none configured` and is skipped silently. It returns per-repo and per-branch status; read them into the `💻 Code` line.
 
 **Why an MCP tool and not Bash here.** The Claude Code seatbelt gives non-proxied clients no DNS at all, so a `git fetch` over an SSH remote dies at hostname resolution — under a sandboxed session the Bash version of this step was a guaranteed no-op for any repo with a `git@github.com:` remote, which is most of them. The MCP server runs outside that sandbox, the same reason the rest of the `github_*` family lives there. It authenticates with the repo owner's fine-grained read-only PAT (`GITHUB_TOKEN_<OWNER>`, else `GITHUB_TOKEN`) over HTTPS rather than the operator's SSH key: a scoped, rotatable, fetch-only credential instead of one that can also push and force-push everywhere. The checkout's own remote is left exactly as it is, so the operator's pushes keep using their key.
 
@@ -168,7 +168,7 @@ Interpret (mirrors the upgrade skill's guards, nudge-only — no semver math nee
 - **`baseline == installed`** → current; say nothing.
 - **`baseline != installed`** → surface `Plugin vINSTALLED installed · home migrated to vBASELINE — run /upgrade`.
 
-**Also check planning + review cadence.** The calendar cadences (the goals skill's week, month and year playbooks, and self-review) are interactive interviews the operator runs with Kevin, never unattended. Sync's job here is to **notice when one is due and surface the nudge**, same as it does for a pending plugin upgrade; the closing interview (step 13) offers to run it. This step is read-only detection:
+**Also check planning + review cadence.** The calendar cadences (the goals skill's week, month and year playbooks, and self-review) are interactive interviews the operator runs with the agent, never unattended. Sync's job here is to **notice when one is due and surface the nudge**, same as it does for a pending plugin upgrade; the closing interview (step 13) offers to run it. This step is read-only detection:
 
 ```bash
 bun "${CLAUDE_PLUGIN_ROOT}/skills/sync/scripts/cadence.ts"

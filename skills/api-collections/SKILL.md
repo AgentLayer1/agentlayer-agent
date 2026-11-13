@@ -1,6 +1,6 @@
 ---
 name: api-collections
-description: Draft API requests as collection files the operator opens, visualizes, and fires in their API client (adapters — Bruno and Postman shipped, plain-curl fallback when nothing is installed). Use when the operator asks to create, draft, or update an API request, endpoint call, or request collection to try — "make me a request to test the webhook", "draft the activation API calls", "add this to my Bruno collection", "put it in Postman", "make a collection from this OpenAPI spec", or /api-collections. Authoring only — Kevin writes the files; the operator sends the requests from the client's GUI or terminal.
+description: Draft API requests as collection files the operator opens, visualizes, and fires in their API client (adapters — Bruno and Postman shipped, plain-curl fallback when nothing is installed). Use when the operator asks to create, draft, or update an API request, endpoint call, or request collection to try — "make me a request to test the webhook", "draft the activation API calls", "add this to my Bruno collection", "put it in Postman", "make a collection from this OpenAPI spec", or /api-collections. Authoring only — the agent writes the files; the operator sends the requests from the client's GUI or terminal.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__plugin_agentlayer_agent__report_write, mcp__plugin_agentlayer_agent__curl_run
 ---
 

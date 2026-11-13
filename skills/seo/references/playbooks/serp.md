@@ -42,7 +42,7 @@ mcp__plugin_agentlayer_agent__serpapi_search washing soda uses --num=5 | jq '.re
 
 ## Return shape (trimmed)
 
-The plugin trims SerpAPI's raw response to the fields that matter for SEO work (the raw response is 30–50KB and blows Kevin's context without helping analysis):
+The plugin trims SerpAPI's raw response to the fields that matter for SEO work (the raw response is 30–50KB and blows the agent's context without helping analysis):
 
 ```json
 {

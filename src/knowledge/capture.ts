@@ -1,6 +1,6 @@
 /**
  * Universal capture — write any input (text, dropped file, fetched URL) into
- * Kevin's raw tree for the next knowledge-compile to absorb.
+ * the agent's raw tree for the next knowledge-compile to absorb.
  *
  * Two destinations, one entry surface:
  *   - `kind: 'inbox'` (default) — timestamped doc in `raw/inbox/`, compiled

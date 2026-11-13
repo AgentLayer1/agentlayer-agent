@@ -1,7 +1,7 @@
 /**
  * Status snapshot collector.
  *
- * Reads every surface that makes up "what Kevin is right now" — skills, MCP
+ * Reads every surface that makes up "what the agent is right now" — skills, MCP
  * tools, hooks, knowledge wiki, compile state, tasks, loaded context, layered
  * settings, logs — and returns a typed snapshot. Every read is best-effort:
  * a missing or malformed source degrades to a sentinel, never throws, so the
@@ -205,7 +205,7 @@ export interface CliSection {
   entries: CliEntry[];
 }
 
-/** Kevin's rendered identity — parsed best-effort from IDENTITY.md + SOUL.md. */
+/** The agent's rendered identity — parsed best-effort from IDENTITY.md + SOUL.md. */
 export interface Persona {
   name: string;
   kind: string;
@@ -232,7 +232,7 @@ export interface ProfileSection {
   lines: string[];
 }
 
-/** The operator as Kevin knows them — USER.md headline + facet catalog +
+/** The operator as the agent knows them — USER.md headline + facet catalog +
  *  the compiled profile facet rendered into sections. */
 export interface OperatorInfo {
   name: string;
@@ -1404,8 +1404,8 @@ const collectNews = (): NewsItem[] => {
       if (/📰|🌐/.test(line)) {
         // The marker line itself may carry an inline headline — keep scanning.
         inNews = true;
-      } else if (/^\s*(\*\*)?[👉🍌📋🎯⚙️🔄✅⚠️]/u.test(line.trim()) || /^#{1,3} /.test(line)) {
-        // Any other section marker ends the news block.
+      } else if (/^(\*\*)?\p{Extended_Pictographic}/u.test(line.trim()) || /^#{1,3} /.test(line)) {
+        // Any other section marker, an emoji or a heading, ends the news block.
         inNews = false;
         continue;
       }

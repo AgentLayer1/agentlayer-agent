@@ -8,7 +8,7 @@ allowed-tools: mcp__plugin_agentlayer_agent__helpdesk_connections, mcp__plugin_a
 
 # Helpdesk
 
-Support queues through the Helpdesk pack's tools, whichever helpdesk serves them. Kevin reads, sorts and drafts; a person sends every reply.
+Support queues through the Helpdesk pack's tools, whichever helpdesk serves them. The agent reads, sorts and drafts; a person sends every reply.
 
 > **Plugin root:** `${CLAUDE_PLUGIN_ROOT}`. Claude Code writes the real path there when it loads this file; Codex leaves it unfilled, and there the plugin root is this skill's base directory two levels up (the `<skill>` block's `<path>`). Playbook commands write `<plugin root>`: put this path in its place before running one, since no shell fills it in.
 

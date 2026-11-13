@@ -128,7 +128,7 @@ isn't this session's to report.
 …same card shape…
 
 ---
-*6 sessions · 24h window · scoped to ~/Documents/Agents/Kevin*
+*6 sessions · 24h window · scoped to this home*
 ```
 
 - **★ Waiting on you leads**, collecting every session's pending decisions, numbered,
