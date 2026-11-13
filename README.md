@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/oppi-avatar.jpg" alt="AgentLayer" width="180" />
+<img src="assets/oppi-avatar.png" alt="Oppi, the AgentLayer octopus" width="180" />
 
 # AgentLayer
 

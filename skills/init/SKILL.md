@@ -263,7 +263,7 @@ Stage three values for Steps 2, 3 and 7:
 - `AGENT_NAME` — the answer, or `Oppi`
 - `AGENT_EMOJI` — the answer, or `🐙`
 - `AGENT_AVATAR` — the home-relative path the image will land at, which Step 7 then
-  copies to. Default name: `assets/oppi-avatar.jpg`. Renamed with an image:
+  copies to. Default name: `assets/oppi-avatar.png`. Renamed with an image:
   `assets/<name-lowercased>-avatar.<ext>`. Renamed without one: empty.
 
 Decide the path here, not in Step 7 — Step 3 writes it into `IDENTITY.md` before Step 7
@@ -674,10 +674,10 @@ Copy the agent's avatar into `assets/`, the home's media folder, where `IDENTITY
 **Default name** — ship the bundled Oppi avatar:
 
 ```bash
-cp "${CLAUDE_PLUGIN_ROOT}/assets/oppi-avatar.jpg" "$HOME_DIR/assets/oppi-avatar.jpg"
+cp "${CLAUDE_PLUGIN_ROOT}/assets/oppi-avatar.png" "$HOME_DIR/assets/oppi-avatar.png"
 ```
 
-`AGENT_AVATAR=assets/oppi-avatar.jpg`.
+`AGENT_AVATAR=assets/oppi-avatar.png`.
 
 **Renamed agent with an avatar staged in Step 1b** — copy the operator's file to a
 name-matching destination (lowercase the name, keep the source extension), e.g.
