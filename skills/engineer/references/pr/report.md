@@ -13,14 +13,14 @@ The model writes one data file. A script validates it and renders both: the page
 3. Validate it and print the `report_write` arguments the data decides (`body`, the card; `summary`; `status`; `extra`). This also parses every diagram, so a bad one fails here, before anything is saved. Fix the data until it passes:
 
    ```bash
-   NODE_PATH="<skill dir>/../../node_modules" bun "<skill dir>/scripts/pr-report.ts" card "<data path>"
+   bun "<skill dir>/scripts/pr-report.ts" card "<data path>"
    ```
 
 4. Save the card with `report_write`: the printed arguments as they are, plus `category: 'reviews'`, `skill: 'engineer'`, the `slug`, `title` and `tags` the playbook names (`pr-<n>` among the tags), and `extra.supersedes` beside the printed `extra`. A re-run on the same PR supersedes the prior report of its kind: the old file stays, and `supersedes` is the `relPath` it was saved under (relative to `reports/`), or null on a first run.
 5. Write the page beside the card. This re-renders the card body from the data (keeping the frontmatter `report_write` wrote) and points its link at the page, so the two can never disagree:
 
    ```bash
-   NODE_PATH="<skill dir>/../../node_modules" bun "<skill dir>/scripts/pr-report.ts" write "<data path>" "<the absolute path report_write returned>"
+   bun "<skill dir>/scripts/pr-report.ts" write "<data path>" "<the absolute path report_write returned>"
    ```
 
    Use the `path` field `report_write` returns, not `relPath`, which is relative to `reports/`. It writes nothing when the card is missing or the data fails; fix the cause and run it again. To change a saved report, edit the data and run `write` again. `pr-report.ts check <page>` re-validates a page later.

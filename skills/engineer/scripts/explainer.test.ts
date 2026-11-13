@@ -11,7 +11,7 @@ const dirs: string[] = [];
 afterAll(() => dirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
 
 const run = (...args: string[]) => {
-  const proc = spawnSync(process.execPath, [SCRIPT, ...args], { env: { ...process.env, NODE_PATH: join(import.meta.dir, '..', '..', '..', 'node_modules') } });
+  const proc = spawnSync(process.execPath, [SCRIPT, ...args]);
   return { status: proc.status, out: proc.stdout.toString(), err: proc.stderr.toString() };
 };
 

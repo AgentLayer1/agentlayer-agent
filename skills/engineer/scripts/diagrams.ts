@@ -4,7 +4,7 @@ interface MermaidValidator {
   parseMermaid: (source: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
-// mermaid resolves only at run time, through NODE_PATH; a non-literal path keeps tsc from following it.
+// mermaid resolves only at run time; a non-literal path keeps tsc from following it.
 const VALIDATOR = join(import.meta.dir, '..', '..', 'mermaid', 'scripts', 'validate.ts');
 
 /** One error line per diagram that Mermaid can't parse, prefixed with its label. */

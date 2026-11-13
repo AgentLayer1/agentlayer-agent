@@ -28,8 +28,7 @@ Chat-only diagrams are out of scope: a Mermaid block pasted into a chat reply re
 2. **Run the validator** against that file:
 
    ```bash
-   NODE_PATH="${CLAUDE_PLUGIN_ROOT}/node_modules" \
-     bun run "${CLAUDE_PLUGIN_ROOT}/skills/mermaid/scripts/validate.ts" <file>
+   bun run "${CLAUDE_PLUGIN_ROOT}/skills/mermaid/scripts/validate.ts" <file>
    ```
 
    It extracts every ```mermaid block from the file, runs `mermaid.parse()` on each, and prints one line per block:

@@ -4,8 +4,6 @@
  *   bun pr-report.ts card <data.json>              validate, print the report_write arguments (card body included) as JSON
  *   bun pr-report.ts write <data.json> <report.md>  write <report>.html beside the saved card and re-render the card
  *   bun pr-report.ts check <report.html>            re-validate a page
- * Every command parses the diagrams, so run it with NODE_PATH pointed at the plugin's
- * node_modules.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
