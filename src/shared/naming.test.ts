@@ -6,20 +6,10 @@ import {
   PLUGIN_SOURCE_ROOT,
   RUNTIME_DIR,
   dataDirOf,
-  legacyEnvPrefix,
   ownDataDir,
   pluginName,
   pluginRootAbove,
 } from './naming';
-
-describe('legacyEnvPrefix', () => {
-  // The fork seam, asserted in one place — every other test builds legacy key names
-  // from the prefix and the runtime dir from the constant, so a fork updates
-  // these lines and nothing else.
-  test('derives KEVIN_ from this plugin manifest (agent-kevin)', () => {
-    expect(legacyEnvPrefix()).toBe('KEVIN_');
-  });
-});
 
 describe('ownDataDir', () => {
   const homes: string[] = [];
@@ -46,11 +36,6 @@ describe('ownDataDir', () => {
   test("an unrecorded or foreign .state is never this agent's", () => {
     expect(ownDataDir(homeWith({ [RUNTIME_DIR]: unrecorded }))).toBeUndefined();
     expect(ownDataDir(homeWith({ [RUNTIME_DIR]: other }))).toBeUndefined();
-  });
-
-  // A home that never ran the 0.7.0 upgrade is not recognised, even when its old folder records this plugin.
-  test('the pre-0.7.0 agent-named folder never counts', () => {
-    expect(ownDataDir(homeWith({ [`.${pluginName().replace(/^agent-/, '')}`]: ours }))).toBeUndefined();
   });
 
   test('an empty plugin record is no record', () => {

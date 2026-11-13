@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
-import { RUNTIME_DIR } from '@/shared/naming';
 import { routerPlaybooks } from '@/shared/playbooks';
 import { RETIRED_SKILLS, RETIRED_TOOLS } from '@/shared/retired-skills';
 import { TOOL_MODULES } from '@/tools/modules';
@@ -104,28 +103,6 @@ describe('skills', () => {
   const playbookFiles = skillDirs
     .filter((skill) => existsSync(join(SKILLS, skill, 'references')))
     .flatMap((skill) => markdownFiles(join(SKILLS, skill, 'references')).map((file) => ({ skill, file })));
-
-  // The data dir moved to the shared `.state` in 0.7.0. The old name survives only beside the new one (init's
-  // stop for a home that never moved) or beside the release it belongs to.
-  test('skill and template text names the old data dir only beside .state or a release', () => {
-    const legacy = /\.kevin(?![\w.\]])/;
-    const files = [
-      ...markdownFiles(SKILLS),
-      ...markdownFiles(join(ROOT, 'templates')),
-      join(ROOT, 'templates', '.gitignore')
-    ];
-    expect(
-      files.flatMap((file) =>
-        readFileSync(file, 'utf-8')
-          .split('\n')
-          .flatMap((line, index) =>
-            legacy.test(line) && !line.includes(RUNTIME_DIR) && !/\b0\.[37]\.0\b/.test(line)
-              ? [`${relative(ROOT, file)}:${index + 1}`]
-              : []
-          )
-      )
-    ).toEqual([]);
-  });
 
   test('playbooks write <plugin root>, never CLAUDE_PLUGIN_ROOT', () => {
     expect(

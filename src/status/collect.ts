@@ -30,7 +30,7 @@ import { type ChangelogEntry, getUpgradeStatus, parseChangelog, type UpgradeStat
 import { readCadence } from '@/shared/cadence';
 import { nowISO, nowTime, todayDate } from '@/shared/date';
 import { agentDisplayName } from '@/shared/agent-name';
-import { CLI_FILE, legacyEnvPrefix } from '@/shared/naming';
+import { CLI_FILE } from '@/shared/naming';
 import { routerPlaybooks } from '@/shared/playbooks';
 import { env } from '@/shared/env';
 import {
@@ -506,7 +506,7 @@ export interface StatusSnapshot {
 
 const MARKDOWN_RE = /\.md$/;
 const SECRET_KEY_RE = new RegExp(
-  `(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CRED|PRIVATE|OAUTH|SESSION|DB_URL|DB_URI|DATABASE|DSN|CONN|MCP_DB|${legacyEnvPrefix()}DB|AGENT_DB)`,
+  `(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CRED|PRIVATE|OAUTH|SESSION|DB_URL|DB_URI|DATABASE|DSN|CONN|MCP_DB|AGENT_DB)`,
   'i'
 );
 /** A connection string with embedded credentials — `scheme://user:pass@host`.

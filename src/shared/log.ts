@@ -76,7 +76,7 @@ function resolveLogFile(): string | null {
   //
   // Either way the home must ALREADY carry a HOME_MARKER_FILES state file —
   // the logger never scaffolds anything. The bare data dir is not enough: the
-  // logger itself once created `.kevin/logs/` under a cwd-fallback home, which
+  // logger itself once created the data dir's `logs/` under a cwd-fallback home, which
   // planted the very dir every guard read as the marker, so a hook firing in a
   // foreign repo turned that repo into "the home" and captured sessions into
   // it. stderr still carries every line; file output waits for a home that

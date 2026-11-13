@@ -27,7 +27,6 @@ ask before anything optional.
 HOME_DIR="${AGENT_HOME:-$PWD}"
 DATA_DIR="$HOME_DIR/.state"
 [ -f "$DATA_DIR/version.json" ] || echo "NOT_AN_AGENT_HOME: $HOME_DIR"
-[ -d "$HOME_DIR/.kevin" ] && [ ! -d "$HOME_DIR/.state" ] && echo "LEGACY_DATA_DIR: $HOME_DIR"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-<SKILL_BASE_DIR>/../..}"   # Claude Code fills the variable in; under Codex replace <SKILL_BASE_DIR> with this skill's base directory (the <skill> block's <path>) before running
 [ -d "$PLUGIN_ROOT/.claude-plugin" ] || echo "SET PLUGIN_ROOT: $PLUGIN_ROOT is not the plugin checkout"
 
@@ -40,9 +39,7 @@ VERSION_FILE="$DATA_DIR/version.json"
 # NOT_AN_AGENT_HOME → STOP before any write: $HOME_DIR has no marked data
 # dir, so it isn't this agent's scaffolded home (likely a code repo or a
 # mislaunched session). Tell the operator to set AGENT_HOME or relaunch from
-# the agent home. With LEGACY_DATA_DIR too, the home never ran the 0.7.0
-# upgrade: this version can't move .kevin/ to .state/, so tell them to install
-# agent-kevin v0.7.3, run /agent-kevin:upgrade there, then update to this one.
+# the agent home.
 if [ -f "$VERSION_FILE" ]; then
   BASELINE=$(grep -o '"templateVersion"[[:space:]]*:[[:space:]]*"[^"]*"' "$VERSION_FILE" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
 else
@@ -234,7 +231,7 @@ Upgrade vBASELINE → vINSTALLED (N releases)
   deps:      bun install (new: pg, foo)              [auto]
   settings:  +2 permissions                          [auto]
   files:     +1 new rule (.claude/rules/python.md)   [auto]
-  script:    run scripts/0.8.0.ts (env names)        [auto, required]
+  script:    run scripts/1.2.0.ts (what it changes)  [auto, required]
   AGENTS.md: 1 new section "Upgrades"                 [auto, mandatory]
   SOUL.md:   1 changed section "Writing Style"        [ask]
 ```
@@ -295,21 +292,6 @@ fix and re-run. Migrations are idempotent, so a re-run after a partial failure i
 safe. (If `deps` ran or MCP-server code changed this session, the running server
 still holds old code — see Step 7's restart ordering; `run_upgrade` is part
 of the server, so a deps/code change means restart **before** the script can run.)
-The 0.8.0 script renames legacy `KEVIN_*` keys to `AGENT_*` in the home's settings, secrets file and `.mcp.json`
-(names only in its report), and removes the pre-0.7.0 `.kevin/` secrets guards and `.gitignore` lines, listed under
-`pruned`; a home that still has the folder keeps them (`legacyDirKept`). Its `manual` list names legacy keys the user-level Claude settings still set, which reach
-every home on the machine. Quote each as a `manual:` note: delete it there, and put a per-home value (a code path, a
-repo list, a DB connection) into each home's `.claude/settings.local.json` as `AGENT_*` instead. Only a value every home
-should share (a timezone, a log level) is renamed in place, and `AGENT_HOME` belongs there only with a single agent home.
-The 0.9.0 script moves a per-agent Claude subscription: Claude Code 2.1.312 ignores `CLAUDE_CODE_OAUTH_TOKEN` in a home's
-settings, so a token in `settings.local.json` goes to `.state/secrets/.env.claude.json`, which the `agent` shell launcher
-passes as `--settings`. Its report never holds the token. `token` is `none` (no subscription: say nothing about it,
-anywhere in this upgrade), `moved` or `present` (the home has one), or `conflict` (two different tokens: quote its
-`manual` note and change nothing). When the home has one and `launcher.installed` is false with no `conflict` and a
-`command`, ask with AskUserQuestion, naming the profile file, which lives outside the home:
-**Add it for me** (call `run_upgrade` with `{ version: "0.9.0", options: { installLauncher: true } }`, then confirm
-`launcher.appended`), **Show me the command** (print `launcher.command` verbatim as a one-line `manual:` note), or
-**Skip** (point at the docs page, Billing per agent). A `conflict`, or a launcher with no `command`, is already in `manual`: quote it.
 
 **settings (mandatory)** — merge the named entries into `$HOME_DIR/.claude/settings.json`, except
 an entry naming a path on this machine (an absolute folder, as an older release's code-root action
@@ -697,11 +679,6 @@ One concise summary:
   entry backfilled, named one by one (an operator who deleted a grant on purpose moves it to
   `ask` to keep it out), each privacy opt-out added, and the traffic kill removed from which file,
   with `/design`, artifacts and Remote Control back from the next session
-- **Starting with `agent`, whenever the 0.9.0 report says the home has a subscription and the launcher is
-  installed:** "This agent has its own Claude subscription. From now on start it with `agent` from `<HOME_DIR>`
-  instead of `claude`. After you `/exit`, run `<launcher.reload>` or open a new terminal so your shell knows the
-  command. Plain `claude` still works for commands that need your claude.ai login, such as `claude remote-control`."
-  When the launcher isn't installed yet, say the same after the operator adds it.
 - **Codex hooks re-trust, whenever the regeneration reported `changed: true`:** "Run
   `/hooks` in your next Codex session from this home and trust the 4 Kevin entries;
   until then Codex starts without Kevin's context and captures nothing." Verbatim, every time.

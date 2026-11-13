@@ -8,8 +8,6 @@ import { dirname, join, resolve } from 'node:path';
  * Env naming: every knob has one shared, agent-neutral `AGENT_*` name, the only
  * one code reads. Several homes can run one plugin, so a per-agent spelling could
  * never mean "this agent only"; per-home values live in the home's own settings.
- * The plugin's legacy prefix (`KEVIN_*`, from the manifest name) survives only to
- * recognise, mask, and migrate keys from homes set up before 0.8.0.
  *
  * Side-effect-free by contract, and it imports nothing beyond node builtins.
  * `shared/env.ts` sits directly on top and adds secrets loading — which reads a
@@ -26,7 +24,6 @@ import { dirname, join, resolve } from 'node:path';
  */
 
 let cachedManifest: PluginManifest | undefined;
-let cachedEnvPrefix: string | undefined;
 
 const MANIFEST_FILE = join('.claude-plugin', 'plugin.json');
 
@@ -58,8 +55,8 @@ export const CLI_FILE = join('src', 'cli.ts');
 
 const brokenManifest = (reason: string, cause?: unknown): Error =>
   new Error(
-    `Cannot read this plugin's name: ${reason} (${MANIFEST_PATH}). Its data dir can't be recognised ` +
-      `and legacy keys can't be found. Fix the plugin manifest.`,
+    `Cannot read this plugin's name: ${reason} (${MANIFEST_PATH}). Its data dir can't be recognised. ` +
+      `Fix the plugin manifest.`,
     { cause }
   );
 
@@ -101,29 +98,6 @@ export const agentSlug = (): string => {
     throw brokenManifest('the plugin manifest must declare exactly one MCP server');
   }
   return key;
-};
-
-/**
- * The prefix keys carried before 0.8.0 (`KEVIN_` for `agent-kevin`), derived once from the
- * manifest name. Nothing resolves it; it only finds legacy keys to migrate, mask, or flag.
- */
-export const legacyEnvPrefix = (): string => {
-  if (cachedEnvPrefix === undefined) {
-    cachedEnvPrefix = deriveEnvPrefix();
-  }
-  return cachedEnvPrefix;
-};
-
-const deriveEnvPrefix = (): string => {
-  const short = pluginName()
-    .replace(/^agent-/, '')
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  if (!short) {
-    throw brokenManifest(`the plugin manifest has no usable "name"`);
-  }
-  return `${short}_`;
 };
 
 /**

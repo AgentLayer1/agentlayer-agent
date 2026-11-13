@@ -81,9 +81,9 @@ An existing roadmap is a living document — updates are **surgical edits to the
 
 When statuses are being refreshed wholesale (a planning-cadence pass), re-harvest from ground truth first — task frontmatter and git, not memory — then edit the deltas. Run the data check after every edit, and the render check after any edit that touched the data's structure.
 
-**Dating an undated roadmap.** A roadmap moved to JSON by the 0.5.3 upgrade has free-text period names and no dates. When the operator asks to date it, or an attention page says a roadmap is undated, propose a `start`/`end` for each period from its name and its section's `range`, show them as one table, and write only what the operator confirms. A period whose dates you can't infer with confidence goes into the question, never a guess.
+**Dating an undated roadmap.** A roadmap whose data block has free-text period names and no dates is undated. When the operator asks to date it, or an attention page says a roadmap is undated, propose a `start`/`end` for each period from its name and its section's `range`, show them as one table, and write only what the operator confirms. A period whose dates you can't infer with confidence goes into the question, never a guess.
 
-**A roadmap still on a `const ROADMAP = {` literal** was either created before 0.5.3 or left untouched by its migration (the report says why: a render that changed between runs, a value JSON can't hold). Never convert it by hand. Fix what the reason names, if anything, then call `run_upgrade` with `{ version: "0.5.3" }`: it converts every such page in the home, replacing each only after its render matches, and skips the rest.
+**A roadmap still on a `const ROADMAP = {` literal** predates the JSON data block. Never convert it by hand: rebuild it with the wizard, seeded with the current file's data, and show the operator the result before it replaces the old page.
 
 A structural rethink (different shape, different horizons) is a new build: re-run the wizard seeded with the current file's data.
 

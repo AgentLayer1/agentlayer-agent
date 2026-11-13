@@ -251,8 +251,7 @@ describe('exportSeed', () => {
           allow: [
             `mcp__plugin_${PLUGIN_NAME}_${AGENT_SLUG}__web_search`,
             `mcp__plugin_${PLUGIN_NAME}_${AGENT_SLUG}__browser_screenshot`,
-            'Bash(curl https://acme.example/*)',
-            `Skill(${PLUGIN_NAME}:seed-export)`
+            'Bash(curl https://acme.example/*)'
           ],
           deny: ['Bash(acme *)']
         },
@@ -321,9 +320,6 @@ describe('importSeed', () => {
     expect(settings.permissions.allow).toContain(`mcp__plugin_${PLUGIN_NAME}_${AGENT_SLUG}__browser_screenshot`);
     expect(settings.permissions.allow).toContain('Bash(curl https://acme.example/*)');
     expect(result.permissionsAdded.allow).not.toContain(`mcp__plugin_${PLUGIN_NAME}_${AGENT_SLUG}__web_search`);
-    // A grant for a skill retired since the bundle was made lands as its successor's.
-    expect(settings.permissions.allow).toContain(`Skill(${PLUGIN_NAME}:seed)`);
-    expect(settings.permissions.allow).not.toContain(`Skill(${PLUGIN_NAME}:seed-export)`);
     expect(settings.permissions.deny).toEqual(['Bash(acme *)']);
     expect(result.permissionsAdded.deny).toEqual(['Bash(acme *)']);
 

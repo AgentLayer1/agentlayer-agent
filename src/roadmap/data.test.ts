@@ -145,9 +145,9 @@ describe('checkRoadmapHtml', () => {
     ]);
   });
 
-  test('an unmigrated page is sent to the migration, never a hand conversion', () => {
+  test('a page still on the data literal is sent to the roadmap skill, never a hand conversion', () => {
     expect(checkRoadmapHtml('<script>const ROADMAP = { a: 1 };</script>').errors[0]).toContain(
-      'run_upgrade { version: "0.5.3" }'
+      'rebuild the page with the roadmap skill'
     );
   });
 

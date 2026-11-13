@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { assertDbName, discoverConnections, resolveConnectionString, safeConnectionInfo } from '@/tools/database';
-import { legacyEnvPrefix } from '@/shared/naming';
 
 describe('discoverConnections', () => {
   const added: string[] = [];
@@ -23,15 +22,6 @@ describe('discoverConnections', () => {
     expect(names).toContain('analytics');
     expect(names).toContain('zed');
     expect(names.indexOf('analytics')).toBeLessThan(names.indexOf('zed'));
-  });
-
-  test('ignores a legacy-prefixed DB_* spelling', () => {
-    setEnv('AGENT_DB_BOTH', 'postgres://u:p@h/shared');
-    setEnv(`${legacyEnvPrefix()}DB_BOTH`, 'postgres://u:p@h/legacy');
-    setEnv(`${legacyEnvPrefix()}DB_LEGACYONLY`, 'postgres://u:p@h/legacy');
-    const connections = discoverConnections();
-    expect(connections.find((connection) => connection.name === 'both')?.envKey).toBe('AGENT_DB_BOTH');
-    expect(connections.map((connection) => connection.name)).not.toContain('legacyonly');
   });
 
   test('ignores empty values and the bare prefix', () => {

@@ -123,6 +123,44 @@ function parseReport(stdout: string): unknown {
   }
 }
 
+/** Run one migration script against the current home, outside the Bash sandbox, and return its report. */
+export const runMigration = async (
+  scriptPath: string,
+  version: string,
+  options?: Record<string, unknown>
+): Promise<RunResult> => {
+  const proc = await runGroup([process.execPath, scriptPath], {
+    cwd: FOLDERS.HOME,
+    env: {
+      ...process.env,
+      AGENT_HOME: FOLDERS.HOME,
+      AGENT_PLUGIN_ROOT: FOLDERS.ROOT,
+      AGENT_UPGRADE_OPTIONS: JSON.stringify(options ?? {})
+    },
+    // No cancel: a migration stopped halfway leaves the home half-migrated.
+    timeoutMs: SCRIPT_TIMEOUT_MS
+  });
+
+  const stdout = proc.stdout;
+  const stderr = proc.stderr.slice(-OUTPUT_TAIL);
+  const exitCode = proc.exitCode ?? -1;
+  const ok = exitCode === 0 && !proc.stopped;
+  return {
+    ok,
+    found: true,
+    version,
+    exitCode,
+    report: parseReport(stdout),
+    stdout: stdout.slice(-OUTPUT_TAIL),
+    stderr,
+    message: ok
+      ? `Migration ${version} completed.`
+      : proc.stopped
+        ? `Migration ${version} timed out after ${SCRIPT_TIMEOUT_MS / 1_000} s.`
+        : `Migration ${version} failed (exit ${exitCode}).`
+  };
+};
+
 export const tools: ToolDef[] = [
   defineTool({
     name: 'run_upgrade',
@@ -188,36 +226,7 @@ export const tools: ToolDef[] = [
         };
       }
 
-      const proc = await runGroup([process.execPath, scriptPath], {
-        cwd: FOLDERS.HOME,
-        env: {
-          ...process.env,
-          AGENT_HOME: FOLDERS.HOME,
-          AGENT_PLUGIN_ROOT: FOLDERS.ROOT,
-          AGENT_UPGRADE_OPTIONS: JSON.stringify(options ?? {})
-        },
-        // No cancel: a migration stopped halfway leaves the home half-migrated.
-        timeoutMs: SCRIPT_TIMEOUT_MS
-      });
-
-      const stdout = proc.stdout;
-      const stderr = proc.stderr.slice(-OUTPUT_TAIL);
-      const exitCode = proc.exitCode ?? -1;
-      const ok = exitCode === 0 && !proc.stopped;
-      return {
-        ok,
-        found: true,
-        version,
-        exitCode,
-        report: parseReport(stdout),
-        stdout: stdout.slice(-OUTPUT_TAIL),
-        stderr,
-        message: ok
-          ? `Migration ${version} completed.`
-          : proc.stopped
-            ? `Migration ${version} timed out after ${SCRIPT_TIMEOUT_MS / 1_000} s.`
-            : `Migration ${version} failed (exit ${exitCode}).`
-      };
+      return runMigration(scriptPath, version, options);
     }
   })
 ];

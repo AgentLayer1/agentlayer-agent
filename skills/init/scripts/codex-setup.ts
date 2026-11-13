@@ -90,8 +90,6 @@ const agent = Object.keys(isRecord(manifest.mcpServers) ? manifest.mcpServers : 
 if (!agent) {
   throw new Error(`${manifestPath}: the plugin manifest names no agent`);
 }
-/** Keys under this prefix predate 0.8.0; nothing reads them, so regeneration drops the ones it once wrote. */
-const legacyPrefix = `${agent.toUpperCase()}_`;
 const rulesPath = resolve(homeDir, '.codex', 'rules', `${agent}.rules`);
 
 // ── The home's Claude settings: the posture's source of truth ─────────────────
@@ -440,7 +438,7 @@ const mergedSet: Record<string, string> = {
   ...Object.fromEntries(
     Object.entries(existingSet).filter(
       (pair): pair is [string, string] =>
-        typeof pair[1] === 'string' && !pair[0].startsWith('AGENT_') && !pair[0].startsWith(legacyPrefix)
+        typeof pair[1] === 'string' && !pair[0].startsWith('AGENT_')
     )
   ),
   ...shellEnv
@@ -476,7 +474,7 @@ const agentTables = [
   `[mcp_servers.${agent}.env]`,
   `AGENT_HOME = ${tomlString(homeDir)}`,
   'PLAYWRIGHT_BROWSERS_PATH = "0"',
-  ...keptEntries(['mcp_servers', agent, 'env'], ['AGENT_HOME', `${legacyPrefix}HOME`, 'PLAYWRIGHT_BROWSERS_PATH']),
+  ...keptEntries(['mcp_servers', agent, 'env'], ['AGENT_HOME', 'PLAYWRIGHT_BROWSERS_PATH']),
   '',
   ...toolTables(agent, `mcp__plugin_${pluginName}_${agent}__`),
   ...serverTables,

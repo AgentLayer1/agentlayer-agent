@@ -292,7 +292,7 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
     ],
     allow: 5,
     deny: 1,
-    env: [{ key: 'KEVIN_API_KEY', value: '••••abcd', scope: 'workspace' }],
+    env: [{ key: 'ACME_API_KEY', value: '••••abcd', scope: 'workspace' }],
     secrets: [
       { name: 'PERPLEXITY_API_KEY', present: true },
       { name: 'google/tokens', present: false }
@@ -301,7 +301,7 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
     plugin: { ref: 'agent-kevin@agentlayer', marketplace: 'agentlayer', sourceType: 'github', sourcePath: 'a/b' }
   },
   logs: {
-    path: '/tmp/home/.kevin/logs/app.log',
+    path: '/tmp/home/.state/logs/app.log',
     bytes: 1000,
     warnings: 0,
     errors: 0,
@@ -718,7 +718,7 @@ describe('renderDashboardHtml', () => {
     const html = renderDashboardHtml(
       makeSnapshot({
         logs: {
-          path: '/tmp/home/.kevin/logs/app.log',
+          path: '/tmp/home/.state/logs/app.log',
           bytes: 1000,
           warnings: 1,
           errors: 1,

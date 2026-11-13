@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { agentSlug, legacyEnvPrefix, pluginName } from '../../../src/shared/naming';
+import { agentSlug, pluginName } from '../../../src/shared/naming';
 
 const PLUGIN_NAME = pluginName();
 const AGENT_SLUG = agentSlug();
@@ -296,9 +296,7 @@ describe('codex-setup mcp registration', () => {
           AGENT_CODE_PATH: code,
           AGENT_HOME_TIMEZONE: 'Asia/Kuala_Lumpur',
           CLAUDE_CODE_OAUTH_TOKEN: 'sk-nope',
-          [`${legacyEnvPrefix()}DB_KEY`]: 'nope',
-          AGENT_DB_APP: 'postgres://user:pass@localhost/app',
-          [`${legacyEnvPrefix()}REPORTS`]: '/legacy/reports'
+          AGENT_DB_APP: 'postgres://user:pass@localhost/app'
         }
       })
     );
@@ -375,7 +373,7 @@ describe('codex-setup mcp registration', () => {
     seed(
       home,
       'config.toml',
-      `[shell_environment_policy]\nset = { EDITOR = "vim", AGENT_CODE_PATH = "/gone", ${legacyEnvPrefix()}GIT_REPOS = "/gone", ${legacyEnvPrefix()}HOME = "/gone" }\n`
+      `[shell_environment_policy]\nset = { EDITOR = "vim", AGENT_CODE_PATH = "/gone" }\n`
     );
     const regen = Bun.TOML.parse(
       readFileSync(run('--home', home, '--plugin-root', PLUGIN, '--write').json.mcp.path, 'utf-8')
@@ -483,7 +481,7 @@ describe('codex-setup mcp registration', () => {
     seed(
       home,
       'config.toml',
-      `[mcp_servers.${AGENT_SLUG}]\ncommand = "bun"\nstartup_timeout_sec = 60\n\n[mcp_servers.${AGENT_SLUG}.env]\nAGENT_HOME = "/x"\n${legacyEnvPrefix()}HOME = "/x"\nSERPAPI_KEY = "k"\n`
+      `[mcp_servers.${AGENT_SLUG}]\ncommand = "bun"\nstartup_timeout_sec = 60\n\n[mcp_servers.${AGENT_SLUG}.env]\nAGENT_HOME = "/x"\nSERPAPI_KEY = "k"\n`
     );
     const { json } = run('--home', home, '--plugin-root', PLUGIN, '--write');
     const parsed = Bun.TOML.parse(readFileSync(json.mcp.path, 'utf-8')) as {

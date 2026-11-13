@@ -10,7 +10,7 @@ import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
  *
  * The marker is what every guard reads, and the logger runs on every
  * invocation — including ones a guard has already refused. Before the marker
- * moved off the bare data dir, the logger's own `.kevin/logs/` write in a
+ * moved off the bare data dir, the logger's own `logs/` write in a
  * cwd-fallback tree was enough to make the refusal itself let the next
  * attempt succeed.
  *

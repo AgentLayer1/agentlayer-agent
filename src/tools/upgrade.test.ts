@@ -1,10 +1,9 @@
 import { afterAll, describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
-import { secretsReadBlocked } from '@/shared/sandbox-probe';
-import { installDeps, installRoot, tools } from '@/tools/upgrade';
+import { installDeps, installRoot, runMigration, tools } from '@/tools/upgrade';
 
 const runUpgrade = (version: string) =>
   tools[0].handler({ version }) as Promise<Record<string, unknown>>;
@@ -27,26 +26,43 @@ describe('run_upgrade', () => {
     expect(await runUpgrade('0.3.0')).toMatchObject({ ok: true, found: false });
   });
 
-  test('runs a migration against this home and returns its report', async () => {
+  test("runs a migration against this home, hands it the operator's choices, and returns its report", async () => {
     mkdirSync(join(home, RUNTIME_DIR), { recursive: true });
     writeFileSync(join(home, RUNTIME_DIR, HOME_MARKER_FILES[0]), `${JSON.stringify({ plugin: pluginName() })}\n`);
-    mkdirSync(join(home, '.claude'), { recursive: true });
+    const script = join(home, 'migration.ts');
     writeFileSync(
-      join(home, '.claude', 'settings.json'),
-      JSON.stringify({ permissions: { ask: ['mcp__xcode__RunCodeSnippet'] } })
+      script,
+      [
+        "console.log('a progress line the report ignores');",
+        'console.log(JSON.stringify({',
+        '  ok: true,',
+        '  home: process.env.AGENT_HOME,',
+        '  cwd: process.cwd(),',
+        "  options: JSON.parse(process.env.AGENT_UPGRADE_OPTIONS ?? '{}')",
+        '}));'
+      ].join('\n')
     );
     process.env.AGENT_HOME = home;
-    expect(await runUpgrade('0.7.2')).toMatchObject({
+    const result = await runMigration(script, '1.2.3', { keepBackups: true });
+    expect(result).toMatchObject({
       ok: true,
       found: true,
-      report: { ok: true, askDropped: ['mcp__xcode__RunCodeSnippet'] }
+      version: '1.2.3',
+      report: { ok: true, home, options: { keepBackups: true } }
     });
-    expect(JSON.parse(readFileSync(join(home, '.claude', 'settings.json'), 'utf-8')).permissions.ask).toEqual([]);
+    expect(realpathSync((result.report as { cwd: string }).cwd)).toBe(realpathSync(home));
+  });
+
+  test('a migration that exits non-zero is a failed run', async () => {
+    const script = join(home, 'failing.ts');
+    writeFileSync(script, "console.error('nope'); process.exit(3);");
+    process.env.AGENT_HOME = home;
+    expect(await runMigration(script, '1.2.4')).toMatchObject({ ok: false, found: true, exitCode: 3 });
   });
 
   test('takes a version or install, never both and never neither', async () => {
     expect(
-      await tools[0].handler({ version: '0.7.2', install: true })
+      await tools[0].handler({ version: '1.2.3', install: true })
     ).toMatchObject({ ok: false });
     expect(await tools[0].handler({})).toMatchObject({ ok: false });
   });
@@ -144,33 +160,6 @@ describe('run_upgrade', () => {
       expect(result.stderr).not.toBe('');
     } finally {
       rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  test.skipIf(secretsReadBlocked())("hands the operator's choices to the script", async () => {
-    const zdot = mkdtempSync(join(tmpdir(), 'run-upgrade-zdot-'));
-    const saved = { SHELL: process.env.SHELL, ZDOTDIR: process.env.ZDOTDIR };
-    mkdirSync(join(home, RUNTIME_DIR, 'secrets'), { recursive: true });
-    writeFileSync(
-      join(home, RUNTIME_DIR, 'secrets', '.env.claude.json'),
-      JSON.stringify({ env: { CLAUDE_CODE_OAUTH_TOKEN: 'fixture-token', AGENT_SUBSCRIPTION: '1' } })
-    );
-    Object.assign(process.env, { AGENT_HOME: home, SHELL: '/bin/zsh', ZDOTDIR: zdot });
-    try {
-      const result = await tools[0].handler(
-        { version: '0.9.0', options: { installLauncher: true } }
-      );
-      expect(result).toMatchObject({ ok: true, report: { token: 'present', launcher: { appended: true } } });
-      expect(readFileSync(join(zdot, '.zshrc'), 'utf-8')).toContain('agent()');
-    } finally {
-      Object.entries(saved).forEach(([key, value]) => {
-        if (value === undefined) {
-          delete process.env[key];
-        } else {
-          process.env[key] = value;
-        }
-      });
-      rmSync(zdot, { recursive: true, force: true });
     }
   });
 });

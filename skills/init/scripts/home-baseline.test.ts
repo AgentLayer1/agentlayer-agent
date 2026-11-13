@@ -177,38 +177,8 @@ describe('home-baseline settings', () => {
     expect(missing).toContain(`Skill(${PLUGIN_NAME}:attention)`);
   });
 
-  test('reports a retired skill grant with its successor, and its ask placement decides the successor', () => {
-    const home = scratchHome({
-      settings: {
-        permissions: {
-          allow: [
-            ...baselineAllowMinus([`Skill(${PLUGIN_NAME}:seed)`, `Skill(${PLUGIN_NAME}:briefing)`]),
-            `Skill(${PLUGIN_NAME}:quick-pulse)`
-          ],
-          ask: [`Skill(${PLUGIN_NAME}:seed-import)`]
-        }
-      }
-    });
-    const { settings } = run(home);
-    expect(settings.retiredGrants).toEqual([
-      { list: 'allow', entry: `Skill(${PLUGIN_NAME}:quick-pulse)`, replacement: [`Skill(${PLUGIN_NAME}:briefing)`] },
-      { list: 'ask', entry: `Skill(${PLUGIN_NAME}:seed-import)`, replacement: [`Skill(${PLUGIN_NAME}:seed)`] }
-    ]);
-    expect(settings.allowMissing).not.toContain(`Skill(${PLUGIN_NAME}:seed)`);
-    expect(settings.allowMissing).not.toContain(`Skill(${PLUGIN_NAME}:briefing)`);
+  test('a home with only current grants reports no retired ones', () => {
     expect(fresh.retiredGrants).toEqual([]);
-  });
-
-  test('reports a retired tool grant with its successor, and its ask placement decides the successor', () => {
-    const tool = (name: string) => `mcp__plugin_${PLUGIN_NAME}_${AGENT_SLUG}__${name}`;
-    const home = scratchHome({
-      settings: { permissions: { allow: baselineAllowMinus([tool('attention_write')]), ask: [tool('focus_write')] } }
-    });
-    const { settings } = run(home);
-    expect(settings.retiredGrants).toEqual([
-      { list: 'ask', entry: tool('focus_write'), replacement: [tool('attention_write')] }
-    ]);
-    expect(settings.allowMissing).not.toContain(tool('attention_write'));
   });
 
   test('backfills an ask guard even when the entry sits in allow, never when it sits in deny', () => {
@@ -241,10 +211,10 @@ describe('home-baseline settings', () => {
     expect(curated.settings.denyMissing).toContain('Bash(pip install*)');
   });
 
-  // A curated global list names the stores its author knew of, and this one moved in 0.7.0.
+  // A curated global list names the stores its author knew of, which may not include this one.
   test('keeps the secrets store guarded even under a curated global deny list and sandbox', () => {
     const global = {
-      permissions: { deny: ['Read(//**/.kevin/secrets/**)'] },
+      permissions: { deny: ['Read(//**/.acme/secrets/**)'] },
       sandbox: { enabled: true }
     };
     const curated = run(scratchHome(), ['--claude-dir', claudeDirWith(global)]).settings;

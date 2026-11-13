@@ -158,7 +158,7 @@ export const checkRoadmapHtml = (html: string): RoadmapCheck => {
   if (read.kind === 'legacy') {
     return {
       errors: [
-        'the data is still a const ROADMAP literal: convert it with run_upgrade { version: "0.5.3" }, never by hand'
+        'the data is still a const ROADMAP literal from before the JSON data block: rebuild the page with the roadmap skill, never by hand'
       ],
       warnings: []
     };

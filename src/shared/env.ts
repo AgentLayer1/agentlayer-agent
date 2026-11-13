@@ -92,7 +92,7 @@ const homeAbove = (start: string): string | undefined => {
  * `HOME_MARKER_FILES` state file inside its data dir, which no sibling agent's
  * home (and no runtime side effect) creates. The bare data dir stopped being
  * the marker after it proved forgeable: a hook firing in a foreign repo made
- * the pre-init logger plant `.kevin/logs/` there, and once the dir existed
+ * the pre-init logger plant the data dir's `logs/` there, and once the dir existed
  * every later hook resolved that repo as the home and captured sessions into
  * it. Guards use this to fail loud instead of writing into a repo or another
  * agent's tree. A marker whose `version.json` records another plugin is that

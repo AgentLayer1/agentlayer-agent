@@ -37,7 +37,6 @@ if [ -f "$HOME_DIR/SOUL.md" ]; then
 elif git -C "$HOME_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "CWD_IS_A_REPO at $HOME_DIR"
 fi
-[ -d "$HOME_DIR/.kevin" ] && [ ! -d "$HOME_DIR/.state" ] && echo "LEGACY_DATA_DIR at $HOME_DIR"
 [ -d "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Documents" ] && echo "ICLOUD_DOCUMENTS_SYNC=on"
 ```
 
@@ -52,7 +51,6 @@ any project the plugin is installed into, and init appends to it when it does.)
 
 Act on the probes before anything else:
 
-- **`LEGACY_DATA_DIR`** — this home never ran the 0.7.0 upgrade: its data dir is still `.kevin/`, which this version neither reads nor moves to `.state/`. Re-running init would scaffold a second data dir beside it. Tell the operator to install agent-kevin v0.7.3, run `/agent-kevin:upgrade` there, then update to this version, and **STOP**.
 - **`CWD_IS_A_REPO`** — cwd is inside a git work tree that isn't a Kevin home: almost certainly a code repo, and scaffolding a brain into a repo pollutes it (SOUL.md, knowledge/, `.state/` all land in the working tree). `AskUserQuestion`:
 
   > **This looks like a code repo, not a home for Kevin's brain.** You launched `claude` in `<HOME_DIR>`, which is a git repository without a Kevin scaffold. Where should the home live?
@@ -970,7 +968,7 @@ Baseline Python guard `permissions.deny` — **always written** (unioned with wh
 ]
 ```
 
-Baseline secrets guard — **always written**, the `deny` entry into `permissions.deny` and the `denyRead` entry into the project `sandbox.filesystem`, unioned with whatever the operator already has. A curated global list can't be relied on here: it names the folders the operator knew about when they wrote it, and this store moved from `.kevin/secrets` to `.state/secrets` in 0.7.0. The Read rule gates the Read tool and the sandbox rule gates `cat`/`grep` through Bash, so both are needed:
+Baseline secrets guard — **always written**, the `deny` entry into `permissions.deny` and the `denyRead` entry into the project `sandbox.filesystem`, unioned with whatever the operator already has. A curated global list can't be relied on here: it names the folders the operator knew about when they wrote it, which may not include `.state/secrets`. The Read rule gates the Read tool and the sandbox rule gates `cat`/`grep` through Bash, so both are needed:
 
 ```json
 {

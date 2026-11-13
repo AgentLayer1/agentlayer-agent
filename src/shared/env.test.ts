@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { HOME_MARKER_FILES, RUNTIME_DIR, legacyEnvPrefix, pluginName } from './naming';
+import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from './naming';
 import { agentHomePath, env, githubTokenKeyFor, isAgentHome, isGitHubTokenKey, loadSecretsEnv, namedKeys, readEnvFile, suffixedKey } from './env';
 import { secretsReadBlocked } from './sandbox-probe';
 import { loadSettingsEnv } from './settings-env';
@@ -16,31 +16,23 @@ const scaffoldDataDir = (home: string): void => {
 // AGENT_HOME-dependent assertions run synchronously (no awaits) so the mutation
 // never interleaves with pipeline.test.ts, which shares process.env.
 
-const LEGACY_HOME_KEY = `${legacyEnvPrefix()}HOME`;
-
-/** Run `fn` with both home spellings restored after, `mutate` applied first. */
+/** Run `fn` with AGENT_HOME restored after, `mutate` applied first. */
 const withHomeEnv = <T>(mutate: () => void, fn: () => T): T => {
-  const originalOwn = process.env[LEGACY_HOME_KEY];
-  const originalShared = process.env.AGENT_HOME;
+  const original = process.env.AGENT_HOME;
   mutate();
   try {
     return fn();
   } finally {
-    for (const [key, original] of [
-      [LEGACY_HOME_KEY, originalOwn],
-      ['AGENT_HOME', originalShared]
-    ] as const) {
-      if (original === undefined) {
-        delete process.env[key];
-      } else {
-        process.env[key] = original;
-      }
+    if (original === undefined) {
+      delete process.env.AGENT_HOME;
+    } else {
+      process.env.AGENT_HOME = original;
     }
   }
 };
 
 describe('agentHomePath', () => {
-  /** Run `fn` with both home vars unset, cwd at `dir`, and the host's project dir
+  /** Run `fn` with AGENT_HOME unset, cwd at `dir`, and the host's project dir
    *  set to `projectDir` (unset when omitted) — all restored after. */
   const withCwd = <T>(dir: string, fn: () => T, projectDir?: string): T => {
     const originalCwd = process.cwd();
@@ -48,7 +40,6 @@ describe('agentHomePath', () => {
     process.chdir(dir);
     try {
       return withHomeEnv(() => {
-        delete process.env[LEGACY_HOME_KEY];
         delete process.env.AGENT_HOME;
         if (projectDir === undefined) {
           delete process.env.CLAUDE_PROJECT_DIR;
@@ -69,23 +60,10 @@ describe('agentHomePath', () => {
   test('the shared AGENT_HOME resolves when set', () => {
     withHomeEnv(
       () => {
-        delete process.env[LEGACY_HOME_KEY];
         process.env.AGENT_HOME = '/some/agent/home';
       },
       () => {
         expect(agentHomePath()).toBe('/some/agent/home');
-      }
-    );
-  });
-
-  test(`a legacy ${LEGACY_HOME_KEY} is ignored; AGENT_HOME decides`, () => {
-    withHomeEnv(
-      () => {
-        process.env.AGENT_HOME = '/shared/base/home';
-        process.env[LEGACY_HOME_KEY] = '/agent/legacy/home';
-      },
-      () => {
-        expect(agentHomePath()).toBe('/shared/base/home');
       }
     );
   });
@@ -159,7 +137,7 @@ describe('agentHomePath', () => {
     });
   });
 
-  // The forged-marker regression: a pre-guard logger once planted `.kevin/logs/`
+  // The forged-marker regression: a pre-guard logger once planted the data dir's `logs/`
   // in a worktree, and the bare dir then anchored every later hook there —
   // session captures landed inside the repo. Runtime artifacts alone must never
   // mark a home; only init's state files do.
@@ -200,21 +178,6 @@ describe('agentHomePath', () => {
       },
       otherProject
     );
-  });
-});
-
-describe('env legacy prefix', () => {
-  test('a legacy-prefixed spelling never resolves for its AGENT_* name', () => {
-    process.env.AGENT_PROBE_OVERRIDE = 'shared';
-    process.env[`${legacyEnvPrefix()}PROBE_OVERRIDE`] = 'legacy';
-    try {
-      expect(env('AGENT_PROBE_OVERRIDE')).toBe('shared');
-      delete process.env.AGENT_PROBE_OVERRIDE;
-      expect(env('AGENT_PROBE_OVERRIDE')).toBeUndefined();
-    } finally {
-      delete process.env.AGENT_PROBE_OVERRIDE;
-      delete process.env[`${legacyEnvPrefix()}PROBE_OVERRIDE`];
-    }
   });
 });
 
