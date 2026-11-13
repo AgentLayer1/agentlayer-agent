@@ -3,7 +3,7 @@ name: helpdesk
 description: >
   SupportCandy or Pylon tickets. Triggers on "support queue", "how many tickets", "pull ticket <id>",
   "draft a reply", "raise ticket <id>", "App Store bugs", "set up helpdesk".
-allowed-tools: mcp__plugin_agent-kevin_kevin__helpdesk_connections, mcp__plugin_agent-kevin_kevin__helpdesk_tickets, mcp__plugin_agent-kevin_kevin__helpdesk_stats, mcp__plugin_agent-kevin_kevin__helpdesk_ticket, mcp__plugin_agent-kevin_kevin__helpdesk_attachment, mcp__plugin_agent-kevin_kevin__helpdesk_accounts, mcp__plugin_agent-kevin_kevin__helpdesk_lookups, mcp__plugin_agent-kevin_kevin__appstore_reviews, mcp__plugin_agent-kevin_kevin__report_write, mcp__plugin_agent-kevin_kevin__task_query, mcp__plugin_agent-kevin_kevin__task_create, mcp__plugin_agent-kevin_kevin__task_thread, mcp__plugin_agent-kevin_kevin__github_issue_list, mcp__plugin_agent-kevin_kevin__github_issue_view, Skill(agent-kevin:configure-skills), Bash(bun *review-reads.ts*), Read, Write, Edit, Glob, Grep
+allowed-tools: mcp__plugin_agentlayer_agent__helpdesk_connections, mcp__plugin_agentlayer_agent__helpdesk_tickets, mcp__plugin_agentlayer_agent__helpdesk_stats, mcp__plugin_agentlayer_agent__helpdesk_ticket, mcp__plugin_agentlayer_agent__helpdesk_attachment, mcp__plugin_agentlayer_agent__helpdesk_accounts, mcp__plugin_agentlayer_agent__helpdesk_lookups, mcp__plugin_agentlayer_agent__appstore_reviews, mcp__plugin_agentlayer_agent__report_write, mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_create, mcp__plugin_agentlayer_agent__task_thread, mcp__plugin_agentlayer_agent__github_issue_list, mcp__plugin_agentlayer_agent__github_issue_view, Skill(agentlayer:configure-skills), Bash(bun *review-reads.ts*), Read, Write, Edit, Glob, Grep
 ---
 
 # Helpdesk
@@ -30,7 +30,7 @@ Three layers decide how a queue is worked, each read in full before acting:
 
    With no profile, use the defaults below and offer setup at the end.
 
-Then match the ask to a playbook, or to one of the profile's workflows, and follow it. A tool error that says no helpdesk is configured: point to `/agent-kevin:configure-skills` → Helpdesk and stop. One that says several are: `helpdesk_connections` lists them, and the profile's `connection` should name one.
+Then match the ask to a playbook, or to one of the profile's workflows, and follow it. A tool error that says no helpdesk is configured: point to `/agentlayer:configure-skills` → Helpdesk and stop. One that says several are: `helpdesk_connections` lists them, and the profile's `connection` should name one.
 
 Defaults with no profile: on Pylon the open statuses are `new` and `waiting_on_you`. SupportCandy names its statuses per site, so list them with `helpdesk_lookups` (`kind: statuses`) and ask which count as open.
 

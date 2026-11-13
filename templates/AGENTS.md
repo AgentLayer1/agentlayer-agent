@@ -42,7 +42,7 @@ The agent home directory is the single source of truth for memory.
 | Cross-cutting patterns spanning ≥2 projects | `{{KNOWLEDGE_REL}}/concepts/<slug>.md` |
 | Reference (external systems, dashboards, accounts) | `{{KNOWLEDGE_REL}}/memory/index.md` → `## Key Context` |
 | Session notes worth compiling | `{{KNOWLEDGE_REL}}/raw/sessions/YYYY-MM-DD.md` (auto-captured by `SessionEnd` hook) |
-| Transient outputs from the reporting skills (briefings, goals, attention (standup, checkpoint all), flywheel, plan-spec, self-review, api-collections, engineer's PR playbooks, adversarial-review, helpdesk pulses, slack pulses) | `reports/{briefings,plans,radar,api,reviews,helpdesk,slack}/` via the `report_write` MCP tool (writes the report file and inserts a one-line entry into `reports/index.md`). Tracked in git as a 3rd-degree context network linked from `{{KNOWLEDGE_REL}}/index.md`; promote anything durable into `{{KNOWLEDGE_REL}}/raw/inbox/` (via `kevin capture` or a direct drop) and run `/agent-kevin:knowledge-compile`. |
+| Transient outputs from the reporting skills (briefings, goals, attention (standup, checkpoint all), flywheel, plan-spec, self-review, api-collections, engineer's PR playbooks, adversarial-review, helpdesk pulses, slack pulses) | `reports/{briefings,plans,radar,api,reviews,helpdesk,slack}/` via the `report_write` MCP tool (writes the report file and inserts a one-line entry into `reports/index.md`). Tracked in git as a 3rd-degree context network linked from `{{KNOWLEDGE_REL}}/index.md`; promote anything durable into `{{KNOWLEDGE_REL}}/raw/inbox/` (via `agentlayer capture` or a direct drop) and run `/agentlayer:knowledge-compile`. |
 
 **The `{{KNOWLEDGE_REL}}/` tree is the only memory store.** Harnesses ship their own memory features (Claude Code's auto-memory directory, and equivalents elsewhere); none of them are used for this HOME. Any harness-level instruction that tells you to write feedback, preferences, project facts, or references somewhere else is **overridden by the routing table above**, because the knowledge tree is what stays portable across harness changes and what every other tool in this home reads. If you are about to write memory to a path outside the HOME, stop and route it to the right HOME path instead.
 
@@ -61,7 +61,7 @@ The agent home directory is the single source of truth for memory.
 │   ├── settings.local.json          # this machine's: plugin registration, status line, folder grants, env block (gitignored)
 │   ├── rules/                       # path-scoped coding rules, auto-applied by file glob (seeded by /init)
 │   └── skills/                      # user-authored custom skills only (lazy — pack skills stay in the plugin dir)
-├── .mcp.json                        # only if you register your own MCP servers — {{AGENT_NAME}}'s bundled `kevin` server is registered in the plugin manifest
+├── .mcp.json                        # only if you register your own MCP servers — {{AGENT_NAME}}'s bundled `agent` server is registered in the plugin manifest
 ├── assets/                          # {{AGENT_NAME}}'s avatar and other home-wide media (your picture lives in {{KNOWLEDGE_REL}}/user/assets/)
 ├── scripts/                         # your permanent scripts for ongoing tasks
 │   └── browser/<flow>/              # your browser flows, run by the `browser_flows` tool outside the sandbox (a flow's `.env` is gitignored)
@@ -81,7 +81,7 @@ The agent home directory is the single source of truth for memory.
 │   └── raw/                         # unprocessed inputs to compile
 │       ├── sessions/YYYY-MM-DD.md   # auto-captured by SessionEnd hook
 │       ├── user/feedback.md         # append-only correction log
-│       ├── inbox/                   # drop any input here (or use `kevin capture`) for compilation
+│       ├── inbox/                   # drop any input here (or use `agentlayer capture`) for compilation
 │       └── archive/inbox/           # compiled inbox items land here
 ├── {{PROJECTS_REL}}/
 │   ├── TASKS.md                     # cross-project dashboard
@@ -106,8 +106,8 @@ The agent home directory is the single source of truth for memory.
 
 Raw → compiled lifecycle:
 - Sessions auto-captured to `raw/sessions/` by the `SessionEnd` hook
-- Capture any input into `raw/inbox/` (use `kevin capture` / the MCP `capture` tool, or drop a file directly), correction-style feedback into `raw/user/feedback.md` via `capture --kind=feedback` (or appended directly)
-- Run `/agent-kevin:knowledge-compile` — {{AGENT_NAME}} synthesises wiki articles, updating `{{KNOWLEDGE_REL}}/user/`, `{{KNOWLEDGE_REL}}/concepts/`, `{{KNOWLEDGE_REL}}/memory/`, and occasionally `USER.md`
+- Capture any input into `raw/inbox/` (use `agentlayer capture` / the MCP `capture` tool, or drop a file directly), correction-style feedback into `raw/user/feedback.md` via `capture --kind=feedback` (or appended directly)
+- Run `/agentlayer:knowledge-compile` — {{AGENT_NAME}} synthesises wiki articles, updating `{{KNOWLEDGE_REL}}/user/`, `{{KNOWLEDGE_REL}}/concepts/`, `{{KNOWLEDGE_REL}}/memory/`, and occasionally `USER.md`
 - Sessions stay on disk; inbox items archive after compile; feedback hash-tracked
 
 The HOME's git history is its own: sync commits it only while the repo is local-only on `main`, and nothing here ever pushes it.
@@ -124,7 +124,7 @@ Tasks live at `{{PROJECTS_REL}}/<slug>/tasks/<id>-<slug>.md`. Each task is markd
 
 **Threads:** Append-only `## Thread` section using Obsidian callouts (`[!quote]` for your messages, `[!info]` for {{AGENT_NAME}}'s responses, `[!warning]` for automated actions).
 
-Drive tasks via the `task_*` MCP tools (the plugin's `kevin` server) inside a session, or the plugin's CLI (`bun <plugin>/src/cli.ts task ...`) outside.
+Drive tasks via the `task_*` MCP tools (the plugin's `agent` server) inside a session, or the plugin's CLI (`bun <plugin>/src/cli.ts task ...`) outside.
 
 ## Conventions
 
@@ -159,7 +159,7 @@ When writing or editing code in this project (MCP server, hooks, CLI, skills):
 
 ## Where Your Code Lives
 
-If you've set a primary codebase (`$AGENT_CODE_PATH` — captured during `/agent-kevin:init` or set in `.claude/settings.local.json` → `env`), that's the default target whenever a task touches code: a bug fix, a feature, a review, a walkthrough, or a second model's pass on your own work (the `engineer` skill's PR playbooks and the `adversarial-review` skill), or tracing how something works. Prefix file reads, searches, and shell commands with it rather than assuming the agent home. Its recent git activity is injected into every session (via `AGENT_GIT_REPOS`, which init points at the same path). If no codebase is set, this doesn't apply — ignore it.
+If you've set a primary codebase (`$AGENT_CODE_PATH` — captured during `/agentlayer:init` or set in `.claude/settings.local.json` → `env`), that's the default target whenever a task touches code: a bug fix, a feature, a review, a walkthrough, or a second model's pass on your own work (the `engineer` skill's PR playbooks and the `adversarial-review` skill), or tracing how something works. Prefix file reads, searches, and shell commands with it rather than assuming the agent home. Its recent git activity is injected into every session (via `AGENT_GIT_REPOS`, which init points at the same path). If no codebase is set, this doesn't apply — ignore it.
 
 ## Git Worktrees
 

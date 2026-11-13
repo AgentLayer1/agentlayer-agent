@@ -3,7 +3,7 @@
  * and the dashboard (status/collect.ts).
  *
  * The HOME records which template version it's on in `<HOME>/<data-dir>/version.json`
- * (written by `/init` for fresh homes, by `/agent-kevin:upgrade` thereafter).
+ * (written by `/init` for fresh homes, by `/agentlayer:upgrade` thereafter).
  * Comparing that baseline against the installed plugin version (plugin.json) is
  * a purely LOCAL, zero-network signal for "are HOME migrations pending?". The
  * CHANGELOG.md at the plugin root is the human + machine contract describing what
@@ -153,7 +153,7 @@ export const parseChangelog = (): ChangelogEntry[] => {
  * - `current`  — baseline == installed (or a fresh home not yet `/init`-ed).
  * - `pending`  — baseline < installed; HOME migrations from the CHANGELOG await.
  * - `onboard`  — an established home (this agent's data dir present) with no version.json yet;
- *                run `/agent-kevin:upgrade` once to start tracking.
+ *                run `/agentlayer:upgrade` once to start tracking.
  */
 export const getUpgradeStatus = (): UpgradeStatus => {
   const installed = PLUGIN_VERSION;

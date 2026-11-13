@@ -43,7 +43,7 @@ const taskRef = (overrides: Partial<TaskRef> = {}): TaskRef => ({
 const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot => ({
   runtime: {
     version: '0.1.4',
-    pluginName: 'agent-kevin',
+    pluginName: 'agentlayer',
     home: '/tmp/home',
     pluginRoot: '/tmp/plugin',
     timezone: 'Asia/Kuala_Lumpur',
@@ -102,10 +102,10 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
   mcp: {
     toolCount: 3,
     toolDetails: [
-      { name: 'mcp__kevin__dashboard', description: 'Rebuild TASKS.md + the Agent OS dashboard.' },
-      { name: 'mcp__kevin__task_scan', description: 'Resolve cross-task state.' },
+      { name: 'mcp__agent__dashboard', description: 'Rebuild TASKS.md + the Agent OS dashboard.' },
+      { name: 'mcp__agent__task_scan', description: 'Resolve cross-task state.' },
       {
-        name: 'mcp__kevin__db_list',
+        name: 'mcp__agent__db_list',
         description: 'List the Postgres connections.',
         dbConnections: [
           { name: 'app', host: 'localhost', port: '5432', database: 'app_dev' },
@@ -145,7 +145,7 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
       time: '09:45',
       turns: 4,
       cwd: '/tmp/elsewhere',
-      briefing: '/agent-kevin:sync morning',
+      briefing: '/agentlayer:sync morning',
       isCommand: true
     }
   ],
@@ -177,7 +177,7 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
       entries: [{ cmd: 'status', desc: 'Rebuild the Agent OS dashboard at <HOME>/dashboard.html' }]
     }
   ],
-  hooks: { count: 1, entries: [{ event: 'SessionStart', command: 'kevin session-start' }] },
+  hooks: { count: 1, entries: [{ event: 'SessionStart', command: 'agentlayer session-start' }] },
   mods: {
     features: [
       {
@@ -297,8 +297,8 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
       { name: 'PERPLEXITY_API_KEY', present: true },
       { name: 'google/tokens', present: false }
     ],
-    enabledPlugins: ['agent-kevin@agentlayer'],
-    plugin: { ref: 'agent-kevin@agentlayer', marketplace: 'agentlayer', sourceType: 'github', sourcePath: 'a/b' }
+    enabledPlugins: ['agentlayer@agentlayer'],
+    plugin: { ref: 'agentlayer@agentlayer', marketplace: 'agentlayer', sourceType: 'github', sourcePath: 'a/b' }
   },
   logs: {
     path: '/tmp/home/.state/logs/app.log',
@@ -575,7 +575,7 @@ describe('renderDashboardHtml', () => {
 
   test('capabilities page lists skills and tools with descriptions', () => {
     const html = renderDashboardHtml(makeSnapshot());
-    expect(html).toContain('/agent-kevin:sync');
+    expect(html).toContain('/agentlayer:sync');
     expect(html).toContain('End-to-end refresh of every derived view.');
     expect(html).toContain('<div class="tname"><span class="good">dashboard</span></div>');
     expect(html).toContain('Rebuild TASKS.md + the Agent OS dashboard.');
@@ -593,7 +593,7 @@ describe('renderDashboardHtml', () => {
   test('a db tool with zero connections shows a non-clickable 0-databases chip', () => {
     const snap = makeSnapshot();
     snap.mcp.toolDetails = [
-      { name: 'mcp__kevin__db_list', description: 'List the Postgres connections.', dbConnections: [] }
+      { name: 'mcp__agent__db_list', description: 'List the Postgres connections.', dbConnections: [] }
     ];
     const html = renderDashboardHtml(snap);
     expect(html).toContain('0 databases');
@@ -829,7 +829,7 @@ describe('renderDashboardHtml', () => {
             time: '23:40',
             turns: 7,
             cwd: '~/Documents/Agents/Kevin',
-            briefing: '/agent-kevin:sync evening',
+            briefing: '/agentlayer:sync evening',
             isCommand: true
           },
           {
@@ -839,7 +839,7 @@ describe('renderDashboardHtml', () => {
             time: '',
             turns: 3,
             cwd: '~/Documents/Agents/Kevin',
-            briefing: '/agent-kevin:briefing pulse',
+            briefing: '/agentlayer:briefing pulse',
             isCommand: true
           }
         ]
@@ -847,8 +847,8 @@ describe('renderDashboardHtml', () => {
     );
     const today = html.slice(html.indexOf('data-page="today"'), html.indexOf('data-page="tasks"'));
     // The command feed still spans the 24h window: yesterday in, two days ago out.
-    expect(today).toContain('/agent-kevin:sync evening');
-    expect(today).not.toContain('/agent-kevin:briefing pulse');
+    expect(today).toContain('/agentlayer:sync evening');
+    expect(today).not.toContain('/agentlayer:briefing pulse');
     // Feed rows carry timestamps; yesterday's rows wear a stacked day label
     // under the time so times stay column-aligned.
     expect(today).toContain('09:45');
@@ -897,7 +897,7 @@ describe('renderDashboardHtml', () => {
     const html = renderDashboardHtml(makeSnapshot());
     const sessions = html.slice(html.indexOf('data-page="sessions"'), html.indexOf('data-page="brain"'));
     expect(sessions).toContain('Morning sync and vendor portal work');
-    expect(sessions).not.toContain('agent-kevin:sync morning');
+    expect(sessions).not.toContain('agentlayer:sync morning');
     expect(sessions).toContain('13 turns');
   });
 
@@ -963,10 +963,10 @@ describe('surfaces', () => {
 
   test('appTab surfaces open through the markdownUrl app template', () => {
     const html = renderDashboardHtml(
-      makeSnapshot({ surfaces: [{ title: 'Roadmap', href: '/home/kevin/roadmap.html', icon: '🗺️', appTab: true }] })
+      makeSnapshot({ surfaces: [{ title: 'Roadmap', href: '/home/ada/roadmap.html', icon: '🗺️', appTab: true }] })
     );
     expect(html).toContain(
-      `<a class="nav-item" href="obsidian://open?path=${encodeURIComponent('/home/kevin/roadmap.html')}">`
+      `<a class="nav-item" href="obsidian://open?path=${encodeURIComponent('/home/ada/roadmap.html')}">`
     );
     expect(html).toContain('Roadmap<span class="out">↗</span>');
   });
@@ -979,15 +979,15 @@ describe('surfaces', () => {
   test('pinned reports render under their own Pinned group after Surfaces', () => {
     const html = renderDashboardHtml(
       makeSnapshot({
-        surfaces: [{ title: 'Roadmap', href: '/home/kevin/roadmap.html', icon: '🗺️', appTab: true }],
-        pinned: [{ title: 'Security plan', href: '/home/kevin/reports/security/plan.html', icon: '🛡️', appTab: true }]
+        surfaces: [{ title: 'Roadmap', href: '/home/ada/roadmap.html', icon: '🗺️', appTab: true }],
+        pinned: [{ title: 'Security plan', href: '/home/ada/reports/security/plan.html', icon: '🛡️', appTab: true }]
       })
     );
     expect(html.indexOf('<div class="nav-group">Pinned</div>')).toBeGreaterThan(
       html.indexOf('<div class="nav-group">Surfaces</div>')
     );
     expect(html).toContain(
-      `href="obsidian://open?path=${encodeURIComponent('/home/kevin/reports/security/plan.html')}"`
+      `href="obsidian://open?path=${encodeURIComponent('/home/ada/reports/security/plan.html')}"`
     );
   });
 
@@ -1006,7 +1006,7 @@ describe('surfaces', () => {
   });
 
   test('the Reports page leads with the pins and filters to them with a Pinned chip', () => {
-    const pin = { title: 'Security plan', href: '/home/kevin/reports/security/plan.html', icon: '🛡️', appTab: true };
+    const pin = { title: 'Security plan', href: '/home/ada/reports/security/plan.html', icon: '🛡️', appTab: true };
     const html = renderDashboardHtml(makeSnapshot({ pinned: [pin] }));
     expect(html).toContain('data-catfilter="pinned"');
     expect(html).toContain('<h3 class="group">📌 Pinned</h3><div class="row" data-row data-cat="pinned">');
@@ -1015,7 +1015,7 @@ describe('surfaces', () => {
 
   test("the Reports page's Pinned group lists project pins after the global ones, each with its project", () => {
     const base = makeSnapshot();
-    const global = { title: 'Security plan', href: '/home/kevin/reports/security/plan.html', icon: '🛡️', appTab: true };
+    const global = { title: 'Security plan', href: '/home/ada/reports/security/plan.html', icon: '🛡️', appTab: true };
     const projectPin = { title: 'Migration plan', icon: '📐', path: 'reports/plans/migration.md' };
     const html = renderDashboardHtml(
       makeSnapshot({

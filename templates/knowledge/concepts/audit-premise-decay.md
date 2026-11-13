@@ -1,6 +1,6 @@
 ---
 title: Audit Premise Decay
-sources: [seeded by /agent-kevin:init]
+sources: [seeded by /agentlayer:init]
 created: {{INIT_DATE}}
 updated: {{INIT_DATE}}
 ---

@@ -15,22 +15,22 @@ allowed-tools:
   - Glob
   - Read
   - Edit
-  - mcp__plugin_agent-kevin_kevin__attention_write
-  - mcp__plugin_agent-kevin_kevin__task_query
-  - mcp__plugin_agent-kevin_kevin__task_create
-  - mcp__plugin_agent-kevin_kevin__task_update
-  - mcp__plugin_agent-kevin_kevin__task_get
-  - mcp__plugin_agent-kevin_kevin__task_scan
-  - mcp__plugin_agent-kevin_kevin__task_thread
-  - mcp__plugin_agent-kevin_kevin__github_pr_list
-  - mcp__plugin_agent-kevin_kevin__github_pr_view
-  - mcp__plugin_agent-kevin_kevin__github_issue_view
-  - mcp__plugin_agent-kevin_kevin__report_write
-  - mcp__plugin_agent-kevin_kevin__capture
-  - mcp__plugin_agent-kevin_kevin__slack_whoami
-  - mcp__plugin_agent-kevin_kevin__slack_search
-  - mcp__plugin_agent-kevin_kevin__slack_thread
-  - mcp__plugin_agent-kevin_kevin__slack_waiting
+  - mcp__plugin_agentlayer_agent__attention_write
+  - mcp__plugin_agentlayer_agent__task_query
+  - mcp__plugin_agentlayer_agent__task_create
+  - mcp__plugin_agentlayer_agent__task_update
+  - mcp__plugin_agentlayer_agent__task_get
+  - mcp__plugin_agentlayer_agent__task_scan
+  - mcp__plugin_agentlayer_agent__task_thread
+  - mcp__plugin_agentlayer_agent__github_pr_list
+  - mcp__plugin_agentlayer_agent__github_pr_view
+  - mcp__plugin_agentlayer_agent__github_issue_view
+  - mcp__plugin_agentlayer_agent__report_write
+  - mcp__plugin_agentlayer_agent__capture
+  - mcp__plugin_agentlayer_agent__slack_whoami
+  - mcp__plugin_agentlayer_agent__slack_search
+  - mcp__plugin_agentlayer_agent__slack_thread
+  - mcp__plugin_agentlayer_agent__slack_waiting
 ---
 
 # Attention

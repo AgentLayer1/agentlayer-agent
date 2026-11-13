@@ -4,7 +4,7 @@ Drive a real website in a **visible browser** to run repeatable, end-to-end flow
 
 ## What it is
 
-A Claude Code skill that exposes one MCP tool, **`browser_flows`**, which runs a *flow* — a small TypeScript program that drives Playwright. Flows live one-folder-each under `flows/`. The skill is manual-invoke only (`/agent-kevin:browser-flows`); Kevin calls the tool with a flow name + params.
+A Claude Code skill that exposes one MCP tool, **`browser_flows`**, which runs a *flow* — a small TypeScript program that drives Playwright. Flows live one-folder-each under `flows/`. The skill is manual-invoke only (`/agentlayer:browser-flows`); Kevin calls the tool with a flow name + params.
 
 The reference flow is **`hacker-news`** — scrape the HN front page into a digest. Copy it to build your own.
 
@@ -22,7 +22,7 @@ browser_flows (MCP tool, runs in the MCP server)
              └─ close the browser
 ```
 
-**Why a tool and not a Bash script:** a headed browser **can't launch from the Bash tool** — the macOS seatbelt blocks it (mach/WindowServer). The `kevin` MCP server is *not* under that seatbelt, so the tool spawns the flow from there and the window opens fine.
+**Why a tool and not a Bash script:** a headed browser **can't launch from the Bash tool** — the macOS seatbelt blocks it (mach/WindowServer). The `agent` MCP server is *not* under that seatbelt, so the tool spawns the flow from there and the window opens fine.
 
 **Login is manual and persistent:** for a target with `auth`, the flow opens the site and waits for you to log in by hand (your real session — no API keys). The session is saved to a per-env profile in `.state/browser/`, so later runs skip the login. Public-site flows (like `hacker-news`) have no `auth` and skip the wait entirely.
 

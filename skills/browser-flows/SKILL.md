@@ -15,7 +15,7 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-  - mcp__plugin_agent-kevin_kevin__browser_flows
+  - mcp__plugin_agentlayer_agent__browser_flows
 ---
 
 # browser-flows

@@ -38,7 +38,7 @@ glob matches nothing, so `ls .../*-standup.md` fails instead of falling through 
 **The window is 24 hours.** Not "since the last report" — a missing report means the skill
 didn't run, which is not the same event as standup not happening. Most of the time standup
 happened anyway and the work is already spoken for, so anchoring on the report would make the
-operator re-announce days of it. Only an explicit `/agent-kevin:attention standup 48` widens the window.
+operator re-announce days of it. Only an explicit `/agentlayer:attention standup 48` widens the window.
 
 That file still earns its lookup, for one thing: it tells you whether there's a **gap**. Read
 its `created:` and compare against the 24h boundary.

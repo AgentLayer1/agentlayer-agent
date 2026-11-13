@@ -7,7 +7,7 @@ description: >
   blueprint. Triggers on /plan-spec. Also trigger when users say things like "help me spec this out",
   "plan this feature", "turn these notes into a spec", "interview me about this project", or
   "I need to think through this design". Not for changing code in a repo, which is the engineer skill.
-allowed-tools: Read, Glob, Grep, Write, AskUserQuestion, mcp__plugin_agent-kevin_kevin__report_write
+allowed-tools: Read, Glob, Grep, Write, AskUserQuestion, mcp__plugin_agentlayer_agent__report_write
 ---
 
 # Plan Spec: Deep-Dive Specification Writer
@@ -182,7 +182,7 @@ The spec must be structured so Claude can consume it as an implementation plan. 
 
 ### Output
 
-**In a Kevin home** (the `mcp__plugin_agent-kevin_kevin__report_write` tool is available), call it. It writes the spec under `<HOME>/reports/plans/` and adds a one-line entry to `<HOME>/reports/index.md` under today's date in one atomic call, so the next session sees the spec:
+**In a Kevin home** (the `mcp__plugin_agentlayer_agent__report_write` tool is available), call it. It writes the spec under `<HOME>/reports/plans/` and adds a one-line entry to `<HOME>/reports/index.md` under today's date in one atomic call, so the next session sees the spec:
 
 ```
 report_write({

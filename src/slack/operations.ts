@@ -2,12 +2,12 @@
  * Shared read-only Slack orchestration — channel resolution, user-name
  * hydration, and message formatting on top of the raw `client.ts` primitives.
  *
- * Both entry points consume these: the `kevin slack` CLI (cli.ts, wraps the
+ * Both entry points consume these: the `agentlayer slack` CLI (cli.ts, wraps the
  * results in stdout rendering) and the `slack_*` MCP tools (tools/slack.ts,
  * return the structured results directly). Keeping the orchestration here means
  * the two surfaces can never drift — and the MCP tools run inside the
  * unsandboxed server process, so they read the deny-gated token file that a
- * sandboxed `kevin slack` shell cannot.
+ * sandboxed `agentlayer slack` shell cannot.
  */
 import { pluginName } from '@/shared/naming';
 import { existsSync } from 'node:fs';

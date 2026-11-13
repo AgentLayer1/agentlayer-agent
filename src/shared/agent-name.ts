@@ -1,14 +1,14 @@
-import { AGENT_SLUG, FILES } from '@/config';
+import { FILES } from '@/config';
 import { readText } from '@/shared/text';
 
 /**
  * The agent's display name — what it calls itself, as opposed to the plugin's
- * namespace (`agent-kevin`), which never changes.
+ * namespace (`agentlayer`), which never changes.
  *
  * Single source: `IDENTITY.md`'s `- **Name:**` field, which is what
- * `/agent-kevin:init` writes and `/agent-kevin:rename-agent` edits. Falls back
- * to the plugin's own name (`agent-kevin` → `Kevin`) for a home that has no
- * IDENTITY.md yet (pre-init) or one scaffolded before the field existed.
+ * `/agentlayer:init` writes and `/agentlayer:rename-agent` edits. Falls back
+ * to the name a new agent wakes up with for a home that has no IDENTITY.md yet
+ * (pre-init) or one scaffolded before the field existed.
  *
  * Deliberately uncached and read live. A rename edits the file mid-session, and
  * a cached value would keep the old name in the banner, the TASKS.md header, and
@@ -20,8 +20,11 @@ export const agentDisplayName = (): string => {
   // An unsubstituted template token means init left a placeholder behind;
   // showing "{{AGENT_NAME}}" everywhere is worse than showing the default.
   if (name && !name.includes('{{')) return name;
-  return AGENT_SLUG.replace(/^./, (first) => first.toUpperCase());
+  return DEFAULT_AGENT_NAME;
 };
+
+/** The name a new agent wakes up with until the operator picks its own. */
+export const DEFAULT_AGENT_NAME = 'Oppi';
 
 /**
  * The names this agent went by before a rename, oldest first, from `IDENTITY.md`'s

@@ -2,7 +2,7 @@
 
 <!--
   Scaffold for a Swift package repo, dropped by the Xcode pack
-  (/agent-kevin:configure-skills → Xcode). Fill every {{PLACEHOLDER}} and delete
+  (/agentlayer:configure-skills → Xcode). Fill every {{PLACEHOLDER}} and delete
   any section that does not apply.
 
   Pair this file with:

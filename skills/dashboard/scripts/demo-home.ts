@@ -999,7 +999,7 @@ write(
   `${JSON.stringify(
     {
       enabledPlugins: { [`${plugin.name}@agentlayer`]: true },
-      extraKnownMarketplaces: { agentlayer: { source: { source: 'github', repo: 'AgentLayer1/agent-kevin' } } },
+      extraKnownMarketplaces: { agentlayer: { source: { source: 'github', repo: 'AgentLayer1/agentlayer-agent' } } },
       permissions: {
         allow: [
           `mcp__plugin_${plugin.name}_${AGENT}__task_query`,

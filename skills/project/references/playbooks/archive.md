@@ -31,7 +31,7 @@ Do these in order. Steps 1-3 are reversible; after step 4 (move), be deliberate.
 - Ask once, whatever else this step finds: "Archive `<project>` (<one-line reason>) and move it to `archive/`?" Stop on anything but a yes.
 - Check for open tasks:
   ```
-  mcp__plugin_agent-kevin_kevin__task_query with {project: "<project>", status: "open"}
+  mcp__plugin_agentlayer_agent__task_query with {project: "<project>", status: "open"}
   ```
 - If open tasks exist, ask the user whether to close, cancel, or carry them forward before continuing. **Read the task threads before recommending** — if prior thread notes already say "should be closed / superseded / no longer applies", cancel-with-pointer-note is almost always the right call, even if the user's first instinct is "move them". Don't silently carry stale scope into the successor project.
 - If the archive is a pivot (e.g., "going with X route instead"), consider creating a single *fresh* replacement task in the successor project — scoped to the new regime — rather than copy-pasting old tasks. Copy-pasted tasks tend to get closed on first review.
@@ -105,12 +105,12 @@ Run all of these. Anything red = stop and fix.
 - `knowledge/index.md` Projects table no longer lists the project.
 - Task scanner runs clean:
   ```
-  mcp__plugin_agent-kevin_kevin__task_scan
-  mcp__plugin_agent-kevin_kevin__task_query with {project: "<project>"}    # should return "No tasks match"
+  mcp__plugin_agentlayer_agent__task_scan
+  mcp__plugin_agentlayer_agent__task_query with {project: "<project>"}    # should return "No tasks match"
   ```
 - No new lint regressions (optional but recommended):
   ```
-  mcp__plugin_agent-kevin_kevin__knowledge_lint
+  mcp__plugin_agentlayer_agent__knowledge_lint
   ```
   Compare issue count to before the archive. New broken-link errors mean step 6a missed something.
 
@@ -129,5 +129,5 @@ Report to the user:
 
 ## Edge cases and gotchas
 - **`USER.md` references**: if `<HOME>/USER.md` mentions the project, repoint or remove the reference manually.
-- **Dangling wikilinks**: post-archive, any `[[Projects/<slug>]]` references in the wiki won't resolve. Run `mcp__plugin_agent-kevin_kevin__links_rewrite` to surface and patch them.
+- **Dangling wikilinks**: post-archive, any `[[Projects/<slug>]]` references in the wiki won't resolve. Run `mcp__plugin_agentlayer_agent__links_rewrite` to surface and patch them.
 - **Prefix reuse after archival**: once a project moves to `archive/`, its prefix is no longer claimed by `buildPrefixMap()`, so a future project could derive the same prefix. Existing archived task files keep their IDs (stored in filenames + frontmatter), so this is safe — but if you want the old prefix to stay reserved, keep that in mind when naming new projects.

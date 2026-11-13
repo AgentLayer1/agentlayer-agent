@@ -58,9 +58,9 @@ mkdir -p ~/Documents/Agents/Kevin && cd ~/Documents/Agents/Kevin
 
 | Claude Code | Codex |
 |---|---|
-| `claude`, then `/plugin install agent-kevin --marketplace AgentLayer1/agentlayer-agent-marketplace` | `codex plugin marketplace add AgentLayer1/agentlayer-agent-marketplace` then `codex plugin add agent-kevin@agentlayer` |
-| Relaunch and run `/agent-kevin:init` | Create the home from Claude Code, then open it with `codex` and run `$upgrade` once |
-| Skills: `/agent-kevin:<skill>` | Skills: `$<skill>` |
+| `claude`, then `/plugin install agentlayer --marketplace AgentLayer1/agentlayer-agent-marketplace` | `codex plugin marketplace add AgentLayer1/agentlayer-agent-marketplace` then `codex plugin add agentlayer@agentlayer` |
+| Relaunch and run `/agentlayer:init` | Create the home from Claude Code, then open it with `codex` and run `$upgrade` once |
+| Skills: `/agentlayer:<skill>` | Skills: `$<skill>` |
 
 Five minutes of questions later you have a home. See [Onboarding](https://agentlayer.one/docs/getting-started/onboarding) and [Hosts](https://agentlayer.one/docs/agent/hosts).
 
@@ -111,7 +111,7 @@ This README is the short version. Everything lives at **[agentlayer.one/docs](ht
 
 ## Updating
 
-Pull the new plugin version on your host (`/plugin update agent-kevin@agentlayer` in Claude Code; remove and re-add in Codex), then run the `upgrade` skill. The plugin update refreshes code; `upgrade` reconciles your home from the CHANGELOG's Upgrade blocks, backing up first. → [Updating](https://agentlayer.one/docs/getting-started/updating) · [Upgrades and releases](https://agentlayer.one/docs/reference/upgrades)
+Pull the new plugin version on your host (`/plugin update agentlayer@agentlayer` in Claude Code; remove and re-add in Codex), then run the `upgrade` skill. The plugin update refreshes code; `upgrade` reconciles your home from the CHANGELOG's Upgrade blocks, backing up first. → [Updating](https://agentlayer.one/docs/getting-started/updating) · [Upgrades and releases](https://agentlayer.one/docs/reference/upgrades)
 
 ---
 
@@ -121,7 +121,7 @@ Pull requests welcome: new opt-in packs, read-mostly MCP tools, platform hardeni
 
 ## License
 
-Licensed under the [Apache License, Version 2.0](./LICENSE). `agent-kevin` is © AgentLayer · [agentlayer.one](https://agentlayer.one). See [NOTICE](./NOTICE) for the attribution stanza. Third-party skill libraries installed via the `configure-skills` skill are not bundled and carry their own licenses.
+Licensed under the [Apache License, Version 2.0](./LICENSE). `agentlayer` is © AgentLayer · [agentlayer.one](https://agentlayer.one). See [NOTICE](./NOTICE) for the attribution stanza. Third-party skill libraries installed via the `configure-skills` skill are not bundled and carry their own licenses.
 
 ---
 

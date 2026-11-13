@@ -28,9 +28,9 @@ import {
   typicalMs
 } from './stats';
 
-const syncRun = atom({ plugin: 'agent-kevin', key: 'syncRun' } as const, null);
+const syncRun = atom({ plugin: 'agentlayer', key: 'syncRun' } as const, null);
 // Bumped every second while a run is live; only the band reads it, so only the band redraws.
-const syncTick = atom({ plugin: 'agent-kevin', key: 'syncTick' } as const, 0);
+const syncTick = atom({ plugin: 'agentlayer', key: 'syncTick' } as const, 0);
 
 const [STATS_TOOL] = SYNC_FEATURE.tools;
 const SYNC_SKILL = /(^|:)sync$/;

@@ -19,7 +19,7 @@ import { pluginName } from '@/shared/naming';
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const PROBE = '/tmp/kevin-config-probe';
+const PROBE = '/tmp/agentlayer-config-probe';
 
 /** Run `fn` with `AGENT_HOME` pointed at `home`, restoring the real value after. */
 const withHome = <T>(home: string, fn: () => T): T => {
@@ -58,7 +58,7 @@ describe('config path resolution', () => {
   });
 
   test('the preload pinned this suite to a throwaway home', () => {
-    expect(FOLDERS.HOME).toContain('kevin-test-home-');
+    expect(FOLDERS.HOME).toContain('agentlayer-test-home-');
   });
 });
 
@@ -113,6 +113,6 @@ describe("the agent's names", () => {
 
   test("the mods' state contract is keyed by the plugin name", () => {
     const contract = readFileSync(resolve(checkout, 'mods', 'types', 'index.d.ts'), 'utf-8');
-    expect(contract).toMatch(new RegExp(`['"]${PLUGIN_NAME}['"]\\s*:\\s*\\{`));
+    expect(contract).toMatch(new RegExp(`['"]?${PLUGIN_NAME}['"]?\\s*:\\s*\\{`));
   });
 });

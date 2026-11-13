@@ -7,6 +7,8 @@ import { LIVE_STATUSES } from '../mods/tasks/statuses';
 import { isValidTransition } from './tasks/schema';
 import type { TaskStatus } from './shared/types';
 import { MOD_FEATURES } from '../mods/shared/catalog';
+import { DEFAULT_AGENT_NAME as MODS_DEFAULT_NAME } from '../mods/shared/agent';
+import { DEFAULT_AGENT_NAME } from '@/shared/agent-name';
 
 describe('mods', () => {
   test("the instruction loader marks an agent home with the runtime's own marker files", () => {
@@ -15,6 +17,10 @@ describe('mods', () => {
 
   test("the setup prompt looks for the runtime's own data dir", () => {
     expect(DATA_DIR).toBe(RUNTIME_DIR);
+  });
+
+  test('the setup prompt names a new agent the way the server does', () => {
+    expect(MODS_DEFAULT_NAME).toBe(DEFAULT_AGENT_NAME);
   });
 
   test("/task's done and cancel act on exactly the statuses the task schema can close or cancel", () => {

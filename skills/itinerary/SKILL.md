@@ -7,7 +7,7 @@ description: >
   they never say the word "itinerary". Wizard-style: interview first, then web research (flights,
   drive times, prices, opening hours, halal food, weather), then render the itinerary HTML into the
   trip project.
-allowed-tools: AskUserQuestion, WebSearch, WebFetch, Read, Write, Edit, Glob, Grep, Bash, mcp__plugin_agent-kevin_kevin__serpapi_search, mcp__plugin_agent-kevin_kevin__web_search, mcp__plugin_agent-kevin_kevin__browser_pdf, mcp__plugin_agent-kevin_kevin__task_query, mcp__plugin_agent-kevin_kevin__task_thread
+allowed-tools: AskUserQuestion, WebSearch, WebFetch, Read, Write, Edit, Glob, Grep, Bash, mcp__plugin_agentlayer_agent__serpapi_search, mcp__plugin_agentlayer_agent__web_search, mcp__plugin_agentlayer_agent__browser_pdf, mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_thread
 ---
 
 # Itinerary

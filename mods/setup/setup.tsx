@@ -2,8 +2,9 @@ import { atom, read, update } from 'claude-code';
 import type { EngineInterface, On } from 'claude-code';
 
 import { DATA_DIR, HOME_MARKERS, parentOf } from '../manuals/repo';
+import { DEFAULT_AGENT_NAME } from '../shared/agent';
 
-const needsSetup = atom({ plugin: 'agent-kevin', key: 'needsSetup' } as const, false);
+const needsSetup = atom({ plugin: 'agentlayer', key: 'needsSetup' } as const, false);
 
 const selfAndAncestors = (dir: string): string[] => (dir === '/' ? [] : [dir, ...selfAndAncestors(parentOf(dir))]);
 
@@ -41,11 +42,6 @@ async function runInit($: EngineInterface): Promise<void> {
   void $.command.run({ command }).catch(() => $.prompt.submit({ text: `/${command}` }));
 }
 
-const agentName = (pluginName: string): string => {
-  const slug = pluginName.replace(/^agent-/, '');
-  return `${slug.charAt(0).toUpperCase()}${slug.slice(1)}`;
-};
-
 export const registerSetup = (on: On): void => {
   on('session.start', { isInteractive: true }, async ($, e, next) => {
     const result = await next(e);
@@ -68,7 +64,7 @@ export const registerSetup = (on: On): void => {
     return (
       <Box flexDirection="column">
         <Box gap={1}>
-          <Text bold>{`${agentName($.plugin.name)} isn't set up in this folder yet`}</Text>
+          <Text bold>{`${DEFAULT_AGENT_NAME} isn't set up in this folder yet`}</Text>
           <Box marginLeft={2}>
             <Button key="setup:init" variant="primary" label="Set up" onPress={() => runInit($)} />
           </Box>

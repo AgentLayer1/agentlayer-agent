@@ -37,7 +37,7 @@ export const SLACK_USER_SCOPES = [
 ] as const;
 
 /** Slack token store, under the deny-gated secrets dir (0700) — off Claude's Read
- *  tool + the Bash sandbox. Managed by the `kevin slack` CLI. */
+ *  tool + the Bash sandbox. Managed by the `agentlayer slack` CLI. */
 export const slackSecretsDir = (): string => resolve(FOLDERS.SECRETS, 'slack');
 export const slackTokensFile = (): string => resolve(slackSecretsDir(), 'slack-tokens.json');
 

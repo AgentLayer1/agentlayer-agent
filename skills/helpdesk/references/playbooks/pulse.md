@@ -25,11 +25,11 @@ These steps are the default. A profile's `## Pulse` section adds to them (extra 
 9. **Save.** Write the report, then show it in chat:
 
 ```
-mcp__plugin_agent-kevin_kevin__report_write({
+mcp__plugin_agentlayer_agent__report_write({
   category: 'helpdesk',
   slug: 'pulse-<slug>',          // just 'pulse' when there is no profile
   title: 'Helpdesk pulse — <slug>: <N> open, <K> unassigned',
-  skill: 'agent-kevin:helpdesk',
+  skill: 'agentlayer:helpdesk',
   status: 'findings',            // 'clean' when nothing needs a person, 'critical' when a pattern looks like an outage
   body: <the brief below, no frontmatter>,
   tags: ['helpdesk', '<slug>'],

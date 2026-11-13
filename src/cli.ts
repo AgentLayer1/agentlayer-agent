@@ -1,52 +1,52 @@
 /**
- * `kevin` CLI — task + knowledge ops from outside Claude Code.
+ * `agentlayer` CLI — task + knowledge ops from outside Claude Code.
  *
  * Subcommands:
- *   kevin ping
- *   kevin capture [text] [--file=PATH] [--url=URL] [--kind=inbox|feedback] [--title=...] [--label=...] [--stdin]
- *   kevin session-capture --mode=session-end|pre-compact [--hook-protocol=claude|codex] [--transcript=PATH --cwd=PATH --session-id=X] [--format=claude|codex] [--home=PATH]
- *   kevin session-start [--hook-protocol=claude|codex] [--home=PATH]
- *   kevin statusline [--subagent|--setting]
- *   kevin guard [--hook-protocol=claude|codex] [--home=PATH]   (PreToolUse hook: refuses a home-tree write from a drifted cwd, a cd that moves the session, shared-temp misuse, history-rewriting git, a gate that can't stop its commit)
- *   kevin task query [--project=NAME] [--status=...] [--priority=P0-P3]
- *   kevin task get <id>
- *   kevin task create --project=NAME --title=... --description=... [--priority=P2]
- *   kevin task update <id> [--status=...] [--priority=...] [--title=...] [--due=YYYY-MM-DD]
- *   kevin task close <id>
- *   kevin task thread <id> --message=... [--type=quote|info|warning]
- *   kevin task scan
+ *   agentlayer ping
+ *   agentlayer capture [text] [--file=PATH] [--url=URL] [--kind=inbox|feedback] [--title=...] [--label=...] [--stdin]
+ *   agentlayer session-capture --mode=session-end|pre-compact [--hook-protocol=claude|codex] [--transcript=PATH --cwd=PATH --session-id=X] [--format=claude|codex] [--home=PATH]
+ *   agentlayer session-start [--hook-protocol=claude|codex] [--home=PATH]
+ *   agentlayer statusline [--subagent|--setting]
+ *   agentlayer guard [--hook-protocol=claude|codex] [--home=PATH]   (PreToolUse hook: refuses a home-tree write from a drifted cwd, a cd that moves the session, shared-temp misuse, history-rewriting git, a gate that can't stop its commit)
+ *   agentlayer task query [--project=NAME] [--status=...] [--priority=P0-P3]
+ *   agentlayer task get <id>
+ *   agentlayer task create --project=NAME --title=... --description=... [--priority=P2]
+ *   agentlayer task update <id> [--status=...] [--priority=...] [--title=...] [--due=YYYY-MM-DD]
+ *   agentlayer task close <id>
+ *   agentlayer task thread <id> --message=... [--type=quote|info|warning]
+ *   agentlayer task scan
  *
- *   kevin compile status
- *   kevin compile next          (prints the next work item JSON — doesn't synthesise)
- *   kevin compile write <itemId>
+ *   agentlayer compile status
+ *   agentlayer compile next          (prints the next work item JSON — doesn't synthesise)
+ *   agentlayer compile write <itemId>
  *
- *   kevin notices               (what to nudge the operator about, most important first)
- *   kevin notices record <id> --outcome=acted|snoozed
+ *   agentlayer notices               (what to nudge the operator about, most important first)
+ *   agentlayer notices record <id> --outcome=acted|snoozed
  *
- *   kevin prune
- *   kevin links
- *   kevin dashboard
- *   kevin worktree <repoPath> --branch=BRANCH [--base=REF] [--slug=SLUG] [--extra=sub1,sub2]
- *   kevin worktree list <repoPath>
+ *   agentlayer prune
+ *   agentlayer links
+ *   agentlayer dashboard
+ *   agentlayer worktree <repoPath> --branch=BRANCH [--base=REF] [--slug=SLUG] [--extra=sub1,sub2]
+ *   agentlayer worktree list <repoPath>
  *
- *   kevin knowledge lint [--fix]
+ *   agentlayer knowledge lint [--fix]
  *
- *   kevin seed scan
- *   kevin seed export --include=path1,path2 --name=AGENT [--out=PATH]
- *   kevin seed import <bundlePath> [--overwrite] [--dry-run]
+ *   agentlayer seed scan
+ *   agentlayer seed export --include=path1,path2 --name=AGENT [--out=PATH]
+ *   agentlayer seed import <bundlePath> [--overwrite] [--dry-run]
  *
- *   kevin database list
- *   kevin database schema --connection=NAME [--table=T] [--schema=S] [--database=DB]
- *   kevin database query --connection=NAME --sql="SELECT ..." [--database=DB] [--timeout=MS]
- *   kevin database fork [--connection=NAME] [--source=DB] [--fork=NAME] [--cwd=PATH] [--repoint-env] [--env-var=DATABASE_URL] [--force] [--terminate-source] [--drop]
+ *   agentlayer database list
+ *   agentlayer database schema --connection=NAME [--table=T] [--schema=S] [--database=DB]
+ *   agentlayer database query --connection=NAME --sql="SELECT ..." [--database=DB] [--timeout=MS]
+ *   agentlayer database fork [--connection=NAME] [--source=DB] [--fork=NAME] [--cwd=PATH] [--repoint-env] [--env-var=DATABASE_URL] [--force] [--terminate-source] [--drop]
  *
- *   kevin slack auth
- *   kevin slack whoami
- *   kevin slack list-channels
- *   kevin slack history <channel> [--since=24h] [--limit=100]
- *   kevin slack batch-history <ch1,ch2,...> [--since=24h] [--limit=100]
- *   kevin slack thread <channel> <thread_ts>
- *   kevin slack search <query> [--in=<channel>] [--since=7d]
+ *   agentlayer slack auth
+ *   agentlayer slack whoami
+ *   agentlayer slack list-channels
+ *   agentlayer slack history <channel> [--since=24h] [--limit=100]
+ *   agentlayer slack batch-history <ch1,ch2,...> [--since=24h] [--limit=100]
+ *   agentlayer slack thread <channel> <thread_ts>
+ *   agentlayer slack search <query> [--in=<channel>] [--since=7d]
  */
 import { pluginName } from '@/shared/naming';
 
@@ -722,7 +722,7 @@ async function run(): Promise<void> {
   if (group === 'capture') {
     // Combine command + args so flags can land anywhere after `capture`. The
     // first non-flag arg (if any) is treated as inline positional text, so
-    // `kevin capture "the thought"` works without --text=.
+    // `agentlayer capture "the thought"` works without --text=.
     const allArgs = [command, ...args].filter((a): a is string => Boolean(a));
     const localFlag = (name: string): string | undefined => {
       const f = allArgs.find((a) => a.startsWith(`--${name}=`));

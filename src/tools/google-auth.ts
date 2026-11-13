@@ -7,7 +7,7 @@
  * One-time setup:
  *   1. Google Cloud Console → APIs & Services → Credentials → OAuth client (Desktop app)
  *   2. Download the JSON, save as `<HOME>/<data-dir>/secrets/google/google-oauth-client.json`
- *   3. Run mcp__plugin_agent-kevin_kevin__google_auth — opens browser for consent, mints + persists tokens
+ *   3. Run mcp__plugin_agentlayer_agent__google_auth — opens browser for consent, mints + persists tokens
  */
 import { FOLDERS, MCP_PREFIX } from '@/config';
 import { log } from '@/shared/log';

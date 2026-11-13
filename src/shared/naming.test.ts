@@ -14,7 +14,7 @@ import {
 describe('ownDataDir', () => {
   const homes: string[] = [];
   const homeWith = (dirs: Record<string, string>): string => {
-    const home = realpathSync(mkdtempSync(resolve(tmpdir(), 'kevin-datadir-')));
+    const home = realpathSync(mkdtempSync(resolve(tmpdir(), 'agentlayer-datadir-')));
     homes.push(home);
     Object.entries(dirs).forEach(([dir, versionJson]) => {
       mkdirSync(resolve(home, dir), { recursive: true });

@@ -5,7 +5,7 @@
  * the main repo's `.git/config` and the checked-out config files (`.vscode/settings.json`,
  * `.mcp.json`) that the seatbelt denies when git runs under the Bash tool. The skill decides
  * WHICH repo (it knows the operator's layout) and passes the main checkout path; this tool
- * does the mechanical create + bootstrap. The same logic backs the `kevin worktree` CLI.
+ * does the mechanical create + bootstrap. The same logic backs the `agentlayer worktree` CLI.
  */
 import { callSignal } from '@/shared/call-signal';
 import { defineTool, type ToolDef } from '@/shared/types';

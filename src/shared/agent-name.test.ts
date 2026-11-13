@@ -1,4 +1,4 @@
-import { agentDisplayName, agentFormerNames, renameAgent, withoutFormerNames } from '@/shared/agent-name';
+import { DEFAULT_AGENT_NAME, agentDisplayName, agentFormerNames, renameAgent, withoutFormerNames } from '@/shared/agent-name';
 import { describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -41,12 +41,12 @@ describe('agentDisplayName', () => {
     expect(withIdentity(identity('Ada Lovelace'), agentDisplayName)).toBe('Ada Lovelace');
   });
 
-  test('falls back to the plugin name when the Name field is absent', () => {
-    expect(withIdentity('# Identity\n\n## Who\n\n- **Kind:** AI assistant\n', agentDisplayName)).toBe('Kevin');
+  test('falls back to the default name when the Name field is absent', () => {
+    expect(withIdentity('# Identity\n\n## Who\n\n- **Kind:** AI assistant\n', agentDisplayName)).toBe(DEFAULT_AGENT_NAME);
   });
 
   test('falls back when IDENTITY.md does not exist (pre-init home)', () => {
-    expect(withIdentity(undefined, agentDisplayName)).toBe('Kevin');
+    expect(withIdentity(undefined, agentDisplayName)).toBe(DEFAULT_AGENT_NAME);
   });
 
   test('an empty Name falls back instead of capturing the next line', () => {
@@ -55,18 +55,18 @@ describe('agentDisplayName', () => {
     // "- **Kind:** AI assistant" in the banner, in TASKS.md, and in the compile
     // prompts that write its name into long-term memory.
     const emptyName = '# Identity\n\n## Who\n\n- **Name:** \n- **Kind:** AI assistant\n';
-    expect(withIdentity(emptyName, agentDisplayName)).toBe('Kevin');
+    expect(withIdentity(emptyName, agentDisplayName)).toBe(DEFAULT_AGENT_NAME);
   });
 
   test('a Name of only whitespace falls back too', () => {
-    expect(withIdentity(identity('   '), agentDisplayName)).toBe('Kevin');
+    expect(withIdentity(identity('   '), agentDisplayName)).toBe(DEFAULT_AGENT_NAME);
   });
 
   test('an unsubstituted init token falls back instead of leaking the placeholder', () => {
     // A failed init leaves `{{AGENT_NAME}}` in the file. Rendering that verbatim
     // would put the raw token in the session banner, TASKS.md, and every compile
     // prompt — worse than showing the default.
-    expect(withIdentity(identity('{{AGENT_NAME}}'), agentDisplayName)).toBe('Kevin');
+    expect(withIdentity(identity('{{AGENT_NAME}}'), agentDisplayName)).toBe(DEFAULT_AGENT_NAME);
   });
 
   test('is read live, so a rename takes effect without a restart', () => {

@@ -1,6 +1,6 @@
 ---
 title: Karpathy Wiki Pattern
-sources: [seeded by /agent-kevin:init]
+sources: [seeded by /agentlayer:init]
 created: {{INIT_DATE}}
 updated: {{INIT_DATE}}
 ---
@@ -25,9 +25,9 @@ Raw inputs (conversations, notes, documents) are "source code." An LLM "compiler
   - `concepts/` — cross-cutting patterns that span ≥2 projects (this folder)
   - `memory/` — hot context (active threads, recent decisions, learnings) plus transient daily memory
   - `index.md` — master catalog; every permanent article gets listed here with a one-line description
-- **Automation** (plugin: `agent-kevin/`)
+- **Automation** (plugin: `agentlayer/`)
   - `SessionEnd` hook captures the session transcript to `raw/sessions/`
-  - `/agent-kevin:knowledge-compile` synthesizes raw → wiki via the Agent SDK
+  - `/agentlayer:knowledge-compile` synthesizes raw → wiki via the Agent SDK
   - `knowledge_lint` MCP tool runs structural health checks
 
 Three operations: **capture** (hooks extract session turns), **compile** (raw → wiki), **lint** (health checks + repair).

@@ -2,7 +2,7 @@
  * run_upgrade — generic executor for versioned upgrade migrations.
  *
  * Heavy, one-time HOME migrations ship as `skills/upgrade/scripts/<version>.ts`,
- * named for the release that introduced them. The `/agent-kevin:upgrade` skill
+ * named for the release that introduced them. The `/agentlayer:upgrade` skill
  * delegates each `script:` action in the CHANGELOG to this tool. Like
  * `setup_worktree`, it runs OUTSIDE the Bash command sandbox, so a migration can
  * write the deny-gated data-dir `secrets/`, read `settings.local.json`, and

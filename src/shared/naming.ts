@@ -77,7 +77,7 @@ const manifest = (): PluginManifest => {
   return cachedManifest;
 };
 
-/** This plugin's manifest name (`agent-kevin`): its slash-command namespace and the owner a home records. */
+/** This plugin's manifest name (`agentlayer`): its slash-command namespace and the owner a home records. */
 export const pluginName = (): string => {
   const { name } = manifest();
   if (typeof name !== 'string' || !name) {
@@ -87,7 +87,7 @@ export const pluginName = (): string => {
 };
 
 /**
- * The agent's handle (`kevin`): the key of the one MCP server the manifest declares. It names
+ * The agent's handle (`agent`): the key of the one MCP server the manifest declares. It names
  * that server's tools in permission rules and the agent in task frontmatter and threads.
  */
 export const agentSlug = (): string => {

@@ -45,7 +45,7 @@ async function fetchUrl(url: string): Promise<{ content: string; sourceHint: str
   try {
     res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; kevin-capture/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; agentlayer-capture/1.0)',
         Accept: 'text/html,text/markdown,text/plain;q=0.9,*/*;q=0.5'
       },
       redirect: 'follow'

@@ -6,7 +6,7 @@ description: >
   a recording to the brain. Triggers on "what's in this video", "transcribe this voice memo",
   "summarize this recording", "the ticket has a video", "screenshot at 1:13", "remember this
   meeting", or /media.
-allowed-tools: mcp__plugin_agent-kevin_kevin__media_transcribe, mcp__plugin_agent-kevin_kevin__video_frames, mcp__plugin_agent-kevin_kevin__capture, Read, Write, Edit, Glob
+allowed-tools: mcp__plugin_agentlayer_agent__media_transcribe, mcp__plugin_agentlayer_agent__video_frames, mcp__plugin_agentlayer_agent__capture, Read, Write, Edit, Glob
 ---
 
 # Media

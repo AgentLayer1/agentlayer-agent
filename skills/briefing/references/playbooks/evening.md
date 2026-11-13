@@ -11,9 +11,9 @@ Close the day cleanly. Show what landed, name what didn't, flag what'll bite tom
 3. **Today's project file deltas** — `find <HOME>/projects -type f -name '*.md' -newermt '<day> 00:00' -not -path '*/node_modules/*'`.
 4. **Closed today** — `grep -rl --include='*.md' '^closed: <date>' <HOME>/projects`, once per date being wrapped (it also finds tasks sync already archived). `task_query` has no closed-date filter.
 5. **Active / open P0–P1** — `{status:"active"}`, `{status:"open", priority:"P0"}`, `{status:"open", priority:"P1"}`.
-6. **Overdue / due soon / stale / blocked** — `mcp__plugin_agent-kevin_kevin__task_scan` (`dueSoon` is the next 14 days; name anything due tomorrow in tomorrow's first moves).
+6. **Overdue / due soon / stale / blocked** — `mcp__plugin_agentlayer_agent__task_scan` (`dueSoon` is the next 14 days; name anything due tomorrow in tomorrow's first moves).
 7. **Goals** — read `<HOME>/projects/TASKS.md` `## Daily Goals`, `## Monthly Goals` and `## Weekly Goals` to compute end-of-day delta. Score today's daily goals as the goals skill's [day](../../../goals/references/playbooks/day.md#score-the-day-the-evening-brief-or-how-did-today-go) playbook says.
-8. **Owed to people** — `mcp__plugin_agent-kevin_kevin__attention_write` with no arguments; its `snapshot` is the queue of pull requests, reviews and replies waiting on the operator.
+8. **Owed to people** — `mcp__plugin_agentlayer_agent__attention_write` with no arguments; its `snapshot` is the queue of pull requests, reviews and replies waiting on the operator.
 9. **Sessions waiting on you** — the newest radar report, per [first moves](../first-moves.md#inputs).
 
 ## Hard guardrails
@@ -96,7 +96,7 @@ When all four signals are zero (no closures, no commits, no raw session, no proj
 ## Persist
 
 After rendering the wrap in chat, **also persist a snapshot** via the
-`mcp__plugin_agent-kevin_kevin__report_write` MCP tool — the helper writes the
+`mcp__plugin_agentlayer_agent__report_write` MCP tool — the helper writes the
 file and inserts a one-line entry into `<HOME>/reports/index.md` under today's
 date in a single atomic call:
 

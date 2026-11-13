@@ -1,7 +1,7 @@
 # Export — hand this agent to a teammate (`/seed export`)
 
-Build a seed bundle: a plain zip the recipient imports after their own `/agent-kevin:init`
-(`/agent-kevin:seed import`). Fork semantics — everything in the bundle becomes the
+Build a seed bundle: a plain zip the recipient imports after their own `/agentlayer:init`
+(`/agentlayer:seed import`). Fork semantics — everything in the bundle becomes the
 recipient's own, freely editable. Nothing leaves this machine without the operator
 approving the exact contents.
 
@@ -143,10 +143,10 @@ the recipient instructions:
 Seed bundle: <path>
 
 Send it to your teammate along with:
-1. Install the agent-kevin plugin (marketplace) and run /agent-kevin:init — when init
+1. Install the agentlayer plugin (marketplace) and run /agentlayer:init — when init
    asks "starting from a seed bundle?", point it at this zip and it applies the seed
    automatically after the scaffold. (On an already-initialized home, run
-   /agent-kevin:seed import <bundle path> directly instead.)
+   /agentlayer:seed import <bundle path> directly instead.)
 2. Review the dry-run plan the import shows before approving.
 3. Fill the listed credential keys in <their HOME>/.state/secrets/.env via their editor
    (values never travel and never go through chat), then restart Claude Code.

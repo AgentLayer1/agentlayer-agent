@@ -6,7 +6,7 @@ import { TURN_REASONS } from '../shared/turns';
 import type { Queue } from '../types';
 
 const EMPTY: Queue = { pending: [], isBusy: false, isPaused: false };
-const queue = atom({ plugin: 'agent-kevin', key: 'queue' } as const, EMPTY);
+const queue = atom({ plugin: 'agentlayer', key: 'queue' } as const, EMPTY);
 
 const drain = async ($: EngineInterface): Promise<void> => {
   // update() may rerun the change on a conflict; only the committed run's pick is sent.

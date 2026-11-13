@@ -1,6 +1,6 @@
 /**
  * The home's `.gitignore`, reconciled against the plugin template: every template rule the home
- * lacks is appended under `# agent-kevin`, and the operator's own lines are never removed or
+ * lacks is appended under `# agentlayer`, and the operator's own lines are never removed or
  * reordered. Shared by init, upgrade (via `skills/init/scripts/home-baseline.ts`) and home history.
  * A leaf on purpose (node builtins only), so skill scripts can import it.
  */

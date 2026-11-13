@@ -5,7 +5,7 @@ description: >
   it, advance every project meaningfully, close what's done, keep the roadmaps honest, log what
   mattered. Only when the operator asks for a cross-project pass: "run the flywheel", "work across
   all my projects", or /flywheel. "What should I work on" is the attention skill.
-allowed-tools: mcp__plugin_agent-kevin_kevin__task_query, mcp__plugin_agent-kevin_kevin__task_get, mcp__plugin_agent-kevin_kevin__task_scan, mcp__plugin_agent-kevin_kevin__dashboard, mcp__plugin_agent-kevin_kevin__task_update, mcp__plugin_agent-kevin_kevin__task_thread, mcp__plugin_agent-kevin_kevin__task_close, mcp__plugin_agent-kevin_kevin__task_create, AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash
+allowed-tools: mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_get, mcp__plugin_agentlayer_agent__task_scan, mcp__plugin_agentlayer_agent__dashboard, mcp__plugin_agentlayer_agent__task_update, mcp__plugin_agentlayer_agent__task_thread, mcp__plugin_agentlayer_agent__task_close, mcp__plugin_agentlayer_agent__task_create, AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash
 ---
 
 # Flywheel Session
@@ -22,7 +22,7 @@ Don't just pick the most urgent thing and ride it for the whole session. Touch e
 
 Refresh the dashboard, then read it as your single source of truth for what's active across the portfolio:
 ```
-mcp__plugin_agent-kevin_kevin__dashboard
+mcp__plugin_agentlayer_agent__dashboard
 Read <HOME>/projects/TASKS.md
 ```
 
@@ -30,7 +30,7 @@ Read <HOME>/projects/TASKS.md
 
 Then read `<HOME>/knowledge/memory/index.md` end to end for narrative context. The `## Active Threads` section explains the *why* behind the tasks. If it conflicts with `TASKS.md`, trust the dashboard — frontmatter is source of truth; memory index is a synthesis that the next compile will reconcile.
 
-Run `mcp__plugin_agent-kevin_kevin__task_scan` if you want resolver insight (auto-unblock candidates, priority bumps from low-priority blockers under high-priority tasks).
+Run `mcp__plugin_agentlayer_agent__task_scan` if you want resolver insight (auto-unblock candidates, priority bumps from low-priority blockers under high-priority tasks).
 
 Finally, the north star: `<HOME>/roadmap.html` is the strategic frame the whole portfolio ladders up to. Only its `ROADMAP` data object matters, not the markup or the renderers below it:
 
@@ -39,7 +39,7 @@ Bash: grep -n "const ROADMAP" <HOME>/roadmap.html
 Read <HOME>/roadmap.html with { offset: <that line> }   # to EOF — a truncated object is not a frame
 ```
 
-Lanes, horizons, and milestone statuses tell you which work is *on the path* and which is a detour. Use it as the tie-breaker whenever two tasks look equally urgent: the one serving a lane with a near finish line wins. A project with no milestone on any lane is a signal too — either it's off the path (fine, say so) or the roadmap is stale. No `roadmap.html` at HOME root? Note it once in the wrap and offer `/agent-kevin:roadmap` — don't build one mid-flywheel.
+Lanes, horizons, and milestone statuses tell you which work is *on the path* and which is a detour. Use it as the tie-breaker whenever two tasks look equally urgent: the one serving a lane with a near finish line wins. A project with no milestone on any lane is a signal too — either it's off the path (fine, say so) or the roadmap is stale. No `roadmap.html` at HOME root? Note it once in the wrap and offer `/agentlayer:roadmap` — don't build one mid-flywheel.
 
 ### 2. Catch up on the sessions since the last run
 
@@ -56,7 +56,7 @@ Most work happens in sessions that never touch a task, so the board alone unders
 
 Walk the Active section of `TASKS.md` project by project. Only when you need full task detail (description, checklist, thread history) reach for:
 ```
-mcp__plugin_agent-kevin_kevin__task_get with { id: "<id>" }
+mcp__plugin_agentlayer_agent__task_get with { id: "<id>" }
 ```
 
 A project keeping its own roadmap has it at `projects/<slug>/roadmap.html` (same convention as the HOME-root north star, one level down). Read its `ROADMAP` object the same way before deciding what to advance — it's the project-level plan the task board implements, and it usually names the next milestone more clearly than any single task does.
@@ -67,8 +67,8 @@ A stalled task is the operator's decision, not more narration. List it under **S
 
 Decide for each of the rest:
 - **Advance** — make concrete progress (write code, draft a doc, send a message, run a query).
-- **Update** — log new info via `mcp__plugin_agent-kevin_kevin__task_thread`, change status/priority/due if reality shifted.
-- **Close** — if done, `mcp__plugin_agent-kevin_kevin__task_close`. Don't leave finished work as "active".
+- **Update** — log new info via `mcp__plugin_agentlayer_agent__task_thread`, change status/priority/due if reality shifted.
+- **Close** — if done, `mcp__plugin_agentlayer_agent__task_close`. Don't leave finished work as "active".
 - **Defer** — set status to `blocked` with a real blocker note, or change priority to P3 and move on.
 
 ### 4. Archive closed tasks
@@ -85,7 +85,7 @@ This runs on every pass, even when nothing else moved. Find candidates with `gre
 
 A roadmap is only worth reading if it tracks reality. When this session moved something a roadmap claims, flip that item's `status` (`done` / `progress` / `planned`) with a targeted `Edit` on the `ROADMAP` object — nothing else. `done` needs evidence from this session (a closed task, a merged commit, the operator's word); when in doubt, leave it.
 
-Everything else is out of scope here: structural changes (a new lane or milestone, a moved horizon, re-cut periods) and drift an edit can't absorb (a lane gone quietly stale, a finish line that's no longer plausible) go in the wrap for the operator, with `/agent-kevin:roadmap` offered. Never regenerate the file.
+Everything else is out of scope here: structural changes (a new lane or milestone, a moved horizon, re-cut periods) and drift an edit can't absorb (a lane gone quietly stale, a finish line that's no longer plausible) go in the wrap for the operator, with `/agentlayer:roadmap` offered. Never regenerate the file.
 
 ### 6. Identify cross-cutting opportunities
 
@@ -121,7 +121,7 @@ A typed answer (a specific date, "I'll do it today") is applied as stated. A que
 ### 10. Persist
 
 After the wrap, **persist a snapshot** via the
-`mcp__plugin_agent-kevin_kevin__report_write` MCP tool — captures what moved
+`mcp__plugin_agentlayer_agent__report_write` MCP tool — captures what moved
 across projects in this session so the next morning brief can pick up the trail:
 
 ```

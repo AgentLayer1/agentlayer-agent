@@ -1,7 +1,7 @@
 ---
 name: sync
 description: End-to-end refresh — fast-forward configured code repos, compile pending raw inputs, lint and fix the wiki, run a flywheel pass, surface what needs attention (a pending plugin upgrade, a planning or review skill that's come due), optionally chain into a morning or evening briefing, refresh attention and both dashboards, snapshot the brain at both ends when the HOME repo is local-only, and close with concrete next steps to act on now or queue as a task. Run anytime to bring Kevin's state fully current in one consolidated update. Heavier than a briefing pulse, lighter than running each skill by hand.
-allowed-tools: mcp__plugin_agent-kevin_kevin__github_fast_forward, mcp__plugin_agent-kevin_kevin__helpdesk_connections, mcp__plugin_agent-kevin_kevin__helpdesk_stats, mcp__plugin_agent-kevin_kevin__appstore_reviews, mcp__plugin_agent-kevin_kevin__github_sweep, mcp__plugin_agent-kevin_kevin__compile_status, mcp__plugin_agent-kevin_kevin__compile_next, mcp__plugin_agent-kevin_kevin__compile_write, mcp__plugin_agent-kevin_kevin__knowledge_lint, mcp__plugin_agent-kevin_kevin__memory_prune, mcp__plugin_agent-kevin_kevin__links_rewrite, mcp__plugin_agent-kevin_kevin__dashboard, mcp__plugin_agent-kevin_kevin__report_write, mcp__plugin_agent-kevin_kevin__task_query, mcp__plugin_agent-kevin_kevin__task_get, mcp__plugin_agent-kevin_kevin__task_scan, mcp__plugin_agent-kevin_kevin__task_update, mcp__plugin_agent-kevin_kevin__task_thread, mcp__plugin_agent-kevin_kevin__task_close, mcp__plugin_agent-kevin_kevin__task_create, mcp__plugin_agent-kevin_kevin__web_search, WebSearch, Skill(agent-kevin:attention), Skill(agent-kevin:goals), Skill(agent-kevin:roadmap), Skill(agent-kevin:self-review), Skill(agent-kevin:engineer), Skill(agent-kevin:slack), AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash
+allowed-tools: mcp__plugin_agentlayer_agent__github_fast_forward, mcp__plugin_agentlayer_agent__helpdesk_connections, mcp__plugin_agentlayer_agent__helpdesk_stats, mcp__plugin_agentlayer_agent__appstore_reviews, mcp__plugin_agentlayer_agent__github_sweep, mcp__plugin_agentlayer_agent__compile_status, mcp__plugin_agentlayer_agent__compile_next, mcp__plugin_agentlayer_agent__compile_write, mcp__plugin_agentlayer_agent__knowledge_lint, mcp__plugin_agentlayer_agent__memory_prune, mcp__plugin_agentlayer_agent__links_rewrite, mcp__plugin_agentlayer_agent__dashboard, mcp__plugin_agentlayer_agent__report_write, mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_get, mcp__plugin_agentlayer_agent__task_scan, mcp__plugin_agentlayer_agent__task_update, mcp__plugin_agentlayer_agent__task_thread, mcp__plugin_agentlayer_agent__task_close, mcp__plugin_agentlayer_agent__task_create, mcp__plugin_agentlayer_agent__web_search, WebSearch, Skill(agentlayer:attention), Skill(agentlayer:goals), Skill(agentlayer:roadmap), Skill(agentlayer:self-review), Skill(agentlayer:engineer), Skill(agentlayer:slack), AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash
 ---
 
 # Sync
@@ -44,7 +44,7 @@ It is step 12's committer making one commit, `Sync: save the home before the run
 Fast-forward the default branches of every repo Kevin grounds against, so the rest of the run — and the operator's next question about how something works — reads current code instead of whatever was on disk the last time someone thought to pull. This is the whole reason a non-technical operator never has to learn git: sync is the one command, and code freshness rides along with it. Engineers get it too, so `main` isn't three weeks stale in a checkout they only use for reference.
 
 ```
-mcp__plugin_agent-kevin_kevin__github_fast_forward
+mcp__plugin_agentlayer_agent__github_fast_forward
 ```
 
 No arguments: repos default to `AGENT_CODE_PATH` plus `AGENT_GIT_REPOS`. Both are optional — many operators run Kevin with no codebase at all, and the tool then reports an empty list, which reads as `💻 Code — none configured` and is skipped silently. It returns per-repo and per-branch status; read them into the `💻 Code` line.
@@ -67,7 +67,7 @@ Why each guard is there — this step touches the operator's working repos, so i
 
 Report the outcome in the `💻 Code` line of the output block. `UPDATED` collapses to a count (`main +12`); a run that's entirely `CURRENT` collapses to a single "all current" line. `AHEAD` means the branch has unpushed local commits and origin has nothing new — informational, not a problem, and emphatically not a divergence. `NOT_FAST_FORWARD` and `SKIPPED_DIRTY` are worth surfacing (that branch is now knowingly behind); `CLAIMED_BY_WORKTREE` is normal on a multi-worktree machine and should read as informational, not as a problem. Never "fix" a diverged, dirty, or worktree-held branch — surface it and let the operator decide.
 
-`NOT_CONFIGURED` on every repo, with no GitHub token at all, means the GitHub pack isn't set up in this home: the tool reports it instead of failing, nothing was touched, and the right line is one neutral clause — `💻 Code — skipped (GitHub pack not configured)` — plus `/agent-kevin:configure-skills` if the operator wants it on. `NOT_CONFIGURED` on one repo among synced ones means that repo's owner has no token: name the key its `detail` gives (`GITHUB_TOKEN_<OWNER>`) in the `💻 Code` line. Never dress either up as a problem; the rest of the chain is unaffected.
+`NOT_CONFIGURED` on every repo, with no GitHub token at all, means the GitHub pack isn't set up in this home: the tool reports it instead of failing, nothing was touched, and the right line is one neutral clause — `💻 Code — skipped (GitHub pack not configured)` — plus `/agentlayer:configure-skills` if the operator wants it on. `NOT_CONFIGURED` on one repo among synced ones means that repo's owner has no token: name the key its `detail` gives (`GITHUB_TOKEN_<OWNER>`) in the `💻 Code` line. Never dress either up as a problem; the rest of the chain is unaffected.
 
 `FETCH_FAILED` carries a `reason`, and the three cases need different words. `NO_ACCESS` means the token authenticated but isn't authorized for that repo — it needs `Contents: Read`, and for an org repo an admin has to approve it; say that plainly instead of implying the repo is broken. `AUTH` is narrower: GitHub rejected the credential itself (expired, revoked, malformed), so the fix is re-minting, not re-scoping. `NETWORK` is just no egress. `NO_ACCESS` covers three observed shapes — `403` for a PAT the org hasn't approved, `403` for an approved PAT missing `Contents: Read`, and `404 Repository not found` for a repo the token can't see, since GitHub hides private-repo existence. The code alone doesn't separate the two `403`s, but one probe does: a pending token can only read *public* resources, so if `github_pr_list` returns private PRs the token is already approved and the missing grant is `Contents: Read`. Run that check before naming a cause.
 
@@ -76,14 +76,14 @@ Report the outcome in the `💻 Code` line of the output block. `UPDATED` collap
 Loop the standard compile protocol — exactly the steps in [knowledge-compile](../knowledge-compile/SKILL.md), inlined here for one-shot execution:
 
 ```
-mcp__plugin_agent-kevin_kevin__compile_status     # see what's pending
+mcp__plugin_agentlayer_agent__compile_status     # see what's pending
 ```
 
 If anything is pending, loop:
-1. `mcp__plugin_agent-kevin_kevin__compile_next` — returns `{ itemId, kind, fileName, prompt, meta }` or `{ done: true }`.
+1. `mcp__plugin_agentlayer_agent__compile_next` — returns `{ itemId, kind, fileName, prompt, meta }` or `{ done: true }`.
 2. If `done`, exit the loop.
 3. Read the `prompt` field carefully; perform the synthesis using Read/Write/Edit per its instructions.
-4. `mcp__plugin_agent-kevin_kevin__compile_write` with the `itemId`.
+4. `mcp__plugin_agentlayer_agent__compile_write` with the `itemId`.
 5. Goto 1.
 
 When the loop compiled at least one item, run knowledge-compile's [gap pass](../knowledge-compile/SKILL.md#gap-pass-on-completion) as written. It is the only writer of `## Open Questions`, a section loaded into every session, and without it the section keeps flagging gaps that were filled long ago.
@@ -95,7 +95,7 @@ Track: how many items processed, any errors.
 ### 2. Lint + auto-fix
 
 ```
-mcp__plugin_agent-kevin_kevin__knowledge_lint with { fix: true }
+mcp__plugin_agentlayer_agent__knowledge_lint with { fix: true }
 ```
 
 Returns `{ status, message, errors, warnings, suggestions, fixed, reportPath }`. Auto-fix rewrites stale wikilinks and inserts missing backlinks. The remaining `errors` are real — they need human judgment.
@@ -103,7 +103,7 @@ Returns `{ status, message, errors, warnings, suggestions, fixed, reportPath }`.
 ### 3. Prune transient memory
 
 ```
-mcp__plugin_agent-kevin_kevin__memory_prune
+mcp__plugin_agentlayer_agent__memory_prune
 ```
 
 Deletes `memory/YYYY-MM-DD*.md` older than the retention window (14 days). Cheap, idempotent. Skip if no daily memory files exist.
@@ -111,7 +111,7 @@ Deletes `memory/YYYY-MM-DD*.md` older than the retention window (14 days). Cheap
 ### 4. Rewrite stale wikilinks (defensive)
 
 ```
-mcp__plugin_agent-kevin_kevin__links_rewrite
+mcp__plugin_agentlayer_agent__links_rewrite
 ```
 
 Lint with `fix:true` already calls this internally — running it again is a no-op when the wiki is clean. Skip if step 2 reported zero auto-fixes.
@@ -132,7 +132,7 @@ Inside sync, these overrides apply, and nothing else differs:
 ### 6. Surface what needs attention
 
 ```
-mcp__plugin_agent-kevin_kevin__task_scan
+mcp__plugin_agentlayer_agent__task_scan
 ```
 
 Returns `{ unblocked, autoBlocked, autoClosed, overdue, dueSoon, stale, priorityBumps, pendingIds }`; `dueSoon` is open work due within the next 14 days. **`task_scan` is read-only — it computes these buckets but persists nothing.** Frontmatter `status` stays the source of truth (both TASKS.md and the dashboard count blocked/active from frontmatter, never from this scan). Treat every bucket as a human-judgment queue: when a computed `unblocked` / `autoBlocked` / `autoClosed` / `manualClosed` is genuinely right, apply it explicitly with `task_update` / `task_close`; surface `overdue` / `dueSoon` / `stale` / `priorityBumps` in the output. Note `autoBlocked` over-reports while archived done-deps aren't loaded into the dependency map — verify the dep is actually unresolved before acting.
@@ -179,7 +179,7 @@ Returns a JSON array of `{ invoke, label, lastRun }` for each due item (`invoke`
 - **goals week interview** — a new ISO week has begun since `lastRun` (or never run).
 - **goals month** — a new calendar month has begun since `lastRun`.
 - **goals year** — a new calendar quarter has begun since `lastRun`.
-- **tax** — the home has a tax project and an entity with `close: monthly` has no close record for last month. Sync only nudges (`/agent-kevin:tax close`): a close needs the operator's statements and receipts, so it never runs unattended. The close records are its watermark.
+- **tax** — the home has a tax project and an entity with `close: monthly` has no close record for last month. Sync only nudges (`/agentlayer:tax close`): a close needs the operator's statements and receipts, so it never runs unattended. The close records are its watermark.
 - **roadmap** — not a calendar: due whenever `<HOME>/roadmap.html` doesn't exist.
 - **helpdesk routines** — each `<routine>:<cadence>` in a queue profile's `schedule` (`projects/<slug>/helpdesk.md`; the pulse or the profile's own `## Workflow:` routines) whose newest `reports/helpdesk/*-<routine>-<slug>.md` falls before the current day, ISO week or month (or doesn't exist), as `helpdesk <routine> <slug>`. The report files are its watermark. A profile that won't parse comes back as `helpdesk setup <slug>` with the problem in its label. Sync only nudges a routine: it reads untrusted ticket text against tight rate limits, which doesn't belong in an unattended run. The queue counts below are the exception, since they carry no ticket text.
 - **self-review** — the brain pass is monthly: due when `brainLastRun` is 30 or more days old, or absent on a home whose oldest session day-file is a month old (a fresh init stays quiet). The rules pass keeps its feedback rule: new entries in `raw/user/feedback.md` since `lastRun` and that run over 14 days old, or 30 days regardless. `invoke` names what's due (`self-review`, `self-review brain`, `self-review rules`). `snoozeUntil` (Tomorrow) and `skippedOn` (Skip this month) hold it off; step 13 asks it first, on its own.
@@ -253,7 +253,7 @@ before step 11's dashboard render picks it up.
 
 Resolve which briefing to run: the explicit `morning`/`evening` arg wins; with no arg use the catch-up-aware auto-selection from `## Arguments` (morning if none ran today and it's 3am–9pm, else evening). Then inline the matching protocol:
 
-- `morning` → run the [morning](../briefing/references/playbooks/morning.md) playbook **in full** — render every section of its compose template (🌅 header · 🎯 Today · 📦 Drafted · 📈 Goals · 🏗️ Projects · 🕸️ Stale · 🌐 Signals · 📰 News · 👉 First moves · agent-emoji sign-off), 400–600 words. **Step-7 reuse is narrow:** only the task/thread/scan + memory-index context is already in hand — don't re-query *those*. You still owe the briefing's other inputs: Glob + read today's raw sessions, the project-delta `find` + `git log`, the last-7-days briefings novelty check, and **2–4 focused `mcp__plugin_agent-kevin_kevin__web_search` clusters** (the plugin's Perplexity-backed tool; without `PERPLEXITY_API_KEY`, the briefing's built-in-search fallback) **— including a geopolitics cluster plus any region or community the operator's signal topics name, not just the work-signal one**. Then **call `report_write` per the playbook's `## Persist` section** — compose-without-persist is a bug (not done until `reports/index.md` shows today's entry). Do **not** collapse the eight sections into a prose summary; match the depth of a standalone briefing.
+- `morning` → run the [morning](../briefing/references/playbooks/morning.md) playbook **in full** — render every section of its compose template (🌅 header · 🎯 Today · 📦 Drafted · 📈 Goals · 🏗️ Projects · 🕸️ Stale · 🌐 Signals · 📰 News · 👉 First moves · agent-emoji sign-off), 400–600 words. **Step-7 reuse is narrow:** only the task/thread/scan + memory-index context is already in hand — don't re-query *those*. You still owe the briefing's other inputs: Glob + read today's raw sessions, the project-delta `find` + `git log`, the last-7-days briefings novelty check, and **2–4 focused `mcp__plugin_agentlayer_agent__web_search` clusters** (the plugin's Perplexity-backed tool; without `PERPLEXITY_API_KEY`, the briefing's built-in-search fallback) **— including a geopolitics cluster plus any region or community the operator's signal topics name, not just the work-signal one**. Then **call `report_write` per the playbook's `## Persist` section** — compose-without-persist is a bug (not done until `reports/index.md` shows today's entry). Do **not** collapse the eight sections into a prose summary; match the depth of a standalone briefing.
 - `evening` → run the [evening](../briefing/references/playbooks/evening.md) playbook **in full** — its complete section template, not a summary. Narrow step-7 reuse (task/memory context already loaded); still pull today's git log + closed-today tasks + raw sessions. Evening intentionally skips 🌐 Signals / 📰 News (scoped to closing the day). Then **call `report_write` per the playbook's `## Persist` section** — not done until persisted.
 
 To run a sync with no briefing at all, say so explicitly (e.g. "sync only").
@@ -265,7 +265,7 @@ This is the final step — it runs **after** the briefing, on purpose. `dashboar
 One call rebuilds both `<HOME>/dashboard.html` and `projects/TASKS.md` — call it once here, nowhere else in sync. It runs even for "sync only" (it just won't have new briefing news to pick up). Pass `sync: true` so the tool records this run as the last sync before it renders: the dashboard's last-sync age and the sync notice (the banner line, or the row above the prompt) both read that stamp.
 
 ```
-mcp__plugin_agent-kevin_kevin__dashboard  { sync: true }
+mcp__plugin_agentlayer_agent__dashboard  { sync: true }
 ```
 
 Returns `{ path, bytes, tasks: { active, blocked, overdue, stale, closedRecent } }`. One call, no judgment needed.
@@ -280,7 +280,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/skills/sync/scripts/commit-brain.ts"
 
 The script is the guard, not the model: it commits **only** when the HOME repo is on `main`/`master` with **no remote configured** — a remoted brain is the operator's own push workflow, out of scope — and it never pushes or amends. Changes are grouped into ordered commits so history stays legible: `Sync: update knowledge` (the knowledge root + root identity files), `Sync: update projects`, `Sync: save reports`, `Sync: update state` (runtime dir, `.claude`, dashboards, plus any other tracked edit as catch-all). `.gitignore` still fences secrets. Untracked files outside those roots are never committed — they come back in `leftUncommitted` for the report; a stray scratch file shouldn't enter history silently. The guard matrix lives in `scripts/commit-brain.test.ts`.
 
-Read the JSON into the `💾 Brain` output line. `CLEAN` and the `SKIPPED_*` statuses are one neutral clause, never dressed up as problems. `NOT_A_REPO` means history is off (or its folder is gone, which its `detail` says), and `SKIPPED_NO_SNAPSHOT` means its setup stopped before the first snapshot (sync never makes that one): either way one neutral clause pointing at `/agent-kevin:history`, which finishes it. `SKIPPED_LINK_MISSING` means a synced folder deleted the home's one-line `.git` link: one clause saying the next session start or `/agent-kevin:history` restores it. `SKIPPED_OTHER_HOME` means this folder's link points at another folder's history (a copied home): surface its `detail` and never commit around it. `COMMIT_BLOCKED` means git couldn't write the repo — surface its `detail`, which carries the likely fix (history kept outside the folder needs its grants, which the history skill records); don't hand-run git to force the commit through. The closing interview's own task mutations (step 13) land in the next sync's opening snapshot — that's fine.
+Read the JSON into the `💾 Brain` output line. `CLEAN` and the `SKIPPED_*` statuses are one neutral clause, never dressed up as problems. `NOT_A_REPO` means history is off (or its folder is gone, which its `detail` says), and `SKIPPED_NO_SNAPSHOT` means its setup stopped before the first snapshot (sync never makes that one): either way one neutral clause pointing at `/agentlayer:history`, which finishes it. `SKIPPED_LINK_MISSING` means a synced folder deleted the home's one-line `.git` link: one clause saying the next session start or `/agentlayer:history` restores it. `SKIPPED_OTHER_HOME` means this folder's link points at another folder's history (a copied home): surface its `detail` and never commit around it. `COMMIT_BLOCKED` means git couldn't write the repo — surface its `detail`, which carries the likely fix (history kept outside the folder needs its grants, which the history skill records); don't hand-run git to force the commit through. The closing interview's own task mutations (step 13) land in the next sync's opening snapshot — that's fine.
 
 ### 13. Closing interview — what's next (only when something's actionable)
 
@@ -288,7 +288,7 @@ After the output block (see below), turn the surfaced backlog into a decision. *
 
 **Self-review first, on its own.** When step 6's cadence check listed a `self-review…` item, ask about it before anything else, in its own `AskUserQuestion`: "<label> is due (last run <lastRun, or never>; <the 🧹 Brain counts> waiting)", with **Run it now** · **Tomorrow** · **Skip this month**. When only `self-review rules` is due, ask "<label> is due (last run <lastRun>); the brain pass ran <brainLastRun from `.state/review.json`>" without the Brain counts, so a review that just ran is never read as one that didn't.
 
-- **Run it now** → skip the rest of this interview: the review is the next move. Run self-review through the Skill tool (`agent-kevin:self-review` with the rest of `invoke` as its argument, e.g. `brain`). When `invoke` includes the brain pass (`self-review`, `self-review brain`), hand it the flywheel's stalled tasks, which it asks first. For `self-review rules`, which has no place for them, ask the stalled-task questions (3 and 4 below) in their own call and apply them before starting it.
+- **Run it now** → skip the rest of this interview: the review is the next move. Run self-review through the Skill tool (`agentlayer:self-review` with the rest of `invoke` as its argument, e.g. `brain`). When `invoke` includes the brain pass (`self-review`, `self-review brain`), hand it the flywheel's stalled tasks, which it asks first. For `self-review rules`, which has no place for them, ask the stalled-task questions (3 and 4 below) in their own call and apply them before starting it.
 - **Tomorrow** → `bun "${CLAUDE_PLUGIN_ROOT}/skills/sync/scripts/review-defer.ts" tomorrow`. **Skip this month** → the same script with `skip`. Then continue with the interview below, unchanged.
 
 Self-review is never one of question 1's options.
@@ -310,11 +310,11 @@ Apply the stalled-task answers first, so nothing below can skip them. Then honor
 - **Act now** → do the picks this session, one after another in the order they were offered. External/outbound actions (emails, messages, public posts, `git push`, anything that leaves the machine) still confirm first per the operating rules — an interview pick is not standing authorization for those.
 - **Queue as tasks** → for each pick: if it maps to an existing task, `task_thread` a note and bump priority/status as fitting; otherwise `task_create` one. Confirm each id/title back in one line, then stop.
 
-**Cadence and upgrade picks:** a due goals cadence picked with **Act now** runs through the Skill tool (`agent-kevin:goals` with the rest of `invoke` as its argument, e.g. `week interview`), a due `roadmap` runs `agent-kevin:roadmap` the same way, and **Queue as tasks** files it like any other pick. A tax close needs the operator's documents, a helpdesk routine (the reviews check included) reads untrusted ticket or review text, and `upgrade` chains sync itself, so sync invoking it would recurse: for those three, both answers collapse to the same thing — surface the exact slash command for the operator to type.
+**Cadence and upgrade picks:** a due goals cadence picked with **Act now** runs through the Skill tool (`agentlayer:goals` with the rest of `invoke` as its argument, e.g. `week interview`), a due `roadmap` runs `agentlayer:roadmap` the same way, and **Queue as tasks** files it like any other pick. A tax close needs the operator's documents, a helpdesk routine (the reviews check included) reads untrusted ticket or review text, and `upgrade` chains sync itself, so sync invoking it would recurse: for those three, both answers collapse to the same thing — surface the exact slash command for the operator to type.
 
-**The GitHub sweep pick:** **Act now** runs the engineer skill through the Skill tool (`agent-kevin:engineer` with `sweep`), which drafts the replies and posts nothing; **Queue as tasks** files it like any other pick.
+**The GitHub sweep pick:** **Act now** runs the engineer skill through the Skill tool (`agentlayer:engineer` with `sweep`), which drafts the replies and posts nothing; **Queue as tasks** files it like any other pick.
 
-**The Slack channels pick:** **Act now** runs the slack skill through the Skill tool (`agent-kevin:slack` with `sort new channels`), whose diff-and-extend files each unmapped channel into its section of `slack-channels.md` and reads no message text; **Queue as tasks** files it like any other pick.
+**The Slack channels pick:** **Act now** runs the slack skill through the Skill tool (`agentlayer:slack` with `sort new channels`), whose diff-and-extend files each unmapped channel into its section of `slack-channels.md` and reads no message text; **Queue as tasks** files it like any other pick.
 
 ## Output
 
@@ -354,7 +354,7 @@ One block, tight. Skip empty sections — don't pad.
 🔔 Slack — waiting an hour or more (omit entirely when Slack isn't set up for this agent, as attention skipped it; "nothing waiting" when both lists are empty and no channel is unmapped)
   - You: <from> · #<channel> · <wait, e.g. 2h 10m> → <url>   (one line per `Replies I owe` item, longest wait first)
   - External: <from> · #<channel> · <wait> → <url>   (one line per `External threads waiting` item)
-  - New channels not in the map: #<name>, … → /agent-kevin:slack sorts them into slack-channels.md   (one line, from `unmapped`; omit when empty, and when it's `null` (no map yet) say `no channel map yet` instead)
+  - New channels not in the map: #<name>, … → /agentlayer:slack sorts them into slack-channels.md   (one line, from `unmapped`; omit when empty, and when it's `null` (no map yet) say `no channel map yet` instead)
   - <"+<n> more on the attention page" past 10 lines in total | "can't read <channels>" when the group carried an unavailable note>
 
 🎫 Support (omit entirely when no helpdesk is configured; one entry per queue)

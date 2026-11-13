@@ -1,7 +1,7 @@
 ---
 name: history
 description: Turn on version history for the agent's memory, so any change to what it knows can be seen and undone. Stays on this computer, nothing is uploaded; a cloud-synced home (iCloud, Dropbox, OneDrive) keeps its history in a local folder instead. Fully managed, no git knowledge needed. Use when the operator says "turn on history", "keep a history of my agent", "can I undo changes to your memory", or the upgrade or init flow points here.
-allowed-tools: AskUserQuestion, Read, mcp__plugin_agent-kevin_kevin__home_history
+allowed-tools: AskUserQuestion, Read, mcp__plugin_agentlayer_agent__home_history
 ---
 
 # History

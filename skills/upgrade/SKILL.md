@@ -1,7 +1,7 @@
 ---
 name: upgrade
 description: Apply pending HOME migrations after a plugin code update. `/plugin update` refreshes plugin code (skills, hooks, MCP server, templates) but never touches a home's scaffolded files (AGENTS.md, SOUL.md, settings, rules) or runs bun install. This skill reads the CHANGELOG's Upgrade blocks from the home's recorded baseline up to the installed version, backs up, runs bun install when needed, auto-applies functionality-critical changes, and asks before touching anything you may have personalized. Use when the SessionStart banner / dashboard shows "upgrade available" or "enable update tracking", or the user says "upgrade kevin", "apply the update", "I just ran /plugin update".
-allowed-tools: Bash, Read, Write, Edit, Skill(agent-kevin:sync), mcp__plugin_agent-kevin_kevin__ping, mcp__plugin_agent-kevin_kevin__run_upgrade, mcp__plugin_agent-kevin_kevin__codex_setup, mcp__plugin_agent-kevin_kevin__github_fast_forward
+allowed-tools: Bash, Read, Write, Edit, Skill(agentlayer:sync), mcp__plugin_agentlayer_agent__ping, mcp__plugin_agentlayer_agent__run_upgrade, mcp__plugin_agentlayer_agent__codex_setup, mcp__plugin_agentlayer_agent__github_fast_forward
 ---
 
 # Upgrade — apply pending HOME migrations
@@ -99,8 +99,8 @@ checkout is reported, never touched. Read its per-branch status:
 ## Step 0b — Registration preflight
 
 The plugin only loads next session if the host's registration matches what this release
-ships: the checkout's catalogs are named `agentdev-kevin`, consumers install
-`agent-kevin@agentlayer` from `AgentLayer1/agentlayer-agent-marketplace`. A registration
+ships: the checkout's catalogs are named `agentlayer-dev`, consumers install
+`agentlayer@agentlayer` from `AgentLayer1/agentlayer-agent-marketplace`. A registration
 made under an older name (a checkout registered as `agentlayer`, a retired marketplace repo,
 a Codex marketplace whose catalog was renamed) keeps this session alive but breaks the next.
 Check before anything else:
@@ -183,9 +183,9 @@ with an `### Upgrade` block (format documented at the top of the CHANGELOG).
   **Refreshing a cache install:** try it for the user first — probe whether the CLI
   exposes plugin management (`claude plugin --help`); if it does, run
   `claude plugin marketplace update <marketplace>` then
-  `claude plugin update agent-kevin@<marketplace>`. If the subcommand doesn't exist,
+  `claude plugin update agentlayer@<marketplace>`. If the subcommand doesn't exist,
   fall back to telling them to run `/plugin marketplace update <marketplace>` and
-  `/plugin update agent-kevin@<marketplace>` themselves. Either way a session restart
+  `/plugin update agentlayer@<marketplace>` themselves. Either way a session restart
   follows before re-running this skill.
 - **`BASELINE` present, `< INSTALLED`** → **range mode**: select entries with
   `baseline < version <= installed`.
@@ -304,14 +304,14 @@ never reorder or remove existing entries; a scalar the action names, a top-level
 `bashEditDiffEnabled` or an `env.<KEY>`, is set only when absent so an operator's own value
 stays; never touch operator keys like `hooks`/`theme`/`env` unless an action names them).
 Write back valid JSON. Idempotent:
-re-running adds nothing. Never add a `Skill(agent-kevin:<name>)` grant or MCP tool grant whose name is retired (the
+re-running adds nothing. Never add a `Skill(agentlayer:<name>)` grant or MCP tool grant whose name is retired (the
 maps in `src/shared/retired-skills.ts`), whatever an older release's action names.
 
 **codex wiring (always, when applicable)** — this home runs Codex when either holds:
 `$HOME_DIR/.codex/hooks.json` exists, or this session itself runs under Codex (the `<skill>`
 block wrapper; no Kevin context or tools yet is the symptom of an unwired home), so a home
 first run from Codex is wired then. When it holds, generate or regenerate the hooks and the
-`[mcp_servers.kevin]` registration in `$HOME_DIR/.codex/config.toml` so both point at the
+`[mcp_servers.agent]` registration in `$HOME_DIR/.codex/config.toml` so both point at the
 checkout that just loaded (a version-pinned plugin cache moves on every release; under
 Claude Code that is Claude's copy of the plugin, which Codex runs the hooks and the server
 from, its own plugin cache carrying only the skills). Call the `codex_setup` MCP tool; it runs
@@ -331,9 +331,9 @@ effort derived from Claude. If Sol is unavailable to the operator, help them cho
 model and set it in the home config.
 
 Since 0.4.2 the generator also writes the home's permission posture from its Claude settings
-(a `[permissions.kevin]` profile that denies the secrets store and `.env` reads, makes
+(a `[permissions.agent]` profile that denies the secrets store and `.env` reads, makes
 `.git` writable, and lists the code path and `additionalDirectories` as workspace roots) and
-`.codex/rules/kevin.rules` (one prompt rule per `Bash(…)` entry in `permissions.ask`, and one forbidden rule per
+`.codex/rules/agent.rules` (one prompt rule per `Bash(…)` entry in `permissions.ask`, and one forbidden rule per
 `Bash(…)` entry in `permissions.deny`), it
 mirrors any MCP server a pack registered in `$HOME_DIR/.mcp.json` (the Xcode pack's `xcode`),
 and any server there Claude has approved, into its own `[mcp_servers.<name>]` table, which is
@@ -364,7 +364,7 @@ shaped to parse under the PowerShell Codex uses there, but Kevin's skills are ba
 yet: carry the re-trust line into the Step 6 report, and for a first wiring add the two
 install lines the operator still owes if the plugin is not installed in Codex yet
 (`codex plugin marketplace add <plugin checkout or marketplace>` then
-`codex plugin add agent-kevin@<marketplace>`) and the folder-trust prompt on first launch. Never drop it. An untrusted hook does not run at
+`codex plugin add agentlayer@<marketplace>`) and the folder-trust prompt on first launch. Never drop it. An untrusted hook does not run at
 all, silently under `codex exec`, which is a home that stops capturing its Codex sessions.
 
 **file (additive)** — copy the template to its HOME destination **only if absent**:
@@ -401,7 +401,7 @@ on their say-so either way.
 `knowledge/concepts/<x>.md` files start as template copies, but the knowledge compile
 rewrites them as the home learns, and the result can diverge from the seed completely.
 Before reconciling one, read its frontmatter: if `sources:` no longer reads
-`seeded by /agent-kevin:init` (or the body has grown past the template's shape), compile
+`seeded by /agentlayer:init` (or the body has grown past the template's shape), compile
 owns it — skip the merge and say so in the report, never offer the seed's text as a
 replacement. Reconcile only articles still in their seeded form.
 
@@ -702,7 +702,7 @@ the stale server. Therefore:
 
 - **If `bun install` ran this session, or the update pulled new MCP-server code** →
   do NOT sync yet. Tell the user to **restart / reload the harness (Claude Code or Codex) first**, then run
-  `/agent-kevin:sync`. (End the skill here with that instruction.)
+  `/agentlayer:sync`. (End the skill here with that instruction.)
 - **Otherwise** (HOME-only changes — settings, rules, templates) → invoke the `sync`
   skill now via the Skill tool as the final step.
 

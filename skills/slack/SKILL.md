@@ -3,14 +3,14 @@ name: slack
 description: >
   Read-only Slack, never posts. Triggers on "slack pulse", "what's happening in Slack", "pull this Slack thread",
   "search Slack for", "sort new channels".
-allowed-tools: mcp__plugin_agent-kevin_kevin__slack_whoami, mcp__plugin_agent-kevin_kevin__slack_channels, mcp__plugin_agent-kevin_kevin__slack_history, mcp__plugin_agent-kevin_kevin__slack_batch_history, mcp__plugin_agent-kevin_kevin__slack_thread, mcp__plugin_agent-kevin_kevin__slack_search, mcp__plugin_agent-kevin_kevin__slack_waiting, mcp__plugin_agent-kevin_kevin__report_write, Skill(agent-kevin:configure-skills), Read, Write, Edit, Glob, AskUserQuestion
+allowed-tools: mcp__plugin_agentlayer_agent__slack_whoami, mcp__plugin_agentlayer_agent__slack_channels, mcp__plugin_agentlayer_agent__slack_history, mcp__plugin_agentlayer_agent__slack_batch_history, mcp__plugin_agentlayer_agent__slack_thread, mcp__plugin_agentlayer_agent__slack_search, mcp__plugin_agentlayer_agent__slack_waiting, mcp__plugin_agentlayer_agent__report_write, Skill(agentlayer:configure-skills), Read, Write, Edit, Glob, AskUserQuestion
 ---
 
 # Slack
 
 Read-only access to Slack, built on the Slack pack's `slack_*` MCP tools (per-operator user-token OAuth, no DMs, no writes). This skill handles the **multi-channel composition** Kevin does on natural-language queries; the MCP tools do the reads.
 
-**Reads go through MCP tools, not the `kevin slack` CLI over Bash.** The token lives under the deny-gated `.state/secrets/`, which the Bash sandbox can't read; the MCP server runs unsandboxed, so the tools read it fine.
+**Reads go through MCP tools, not the `agentlayer slack` CLI over Bash.** The token lives under the deny-gated `.state/secrets/`, which the Bash sandbox can't read; the MCP server runs unsandboxed, so the tools read it fine.
 
 | Read | MCP tool |
 |---|---|
@@ -22,22 +22,22 @@ Read-only access to Slack, built on the Slack pack's `slack_*` MCP tools (per-op
 | Search | `slack_search` (`query`, `in`, `since`) |
 | What's waiting, and channels missing from the map | `slack_waiting` (`channels`, `since`, `after`) |
 
-`kevin slack auth` stays a CLI command (interactive OAuth) that the operator runs from their own terminal, walked through by `/agent-kevin:configure-skills` → Slack. The skill never shells out for reads.
+`agentlayer slack auth` stays a CLI command (interactive OAuth) that the operator runs from their own terminal, walked through by `/agentlayer:configure-skills` → Slack. The skill never shells out for reads.
 
 ## Invocation
 
 | Form | Behaviour |
 |---|---|
-| `/agent-kevin:slack` (no args) | **Full pulse.** Scan every categorised channel (excluding `Reference (opt-in)`) for the last 24h, filter for signal, compose the brief, save it to `reports/slack/`. |
-| `/agent-kevin:slack <category>` | A pulse for one category, e.g. `/agent-kevin:slack external`. Same flow, narrower scope. |
-| `/agent-kevin:slack sort new channels` | Only the diff-and-extend below, then a one-line report of what it filed. Sync's Slack-channels pick runs this. It reads channel names and topics, never messages. |
-| `/agent-kevin:slack <freeform>` | Natural language: "what's stuck in #ext-acme", "search for INV-1042", "pull this thread <url>". Route to the right tool or flow per Composition below. |
+| `/agentlayer:slack` (no args) | **Full pulse.** Scan every categorised channel (excluding `Reference (opt-in)`) for the last 24h, filter for signal, compose the brief, save it to `reports/slack/`. |
+| `/agentlayer:slack <category>` | A pulse for one category, e.g. `/agentlayer:slack external`. Same flow, narrower scope. |
+| `/agentlayer:slack sort new channels` | Only the diff-and-extend below, then a one-line report of what it filed. Sync's Slack-channels pick runs this. It reads channel names and topics, never messages. |
+| `/agentlayer:slack <freeform>` | Natural language: "what's stuck in #ext-acme", "search for INV-1042", "pull this thread <url>". Route to the right tool or flow per Composition below. |
 
 Single-channel asks (`what happened in #team-eng today`) skip the multi-channel flow and go straight to `slack_history`.
 
 ## Pre-flight
 
-Call `slack_whoami`. If it returns `connected: false` (never signed in), say `Run kevin slack auth from your terminal first (or /agent-kevin:configure-skills → Slack)` and stop. If it errors with a refresh failure, the sign-in expired: say to re-run `kevin slack auth`, and stop. An `EACCES`/`EPERM` deny-gate message means something shelled out to the CLI: use the `slack_*` tools instead.
+Call `slack_whoami`. If it returns `connected: false` (never signed in), say `Run agentlayer slack auth from your terminal first (or /agentlayer:configure-skills → Slack)` and stop. If it errors with a refresh failure, the sign-in expired: say to re-run `agentlayer slack auth`, and stop. An `EACCES`/`EPERM` deny-gate message means something shelled out to the CLI: use the `slack_*` tools instead.
 
 ## Source of truth: `<HOME>/knowledge/concepts/slack-channels.md`
 
@@ -142,7 +142,7 @@ report_write({
   category: 'slack',
   slug: 'pulse',                 // or the category: 'external', 'team'
   title: 'Slack pulse — last 24h, authed as @<operator>',
-  skill: 'agent-kevin:slack',
+  skill: 'agentlayer:slack',
   status: 'findings',            // 'clean' when nothing is actionable, 'critical' for a drop-everything item
   body: <the brief, no frontmatter>,
   tags: ['slack', 'pulse'],
@@ -176,7 +176,7 @@ Skip empty categories. Nothing actionable: `Slack — all clear (<window>, <N> c
 
 - ❌ Reading DMs, or trying to. The token lacks the scope and the tools don't expose it.
 - ❌ Searching for a file or attachment: `slack_search` doesn't index them, so a miss proves nothing. Ask for the message link.
-- ❌ Shelling out to `kevin slack history|thread|search` for reads. Use the tools.
+- ❌ Shelling out to `agentlayer slack history|thread|search` for reads. Use the tools.
 - ❌ Drafting replies to send. This skill surfaces; the operator decides and posts.
 - ❌ Quoting more than one line of any message. Slack is a pointer, not a quote source.
 - ❌ Moving channels the operator placed, or nagging about triage below 7 uncategorized.
@@ -189,5 +189,5 @@ Skip empty categories. Nothing actionable: `Slack — all clear (<window>, <N> c
 ## Notes
 
 - Every read logs to `<HOME>/.state/logs/app.log` under `[💬 slack]`.
-- Refresh tokens expire after 30 days unused. A refresh error from `slack_whoami` means re-running `kevin slack auth`.
+- Refresh tokens expire after 30 days unused. A refresh error from `slack_whoami` means re-running `agentlayer slack auth`.
 - The operator's edits to `slack-channels.md` are theirs: Kevin appends, never rewrites.

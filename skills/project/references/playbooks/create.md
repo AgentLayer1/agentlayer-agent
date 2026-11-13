@@ -5,7 +5,7 @@ Stand up a new project so it shows up in the knowledge index, the task CLI, and 
 ## When to use
 - User explicitly asks to create, start, or spin up a new project
 - The work genuinely needs its own folder: multiple docs, tasks, or a long-lived deliverable
-- **Don't use for:** one-off tasks (those go in an existing project's `tasks/`) or quick research notes (drop them under `<HOME>/knowledge/raw/inbox/` — or use `kevin capture` — for compilation)
+- **Don't use for:** one-off tasks (those go in an existing project's `tasks/`) or quick research notes (drop them under `<HOME>/knowledge/raw/inbox/` — or use `agentlayer capture` — for compilation)
 
 ## Inputs (ask if missing, don't guess)
 - `<name>` — human title (e.g., "Garden Planner")
@@ -17,7 +17,7 @@ The 2-letter task prefix is **not an input** — it's derived from the slug (see
 ## Why this design
 - `<HOME>/projects/<slug>/` is the single source of truth. The `## Projects` table in `knowledge/index.md` is kept by hand, so step 4 adds the row.
 - The 2-letter prefix is **derived from the filesystem**, not registered anywhere. `getProjectPrefix()` in `src/tasks/scan.ts` prefers the most-used prefix among existing task filenames, and falls back to deriving from the slug for an empty project. The old hardcoded `TASKS.PREFIX_MAP` in `config.ts` is gone. Nothing to edit — the prefix exists the moment the folder does.
-- Tasks folder exists from day one so `mcp__plugin_agent-kevin_kevin__task_scan` and the Obsidian dashboard don't special-case empty projects, and so prefix derivation has a directory to look at.
+- Tasks folder exists from day one so `mcp__plugin_agentlayer_agent__task_scan` and the Obsidian dashboard don't special-case empty projects, and so prefix derivation has a directory to look at.
 
 ## Protocol
 
@@ -89,7 +89,7 @@ Run all of these. Anything red = stop and fix.
 - `$PROJECTS/<slug>/tasks/` exists.
 - Task CLI recognises the project and the derived prefix is what you expected:
   ```
-  mcp__plugin_agent-kevin_kevin__task_query with {project: "<slug>"}
+  mcp__plugin_agentlayer_agent__task_query with {project: "<slug>"}
   ```
   Expect an empty result — a clean `count: 0`, **not** an "unknown project" error.
 
@@ -97,7 +97,7 @@ Run all of these. Anything red = stop and fix.
 Report to the user:
 - Slug, prefix, one-line vision
 - Every file created or edited (name each one)
-- Next natural step, e.g. "create your first task: `mcp__plugin_agent-kevin_kevin__task_create` with project=<slug>, title=..., description=..."
+- Next natural step, e.g. "create your first task: `mcp__plugin_agentlayer_agent__task_create` with project=<slug>, title=..., description=..."
 
 ## Not covered by this skill
 - Creating code scaffolding (package.json, src/, tests) — this skill makes the *project folder*, not the codebase. Add code as a separate step when you know the stack.

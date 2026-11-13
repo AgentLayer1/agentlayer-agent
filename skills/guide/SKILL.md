@@ -4,7 +4,7 @@ description: >
   Write a guide someone else can follow as a polished HTML page: a setup walkthrough, onboarding, or
   how a workflow runs end to end and who does what. Triggers on "write a guide for", "make a setup
   guide", "onboarding guide", "walk <person> through", "something I can give to <person>", or /guide.
-allowed-tools: AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash, mcp__plugin_agent-kevin_kevin__browser_screenshot, mcp__plugin_agent-kevin_kevin__browser_pdf
+allowed-tools: AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash, mcp__plugin_agentlayer_agent__browser_screenshot, mcp__plugin_agentlayer_agent__browser_pdf
 ---
 
 # Guide

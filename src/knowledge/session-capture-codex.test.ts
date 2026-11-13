@@ -55,7 +55,7 @@ beforeAll(async () => {
         'user',
         '<skill>\n<name>briefing</name>\n<path>/Users/x/Test/.agents/skills/briefing/SKILL.md</path>\n---\nname: briefing\n</skill>'
       ),
-      item({ type: 'custom_tool_call', name: 'exec', input: 'text(await tools.mcp__kevin__task_scan({}))' }),
+      item({ type: 'custom_tool_call', name: 'exec', input: 'text(await tools.mcp__agent__task_scan({}))' }),
       item({
         type: 'custom_tool_call_output',
         call_id: 'c1',
@@ -102,7 +102,7 @@ describe('codex rollout capture', () => {
       '<skill>',
       '<skills_instructions>',
       'AGENT-STACK-BEGIN',
-      'tools.mcp__kevin__task_scan',
+      'tools.mcp__agent__task_scan',
       'Script completed'
     ]) {
       expect(day).not.toContain(injected);

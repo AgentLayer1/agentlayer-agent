@@ -1,7 +1,7 @@
 ---
 name: dashboard
 description: Refresh and open the Agent OS dashboard — a static HTML mission-control page covering today's attention view and activity, work across projects, sessions, Kevin's brain, reports, capabilities, and system internals. A refresh snapshots the latest Claude Code sessions and regenerates both dashboard.html and projects/TASKS.md from current state, without the heavy sync work (no compile, flywheel, or briefing). Use when the user says "refresh the dashboard", "update the dashboard", "open the dashboard", or wants the big picture of what Kevin is and what's going on. Also "pin this report".
-allowed-tools: mcp__plugin_agent-kevin_kevin__dashboard, Skill(agent-kevin:attention), Bash, Read, Edit, Write
+allowed-tools: mcp__plugin_agentlayer_agent__dashboard, Skill(agentlayer:attention), Bash, Read, Edit, Write
 ---
 
 # Dashboard
@@ -36,7 +36,7 @@ with these same two steps.
    pick up the radar from step 1):
 
 ```
-mcp__plugin_agent-kevin_kevin__dashboard
+mcp__plugin_agentlayer_agent__dashboard
 ```
 
 Returns `{ path, bytes, tasks }`.
@@ -108,5 +108,5 @@ and the attention pages follow.
   env var in `.claude/settings.local.json` (`{path}` placeholder, e.g.
   `markedit://open?path={path}`); defaults to
   `obsidian://open?path={path}&paneType=tab` (new Obsidian tab, dashboard stays put).
-- Every `/agent-kevin:sync` also refreshes the dashboard; `kevin dashboard`
+- Every `/agentlayer:sync` also refreshes the dashboard; `agentlayer dashboard`
   does the same from a terminal.

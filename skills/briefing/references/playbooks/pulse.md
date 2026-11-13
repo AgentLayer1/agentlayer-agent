@@ -4,8 +4,8 @@ A 60-second check. Surface anything that needs attention; otherwise say so plain
 
 ## Inputs
 
-1. `mcp__plugin_agent-kevin_kevin__task_scan` — overdue, due in the next 14 days (`dueSoon`), stale, blocked, priority bumps.
-2. `mcp__plugin_agent-kevin_kevin__task_query` with `{status: "active"}` — verify nothing's been "active" for >7 days without movement.
+1. `mcp__plugin_agentlayer_agent__task_scan` — overdue, due in the next 14 days (`dueSoon`), stale, blocked, priority bumps.
+2. `mcp__plugin_agentlayer_agent__task_query` with `{status: "active"}` — verify nothing's been "active" for >7 days without movement.
 3. `<HOME>/knowledge/memory/index.md` `## Active Threads` — anything still listed that should be closed?
 
 ## Compose

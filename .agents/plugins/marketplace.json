@@ -1,11 +1,11 @@
 {
-  "name": "agentdev-kevin",
+  "name": "agentlayer-dev",
   "interface": {
-    "displayName": "agent-kevin (local checkout)"
+    "displayName": "agentlayer (local checkout)"
   },
   "plugins": [
     {
-      "name": "agent-kevin",
+      "name": "agentlayer",
       "source": {
         "source": "local",
         "path": "./"

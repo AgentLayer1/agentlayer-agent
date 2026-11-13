@@ -21,16 +21,16 @@ allowed-tools:
   - Bash
   - Agent
   - AskUserQuestion
-  - mcp__plugin_agent-kevin_kevin__github_pr_view
-  - mcp__plugin_agent-kevin_kevin__github_pr_diff
-  - mcp__plugin_agent-kevin_kevin__github_pr_list
-  - mcp__plugin_agent-kevin_kevin__github_issue_view
-  - mcp__plugin_agent-kevin_kevin__github_fast_forward
-  - mcp__plugin_agent-kevin_kevin__setup_worktree
-  - mcp__plugin_agent-kevin_kevin__list_worktrees
-  - mcp__plugin_agent-kevin_kevin__task_get
-  - mcp__plugin_agent-kevin_kevin__task_thread
-  - mcp__plugin_agent-kevin_kevin__report_write
+  - mcp__plugin_agentlayer_agent__github_pr_view
+  - mcp__plugin_agentlayer_agent__github_pr_diff
+  - mcp__plugin_agentlayer_agent__github_pr_list
+  - mcp__plugin_agentlayer_agent__github_issue_view
+  - mcp__plugin_agentlayer_agent__github_fast_forward
+  - mcp__plugin_agentlayer_agent__setup_worktree
+  - mcp__plugin_agentlayer_agent__list_worktrees
+  - mcp__plugin_agentlayer_agent__task_get
+  - mcp__plugin_agentlayer_agent__task_thread
+  - mcp__plugin_agentlayer_agent__report_write
 ---
 
 # Adversarial Review

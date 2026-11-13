@@ -14,7 +14,7 @@ State the chosen window explicitly at the top of the interview so the operator c
 ## Inputs
 
 1. **Existing yearly goals** — the `## Yearly Goals` block in `<HOME>/projects/TASKS.md` (if any), plus the current `## Monthly Goals`.
-2. **Full task board** — `mcp__plugin_agent-kevin_kevin__task_query` across **all** statuses and priorities. Long-blocked chains and the P3 graveyard reveal what a year keeps deferring.
+2. **Full task board** — `mcp__plugin_agentlayer_agent__task_query` across **all** statuses and priorities. Long-blocked chains and the P3 graveyard reveal what a year keeps deferring.
 3. **Project visions** — each `<HOME>/projects/<slug>/README.md`; yearly outcomes should trace to a project's reason for existing, not a task list.
 4. **Memory** — `<HOME>/knowledge/memory/index.md` Active Threads + Recent Decisions for hard external dates (filings, renewals, school years) that pin quarters down.
 5. **Your durable preferences** — `<HOME>/USER.md` (the personal commitments they named matter most at this horizon).
@@ -48,7 +48,7 @@ _<Year> theme: <one line> · north star: <one line> · planned <YYYY-MM-DD>_
 Past quarters stay listed with a ✅/❌/↪ verdict instead of a check, so the year reads as a record, not just a plan.
 
 After updating `TASKS.md`, **also persist a snapshot** via the
-`mcp__plugin_agent-kevin_kevin__report_write` MCP tool so the year's plan
+`mcp__plugin_agentlayer_agent__report_write` MCP tool so the year's plan
 survives when `TASKS.md` is overwritten next quarter:
 
 ```

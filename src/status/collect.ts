@@ -1317,7 +1317,7 @@ interface SessionIndexRecord {
 }
 
 /** Command sessions: render `/name args` from the captured invocation tags
- *  instead of the stripped tag soup ("agent-kevin:sync /agent-kevin:sync"). */
+ *  instead of the stripped tag soup ("agentlayer:sync /agentlayer:sync"). */
 const commandBriefing = (raw: string): string => {
   const name = raw.match(/<command-name>([^<]*)</)?.[1]?.trim();
   const message = raw.match(/<command-message>([^<]*)</)?.[1]?.trim();

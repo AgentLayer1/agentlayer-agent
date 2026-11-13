@@ -155,7 +155,7 @@ export interface TaskCard {
 
 declare module 'claude-code' {
   interface PluginState {
-    'agent-kevin': {
+    agentlayer: {
       syncRun: SyncRun | null;
       delivered: string[];
       manualsThisTurn: string[];

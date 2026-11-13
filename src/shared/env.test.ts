@@ -71,7 +71,7 @@ describe('agentHomePath', () => {
   test('walks up to the nearest home carrying the agent data dir and writes it back to the env', () => {
     // realpath because macOS tmpdir is a symlink (/var → /private/var) and the
     // walk-up starts from the already-resolved process.cwd().
-    const home = realpathSync(mkdtempSync(resolve(tmpdir(), 'kevin-home-')));
+    const home = realpathSync(mkdtempSync(resolve(tmpdir(), 'agentlayer-home-')));
     scaffoldDataDir(home);
     const repo = resolve(home, 'not-really-a-repo', 'src');
     mkdirSync(repo, { recursive: true });
@@ -82,7 +82,7 @@ describe('agentHomePath', () => {
   });
 
   test('ignores a sibling agent home that lacks this agent data dir', () => {
-    const siblingHome = realpathSync(mkdtempSync(resolve(tmpdir(), 'kevin-sibling-')));
+    const siblingHome = realpathSync(mkdtempSync(resolve(tmpdir(), 'agentlayer-sibling-')));
     writeFileSync(resolve(siblingHome, 'SOUL.md'), '# Soul\n');
     mkdirSync(resolve(siblingHome, '.otheragent'));
     const inner = resolve(siblingHome, 'projects');
@@ -96,7 +96,7 @@ describe('agentHomePath', () => {
   // Once two agents share a data-dir name, the recorded plugin is what keeps one
   // agent out of the other's brain.
   test('ignores a data dir whose version.json records another plugin', () => {
-    const otherHome = realpathSync(mkdtempSync(resolve(tmpdir(), 'kevin-other-plugin-')));
+    const otherHome = realpathSync(mkdtempSync(resolve(tmpdir(), 'agentlayer-other-plugin-')));
     scaffoldDataDir(otherHome);
     writeFileSync(resolve(otherHome, RUNTIME_DIR, 'version.json'), JSON.stringify({ plugin: 'agent-other' }));
     writeFileSync(resolve(otherHome, RUNTIME_DIR, 'knowledge.json'), '{}\n');
@@ -108,7 +108,7 @@ describe('agentHomePath', () => {
   });
 
   test('anchors on a .state whose version.json records this plugin', () => {
-    const home = realpathSync(mkdtempSync(resolve(tmpdir(), 'kevin-recorded-')));
+    const home = realpathSync(mkdtempSync(resolve(tmpdir(), 'agentlayer-recorded-')));
     scaffoldDataDir(home);
     expect(isAgentHome(home)).toBe(true);
   });
@@ -119,7 +119,7 @@ describe('agentHomePath', () => {
     ['is not JSON', 'not json']
   ];
   const homeWithVersion = (dir: string, content: string): string => {
-    const home = realpathSync(mkdtempSync(resolve(tmpdir(), 'kevin-unproven-')));
+    const home = realpathSync(mkdtempSync(resolve(tmpdir(), 'agentlayer-unproven-')));
     mkdirSync(resolve(home, dir), { recursive: true });
     writeFileSync(resolve(home, dir, 'version.json'), content);
     return home;
@@ -130,7 +130,7 @@ describe('agentHomePath', () => {
   });
 
   test('falls back to cwd without writing the env when no home exists above', () => {
-    const dir = mkdtempSync(resolve(tmpdir(), 'kevin-nohome-'));
+    const dir = mkdtempSync(resolve(tmpdir(), 'agentlayer-nohome-'));
     withCwd(dir, () => {
       expect(agentHomePath()).toBe(process.cwd());
       expect(process.env.AGENT_HOME).toBeUndefined();
@@ -142,7 +142,7 @@ describe('agentHomePath', () => {
   // session captures landed inside the repo. Runtime artifacts alone must never
   // mark a home; only init's state files do.
   test('a data dir holding only runtime artifacts (logs/) does not anchor the walk-up', () => {
-    const repo = realpathSync(mkdtempSync(resolve(tmpdir(), 'kevin-planted-')));
+    const repo = realpathSync(mkdtempSync(resolve(tmpdir(), 'agentlayer-planted-')));
     mkdirSync(resolve(repo, RUNTIME_DIR, 'logs'), { recursive: true });
     writeFileSync(resolve(repo, RUNTIME_DIR, 'logs', 'app.log'), 'skip line\n');
     withCwd(repo, () => {
@@ -154,9 +154,9 @@ describe('agentHomePath', () => {
   // A session that `cd`s into a worktree keeps that cwd for every later hook —
   // the launch dir is what still points at the home.
   test("falls back to the host's project dir when cwd has roamed outside the home", () => {
-    const home = realpathSync(mkdtempSync(resolve(tmpdir(), 'kevin-roamed-')));
+    const home = realpathSync(mkdtempSync(resolve(tmpdir(), 'agentlayer-roamed-')));
     scaffoldDataDir(home);
-    const worktree = realpathSync(mkdtempSync(resolve(tmpdir(), 'kevin-worktree-')));
+    const worktree = realpathSync(mkdtempSync(resolve(tmpdir(), 'agentlayer-worktree-')));
     withCwd(
       worktree,
       () => {
@@ -168,8 +168,8 @@ describe('agentHomePath', () => {
   });
 
   test('a project dir that is not this agent home rescues nothing', () => {
-    const worktree = realpathSync(mkdtempSync(resolve(tmpdir(), 'kevin-worktree-')));
-    const otherProject = realpathSync(mkdtempSync(resolve(tmpdir(), 'kevin-other-')));
+    const worktree = realpathSync(mkdtempSync(resolve(tmpdir(), 'agentlayer-worktree-')));
+    const otherProject = realpathSync(mkdtempSync(resolve(tmpdir(), 'agentlayer-other-')));
     withCwd(
       worktree,
       () => {
@@ -183,17 +183,17 @@ describe('agentHomePath', () => {
 
 describe('readEnvFile', () => {
   test('parses a standalone .env into a map', () => {
-    const dir = mkdtempSync(resolve(tmpdir(), 'kevin-flowenv-'));
+    const dir = mkdtempSync(resolve(tmpdir(), 'agentlayer-flowenv-'));
     writeFileSync(resolve(dir, '.env'), '# comment\nCARD=4111111111111111\nCVV="123"\n\nEMPTY=\n');
     expect(readEnvFile(resolve(dir, '.env'))).toEqual({ CARD: '4111111111111111', CVV: '123', EMPTY: '' });
   });
 
   test('returns {} for an absent file', () => {
-    expect(readEnvFile(resolve(tmpdir(), 'kevin-does-not-exist-xyz', '.env'))).toEqual({});
+    expect(readEnvFile(resolve(tmpdir(), 'agentlayer-does-not-exist-xyz', '.env'))).toEqual({});
   });
 
   test('refuses to read the agent secret store, even when a real .env sits there', () => {
-    const home = mkdtempSync(resolve(tmpdir(), 'kevin-home-'));
+    const home = mkdtempSync(resolve(tmpdir(), 'agentlayer-home-'));
     const secretsPath = resolve(home, RUNTIME_DIR, 'secrets', '.env');
     mkdirSync(resolve(home, RUNTIME_DIR, 'secrets'), { recursive: true });
     writeFileSync(secretsPath, 'GITHUB_TOKEN=ghp_realsecretvalue\n');
@@ -221,7 +221,7 @@ describe.skipIf(secretsReadBlocked())('loadSecretsEnv', () => {
     value: string,
     versionJson = JSON.stringify({ plugin: pluginName() })
   ): string => {
-    const home = mkdtempSync(resolve(tmpdir(), 'kevin-secrets-'));
+    const home = mkdtempSync(resolve(tmpdir(), 'agentlayer-secrets-'));
     mkdirSync(resolve(home, RUNTIME_DIR, 'secrets'), { recursive: true });
     writeFileSync(resolve(home, RUNTIME_DIR, 'version.json'), versionJson);
     writeFileSync(resolve(home, RUNTIME_DIR, 'secrets', '.env'), `${key}=${value}\n`, 'utf-8');
@@ -267,7 +267,7 @@ describe.skipIf(secretsReadBlocked())('loadSecretsEnv', () => {
   test("a home with no secrets store drops the previous home's keys", () => {
     const original = process.env.AGENT_HOME;
     const withSecret = homeWithSecret('AGENT_PROBE_SECRET', 'present');
-    const bare = mkdtempSync(resolve(tmpdir(), 'kevin-bare-'));
+    const bare = mkdtempSync(resolve(tmpdir(), 'agentlayer-bare-'));
     mkdirSync(resolve(bare, RUNTIME_DIR), { recursive: true });
     try {
       process.env.AGENT_HOME = withSecret;

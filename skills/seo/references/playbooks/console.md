@@ -18,19 +18,19 @@ Flags accept both `--flag=value` and `--flag value` forms.
 
 ```bash
 # Top 1000 queries last 7 days
-mcp__plugin_agent-kevin_kevin__gsc_query 2026-04-13 2026-04-19
+mcp__plugin_agentlayer_agent__gsc_query 2026-04-13 2026-04-19
 
 # Top URLs (not queries) last 30 days
-mcp__plugin_agent-kevin_kevin__gsc_query 2026-03-20 2026-04-19 --dim=page
+mcp__plugin_agentlayer_agent__gsc_query 2026-03-20 2026-04-19 --dim=page
 
 # Query × page pairs
-mcp__plugin_agent-kevin_kevin__gsc_query 2026-04-13 2026-04-19 --dim=query,page
+mcp__plugin_agentlayer_agent__gsc_query 2026-04-13 2026-04-19 --dim=query,page
 
 # Top queries for a single page (great for SERP diagnosis on a declining URL)
-mcp__plugin_agent-kevin_kevin__gsc_query 2026-04-13 2026-04-19 --page=https://example.com/topic-keyword-a/
+mcp__plugin_agentlayer_agent__gsc_query 2026-04-13 2026-04-19 --page=https://example.com/topic-keyword-a/
 
 # Top 10 queries by clicks
-mcp__plugin_agent-kevin_kevin__gsc_query 2026-04-13 2026-04-19 | jq '.[:10] | .[] | {keys:.keys[0], clicks, impressions, ctr, position}'
+mcp__plugin_agentlayer_agent__gsc_query 2026-04-13 2026-04-19 | jq '.[:10] | .[] | {keys:.keys[0], clicks, impressions, ctr, position}'
 ```
 
 Row shape:
@@ -43,7 +43,7 @@ Row shape:
 URL inspection — indexing status, last crawl time, mobile usability, rich-results. Use to diagnose why a specific page isn't ranking or getting traffic.
 
 ```bash
-mcp__plugin_agent-kevin_kevin__gsc_inspect https://example.com/topic-keyword-e
+mcp__plugin_agentlayer_agent__gsc_inspect https://example.com/topic-keyword-e
 ```
 
 ### `sites`
@@ -51,7 +51,7 @@ mcp__plugin_agent-kevin_kevin__gsc_inspect https://example.com/topic-keyword-e
 List verified properties accessible with the current credentials. Useful when `query` fails with a permission error — confirm the `GSC_SITE_URL` string matches exactly (including `sc-domain:` prefix for domain properties vs. full URL for URL-prefix properties).
 
 ```bash
-mcp__plugin_agent-kevin_kevin__gsc_sites | jq '.[] | .siteUrl'
+mcp__plugin_agentlayer_agent__gsc_sites | jq '.[] | .siteUrl'
 ```
 
 ## Common patterns
@@ -59,33 +59,33 @@ mcp__plugin_agent-kevin_kevin__gsc_sites | jq '.[] | .siteUrl'
 **Totals & week-over-week** (site-wide rollup for the current period vs prior period):
 ```bash
 # Totals for a single window — sum across all pages
-mcp__plugin_agent-kevin_kevin__gsc_query 2026-03-23 2026-04-19 --dim=page \
+mcp__plugin_agentlayer_agent__gsc_query 2026-03-23 2026-04-19 --dim=page \
   | jq '{clicks: (map(.clicks) | add),
          impressions: (map(.impressions) | add),
          ctr: ((map(.clicks) | add) / (map(.impressions) | add)),
          avg_position: ((map(.position * .impressions) | add) / (map(.impressions) | add))}'
 
 # WoW deltas — run the same jq against two adjacent windows, diff the results
-mcp__plugin_agent-kevin_kevin__gsc_query 2026-02-23 2026-03-22 --dim=page \
+mcp__plugin_agentlayer_agent__gsc_query 2026-02-23 2026-03-22 --dim=page \
   | jq '{clicks: (map(.clicks) | add), impressions: (map(.impressions) | add)}'
 ```
 Avg position must be impression-weighted (not a flat mean), or pages with few impressions will distort the number.
 
 **Find underperforming pages** (high impressions, low CTR):
 ```bash
-mcp__plugin_agent-kevin_kevin__gsc_query 2026-04-01 2026-04-19 --dim=page \
+mcp__plugin_agentlayer_agent__gsc_query 2026-04-01 2026-04-19 --dim=page \
   | jq 'map(select(.impressions > 100 and .ctr < 0.02)) | sort_by(-.impressions)'
 ```
 
 **SEO opportunity scan** (pages ranking #11–20 with traffic):
 ```bash
-mcp__plugin_agent-kevin_kevin__gsc_query 2026-03-20 2026-04-19 --dim=query,page \
+mcp__plugin_agentlayer_agent__gsc_query 2026-03-20 2026-04-19 --dim=query,page \
   | jq 'map(select(.position > 10 and .position < 20 and .impressions > 50)) | sort_by(-.impressions)'
 ```
 
 **Diagnose a specific page**:
 ```bash
-mcp__plugin_agent-kevin_kevin__gsc_inspect https://example.com/topic-keyword-c
+mcp__plugin_agentlayer_agent__gsc_inspect https://example.com/topic-keyword-c
 ```
 
 ## When to use vs not
@@ -101,7 +101,7 @@ mcp__plugin_agent-kevin_kevin__gsc_inspect https://example.com/topic-keyword-c
 If commands fail with "Tokens not minted" — the one-time OAuth dance hasn't been run yet:
 
 ```bash
-mcp__plugin_agent-kevin_kevin__google_auth
+mcp__plugin_agentlayer_agent__google_auth
 ```
 
 This opens a browser, captures Google's consent, and persists the refresh token to `.state/secrets/google/google-tokens.json` (alongside the OAuth client JSON, in the deny-gated secrets dir) — **the same token serves Search Console and PageSpeed**, so you only run `auth` once. You handle this once per install; Kevin should not normally need to run `auth`.

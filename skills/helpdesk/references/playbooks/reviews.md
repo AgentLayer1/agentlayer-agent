@@ -21,11 +21,11 @@ New App Store reviews read for bug reports, each bug gathered with everything al
 8. **Save.** A complete read is the next read's starting point:
 
 ```
-mcp__plugin_agent-kevin_kevin__report_write({
+mcp__plugin_agentlayer_agent__report_write({
   category: 'helpdesk',
   slug: 'reviews-<slug>',
   title: 'App Store reviews — <slug>: <total> new, <n> bug reports',
-  skill: 'agent-kevin:helpdesk',
+  skill: 'agentlayer:helpdesk',
   status: 'findings',            // 'clean' when no review reports a bug
   body: <the output below>,
   tags: ['helpdesk', '<slug>', 'appstore'],

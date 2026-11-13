@@ -1,6 +1,6 @@
 ## 🎫 Helpdesk: what I can do
 
-Your support queue in SupportCandy or Pylon. I read, sort and draft; you send every reply. The Helpdesk pack unlocks it (`/agent-kevin:configure-skills` → Helpdesk), and the App Store pack adds an app's reviews to the pulse. A queue profile (`projects/<slug>/helpdesk.md`) holds your queue's own workflow: what the pulse does, how a bug moves, your routines, rules, tone and context.
+Your support queue in SupportCandy or Pylon. I read, sort and draft; you send every reply. The Helpdesk pack unlocks it (`/agentlayer:configure-skills` → Helpdesk), and the App Store pack adds an app's reviews to the pulse. A queue profile (`projects/<slug>/helpdesk.md`) holds your queue's own workflow: what the pulse does, how a bug moves, your routines, rules, tone and context.
 
 | Ask | Playbook | You get |
 |---|---|---|

@@ -2,7 +2,7 @@
 
 Lighthouse-backed performance audit for any publicly reachable URL. Uses the free PSI v5 API (25k requests/day per OAuth project).
 
-Authenticates via the shared Google OAuth client — the same one Search Console uses. If you've already run `mcp__plugin_agent-kevin_kevin__google_auth`, PageSpeed works out of the box. If not, run it once; the [console](console.md) playbook uses the same token.
+Authenticates via the shared Google OAuth client — the same one Search Console uses. If you've already run `mcp__plugin_agentlayer_agent__google_auth`, PageSpeed works out of the box. If not, run it once; the [console](console.md) playbook uses the same token.
 
 Enable the "PageSpeed Insights API" in the same GCP project where the OAuth client was created. No separate API key is needed.
 
@@ -16,10 +16,10 @@ One strategy, returns the high-signal slice only — performance score plus the 
 
 ```bash
 # Mobile run (default)
-mcp__plugin_agent-kevin_kevin__page_speed_psi https://example.com/topic-keyword-b/
+mcp__plugin_agentlayer_agent__page_speed_psi https://example.com/topic-keyword-b/
 
 # Desktop
-mcp__plugin_agent-kevin_kevin__page_speed_psi https://example.com/topic-keyword-b/ --strategy=desktop
+mcp__plugin_agentlayer_agent__page_speed_psi https://example.com/topic-keyword-b/ --strategy=desktop
 ```
 
 Return shape:
@@ -45,7 +45,7 @@ Return shape:
 Runs mobile + desktop in parallel, returns both in one payload. Use this when you need to compare devices (e.g., diagnosing NN's desktop ranking gap).
 
 ```bash
-mcp__plugin_agent-kevin_kevin__page_speed_audit https://example.com/topic-keyword-b/
+mcp__plugin_agentlayer_agent__page_speed_audit https://example.com/topic-keyword-b/
 ```
 
 Return shape: `{ "mobile": {...}, "desktop": {...} }` — each side is the same slice as `psi`.
@@ -55,20 +55,20 @@ Return shape: `{ "mobile": {...}, "desktop": {...} }` — each side is the same 
 **Baseline the top priority pages (parallel, bash style)**:
 ```bash
 for url in /topic-keyword-b/ /topic-keyword-c/ /topic-keyword-d/; do
-  mcp__plugin_agent-kevin_kevin__page_speed_audit "https://example.com$url" > "audit-$(basename $url).json" &
+  mcp__plugin_agentlayer_agent__page_speed_audit "https://example.com$url" > "audit-$(basename $url).json" &
 done
 wait
 ```
 
 **Mobile-vs-desktop gap (single-liner)**:
 ```bash
-mcp__plugin_agent-kevin_kevin__page_speed_audit https://example.com/topic-keyword-c/ \
+mcp__plugin_agentlayer_agent__page_speed_audit https://example.com/topic-keyword-c/ \
   | jq '{mobile_score: .mobile.performance_score, desktop_score: .desktop.performance_score, gap: (.mobile.performance_score - .desktop.performance_score)}'
 ```
 
 **LCP breakdown across multiple pages**:
 ```bash
-mcp__plugin_agent-kevin_kevin__page_speed_psi <url> --strategy=desktop | jq '{url, lcp_ms: .metrics.lcp_ms, cls: .metrics.cls, inp_ms: .metrics.inp_ms}'
+mcp__plugin_agentlayer_agent__page_speed_psi <url> --strategy=desktop | jq '{url, lcp_ms: .metrics.lcp_ms, cls: .metrics.cls, inp_ms: .metrics.inp_ms}'
 ```
 
 ## Interpreting the numbers

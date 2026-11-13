@@ -23,7 +23,7 @@ describe('listWorktrees', () => {
   };
 
   beforeAll(() => {
-    root = mkdtempSync(join(tmpdir(), 'kevin-worktree-list-'));
+    root = mkdtempSync(join(tmpdir(), 'agentlayer-worktree-list-'));
     const origin = join(root, 'origin.git');
     execFileSync('git', ['init', '--bare', origin], { encoding: 'utf8' });
 
@@ -170,7 +170,7 @@ describe('setupWorktree', () => {
   afterAll(() => rmSync(root, { recursive: true, force: true }));
 
   test('copies gitignored local files, never a file the branch tracks', async () => {
-    root = mkdtempSync(join(tmpdir(), 'kevin-worktree-setup-'));
+    root = mkdtempSync(join(tmpdir(), 'agentlayer-worktree-setup-'));
     const repo = join(root, 'repo');
     const run = (args: string[]) =>
       execFileSync('git', args, { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });

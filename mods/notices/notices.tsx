@@ -6,9 +6,9 @@ import { TURN_REASONS } from '../shared/turns';
 import { SYNC_HISTORY_KEY, formatDuration, parseHistory, typicalMs } from '../sync/stats';
 import type { Notice, NoticeActing } from '../types';
 
-const notices = atom({ plugin: 'agent-kevin', key: 'notices' } as const, []);
+const notices = atom({ plugin: 'agentlayer', key: 'notices' } as const, []);
 // The notice whose command was pressed or started; the row steps aside until that command's turn ends.
-const acting = atom({ plugin: 'agent-kevin', key: 'noticeActing' } as const, null);
+const acting = atom({ plugin: 'agentlayer', key: 'noticeActing' } as const, null);
 
 const REFRESH_MS = 30 * 60_000;
 const TOAST_MS = 8000;

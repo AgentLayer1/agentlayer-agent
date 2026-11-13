@@ -59,7 +59,7 @@ const write = (root: string, file: string, body: string): void => {
 };
 
 const task = (id: string, status: string, labels: string[]): string =>
-  `---\nschema: 1\nid: ${id}\ntitle: t\ntype: task\nstatus: ${status}\npriority: P1\nproject: tax\nassignee: [kevin]\nlabels: [${labels
+  `---\nschema: 1\nid: ${id}\ntitle: t\ntype: task\nstatus: ${status}\npriority: P1\nproject: tax\nassignee: [agent]\nlabels: [${labels
     .map((label) => `"${label}"`)
     .join(", ")}]\ncreated: 2026-01-01\nupdated: 2026-01-01\ndue:\ndepends_on: []\nblocked_by:\nparent:\nclosed:\n---\n\n## Description\n\nx\n`;
 

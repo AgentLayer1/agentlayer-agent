@@ -4,7 +4,7 @@ Pull requests and issues welcome. Below is what we look for and the dev loop.
 
 ## Welcome contributions
 
-- **New skill packs** that ship as opt-in via `/agent-kevin:configure-skills`
+- **New skill packs** that ship as opt-in via `/agentlayer:configure-skills`
 - **New MCP dispatch tools** for external services (must follow the existing read-mostly + key-gated pattern)
 - **Broader platform testing & hardening** — Kevin runs on macOS, Linux, and Windows (native via Git Bash, and WSL2); more real-world testing and platform-specific fixes are welcome
 - **Documentation improvements**, more use-case examples, screenshots
@@ -15,8 +15,8 @@ Open an issue before architectural changes — Kevin's contract with `<HOME>/` m
 ## Dev setup
 
 ```bash
-git clone https://github.com/AgentLayer1/agent-kevin
-cd agent-kevin
+git clone https://github.com/AgentLayer1/agentlayer-agent
+cd agentlayer-agent
 bun install         # installs deps + downloads chromium via the postinstall hook
 ```
 
@@ -24,7 +24,7 @@ Verify the MCP server boots:
 
 ```bash
 bun src/server.ts
-# expect: "kevin MCP server started — tools=24"
+# expect: "agent MCP server started — tools=24"
 ```
 
 Type-check:
@@ -45,8 +45,8 @@ bun ../scripts/session-start.ts
 From inside Claude Code:
 
 ```text
-/plugin marketplace add /absolute/path/to/agent-kevin
-/plugin install agent-kevin@agentdev-kevin
+/plugin marketplace add /absolute/path/to/agentlayer-agent
+/plugin install agentlayer@agentlayer-dev
 ```
 
 After edits, run `/reload-plugins` inside Claude Code to pick up changes without restarting. New skills or hook scripts may require a full `/exit` and relaunch.
@@ -73,7 +73,7 @@ A skill that is part of Kevin's standing capability set lives here in plugin sou
 
 1. Add a file under `src/tools/<your-tool>.ts` exporting a `tools: ToolDef[]` array. Use `defineTool({ name, description, inputSchema, handler })` from `@/shared/types`.
 2. Register it in `src/server.ts` by adding an import and spreading the array into the `TOOLS` constant.
-3. Add the tool name to `skills/init/SKILL.md`'s `permissions.allow` list (use the `mcp__plugin_agent-kevin_kevin__<tool_name>` prefix). Pack-gated tools go in the matching `configure-skills` walk instead of the init baseline.
+3. Add the tool name to `skills/init/SKILL.md`'s `permissions.allow` list (use the `mcp__plugin_agentlayer_agent__<tool_name>` prefix). Pack-gated tools go in the matching `configure-skills` walk instead of the init baseline.
 4. `bun run typecheck` must pass before submitting.
 
 In the plugin's `.mcp.json`, `env` entries hold only host-owned interpolations (`${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`) or literal values. A server already inherits the session's environment, so never redeclare a user variable as `"X": "${X}"`.
@@ -98,7 +98,7 @@ It renders in isolation (its own `HOME`, environment, and working directory), re
 - No new dependencies without justification.
 - Run `bun run typecheck` and verify the MCP server still boots before opening.
 - **No real names in shipped files.** Skills, templates, hooks, docs, tests, and the CHANGELOG use fictitious placeholders (`acme`, `Ada`), never a real client, employer, operator, or sibling project, and never at write time on the promise of a later sweep.
-- **Product docs are host-neutral.** Anything describing agent-kevin (docs, README, wizard copy) names skills bare, says "your host" for the CLI, and puts host-specific commands in per-host tabs, so a new host is a tab and a page, not a rewrite.
+- **Product docs are host-neutral.** Anything describing agentlayer (docs, README, wizard copy) names skills bare, says "your host" for the CLI, and puts host-specific commands in per-host tabs, so a new host is a tab and a page, not a rewrite.
 - **Generated HTML pages share their chrome.** The Auto / Light / Dark switch (`src/shared/theme.ts`) and, on any page that draws Mermaid into `.diagram` boxes, the expand-and-zoom viewer (`src/shared/diagram-viewer.ts`) are blocks carried verbatim in each template's `<head>`. A new template that draws diagrams joins `DIAGRAM_TEMPLATES` and runs `bun src/shared/diagram-viewer.ts sync`; the block's test fails until it does.
 - **Frontmatter the plugin writes is flat:** scalars and lists of scalars only, since Obsidian shows anything nested as raw JSON. `report_write` rejects a nested `extra` value and the knowledge lint flags one; structured data goes in the body.
 - **Frontmatter keys come from the host's docs.** Don't invent keys; `src/skills.test.ts` parses every `SKILL.md`, holds the description to 1,024 characters, and resolves relative links.

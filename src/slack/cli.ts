@@ -1,13 +1,13 @@
 /**
- * `kevin slack` subcommands — read-only Slack access for agent-kevin.
+ * `agentlayer slack` subcommands — read-only Slack access for agentlayer.
  *
- *   kevin slack auth                                  One-time per-operator OAuth (PKCE)
- *   kevin slack whoami                                Print authenticated Slack identity
- *   kevin slack list-channels                         List channels operator is a member of
- *   kevin slack history <channel> [--since=24h] [--limit=100] [--out=<file>]
- *   kevin slack batch-history <ch1,ch2,...> [--since=24h] [--limit=100] [--out=<dir>]
- *   kevin slack thread <channel> <thread_ts>
- *   kevin slack search <query> [--in=<channel>] [--since=7d]
+ *   agentlayer slack auth                                  One-time per-operator OAuth (PKCE)
+ *   agentlayer slack whoami                                Print authenticated Slack identity
+ *   agentlayer slack list-channels                         List channels operator is a member of
+ *   agentlayer slack history <channel> [--since=24h] [--limit=100] [--out=<file>]
+ *   agentlayer slack batch-history <ch1,ch2,...> [--since=24h] [--limit=100] [--out=<dir>]
+ *   agentlayer slack thread <channel> <thread_ts>
+ *   agentlayer slack search <query> [--in=<channel>] [--since=7d]
  *
  * Global flag: --format=json|markdown (default: json)
  *

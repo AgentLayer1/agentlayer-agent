@@ -1,5 +1,5 @@
 /**
- * Structured logger for agent-kevin — MCP server, tools, CLI, hook scripts.
+ * Structured logger for agentlayer — MCP server, tools, CLI, hook scripts.
  *
  * Default routing:
  *   - stderr = every level (MCP stdout is reserved for JSON-RPC; the hook

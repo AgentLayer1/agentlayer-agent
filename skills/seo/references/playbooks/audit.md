@@ -7,10 +7,10 @@ Run on demand whenever you want a check-in, or wire it to an arbitrary scheduler
 ## Prerequisites
 
 - `GSC_SITE_URL` set in `<HOME>/.claude/settings.local.json` env block (this is the site under audit)
-- Google OAuth completed — run `mcp__plugin_agent-kevin_kevin__google_auth` once if you haven't
+- Google OAuth completed — run `mcp__plugin_agentlayer_agent__google_auth` once if you haven't
 - Optional: `SERPAPI_KEY` configured — without it, the audit skips SERP-investigation steps for anomalies (everything else still works)
 
-If `GSC_SITE_URL` isn't set, stop and tell the user to run `/agent-kevin:configure-skills` → SEO pack to configure it.
+If `GSC_SITE_URL` isn't set, stop and tell the user to run `/agentlayer:configure-skills` → SEO pack to configure it.
 
 ## Step 1 — Load context
 
@@ -24,8 +24,8 @@ If no matching project exists, the audit still runs — output just lands in `<H
 ## Step 2 — Data pulls
 
 1. **GSC** — last 28 days. Use today and today-28d as the range. Two queries:
-   - `mcp__plugin_agent-kevin_kevin__gsc_query` with `{ startDate, endDate, dimensions: ['query', 'page'] }`
-   - `mcp__plugin_agent-kevin_kevin__gsc_query` with `{ startDate, endDate, dimensions: ['page'] }`
+   - `mcp__plugin_agentlayer_agent__gsc_query` with `{ startDate, endDate, dimensions: ['query', 'page'] }`
+   - `mcp__plugin_agentlayer_agent__gsc_query` with `{ startDate, endDate, dimensions: ['page'] }`
    - Focus on the **top 30 pages by impressions**.
    - Also pull the previous 28 days for week-over-week comparison.
 
@@ -40,11 +40,11 @@ If no matching project exists, the audit still runs — output just lands in `<H
    ```bash
    curl -sS -L --max-time 15 "<url>" | grep -E '<title>|<meta name="description"'
    ```
-   SEO plugins (Yoast, RankMath, The SEO Framework, AIOSEO) inject meta into the rendered HTML — NOT into the REST response. Always read the rendered page. For stubborn pages (JS-rendered titles), fall back to `mcp__plugin_agent-kevin_kevin__browser_screenshot` to confirm what users see.
+   SEO plugins (Yoast, RankMath, The SEO Framework, AIOSEO) inject meta into the rendered HTML — NOT into the REST response. Always read the rendered page. For stubborn pages (JS-rendered titles), fall back to `mcp__plugin_agentlayer_agent__browser_screenshot` to confirm what users see.
 
-4. **PSI** — `mcp__plugin_agent-kevin_kevin__page_speed_audit` for the **top 5 pages by impressions**. (PSI quota is forgiving, but five is plenty for trend.)
+4. **PSI** — `mcp__plugin_agentlayer_agent__page_speed_audit` for the **top 5 pages by impressions**. (PSI quota is forgiving, but five is plenty for trend.)
 
-5. **Active tasks** (only if `$PROJECT_DIR` was found) — `mcp__plugin_agent-kevin_kevin__task_query` with `{ project: '<slug>', status: 'active' }` and `{ project: '<slug>', status: 'open' }`. Index by page URL/slug for the threading step below.
+5. **Active tasks** (only if `$PROJECT_DIR` was found) — `mcp__plugin_agentlayer_agent__task_query` with `{ project: '<slug>', status: 'active' }` and `{ project: '<slug>', status: 'open' }`. Index by page URL/slug for the threading step below.
 
 6. **SerpAPI** (on demand, cost-aware) — when a finding calls for SERP investigation:
    - ranking slipped with no title issue
@@ -52,7 +52,7 @@ If no matching project exists, the audit still runs — output just lands in `<H
    - clicks halved on flat impressions
    - top query intent appears to have shifted
 
-   Run: `mcp__plugin_agent-kevin_kevin__serpapi_search` with `{ query: '<top-query>', device: 'mobile' }` to see competitors, SERP features (AI overview, shopping carousel, PAA), and intent shifts.
+   Run: `mcp__plugin_agentlayer_agent__serpapi_search` with `{ query: '<top-query>', device: 'mobile' }` to see competitors, SERP features (AI overview, shopping carousel, PAA), and intent shifts.
 
    **Each call costs one SerpAPI search** — use ONLY on flagged anomalies, never on every top-30 page. If `SERPAPI_KEY` isn't configured, just note "SERP investigation skipped (no SERPAPI_KEY)" in the relevant finding's diagnosis.
 
@@ -89,9 +89,9 @@ Keep the **top 10** findings by impact.
 
 For each finding whose page URL or slug matches an existing active task in `$PROJECT_DIR`:
 
-- Append an `[!info] kevin · <ISO timestamp>` block to that task's `## Thread` section
+- Append an `[!info] agent · <ISO timestamp>` block to that task's `## Thread` section
 - Do NOT mutate frontmatter
-- Use `mcp__plugin_agent-kevin_kevin__task_thread` with `{ id: '<task-id>', author: 'kevin', message: '<finding summary + numbers>' }`
+- Use `mcp__plugin_agentlayer_agent__task_thread` with `{ id: '<task-id>', author: 'agent', message: '<finding summary + numbers>' }`
 
 This keeps action items in the user's existing task flow instead of duplicating them in the audit file.
 

@@ -1,6 +1,6 @@
 ## 🔎 SEO: what I can do
 
-How your site shows up in search, read-only. The SEO pack's keys unlock each part (`/agent-kevin:configure-skills` → SEO).
+How your site shows up in search, read-only. The SEO pack's keys unlock each part (`/agentlayer:configure-skills` → SEO).
 
 | Ask | Playbook | You get |
 |---|---|---|

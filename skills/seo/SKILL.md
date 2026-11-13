@@ -7,7 +7,7 @@ description: >
   Needs the SEO pack's keys; never publishes or edits a site. Triggers on "run the SEO audit", "gsc audit", "search console audit", "how's
   my site ranking", "why did traffic drop", "what queries bring traffic", "is this page indexed",
   "is this page fast", "Core Web Vitals", "what's ranking for <query>", "domain authority", or /seo.
-allowed-tools: mcp__plugin_agent-kevin_kevin__gsc_query, mcp__plugin_agent-kevin_kevin__gsc_inspect, mcp__plugin_agent-kevin_kevin__gsc_sites, mcp__plugin_agent-kevin_kevin__google_auth, mcp__plugin_agent-kevin_kevin__page_speed_audit, mcp__plugin_agent-kevin_kevin__page_speed_psi, mcp__plugin_agent-kevin_kevin__serpapi_search, mcp__plugin_agent-kevin_kevin__open_page_rank, mcp__plugin_agent-kevin_kevin__browser_screenshot, mcp__plugin_agent-kevin_kevin__task_query, mcp__plugin_agent-kevin_kevin__task_thread, Read, Write, Edit, Glob, Grep, Bash(curl *), Bash(date *), Bash(jq *)
+allowed-tools: mcp__plugin_agentlayer_agent__gsc_query, mcp__plugin_agentlayer_agent__gsc_inspect, mcp__plugin_agentlayer_agent__gsc_sites, mcp__plugin_agentlayer_agent__google_auth, mcp__plugin_agentlayer_agent__page_speed_audit, mcp__plugin_agentlayer_agent__page_speed_psi, mcp__plugin_agentlayer_agent__serpapi_search, mcp__plugin_agentlayer_agent__open_page_rank, mcp__plugin_agentlayer_agent__browser_screenshot, mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_thread, Read, Write, Edit, Glob, Grep, Bash(curl *), Bash(date *), Bash(jq *)
 ---
 
 # SEO
@@ -21,7 +21,7 @@ Ground truth on how a site shows up in search: what Google reports, how fast the
 ## Start
 
 1. Match the ask to a playbook below and follow it. A bare `/seo`, or a vague "how's my site doing", is the audit.
-2. Each playbook names the key it needs. When one is missing, say which and point to `/agent-kevin:configure-skills` → SEO; don't retry the call.
+2. Each playbook names the key it needs. When one is missing, say which and point to `/agentlayer:configure-skills` → SEO; don't retry the call.
 
 ## Playbooks
 

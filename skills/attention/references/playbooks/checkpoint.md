@@ -155,7 +155,7 @@ isn't this session's to report.
 ### Step 4 — save
 
 Save the rendered output as the radar report with
-`mcp__plugin_agent-kevin_kevin__report_write`, which writes the file and adds a line to
+`mcp__plugin_agentlayer_agent__report_write`, which writes the file and adds a line to
 `<HOME>/reports/index.md` that the next session's start surfaces:
 
 ```

@@ -1,7 +1,7 @@
 # Import — inherit a teammate's agent setup (`/seed import <path>`)
 
 Overlay a seed bundle onto this home. Prerequisite: this home is already initialized
-(`/agent-kevin:init` ran here) — the tool refuses otherwise. The bundle's files become
+(`/agentlayer:init` ran here) — the tool refuses otherwise. The bundle's files become
 this operator's own; nothing stays linked to the source agent.
 
 ## Step 1 — Locate the bundle
@@ -71,9 +71,9 @@ input and produces the north-star surface at `roadmap.html`.
 
 Notes to surface when relevant:
 - The display name comes from the imported IDENTITY.md. The plugin namespace
-  (`/agent-kevin:*` commands, MCP tool names) is unchanged; only a plugin fork renames
+  (`/agentlayer:*` commands, MCP tool names) is unchanged; only a plugin fork renames
   it, and a second home on the same machine doesn't need one.
 - Third-party skills.sh libraries don't travel in bundles; if the source agent used any,
-  install them with `/agent-kevin:configure-skills` (Section F).
+  install them with `/agentlayer:configure-skills` (Section F).
 - Re-importing the same bundle is a no-op: unchanged files are skipped, merges dedupe,
   and the AGENTS.md overlay section is skipped when it is already in the manual.

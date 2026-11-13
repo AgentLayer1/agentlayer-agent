@@ -5,7 +5,7 @@
 3. `capture({ text, title, label: 'media' })`, where `text` is the summary followed by a `## Transcript` section holding `transcript.md`'s lines, and `title` is the summary's title.
 4. `duplicate: true` means this recording was already captured: say so, and that nothing new was written.
 
-Don't run the compile; the next sync or `/agent-kevin:knowledge-compile` absorbs it.
+Don't run the compile; the next sync or `/agentlayer:knowledge-compile` absorbs it.
 
 ## Reply
 

@@ -17,8 +17,8 @@ A short, decisive weekly plan. Aim for 3-5 goals, not 15. Quality of focus beats
 ### Inputs
 
 1. **Wins last 7 days** — tasks with `closed:` in the last week, commits to knowledge + projects.
-2. **Full task board** — `mcp__plugin_agent-kevin_kevin__task_query` across **all** statuses and priorities, not just active + P0/P1. Blocked, stale, and P2/P3 items are interview material: they reveal drift, avoidance, and forgotten commitments.
-3. **Stale / overdue** — `mcp__plugin_agent-kevin_kevin__task_scan`.
+2. **Full task board** — `mcp__plugin_agentlayer_agent__task_query` across **all** statuses and priorities, not just active + P0/P1. Blocked, stale, and P2/P3 items are interview material: they reveal drift, avoidance, and forgotten commitments.
+3. **Stale / overdue** — `mcp__plugin_agentlayer_agent__task_scan`.
 4. **Active threads + pending** — `<HOME>/knowledge/memory/index.md`.
 5. **Last few sessions** — read the most recent 3-5 daily memory files (`<HOME>/knowledge/memory/YYYY-MM-DD.md`) and skim this week's `<HOME>/knowledge/raw/sessions/` day files. What actually consumed attention often diverges from what the task board claims — that gap is where the sharpest interview questions live.
 

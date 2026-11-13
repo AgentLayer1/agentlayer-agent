@@ -20,10 +20,10 @@ Pass one or more bare hostnames (no `https://`, no trailing slash). Returns one 
 
 ```bash
 # Single domain
-mcp__plugin_agent-kevin_kevin__open_page_rank rank example.com
+mcp__plugin_agentlayer_agent__open_page_rank rank example.com
 
 # Multiple domains (competitive check)
-mcp__plugin_agent-kevin_kevin__open_page_rank rank example.com competitor-a.com competitor-b.com
+mcp__plugin_agentlayer_agent__open_page_rank rank example.com competitor-a.com competitor-b.com
 ```
 
 Return shape:
@@ -48,12 +48,12 @@ Return shape:
 
 **Monthly NN score (for analytics report)**:
 ```bash
-mcp__plugin_agent-kevin_kevin__open_page_rank rank example.com | jq '.[0].page_rank_decimal'
+mcp__plugin_agentlayer_agent__open_page_rank rank example.com | jq '.[0].page_rank_decimal'
 ```
 
 **Competitive authority comparison**:
 ```bash
-mcp__plugin_agent-kevin_kevin__open_page_rank rank example.com competitor-a.com competitor-c.com competitor-d.com \
+mcp__plugin_agentlayer_agent__open_page_rank rank example.com competitor-a.com competitor-c.com competitor-d.com \
   | jq 'sort_by(-.page_rank_decimal) | .[] | {domain, score: .page_rank_decimal}'
 ```
 

@@ -7,7 +7,7 @@ import { REPORTS_FEATURE } from '../shared/catalog';
 import { cliArgv } from '../shared/cli';
 import { bareToolName } from '../sync/phases';
 
-const reportsBand = atom({ plugin: 'agent-kevin', key: 'reportsBand' } as const, null);
+const reportsBand = atom({ plugin: 'agentlayer', key: 'reportsBand' } as const, null);
 
 const KEY_PREFIX = 'reports:';
 const SESSIONS_KEPT = 50;

@@ -28,16 +28,16 @@ Runs one SERP query. Flags are positional-flexible — both `--flag=value` and `
 
 ```bash
 # Top 10 organic + SERP features for a query
-mcp__plugin_agent-kevin_kevin__serpapi_search non toxic air freshener
+mcp__plugin_agentlayer_agent__serpapi_search non toxic air freshener
 
 # Mobile SERP (different AI overview behaviour than desktop)
-mcp__plugin_agent-kevin_kevin__serpapi_search non toxic air freshener --device=mobile
+mcp__plugin_agentlayer_agent__serpapi_search non toxic air freshener --device=mobile
 
 # 20 results, localised to the UK
-mcp__plugin_agent-kevin_kevin__serpapi_search reed diffuser --num=20 --gl=gb --hl=en
+mcp__plugin_agentlayer_agent__serpapi_search reed diffuser --num=20 --gl=gb --hl=en
 
 # People Also Ask mining for a content outline
-mcp__plugin_agent-kevin_kevin__serpapi_search washing soda uses --num=5 | jq '.related_questions[] | .question'
+mcp__plugin_agentlayer_agent__serpapi_search washing soda uses --num=5 | jq '.related_questions[] | .question'
 ```
 
 ## Return shape (trimmed)
@@ -75,26 +75,26 @@ The plugin trims SerpAPI's raw response to the fields that matter for SEO work (
 
 **Diagnose why our page's CTR is low** — compare what's ranking above us:
 ```bash
-mcp__plugin_agent-kevin_kevin__serpapi_search non toxic air freshener \
+mcp__plugin_agentlayer_agent__serpapi_search non toxic air freshener \
   | jq '{features: .serp_features, ai: .ai_overview, top5: [.organic_results[:5] | .[] | {pos:.position, link, title}]}'
 ```
 
 **Find the commercial vs. informational split** — count product/shopping vs. blog/editorial results:
 ```bash
-mcp__plugin_agent-kevin_kevin__serpapi_search reed diffuser \
+mcp__plugin_agentlayer_agent__serpapi_search reed diffuser \
   | jq '.organic_results | map(.displayed_link)'
 ```
 
 **Mine People Also Ask for content outlining**:
 ```bash
-mcp__plugin_agent-kevin_kevin__serpapi_search how to make laundry soap \
+mcp__plugin_agentlayer_agent__serpapi_search how to make laundry soap \
   | jq '.related_questions[] | .question'
 ```
 
 **Desktop vs. mobile SERP delta** (two calls, ~$0.01 × 2 depending on plan):
 ```bash
-mcp__plugin_agent-kevin_kevin__serpapi_search non toxic air freshener --device=desktop > /tmp/d.json
-mcp__plugin_agent-kevin_kevin__serpapi_search non toxic air freshener --device=mobile  > /tmp/m.json
+mcp__plugin_agentlayer_agent__serpapi_search non toxic air freshener --device=desktop > /tmp/d.json
+mcp__plugin_agentlayer_agent__serpapi_search non toxic air freshener --device=mobile  > /tmp/m.json
 jq -n --slurpfile d /tmp/d.json --slurpfile m /tmp/m.json \
   '{desktop_features: $d[0].serp_features, mobile_features: $m[0].serp_features,
     desktop_top5: [$d[0].organic_results[:5] | .[] | .displayed_link],

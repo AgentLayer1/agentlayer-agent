@@ -23,7 +23,7 @@ describe('setup prompt', () => {
     test(`a folder with no home offers init on ${surface}`, async ($, on) => {
       const host = fakeHost(on, machine({ files: {} }));
       await start($, host);
-      expect(await shown($, surface)).toContain("Kevin isn't set up in this folder yet");
+      expect(await shown($, surface)).toContain("Oppi isn't set up in this folder yet");
       expect(host.suggestions).toEqual([`/${INIT}`]);
     });
 

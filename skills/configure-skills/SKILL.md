@@ -1,6 +1,6 @@
 ---
 name: configure-skills
-description: Configure Kevin's optional skill packs (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, Slack) or author a brand-new custom skill. The pack skills ship with the plugin and auto-load — this skill just wires up API keys, MCP server registrations, database connections, coding rules, and tool permissions. Custom-authored skills land in `<HOME>/.claude/skills/<name>/`. Invoked at the end of /agent-kevin:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
+description: Configure Kevin's optional skill packs (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, Slack) or author a brand-new custom skill. The pack skills ship with the plugin and auto-load — this skill just wires up API keys, MCP server registrations, database connections, coding rules, and tool permissions. Custom-authored skills land in `<HOME>/.claude/skills/<name>/`. Invoked at the end of /agentlayer:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
 allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), Bash(cp *), Bash(ls *), Bash(rm *), Bash(rmdir *), Bash(bunx skills *), Bash(test *), Bash(head *), Bash(command -v *), Bash(bun -e *), Bash(sw_vers *), Bash(xcode-select -p), Bash(xcodebuild -version), Bash(xcrun -f *), Bash(xcrun mcp-server status)
 ---
 
@@ -24,7 +24,7 @@ HOME_DIR="${AGENT_HOME:-$PWD}"
 [ -f "$HOME_DIR/.state/version.json" ] || [ -f "$HOME_DIR/.state/knowledge.json" ] || echo "NOT_AN_AGENT_HOME: $HOME_DIR"
 # NOT_AN_AGENT_HOME → STOP before any write: no marked .state/ data dir means
 # this isn't this agent's scaffolded home. Tell the operator to set AGENT_HOME
-# or relaunch from the agent home (or run /agent-kevin:init first on a fresh machine).
+# or relaunch from the agent home (or run /agentlayer:init first on a fresh machine).
 SKILLS_DIR="$HOME_DIR/.claude/skills"
 PROJECT_SETTINGS="$HOME_DIR/.claude/settings.json"
 SETTINGS_FILE="$HOME_DIR/.claude/settings.local.json"
@@ -89,18 +89,18 @@ If nothing is ticked, cancel and return to Step 1. Otherwise run the matching su
 
 ### A.2a — SEO pack walk
 
-**Tool-name prefix convention** — important: the plugin bundles a single MCP server (`kevin`), so all its tools use the **plugin-namespaced** prefix `mcp__plugin_agent-kevin_kevin__<tool>` (e.g., `mcp__plugin_agent-kevin_kevin__serpapi_search`, `mcp__plugin_agent-kevin_kevin__web_search`). The shorter `mcp__kevin__<tool>` form looks correct but won't match anything at runtime — Claude Code prefixes plugin-provided servers with `plugin_<plugin-name>_<server-name>`. Tools from servers registered in `<HOME>/.mcp.json` use the plain `mcp__<server>__<tool>` form — the Xcode pack (A.2f) is the one first-party pack that registers there, so its grants read `mcp__xcode__<tool>`. The "Permissions to grant" column below uses the correct form for each.
+**Tool-name prefix convention** — important: the plugin bundles a single MCP server (`agent`), so all its tools use the **plugin-namespaced** prefix `mcp__plugin_agentlayer_agent__<tool>` (e.g., `mcp__plugin_agentlayer_agent__serpapi_search`, `mcp__plugin_agentlayer_agent__web_search`). The shorter `mcp__kevin__<tool>` form looks correct but won't match anything at runtime — Claude Code prefixes plugin-provided servers with `plugin_<plugin-name>_<server-name>`. Tools from servers registered in `<HOME>/.mcp.json` use the plain `mcp__<server>__<tool>` form — the Xcode pack (A.2f) is the one first-party pack that registers there, so its grants read `mcp__xcode__<tool>`. The "Permissions to grant" column below uses the correct form for each.
 
 | Capability (`seo` playbook) | Backed by | Required key(s) | Extra permission to grant |
 |---|---|---|---|
-| SERP (`serp`): live Google results | `mcp__plugin_agent-kevin_kevin__serpapi_search` | `SERPAPI_KEY` (https://serpapi.com) | _granted by this SEO walk_ |
-| Rank (`rank`): domain authority | `mcp__plugin_agent-kevin_kevin__open_page_rank` | `OPENPAGERANK_API_KEY` (https://openpagerank.com) | _granted by this SEO walk_ |
-| Search Console (`console`): queries and indexing | `mcp__plugin_agent-kevin_kevin__gsc_*` | Google OAuth + `GSC_SITE_URL` | _granted by this SEO walk_ |
-| PageSpeed (`speed`): Core Web Vitals | `mcp__plugin_agent-kevin_kevin__page_speed_*` | Google OAuth (shared with Search Console) | _granted by this SEO walk_ |
+| SERP (`serp`): live Google results | `mcp__plugin_agentlayer_agent__serpapi_search` | `SERPAPI_KEY` (https://serpapi.com) | _granted by this SEO walk_ |
+| Rank (`rank`): domain authority | `mcp__plugin_agentlayer_agent__open_page_rank` | `OPENPAGERANK_API_KEY` (https://openpagerank.com) | _granted by this SEO walk_ |
+| Search Console (`console`): queries and indexing | `mcp__plugin_agentlayer_agent__gsc_*` | Google OAuth + `GSC_SITE_URL` | _granted by this SEO walk_ |
+| PageSpeed (`speed`): Core Web Vitals | `mcp__plugin_agentlayer_agent__page_speed_*` | Google OAuth (shared with Search Console) | _granted by this SEO walk_ |
 | Audit (`audit`) | the tools above | shares the keys above | nothing extra |
 | the `wordpress-rest` skill | direct `curl` | none | `Bash(curl https://<host>/*)` + `Bash(curl * https://<host>/*)`, where `<host>` is derived from `GSC_SITE_URL`. Only granted if Search Console was configured this run (so `GSC_SITE_URL` is set). Otherwise curl confirms per-call. |
 
-**`/agent-kevin:init` only pre-grants the always-on core MCP tools** — `ping`, `compile_*`, `task_*`, `links_rewrite`, `memory_prune`. The SEO-gated tools (`serpapi_search`, `open_page_rank`, `gsc_*`, `page_speed_*`, `google_auth`) land in `permissions.allow` only when this SEO walk runs, and only if the user activates the pack (no per-call confirm prompts after that).
+**`/agentlayer:init` only pre-grants the always-on core MCP tools** — `ping`, `compile_*`, `task_*`, `links_rewrite`, `memory_prune`. The SEO-gated tools (`serpapi_search`, `open_page_rank`, `gsc_*`, `page_speed_*`, `google_auth`) land in `permissions.allow` only when this SEO walk runs, and only if the user activates the pack (no per-call confirm prompts after that).
 
 The walk handles these tasks per capability:
 1. Add SEO-gated MCP tool grants to `$PROJECT_SETTINGS` → `permissions.allow` (§E).
@@ -128,15 +128,15 @@ If yes:
   3. **Credentials** → **Create Credentials** → **OAuth client ID** → application type **Desktop app** → Create → download the JSON.
   4. Move the file to `$HOME_DIR/.state/secrets/google/google-oauth-client.json` (`mkdir -p` the dir if missing).
   5. Set `GSC_SITE_URL` in `$SETTINGS_FILE` env block via editor.
-  6. Inside Claude Code (after relaunch), run `mcp__plugin_agent-kevin_kevin__google_auth`. A browser tab opens, the user grants access, the refresh token is minted and persisted alongside the client JSON.
+  6. Inside Claude Code (after relaunch), run `mcp__plugin_agentlayer_agent__google_auth`. A browser tab opens, the user grants access, the refresh token is minted and persisted alongside the client JSON.
 
   After that, all `gsc_*` and `page_speed_*` tools work without re-prompting.
 
 - Grant the matching MCP tool entries to `permissions.allow` via §E. Granular mapping:
-  - SERP → `mcp__plugin_agent-kevin_kevin__serpapi_search`
-  - Rank → `mcp__plugin_agent-kevin_kevin__open_page_rank`
-  - Search Console → `mcp__plugin_agent-kevin_kevin__gsc_inspect`, `gsc_query`, `gsc_sites`, `google_auth`
-  - PageSpeed → `mcp__plugin_agent-kevin_kevin__page_speed_audit`, `page_speed_psi`, `google_auth` (deduped if Search Console also chosen)
+  - SERP → `mcp__plugin_agentlayer_agent__serpapi_search`
+  - Rank → `mcp__plugin_agentlayer_agent__open_page_rank`
+  - Search Console → `mcp__plugin_agentlayer_agent__gsc_inspect`, `gsc_query`, `gsc_sites`, `google_auth`
+  - PageSpeed → `mcp__plugin_agentlayer_agent__page_speed_audit`, `page_speed_psi`, `google_auth` (deduped if Search Console also chosen)
 
 **For `wordpress-rest`:** if `GSC_SITE_URL` was set this run (the user configured Search Console), derive the bare host and grant two scoped curl patterns via §E. This lets `wordpress-rest` call the user's own WP REST endpoints without re-prompting, without authorising curl to arbitrary hosts. Pure-prompt third-party SEO/content skills (e.g., `content-quality-auditor`, `seo-content-writer`) are NOT bundled with this plugin — install them via Section F if you want them.
 
@@ -164,7 +164,7 @@ After all keyed capabilities are processed, print a summary:
 Tool permissions granted:  <list of MCP tools added to settings.json>
 Secret lines to add:       SERPAPI_KEY, OPENPAGERANK_API_KEY  (add to .state/secrets/.env)
 Config placeholder ready:  GSC_SITE_URL  (in .claude/settings.local.json)
-Google OAuth:              <pending: drop client JSON to .state/secrets/google/google-oauth-client.json, then run `mcp__plugin_agent-kevin_kevin__google_auth` after relaunch>
+Google OAuth:              <pending: drop client JSON to .state/secrets/google/google-oauth-client.json, then run `mcp__plugin_agentlayer_agent__google_auth` after relaunch>
 
 Fill SERPAPI_KEY + OPENPAGERANK_API_KEY in <HOME>/.state/secrets/.env, GSC_SITE_URL in <HOME>/.claude/settings.local.json — never paste them into chat.
 ```
@@ -177,21 +177,21 @@ The Browser pack has two pieces, each independently activatable:
 
 Neither is pre-granted by `/init` anymore — they only land when the user activates the matching piece.
 
-**(1) Perplexity** — `mcp__plugin_agent-kevin_kevin__web_search`.
+**(1) Perplexity** — `mcp__plugin_agentlayer_agent__web_search`.
 
 `AskUserQuestion`:
 
 > **Activate Perplexity search?**
-> Adds `mcp__plugin_agent-kevin_kevin__web_search` to `permissions.allow` and ensures `.state/secrets/.env` exists. You add the `PERPLEXITY_API_KEY=<value>` line via your editor after this completes (sign up at https://perplexity.ai/settings/api). Optional: until you fill it, the tool returns "missing env var" and briefings use the host's built-in web search, which has no recency or country filter.
+> Adds `mcp__plugin_agentlayer_agent__web_search` to `permissions.allow` and ensures `.state/secrets/.env` exists. You add the `PERPLEXITY_API_KEY=<value>` line via your editor after this completes (sign up at https://perplexity.ai/settings/api). Optional: until you fill it, the tool returns "missing env var" and briefings use the host's built-in web search, which has no recency or country filter.
 >
 > - Yes — grant permission + ensure placeholder
 > - Skip (no permission grant, no placeholder)
 
 If yes:
-- Add `mcp__plugin_agent-kevin_kevin__web_search` to `permissions.allow` via §E.
+- Add `mcp__plugin_agentlayer_agent__web_search` to `permissions.allow` via §E.
 - Ensure the secret store exists via §D.1 and tell the user to add a `PERPLEXITY_API_KEY=<value>` line to `.state/secrets/.env` (Claude doesn't read/write the gated file).
 - **Do not** ask the user to paste the key value.
-- **Do not** touch `$MCP_FILE` — `web_search` lives inside the `kevin` MCP server, not a separate project-registered server.
+- **Do not** touch `$MCP_FILE` — `web_search` lives inside the `agent` MCP server, not a separate project-registered server.
 
 **(2) Playwright + browser-flows** — the `browser_{screenshot,pdf,markdown,record}` capture tools and `browser_flows` (runs pluggable browser flows in a visible browser; same bundled Chromium, no API key).
 
@@ -236,10 +236,10 @@ Connects Kevin to one or more Postgres databases. Three read-only MCP tools (`da
 > **Never prompt for connection-string values in chat.** A Postgres URL embeds a password (`postgres://user:pass@host/db`). The walk collects connection *names* only and surfaces *which* `AGENT_DB_<NAME>` keys to fill in `<HOME>/.state/secrets/.env`. The session-capture redactor masks DB URLs (and exact-matches `.state/secrets/.env` values) as defense-in-depth, but the safe move is to keep the value off the wire entirely.
 
 **(1) Grant the db tool permissions.** Add all four to `permissions.allow` via §E. The first three are read-only; `database_fork` is the one write tool — it only acts on a local server (remote hosts refused) and clones rather than mutating existing data, so granting it with the pack is fine:
-- `mcp__plugin_agent-kevin_kevin__database_list`
-- `mcp__plugin_agent-kevin_kevin__database_query`
-- `mcp__plugin_agent-kevin_kevin__database_schema`
-- `mcp__plugin_agent-kevin_kevin__database_fork`
+- `mcp__plugin_agentlayer_agent__database_list`
+- `mcp__plugin_agentlayer_agent__database_query`
+- `mcp__plugin_agentlayer_agent__database_schema`
+- `mcp__plugin_agentlayer_agent__database_fork`
 
 **(2) Collect connection names.** `AskUserQuestion` (or free-text):
 
@@ -284,23 +284,23 @@ Each is a **secret**, so it follows the same editor-fill rule as every other cre
 
 **(1) Grant the GitHub tool permissions.** Add these seventeen to `permissions.allow` via §E (not `github_pr_create`, which init lists in `permissions.ask`):
 
-- `mcp__plugin_agent-kevin_kevin__github_fast_forward`
-- `mcp__plugin_agent-kevin_kevin__github_pr_list`
-- `mcp__plugin_agent-kevin_kevin__github_pr_view`
-- `mcp__plugin_agent-kevin_kevin__github_pr_comments`
-- `mcp__plugin_agent-kevin_kevin__github_pr_diff`
-- `mcp__plugin_agent-kevin_kevin__github_pr_checks`
-- `mcp__plugin_agent-kevin_kevin__github_run_list`
-- `mcp__plugin_agent-kevin_kevin__github_run_view`
-- `mcp__plugin_agent-kevin_kevin__github_run_log`
-- `mcp__plugin_agent-kevin_kevin__github_issue_list`
-- `mcp__plugin_agent-kevin_kevin__github_issue_view`
-- `mcp__plugin_agent-kevin_kevin__github_sweep`
-- `mcp__plugin_agent-kevin_kevin__github_issue_create`
-- `mcp__plugin_agent-kevin_kevin__github_issue_comment`
-- `mcp__plugin_agent-kevin_kevin__github_issue_update`
-- `mcp__plugin_agent-kevin_kevin__github_pr_update`
-- `mcp__plugin_agent-kevin_kevin__github_comment_update`
+- `mcp__plugin_agentlayer_agent__github_fast_forward`
+- `mcp__plugin_agentlayer_agent__github_pr_list`
+- `mcp__plugin_agentlayer_agent__github_pr_view`
+- `mcp__plugin_agentlayer_agent__github_pr_comments`
+- `mcp__plugin_agentlayer_agent__github_pr_diff`
+- `mcp__plugin_agentlayer_agent__github_pr_checks`
+- `mcp__plugin_agentlayer_agent__github_run_list`
+- `mcp__plugin_agentlayer_agent__github_run_view`
+- `mcp__plugin_agentlayer_agent__github_run_log`
+- `mcp__plugin_agentlayer_agent__github_issue_list`
+- `mcp__plugin_agentlayer_agent__github_issue_view`
+- `mcp__plugin_agentlayer_agent__github_sweep`
+- `mcp__plugin_agentlayer_agent__github_issue_create`
+- `mcp__plugin_agentlayer_agent__github_issue_comment`
+- `mcp__plugin_agentlayer_agent__github_issue_update`
+- `mcp__plugin_agentlayer_agent__github_pr_update`
+- `mcp__plugin_agentlayer_agent__github_comment_update`
 
 And add to `permissions.deny` (§E deny helper), so GitHub is reached only through these tools and never through `gh` in the agent's own shell:
 
@@ -313,7 +313,7 @@ The tools are the capability surface: each exposes what the pack chose to expose
 **(2) Surface the PAT minting steps.** `AskUserQuestion`:
 
 > **Activate GitHub?**
-> Grants the `github_pr_*` / `github_issue_*` / `github_run_*` tool permissions, plus `github_fast_forward` — which fast-forwards your local checkouts' default branches during `/agent-kevin:sync` (forward-only; never resolves a dirty, diverged, or worktree-held branch). Writes (issues, a PR's title and description) work only where your token allows them. Opening a PR asks you every time. Denies `gh` in Kevin's own shell, so GitHub goes through these tools. Ensures `.state/secrets/.env` exists. You add one token line per repo owner via your editor after this completes. Until you do, the tools use your own `gh auth login` if you have one, and `github_fast_forward` reports the repo as not configured.
+> Grants the `github_pr_*` / `github_issue_*` / `github_run_*` tool permissions, plus `github_fast_forward` — which fast-forwards your local checkouts' default branches during `/agentlayer:sync` (forward-only; never resolves a dirty, diverged, or worktree-held branch). Writes (issues, a PR's title and description) work only where your token allows them. Opening a PR asks you every time. Denies `gh` in Kevin's own shell, so GitHub goes through these tools. Ensures `.state/secrets/.env` exists. You add one token line per repo owner via your editor after this completes. Until you do, the tools use your own `gh auth login` if you have one, and `github_fast_forward` reports the repo as not configured.
 >
 > - Yes — grant permissions + ensure placeholder
 > - Skip (no permission grant, no placeholder)
@@ -329,7 +329,7 @@ On `GH_MISSING`, say so plainly and let the operator choose — don't silently p
 > ⚠️ **`gh` isn't on your PATH.** Every GitHub-pack tool shells out to it, so they'll error until it's installed. It doesn't ship with Claude Code or this plugin — on macOS: `brew install gh` (needs [Homebrew](https://brew.sh)), otherwise [cli.github.com](https://cli.github.com).
 >
 > - Continue anyway — grant permissions + mint the PAT now, install `gh` after
-> - Stop here — come back to `/agent-kevin:configure-skills` once `gh` is installed
+> - Stop here — come back to `/agentlayer:configure-skills` once `gh` is installed
 
 Then list the owners behind the configured checkouts, so the operator knows how many tokens to mint. For each path in `AGENT_CODE_PATH` and `AGENT_GIT_REPOS` (from `$SETTINGS_FILE` → `env`):
 
@@ -361,7 +361,7 @@ Then surface these steps verbatim, once per owner:
 
 **Writes.** A token can never do more than its owner's role on the repo: opening and labelling issues needs at least Triage, and attaching files or editing a PR needs Write. Labels and milestones must exist before a tool can apply them (`gh issue create --label` fails on an unknown label), so point the operator at the repo's Labels and Milestones pages. Attachments take png, jpg, gif, webp, svg, mp4, mov or webm, up to 10 MB each, and need `gh` 2.99.0 or later (`gh --version`); text such as a log goes in the issue body.
 
-**Codex, when the home runs it.** If `<HOME>/.codex/hooks.json` exists, run the `codex_setup` MCP tool after the grants. It turns each `Bash(…)` deny into a `forbidden` rule in `.codex/rules/kevin.rules`, so `gh` is blocked in a Codex session too; Codex has no per-tool allow list, so the tool grants need nothing there. Skip it in a home that never opted into Codex: a later Codex wiring reads the deny from the settings on its own.
+**Codex, when the home runs it.** If `<HOME>/.codex/hooks.json` exists, run the `codex_setup` MCP tool after the grants. It turns each `Bash(…)` deny into a `forbidden` rule in `.codex/rules/agent.rules`, so `gh` is blocked in a Codex session too; Codex has no per-tool allow list, so the tool grants need nothing there. Skip it in a home that never opted into Codex: a later Codex wiring reads the deny from the settings on its own.
 
 **(3) Repo defaulting (no config needed).** When a `github_*` call omits `repo`, Kevin derives `owner/repo` from the `origin` remote of `AGENT_CODE_PATH`, then the first `AGENT_GIT_REPOS` entry — the same codebase pair init writes. An explicit `owner/repo` argument always wins. So scope each owner's token to whatever those paths point at (plus any repo you'll name explicitly).
 
@@ -574,7 +574,7 @@ On yes, ask for the repo path. If it sits outside the code root init granted, sa
 
 **(9) Codex, when the home runs it.** Skip entirely if `<HOME>/.codex/hooks.json` is absent: a home that never opted into Codex is not wired here. It loses nothing by the skip, because the generator reads the pack's registration from `$MCP_FILE` on every run, so a later Codex wiring (init Step 7c, or `$upgrade` from a Codex session) carries `xcode` across on its own.
 
-- Run the `codex_setup` MCP tool. Nothing is hand-merged: the generator at `skills/init/scripts/codex-setup.ts` mirrors the `xcode` entry of `$MCP_FILE` into an `[mcp_servers.xcode]` table it owns (regenerated each run, the operator's own keys inside it kept), turns the ask patterns into `prefix_rule` entries in `.codex/rules/kevin.rules`, and derives `[permissions.<agent>.workspace_roots]` from Claude's `permissions.additionalDirectories`. A hand edit to any of those is overwritten on the next run, so do not write them. The report's `profile.servers` lists the pack servers mirrored; expect `["xcode"]`.
+- Run the `codex_setup` MCP tool. Nothing is hand-merged: the generator at `skills/init/scripts/codex-setup.ts` mirrors the `xcode` entry of `$MCP_FILE` into an `[mcp_servers.xcode]` table it owns (regenerated each run, the operator's own keys inside it kept), turns the ask patterns into `prefix_rule` entries in `.codex/rules/agent.rules`, and derives `[permissions.<agent>.workspace_roots]` from Claude's `permissions.additionalDirectories`. A hand edit to any of those is overwritten on the next run, so do not write them. The report's `profile.servers` lists the pack servers mirrored; expect `["xcode"]`.
 
   **Five of the six carry over, not all six.** The generator turns `Bash(<words> *)` into a prefix rule by stripping the trailing ` *` and then dropping anything that still contains a glob character (`askPrefixes` in `skills/init/scripts/codex-setup.ts`). So `xcrun simctl delete`, `xcrun simctl erase`, `xcrun simctl runtime delete`, `xcrun altool` and `xcrun notarytool` all become rules, but **`Bash(xcodebuild *-exportArchive*)` does not**: its wildcard is mid-pattern, and a Codex prefix rule matches leading argv words, which a flag in an arbitrary position is not. State this plainly in the summary rather than implying parity. In practice the gap is moot today: Codex's Seatbelt blocks `xcodebuild` outright ([openai/codex#4987](https://github.com/openai/codex/issues/4987)) and no per-command exclusion is wired on that host, so an export cannot run from Codex at all, and `altool`/`notarytool` are gated regardless. If Codex ever gains an exclusion, the export rule belongs in a *separate* `.rules` file in that directory (Codex loads every one), since the generated file is overwritten on each run.
 - Note that Codex's non-interactive `codex exec` auto-cancels MCP calls, so headless Codex builds are not there yet; interactive `codex` sessions are fine.
@@ -651,9 +651,9 @@ A named connection reads only its own keys and never borrows the default's, sinc
 
 **(4) Pylon** — a Pylon admin mints an API token under Settings → API. The token reads the whole workspace, and notes are posted as the token's user. Ensure the secret store (§D.1) and have the operator add `PYLON_API_TOKEN=…` in their editor, plus `PYLON_API_TOKEN_<NAME>=…` for each named workspace.
 
-**(5) Grant** via §E: `mcp__plugin_agent-kevin_kevin__helpdesk_connections`, `mcp__plugin_agent-kevin_kevin__helpdesk_tickets`, `mcp__plugin_agent-kevin_kevin__helpdesk_ticket`, `mcp__plugin_agent-kevin_kevin__helpdesk_attachment`, `mcp__plugin_agent-kevin_kevin__helpdesk_accounts`, `mcp__plugin_agent-kevin_kevin__helpdesk_lookups`, `mcp__plugin_agent-kevin_kevin__helpdesk_stats`, and, at the recommended level, `mcp__plugin_agent-kevin_kevin__helpdesk_note` and `mcp__plugin_agent-kevin_kevin__helpdesk_assign`.
+**(5) Grant** via §E: `mcp__plugin_agentlayer_agent__helpdesk_connections`, `mcp__plugin_agentlayer_agent__helpdesk_tickets`, `mcp__plugin_agentlayer_agent__helpdesk_ticket`, `mcp__plugin_agentlayer_agent__helpdesk_attachment`, `mcp__plugin_agentlayer_agent__helpdesk_accounts`, `mcp__plugin_agentlayer_agent__helpdesk_lookups`, `mcp__plugin_agentlayer_agent__helpdesk_stats`, and, at the recommended level, `mcp__plugin_agentlayer_agent__helpdesk_note` and `mcp__plugin_agentlayer_agent__helpdesk_assign`.
 
-**(6) Offer each project its queue profile** (`AskUserQuestion`, one question per project from 1b that has no `projects/<slug>/helpdesk.md` yet): "Set up <slug>'s support queue now?" A profile is the queue's own workflow: its connection, which statuses count as open, what the pulse does and how often, the bug lifecycle, replies, context and any routines of its own. The helpdesk skill's setup interview writes it, with `connection: <slug>` already filled in, and tunes it later. A yes is done after the relaunch, since the interview lists the helpdesk's connections and statuses: carry `/agent-kevin:helpdesk setup <slug>` into the summary for each. A **No project** connection gets no profile here; any project can use it later through setup by leaving `connection` out.
+**(6) Offer each project its queue profile** (`AskUserQuestion`, one question per project from 1b that has no `projects/<slug>/helpdesk.md` yet): "Set up <slug>'s support queue now?" A profile is the queue's own workflow: its connection, which statuses count as open, what the pulse does and how often, the bug lifecycle, replies, context and any routines of its own. The helpdesk skill's setup interview writes it, with `connection: <slug>` already filled in, and tunes it later. A yes is done after the relaunch, since the interview lists the helpdesk's connections and statuses: carry `/agentlayer:helpdesk setup <slug>` into the summary for each. A **No project** connection gets no profile here; any project can use it later through setup by leaving `connection` out.
 
 **(7) Summary:**
 
@@ -667,7 +667,7 @@ Settings env:           SUPPORTCANDY_URL[_<NAME>], SUPPORTCANDY_USERNAME[_<NAME>
 Secret lines to add:    SUPPORTCANDY_APP_PASSWORD[_<NAME>] and/or PYLON_API_TOKEN[_<NAME>]  (in .state/secrets/.env)
 
 Relaunch to load the secrets, then check with: "list helpdesk tickets from the last day".
-Then: /agent-kevin:helpdesk setup <slug> for each project's queue, and /agent-kevin:helpdesk pulse <slug> once it's written.
+Then: /agentlayer:helpdesk setup <slug> for each project's queue, and /agentlayer:helpdesk pulse <slug> once it's written.
 A 404 means the REST API is off; a 401 means the password, the username, or the user isn't a SupportCandy agent.
 ```
 
@@ -675,7 +675,7 @@ A 404 means the REST API is off; a 401 means the password, the username, or the 
 
 Gives Kevin `appstore_reviews`: any app's App Store reviews by its link or id, newest first, with rating counts, the app version and the storefront. It reads Apple's public review feed, so there is no key and no Apple account involved, and it never replies to a review. Reviews are kept per country storefront; the tool picks storefronts itself, starting with every one and learning where an app's reviews come from (`.state/appstore/<id>.json`). Apple's feed keeps about the 500 most recent reviews per storefront and now and then comes back blank: the tool says what it read, and a read where nothing came back gives no count rather than zero.
 
-**(1) Grant** via §E: `mcp__plugin_agent-kevin_kevin__appstore_reviews`.
+**(1) Grant** via §E: `mcp__plugin_agentlayer_agent__appstore_reviews`.
 
 **(2) Summary:**
 
@@ -686,7 +686,7 @@ Tool permission:   appstore_reviews
 Keys:              none
 
 Check with: "show the latest App Store reviews for <app link>".
-To watch an app's reviews in a helpdesk pulse, add `appstore: <id>` to its queue profile (/agent-kevin:helpdesk setup <slug>).
+To watch an app's reviews in a helpdesk pulse, add `appstore: <id>` to its queue profile (/agentlayer:helpdesk setup <slug>).
 ```
 
 ### A.2i — Slack pack walk
@@ -706,7 +706,7 @@ For *No*, hand over these steps verbatim. They're done once per workspace, by an
 
 With a Client ID in hand (pasted, or from *Yes*), plant it in `$SETTINGS_FILE` `env` as `AGENT_SLACK_CLIENT_ID` with §D.2 **Set value**. *Skip* ends the walk with nothing granted.
 
-**(1) Grant** via §E: the seven read tools `mcp__plugin_agent-kevin_kevin__slack_whoami`, `..._slack_channels`, `..._slack_history`, `..._slack_batch_history`, `..._slack_thread`, `..._slack_search` and `..._slack_waiting`; `WebFetch(domain:slack.com)` (follows a pasted permalink, which without Slack cookies only ever reaches public pages); and `Skill(agent-kevin:slack)`, so the skill runs on "slack pulse" without a confirm prompt.
+**(1) Grant** via §E: the seven read tools `mcp__plugin_agentlayer_agent__slack_whoami`, `..._slack_channels`, `..._slack_history`, `..._slack_batch_history`, `..._slack_thread`, `..._slack_search` and `..._slack_waiting`; `WebFetch(domain:slack.com)` (follows a pasted permalink, which without Slack cookies only ever reaches public pages); and `Skill(agentlayer:slack)`, so the skill runs on "slack pulse" without a confirm prompt.
 
 **(2) Auth, from a terminal outside the agent.** The OAuth callback binds a localhost port, which the sandbox blocks, so the operator runs it. Resolve the CLI path first (under Codex, `CLAUDE_PLUGIN_ROOT` is this skill's base directory two levels up):
 
@@ -736,13 +736,13 @@ Wait for the answer. On an error, explain it (common: `AGENT_SLACK_CLIENT_ID` no
 ✅ Slack pack activated.
 
 Client ID:          AGENT_SLACK_CLIENT_ID in settings.local.json (public, not a secret)
-Tool permissions:   slack_whoami, slack_channels, slack_history, slack_batch_history, slack_thread, slack_search, slack_waiting · WebFetch(domain:slack.com) · Skill(agent-kevin:slack)
+Tool permissions:   slack_whoami, slack_channels, slack_history, slack_batch_history, slack_thread, slack_search, slack_waiting · WebFetch(domain:slack.com) · Skill(agentlayer:slack)
 Signed in:          <@user in workspace | deferred | failed: <error>>
 Tokens:             <HOME>/.state/secrets/slack/slack-tokens.json (0600)
 Channel map:        <HOME>/knowledge/concepts/slack-channels.md (<bootstrapped, N channels | already there, left alone>)
 
 Try: "slack pulse". The attention queue and sync now show the replies you owe, external threads waiting an hour or more, and channels you join that the map doesn't list yet.
-Refresh tokens expire after 30 days unused; re-run `kevin slack auth` then.
+Refresh tokens expire after 30 days unused; re-run `agentlayer slack auth` then.
 ```
 
 ---
@@ -901,7 +901,7 @@ Print per library: install status + symlink path + upstream LICENSE first-line. 
 **Browser deconfigure:**
 - Revoke Browser-gated MCP tool grants from `permissions.allow` (§E remove helper): `web_search`, `browser_screenshot`, `browser_pdf`, `browser_markdown`, `browser_record`, `browser_flows`. Always-on core stays.
 - `AskUserQuestion`: "Remove `PERPLEXITY_API_KEY` from `.state/secrets/.env`?" (Yes/No). If yes, tell the user to delete that line in their editor (§D.1 — Claude can't edit the gated file).
-- Do **not** touch `$MCP_FILE` — `web_search` lives inside the `kevin` MCP server, not a project-registered server.
+- Do **not** touch `$MCP_FILE` — `web_search` lives inside the `agent` MCP server, not a project-registered server.
 - Remind user: playwright + chromium stay installed (part of plugin base deps); only the permission grants get removed.
 
 **Database deconfigure:**
@@ -925,7 +925,7 @@ Print per library: install status + symlink path + upstream LICENSE first-line. 
 - Revoke `appstore_reviews` from `permissions.allow` (§E remove helper). There are no keys. `.state/appstore/` holds only what the tool learned about storefronts; leave it unless the operator asks.
 
 **Slack deconfigure:**
-- Revoke the seven `slack_*` tool grants (`slack_whoami`, `slack_channels`, `slack_history`, `slack_batch_history`, `slack_thread`, `slack_search`, `slack_waiting`), `WebFetch(domain:slack.com)` and `Skill(agent-kevin:slack)` from `permissions.allow` (§E remove helper).
+- Revoke the seven `slack_*` tool grants (`slack_whoami`, `slack_channels`, `slack_history`, `slack_batch_history`, `slack_thread`, `slack_search`, `slack_waiting`), `WebFetch(domain:slack.com)` and `Skill(agentlayer:slack)` from `permissions.allow` (§E remove helper).
 - `AskUserQuestion`: "Delete your local Slack token at `<HOME>/.state/secrets/slack/slack-tokens.json`?" (Yes/No). The file is deny-gated, so on yes hand the operator `rm -f <HOME_DIR>/.state/secrets/slack/slack-tokens.json` to run themselves. Tokens are per account, so teammates are unaffected. To revoke on Slack's side too: the workspace's **Authorized apps** settings → the app → **Revoke**.
 - `AGENT_SLACK_CLIENT_ID` and `knowledge/concepts/slack-channels.md` stay: the first is public and shared by the workspace, the second is the operator's.
 
@@ -1003,7 +1003,7 @@ When a pack/skill is configured, write its tools into `$PROJECT_SETTINGS` → `p
 4. Sort `permissions.allow` alphabetically (deterministic diffs).
 5. Write back with 2-space indent.
 
-Example final shape — `/init` always-on baseline + both SEO and Browser activated, with SEO setting `GSC_SITE_URL=https://example.com/`. `/init` writes the core Bash patterns, the always-on `kevin` MCP entries, and the core skill grant (`setup-worktree`); this skill appends the pack-gated MCP entries (SEO, Browser) and the host-scoped curl pair when SEO's `GSC_SITE_URL` is set:
+Example final shape — `/init` always-on baseline + both SEO and Browser activated, with SEO setting `GSC_SITE_URL=https://example.com/`. `/init` writes the core Bash patterns, the always-on `agent` MCP entries, and the core skill grant (`setup-worktree`); this skill appends the pack-gated MCP entries (SEO, Browser) and the host-scoped curl pair when SEO's `GSC_SITE_URL` is set:
 
 ```json
 {
@@ -1028,46 +1028,46 @@ Example final shape — `/init` always-on baseline + both SEO and Browser activa
       "Bash(mkdir -p *)",
       "Bash(readlink *)",
       "Bash(test *)",
-      "mcp__plugin_agent-kevin_kevin__browser_flows",
-      "mcp__plugin_agent-kevin_kevin__browser_markdown",
-      "mcp__plugin_agent-kevin_kevin__browser_pdf",
-      "mcp__plugin_agent-kevin_kevin__browser_record",
-      "mcp__plugin_agent-kevin_kevin__browser_screenshot",
-      "mcp__plugin_agent-kevin_kevin__capture",
-      "mcp__plugin_agent-kevin_kevin__compile_next",
-      "mcp__plugin_agent-kevin_kevin__compile_status",
-      "mcp__plugin_agent-kevin_kevin__compile_write",
-      "mcp__plugin_agent-kevin_kevin__dashboard",
-      "mcp__plugin_agent-kevin_kevin__google_auth",
-      "mcp__plugin_agent-kevin_kevin__gsc_inspect",
-      "mcp__plugin_agent-kevin_kevin__gsc_query",
-      "mcp__plugin_agent-kevin_kevin__gsc_sites",
-      "mcp__plugin_agent-kevin_kevin__knowledge_lint",
-      "mcp__plugin_agent-kevin_kevin__links_rewrite",
-      "mcp__plugin_agent-kevin_kevin__memory_prune",
-      "mcp__plugin_agent-kevin_kevin__open_page_rank",
-      "mcp__plugin_agent-kevin_kevin__page_speed_audit",
-      "mcp__plugin_agent-kevin_kevin__page_speed_psi",
-      "mcp__plugin_agent-kevin_kevin__ping",
-      "mcp__plugin_agent-kevin_kevin__report_write",
-      "mcp__plugin_agent-kevin_kevin__serpapi_search",
-      "mcp__plugin_agent-kevin_kevin__setup_worktree",
-      "mcp__plugin_agent-kevin_kevin__task_close",
-      "mcp__plugin_agent-kevin_kevin__task_create",
-      "mcp__plugin_agent-kevin_kevin__task_get",
-      "mcp__plugin_agent-kevin_kevin__task_query",
-      "mcp__plugin_agent-kevin_kevin__task_scan",
-      "mcp__plugin_agent-kevin_kevin__task_thread",
-      "mcp__plugin_agent-kevin_kevin__task_update",
-      "mcp__plugin_agent-kevin_kevin__web_search",
-      "Skill(agent-kevin:setup-worktree)"
+      "mcp__plugin_agentlayer_agent__browser_flows",
+      "mcp__plugin_agentlayer_agent__browser_markdown",
+      "mcp__plugin_agentlayer_agent__browser_pdf",
+      "mcp__plugin_agentlayer_agent__browser_record",
+      "mcp__plugin_agentlayer_agent__browser_screenshot",
+      "mcp__plugin_agentlayer_agent__capture",
+      "mcp__plugin_agentlayer_agent__compile_next",
+      "mcp__plugin_agentlayer_agent__compile_status",
+      "mcp__plugin_agentlayer_agent__compile_write",
+      "mcp__plugin_agentlayer_agent__dashboard",
+      "mcp__plugin_agentlayer_agent__google_auth",
+      "mcp__plugin_agentlayer_agent__gsc_inspect",
+      "mcp__plugin_agentlayer_agent__gsc_query",
+      "mcp__plugin_agentlayer_agent__gsc_sites",
+      "mcp__plugin_agentlayer_agent__knowledge_lint",
+      "mcp__plugin_agentlayer_agent__links_rewrite",
+      "mcp__plugin_agentlayer_agent__memory_prune",
+      "mcp__plugin_agentlayer_agent__open_page_rank",
+      "mcp__plugin_agentlayer_agent__page_speed_audit",
+      "mcp__plugin_agentlayer_agent__page_speed_psi",
+      "mcp__plugin_agentlayer_agent__ping",
+      "mcp__plugin_agentlayer_agent__report_write",
+      "mcp__plugin_agentlayer_agent__serpapi_search",
+      "mcp__plugin_agentlayer_agent__setup_worktree",
+      "mcp__plugin_agentlayer_agent__task_close",
+      "mcp__plugin_agentlayer_agent__task_create",
+      "mcp__plugin_agentlayer_agent__task_get",
+      "mcp__plugin_agentlayer_agent__task_query",
+      "mcp__plugin_agentlayer_agent__task_scan",
+      "mcp__plugin_agentlayer_agent__task_thread",
+      "mcp__plugin_agentlayer_agent__task_update",
+      "mcp__plugin_agentlayer_agent__web_search",
+      "Skill(agentlayer:setup-worktree)"
     ]
   }
 }
 ```
 
 **Prefix rule** (use this whenever you need to know how a tool surfaces to permissions.allow):
-- Plugin-bundled MCP tools (from the plugin manifest's `mcpServers.<name>`): `mcp__plugin_agent-kevin_<server>__<tool>`. The plugin bundles a single server: `kevin` (its tools include `web_search`, which wraps the Perplexity Search API, and the `github_*` tools).
+- Plugin-bundled MCP tools (from the plugin manifest's `mcpServers.<name>`): `mcp__plugin_agentlayer_<server>__<tool>`. The plugin bundles a single server: `kevin` (its tools include `web_search`, which wraps the Perplexity Search API, and the `github_*` tools).
 - Standalone MCP servers registered in `<HOME>/.mcp.json` (the Xcode pack's `xcode` server, plus any the user adds): `mcp__<server>__<tool>`
 
 **Revoke** (remove entries — deconfigure path):

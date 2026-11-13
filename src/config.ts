@@ -222,7 +222,7 @@ export const FILES = {
   },
   /** HOME template baseline — which plugin version this home's scaffolded files
    *  (AGENTS.md, SOUL.md, settings, rules…) were last reconciled to. Written by
-   *  `/init` (fresh homes) and `/agent-kevin:upgrade` (thereafter); read by the
+   *  `/init` (fresh homes) and `/agentlayer:upgrade` (thereafter); read by the
    *  banner + dashboard to flag pending HOME migrations. See version.ts. */
   get VERSION() {
     return resolve(dataRoot(), 'version.json');
@@ -340,7 +340,7 @@ export const CONTEXT = {
 } as const;
 
 /**
- * True once `/agent-kevin:init` has been run *here*, keyed on the same home
+ * True once `/agentlayer:init` has been run *here*, keyed on the same home
  * marker (`HOME_MARKER_FILES` inside the data dir) `agentHomePath` walks for.
  *
  * Not SOUL.md: every sibling agent's home carries one, so a SOUL.md test answers

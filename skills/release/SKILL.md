@@ -1,6 +1,6 @@
 ---
 name: release
-description: Producer-only. Cut a versioned release of the agent-kevin plugin — analyze commits since the last release, detect what consumers must do to upgrade (bun install, settings, template/HOME changes), bump plugin.json, prepend a CHANGELOG entry with a machine-actionable Upgrade block, and stage the commit + tag for approval. Use when the maintainer says "cut a release", "release kevin", "ship a new version", "bump the version and update the changelog". Not for consumers — they use /agent-kevin:upgrade.
+description: Producer-only. Cut a versioned release of the agentlayer plugin — analyze commits since the last release, detect what consumers must do to upgrade (bun install, settings, template/HOME changes), bump plugin.json, prepend a CHANGELOG entry with a machine-actionable Upgrade block, and stage the commit + tag for approval. Use when the maintainer says "cut a release", "release kevin", "ship a new version", "bump the version and update the changelog". Not for consumers — they use /agentlayer:upgrade.
 disable-model-invocation: true
 allowed-tools: Bash, Read, Write, Edit
 ---
@@ -11,7 +11,7 @@ allowed-tools: Bash, Read, Write, Edit
 
 > **Plugin root.** Claude Code fills in `CLAUDE_PLUGIN_ROOT`; Codex leaves it unset. Under Codex, read every `CLAUDE_PLUGIN_ROOT` path in this skill and its playbooks as this skill's base directory two levels up (the `<skill>` block's `<path>`).
 
-Maintainer tool. Produces the **contract** that `/agent-kevin:upgrade` consumes:
+Maintainer tool. Produces the **contract** that `/agentlayer:upgrade` consumes:
 a bumped `plugin.json` version + a `CHANGELOG.md` entry whose `### Upgrade` block
 tells every consumer exactly what their home needs after they `/plugin update`.
 
@@ -79,7 +79,7 @@ severity, let the maintainer confirm/override:
 - `templates/SOUL.md`, `templates/IDENTITY.md` → **optional** (character files the
   operator personalizes) unless the change is functional, then mandatory.
   **Exception: a change confined to `IDENTITY.md`'s preamble or `## Who` reaches new
-  homes only** — `/agent-kevin:upgrade` never reconciles the persona block. If existing
+  homes only** — `/agentlayer:upgrade` never reconciles the persona block. If existing
   homes are meant to adopt it, it has to go in the release's `manual` notes; classifying
   it `optional` would silently ship it nowhere.
 - new `templates/rules/<x>.md`, new `templates/knowledge/concepts/<x>.md` → **additive**
@@ -101,7 +101,7 @@ git -C "${CLAUDE_PLUGIN_ROOT}" diff --stat <range> -- skills/                   
 
 A new always-on core tool, or a new model-invocable skill, needs a grant in consumer
 `settings.json` → `` `settings: mandatory` `` naming the exact entries (e.g.
-`mcp__plugin_agent-kevin_kevin__foo`, `Skill(agent-kevin:foo)`). Match the canonical
+`mcp__plugin_agentlayer_agent__foo`, `Skill(agentlayer:foo)`). Match the canonical
 list in `skills/init/SKILL.md`.
 
 **Scripts** — did this release add a version-pinned migration script?
@@ -115,7 +115,7 @@ A new `skills/upgrade/scripts/<X.Y.Z>.ts` is a heavy one-time HOME migration. Em
 `` `script: required` — run skills/upgrade/scripts/1.2.0.ts (moves the reports folder). ``
 The script's filename **must** equal the version you bump to in Step 3 — that's the
 naming convention (filename = the release the migration is applied when upgrading to)
-and how `/agent-kevin:upgrade` finds it. So decide the bump (Step 3) and the filename
+and how `/agentlayer:upgrade` finds it. So decide the bump (Step 3) and the filename
 together: if you rename the bump, rename the script. A migration that relocates files or
 strips settings is a **breaking** change — pre-1.0 that's a **minor** bump (`0.x` → `0.(x+1).0`),
 post-1.0 a **major**; flag it in Step 3. Prefer a `script` over `manual` when the move
@@ -133,7 +133,7 @@ If none of the above apply, the Upgrade block is the single line:
 **First, is the version already determined?** If Step 2 found a version-pinned migration
 script (`skills/upgrade/scripts/<X.Y.Z>.ts`) added in the release range, the bump target
 *is* that filename's `<X.Y.Z>` — the script ships in, and is applied when upgrading to,
-exactly that release, and `/agent-kevin:upgrade` resolves it by `<target>.ts`. The version
+exactly that release, and `/agentlayer:upgrade` resolves it by `<target>.ts`. The version
 is **locked**; do **not** ask a three-way bump question. patch/major candidates aren't
 valid here — picking one would leave the script named for a version you didn't release, so
 upgrade would never run it. Instead:
@@ -187,13 +187,13 @@ Prepend a new entry **below** the `<!-- Add new releases below this line -->` ma
 
 ### Upgrade
 - `deps: required` — new dep `foo`; run bun install in the plugin root.
-- `settings: mandatory` — add permission `Skill(agent-kevin:foo)`.
+- `settings: mandatory` — add permission `Skill(agentlayer:foo)`.
 - `template/AGENTS.md: mandatory` — new "X" section.
 ```
 
 Use today's date (`date +%Y-%m-%d`). Omit empty Added/Changed/Fixed groups. The Upgrade
 block must list **every** action from Step 2 (or the code-only sentinel). This is the
-exact text `/agent-kevin:upgrade` parses, so keep the backticked tags well-formed.
+exact text `/agentlayer:upgrade` parses, so keep the backticked tags well-formed.
 
 ## Step 5 — Stage, show the diff, then ASK how far to go
 
@@ -232,9 +232,9 @@ Remind the maintainer of the consumer upgrade path so it can go in release notes
 
 ```
 /plugin marketplace update <marketplace>
-/plugin update agent-kevin@<marketplace>
+/plugin update agentlayer@<marketplace>
 # restart Claude Code, then:
-/agent-kevin:upgrade
+/agentlayer:upgrade
 ```
 
 And for a home run from Codex. The plugin installs into a version-pinned cache, so `upgrade`
@@ -244,10 +244,10 @@ refreshes Git marketplaces only, so a local checkout is re-added instead:
 ```
 # from the agentlayer marketplace:
 codex plugin marketplace upgrade agentlayer
-codex plugin add agent-kevin@agentlayer
-# from a local checkout (agentdev-kevin), after git pull:
-codex plugin remove agent-kevin@agentdev-kevin
-codex plugin add agent-kevin@agentdev-kevin
+codex plugin add agentlayer@agentlayer
+# from a local checkout (agentlayer-dev), after git pull:
+codex plugin remove agentlayer@agentlayer-dev
+codex plugin add agentlayer@agentlayer-dev
 # start a new Codex session from the home, then:
 $upgrade
 ```

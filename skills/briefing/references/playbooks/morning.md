@@ -10,13 +10,13 @@ Target: ~400–600 words, eight sections, a ranked list of first moves, agent-em
 2. **Today's raw sessions** — `Glob` `<HOME>/knowledge/raw/sessions/<today>*.md`. **Read all of them.** Same for yesterday's last session if briefing runs before any session today.
 3. **Today's project deltas** — `Bash`: `find <HOME>/projects -type f -name '*.md' -newermt '<today> 00:00' -not -path '*/node_modules/*'` to surface files touched today. Also `git -C <HOME> log --since='36 hours ago' --oneline`.
 4. **Tasks**:
-   - `mcp__plugin_agent-kevin_kevin__task_query` `{status:"active"}`
+   - `mcp__plugin_agentlayer_agent__task_query` `{status:"active"}`
    - `{status:"open", priority:"P0"}` and `{status:"open", priority:"P1"}`
-   - `mcp__plugin_agent-kevin_kevin__task_scan` for overdue / due-soon (`dueSoon`, the next 14 days) / stale / blocked surfacing. A dated deadline in `dueSoon` belongs in `🎯 Today` when it's within a week or needs the operator's input first
-   - **Attention lanes**: `mcp__plugin_agent-kevin_kevin__attention_write` with no arguments. It re-renders the dashboard's Today → Attention view and returns today, carried over, the week and month lanes, the roadmap milestones in flight, and the cached queue of what people are waiting on (`snapshot`).
+   - `mcp__plugin_agentlayer_agent__task_scan` for overdue / due-soon (`dueSoon`, the next 14 days) / stale / blocked surfacing. A dated deadline in `dueSoon` belongs in `🎯 Today` when it's within a week or needs the operator's input first
+   - **Attention lanes**: `mcp__plugin_agentlayer_agent__attention_write` with no arguments. It re-renders the dashboard's Today → Attention view and returns today, carried over, the week and month lanes, the roadmap milestones in flight, and the cached queue of what people are waiting on (`snapshot`).
 5. **Tax owed** — when `<HOME>/projects/tax/entities/` exists, run the tax skill's engine (`bun "<plugin root>/skills/tax/scripts/calendar.ts" liability`) and carry one line into `🎯 Today`: the total owed now across entities (only the known ones, with "not priced" named for the rest, never RM 0 for an unknown) and the monthly set-aside. Skip silently when there is no tax project.
 6. **Goals** — read `<HOME>/projects/TASKS.md` `## Daily Goals`, `## Monthly Goals` and `## Weekly Goals` blocks. If empty, note the gap. When no Daily Goals heading is dated today, `/goals day` is a fourth-rank item in `👉 First moves` (the goals skill's [day](../../../goals/references/playbooks/day.md) playbook), which ends by pointing at `/attention plan`; the brief never sets them itself.
-7. **Signal-topic news** — read `<HOME>/knowledge/user/profile.md` `## Signal Topics` (and `<HOME>/USER.md`). Run **2–4 targeted `mcp__plugin_agent-kevin_kevin__web_search` calls in parallel** — the plugin's Perplexity-backed tool (the bare name `web_search` below always means this MCP tool; it returns raw dated sources with `recency`/`domains`/`country` filters, no pre-synthesis). One call per topic cluster relevant *today*. Suggested clusters (pick the ones that matter for current Active Threads, skip the rest):
+7. **Signal-topic news** — read `<HOME>/knowledge/user/profile.md` `## Signal Topics` (and `<HOME>/USER.md`). Run **2–4 targeted `mcp__plugin_agentlayer_agent__web_search` calls in parallel** — the plugin's Perplexity-backed tool (the bare name `web_search` below always means this MCP tool; it returns raw dated sources with `recency`/`domains`/`country` filters, no pre-synthesis). One call per topic cluster relevant *today*. Suggested clusters (pick the ones that matter for current Active Threads, skip the rest):
    - Pick clusters from the user's `## Signal Topics` (each topic or related-topic group becomes one query). Typical clusters: a competitive/industry cluster tied to the day job, a local-regulatory cluster (recency `"week"`, set `country` if applicable), an AI/tooling cluster covering the model ecosystem they build on, and a geopolitics cluster for events that touch their values or travel.
    - Use `recency: "day"` for fast-moving clusters, `recency: "week"` for slower regulatory ones.
    - **Capture the source URL for every result you might surface.** `web_search` returns citations/source links — keep the canonical URL alongside each candidate so it can be rendered as a clickable link in the brief. A signal with no source URL doesn't ship (see Signal gate).
@@ -105,7 +105,7 @@ Substitute `<USER_TZ>` with the operator's **current** IANA timezone — the zon
 ## Persist
 
 After rendering the brief in chat, **also persist a snapshot** via the
-`mcp__plugin_agent-kevin_kevin__report_write` MCP tool — the helper writes the
+`mcp__plugin_agentlayer_agent__report_write` MCP tool — the helper writes the
 file and inserts a one-line entry into `<HOME>/reports/index.md` under today's
 date in a single atomic call, and the SessionStart hook injects today's
 section of the index so later sessions know the brief already ran:

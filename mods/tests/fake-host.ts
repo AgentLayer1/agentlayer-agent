@@ -8,7 +8,7 @@ import type { Notice } from '../types';
  * The plugin's name as its manifest gives it, which a test has no filesystem to read; every name a
  * test spells (commands, tools, the CLI) derives from it.
  */
-export const PLUGIN = 'agent-kevin' as const;
+export const PLUGIN = 'agentlayer' as const;
 export const CLI = PLUGIN.replace(/^agent-/, '');
 export const STATS_TOOL = `mcp__${PLUGIN}__sync_stats` as const;
 

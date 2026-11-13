@@ -7,7 +7,7 @@ description: >
   wants an existing roadmap.html updated, even if they never say "roadmap". Wizard-style: interviews
   for the frame, mines the task board / project READMEs / git history for milestones, then renders
   from the house template.
-allowed-tools: AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash, Skill(agent-kevin:goals), mcp__plugin_agent-kevin_kevin__task_query, mcp__plugin_agent-kevin_kevin__task_get, mcp__plugin_agent-kevin_kevin__browser_screenshot, mcp__plugin_agent-kevin_kevin__run_upgrade
+allowed-tools: AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash, Skill(agentlayer:goals), mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_get, mcp__plugin_agentlayer_agent__browser_screenshot, mcp__plugin_agentlayer_agent__run_upgrade
 ---
 
 # Roadmap
@@ -23,7 +23,7 @@ Figure out what already exists so the wizard asks only what's genuinely open:
 1. **Update or create?** Glob for existing roadmaps: `<HOME>/roadmap.html` (the north star), `projects/*/roadmap.html` (a project's own), and anything the user pointed at. If the request targets an existing file, this is an **update** — skip to Iterating below; never regenerate a roadmap that already exists.
 2. Identify the subject: the whole life/company (multi-lane), one project, or a code repo. Read the matching sources: the cross-project task dashboard and yearly goals (`projects/TASKS.md`), the project README + tasks, or the repo's docs. For the north star, also read `knowledge/concepts/roadmap-draft.md` when it exists: init writes the goals the operator gave during setup there as a `| When | Milestone |` table, and so does a seed bundle.
 3. Note today's date and any hard external deadlines already on record (filings, events, seasons) — these become finish-line tags.
-4. **North star only: yearly goals come first.** When the `## Yearly Goals` block in `projects/TASKS.md` is missing, still the placeholder, or planned in an earlier year, run the goals skill's year playbook before this wizard, through the Skill tool (`agent-kevin:goals` with `year`); its quarters become this build's goals source.
+4. **North star only: yearly goals come first.** When the `## Yearly Goals` block in `projects/TASKS.md` is missing, still the placeholder, or planned in an earlier year, run the goals skill's year playbook before this wizard, through the Skill tool (`agentlayer:goals` with `year`); its quarters become this build's goals source.
 
 ## Phase 1 · Wizard interview
 

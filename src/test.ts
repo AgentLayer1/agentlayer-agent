@@ -21,7 +21,7 @@ import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from './shared/naming';
 
 // `mkdtemp`, never a fixed name: $TMPDIR is per-uid, so a stable path would be shared with any
 // concurrent `bun test` run on this machine.
-const home = mkdtempSync(resolve(tmpdir(), 'kevin-test-home-'));
+const home = mkdtempSync(resolve(tmpdir(), 'agentlayer-test-home-'));
 mkdirSync(resolve(home, RUNTIME_DIR), { recursive: true });
 writeFileSync(resolve(home, RUNTIME_DIR, HOME_MARKER_FILES[0]), `${JSON.stringify({ plugin: pluginName() })}\n`);
 process.env.AGENT_HOME = home;

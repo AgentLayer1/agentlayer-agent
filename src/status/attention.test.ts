@@ -67,7 +67,7 @@ describe('buildAttentionView', () => {
       task('ac-003', { horizon: '2026-09-25' }),
       task('ac-004', { horizon: '2026-W40', status: 'done' }),
       task('ac-005', { horizon: '2026-W39', status: 'done' }),
-      task('ac-006', { horizon: '2026-W40', assignee: ['kevin'] }),
+      task('ac-006', { horizon: '2026-W40', assignee: ['agent'] }),
       task('ac-007', { assignee: [] }),
       task('ac-008', { horizon: 'later', status: 'cancelled' })
     ])

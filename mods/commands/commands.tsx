@@ -9,8 +9,8 @@ import { PRIORITY_COLORS } from '../shared/priority';
 import type { TaskFrontmatter } from './today';
 import { STALE_SYNC_HOURS, buildToday, formatAge, parseEmoji, summarize } from './today';
 
-const todayBand = atom({ plugin: 'agent-kevin', key: 'todayBand' } as const, null);
-const sessionBand = atom({ plugin: 'agent-kevin', key: 'sessionBand' } as const, null);
+const todayBand = atom({ plugin: 'agentlayer', key: 'todayBand' } as const, null);
+const sessionBand = atom({ plugin: 'agentlayer', key: 'sessionBand' } as const, null);
 
 // The session root, not its cwd: a shell `cd` in a turn moves the cwd out of the home.
 async function runCli($: EngineInterface, args: readonly string[]): Promise<string> {

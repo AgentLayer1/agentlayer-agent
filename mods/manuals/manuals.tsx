@@ -24,9 +24,9 @@ import {
 } from './repo';
 
 // `${loop}:${path}` for each file attached and `${loop}:${folder}/` for each folder already read.
-const delivered = atom({ plugin: 'agent-kevin', key: 'delivered' } as const, []);
+const delivered = atom({ plugin: 'agentlayer', key: 'delivered' } as const, []);
 // Files the current turn attached, shown in the band until the turn ends.
-const thisTurn = atom({ plugin: 'agent-kevin', key: 'manualsThisTurn' } as const, []);
+const thisTurn = atom({ plugin: 'agentlayer', key: 'manualsThisTurn' } as const, []);
 
 const MAIN = 'main';
 

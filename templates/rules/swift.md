@@ -85,7 +85,7 @@ for the loop and the repo's own `AGENTS.md` for its per-project shape.
 
 Deeper, area-specific guidance lives in separately-authored MIT skills rather than here, so this
 rule stays short enough to be followed. Install the ones a project actually needs via
-`/agent-kevin:configure-skills` → third-party libraries:
+`/agentlayer:configure-skills` → third-party libraries:
 
 - [Swift Concurrency](https://github.com/twostraws/Swift-Concurrency-Agent-Skill),
   [Swift Testing](https://github.com/twostraws/Swift-Testing-Agent-Skill) and

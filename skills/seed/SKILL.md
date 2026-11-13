@@ -9,7 +9,7 @@ description: >
   ends with the credential checklist. One-shot fork, not ongoing sync. Triggers on "export the agent
   for <teammate>", "make a seed bundle", "get my team on this agent", "import this seed", "apply the
   bundle from <teammate>", a *-seed.zip handed over, or /seed.
-allowed-tools: mcp__plugin_agent-kevin_kevin__seed_scan, mcp__plugin_agent-kevin_kevin__seed_export, mcp__plugin_agent-kevin_kevin__seed_import, mcp__plugin_agent-kevin_kevin__codex_setup, AskUserQuestion, Read, Bash(ls *), Bash(cat *), Bash(grep *), Bash(test *)
+allowed-tools: mcp__plugin_agentlayer_agent__seed_scan, mcp__plugin_agentlayer_agent__seed_export, mcp__plugin_agentlayer_agent__seed_import, mcp__plugin_agentlayer_agent__codex_setup, AskUserQuestion, Read, Bash(ls *), Bash(cat *), Bash(grep *), Bash(test *)
 ---
 
 # Seed

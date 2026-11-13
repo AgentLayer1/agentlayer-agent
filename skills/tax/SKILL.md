@@ -12,12 +12,12 @@ allowed-tools:
   - Read
   - Write
   - Edit
-  - mcp__plugin_agent-kevin_kevin__task_create
-  - mcp__plugin_agent-kevin_kevin__task_query
-  - mcp__plugin_agent-kevin_kevin__task_get
-  - mcp__plugin_agent-kevin_kevin__task_update
-  - mcp__plugin_agent-kevin_kevin__task_close
-  - mcp__plugin_agent-kevin_kevin__task_thread
+  - mcp__plugin_agentlayer_agent__task_create
+  - mcp__plugin_agentlayer_agent__task_query
+  - mcp__plugin_agentlayer_agent__task_get
+  - mcp__plugin_agentlayer_agent__task_update
+  - mcp__plugin_agentlayer_agent__task_close
+  - mcp__plugin_agentlayer_agent__task_thread
 ---
 
 # Tax

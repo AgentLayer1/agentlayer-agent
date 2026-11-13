@@ -6,7 +6,7 @@ description: >
   packages. Also audits existing worktrees (merged, stale, safe to delete). Triggers on "make a
   worktree for <feature>", "spin up a worktree", "work this branch in parallel", "an isolated
   checkout for another agent", "which worktrees do I have", "what worktrees can I delete".
-allowed-tools: mcp__plugin_agent-kevin_kevin__setup_worktree, mcp__plugin_agent-kevin_kevin__list_worktrees, mcp__plugin_agent-kevin_kevin__remove_worktree, mcp__plugin_agent-kevin_kevin__database_fork, mcp__plugin_agent-kevin_kevin__database_list, mcp__plugin_agent-kevin_kevin__database_query, mcp__plugin_agent-kevin_kevin__github_pr_list, Bash, Read, Edit
+allowed-tools: mcp__plugin_agentlayer_agent__setup_worktree, mcp__plugin_agentlayer_agent__list_worktrees, mcp__plugin_agentlayer_agent__remove_worktree, mcp__plugin_agentlayer_agent__database_fork, mcp__plugin_agentlayer_agent__database_list, mcp__plugin_agentlayer_agent__database_query, mcp__plugin_agentlayer_agent__github_pr_list, Bash, Read, Edit
 ---
 
 # setup-worktree — parallel checkout, ready to code
@@ -46,7 +46,7 @@ the main checkout when you can, to keep paths predictable.)
 
 ## Step 1 — create + bootstrap via the tool
 
-Call `mcp__plugin_agent-kevin_kevin__setup_worktree` with:
+Call `mcp__plugin_agentlayer_agent__setup_worktree` with:
 
 - `repoPath` — absolute path to the repo's main checkout (from Step 0).
 - `branch` — a short, descriptive branch name from what the user is doing; ask only if genuinely
@@ -172,7 +172,7 @@ Flow:
 1. **Confirm first.** Run the in-use check above for this path, then state what you're about to remove — the `worktreePath` and its `branch` — and
    ask the operator to confirm. If they didn't mention the branch, ask in the same breath whether to
    delete it too or keep it. Only proceed on an explicit yes.
-2. **Dry-run pre-check.** Call `mcp__plugin_agent-kevin_kevin__remove_worktree` with `dryRun: true`
+2. **Dry-run pre-check.** Call `mcp__plugin_agentlayer_agent__remove_worktree` with `dryRun: true`
    (plus `worktreePath`). It reports the `status` **without touching anything** — so you learn whether
    the removal is blocked before you unwire the workspace:
    - **`blocked-uncommitted`** — the worktree has uncommitted changes. **Stop.** Tell the operator it
@@ -298,7 +298,7 @@ v0.3.0 credential env vars live there, not in `.claude/settings.local.json`). It
 first configured connection; when a repo has several, pick the right one in this order:
 
 1. A declaration in the **repo's `AGENTS.md`** (or its `CLAUDE.md`, root or `.claude/`) — a line of the form
-   `Worktree DB connection: <kevin-db-name>` (e.g. `acme`).
+   `Worktree DB connection: <connection name>` (e.g. `acme`).
 2. If the repo doesn't declare one and **`$AGENT_CODE_PATH` is set**, check that repo's `AGENTS.md` / `CLAUDE.md`
    for the same line.
 3. Otherwise run `database_list` and, if exactly one connection matches the repo's local server, use it;
@@ -311,7 +311,7 @@ first configured connection; when a repo has several, pick the right one in this
 - `setup_worktree` is **create-only**: it refuses if the worktree dir already exists. To rebuild an
   existing worktree, remove it (the drop flow above / `remove_worktree`) and recreate.
 - Repos without a `package.json` just get the file copy; install/build no-op.
-- Outside Claude Code, the same logic is on the CLI: `kevin worktree <repoPath> --branch=...
-  [--slug=...] [--extra=sub1,sub2]` to create, `kevin worktree remove <worktreePath>
+- Outside Claude Code, the same logic is on the CLI: `agentlayer worktree <repoPath> --branch=...
+  [--slug=...] [--extra=sub1,sub2]` to create, `agentlayer worktree remove <worktreePath>
   [--delete-branch] [--force]` to drop. That path is for a real terminal — under the Bash sandbox
   the MCP tools are the only way (the CLI would hit the same `.git/config` write block).

@@ -6,7 +6,7 @@ Strategic, not tactical. 2-4 themes max. Each theme has a concrete success crite
 
 1. **Last month's themes** — read previous `## Monthly Goals` block from `<HOME>/projects/TASKS.md` (if it exists).
 2. **What landed in the last month** — task closures, knowledge commits.
-3. **Full task board** — `mcp__plugin_agent-kevin_kevin__task_query` across **all** statuses and priorities. Blocked chains, stale P1s, and the P3 graveyard say as much about the month ahead as the active list does.
+3. **Full task board** — `mcp__plugin_agentlayer_agent__task_query` across **all** statuses and priorities. Blocked chains, stale P1s, and the P3 graveyard say as much about the month ahead as the active list does.
 4. **Recent sessions** — read the last ~2 weeks of daily memory files (`<HOME>/knowledge/memory/YYYY-MM-DD.md`); skim `<HOME>/knowledge/raw/sessions/` day files where memory is thin. Where attention actually went last month is the honest baseline for what next month's themes can realistically claim.
 5. **Active projects** — `<HOME>/projects/` directories, each project's README for vision/status.
 6. **Your durable preferences** — `<HOME>/USER.md`.
@@ -56,7 +56,7 @@ Skip questions whose answer is plain from context (e.g. don't ask about a theme 
 Offer to update `<HOME>/projects/TASKS.md` — replace **only** the `## Monthly Goals` block inside the `<!-- GOALS:START -->...<!-- GOALS:END -->` markers with the new month's content. Leave the other goal blocks and the auto-generated task-list sections outside the markers alone. Don't auto-write; confirm first.
 
 After updating `TASKS.md`, **also persist a snapshot** via the
-`mcp__plugin_agent-kevin_kevin__report_write` MCP tool so this month's themes
+`mcp__plugin_agentlayer_agent__report_write` MCP tool so this month's themes
 + report card survive when `TASKS.md` is overwritten next month:
 
 ```

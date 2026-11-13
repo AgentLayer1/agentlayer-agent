@@ -24,7 +24,7 @@ import {
   verbSuggestions
 } from './task';
 
-const taskCard = atom({ plugin: 'agent-kevin', key: 'taskCard' } as const, null);
+const taskCard = atom({ plugin: 'agentlayer', key: 'taskCard' } as const, null);
 const TASKS_FRESH_MS = 60_000;
 
 // Autocomplete and reply links share one read a minute; reply links draw from the last list while the next loads.

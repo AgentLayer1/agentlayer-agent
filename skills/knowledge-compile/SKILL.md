@@ -1,7 +1,7 @@
 ---
 name: knowledge-compile
 description: Compile raw session logs, feedback, and inbox items into structured wiki articles. Orchestrated in this session — MCP returns work items, Claude synthesizes, MCP confirms. Triggers on "compile my knowledge", "process the inbox", "absorb today's sessions", or /knowledge-compile.
-allowed-tools: mcp__plugin_agent-kevin_kevin__compile_status, mcp__plugin_agent-kevin_kevin__compile_next, mcp__plugin_agent-kevin_kevin__compile_write, Read, Write, Edit, Glob, Grep
+allowed-tools: mcp__plugin_agentlayer_agent__compile_status, mcp__plugin_agentlayer_agent__compile_next, mcp__plugin_agentlayer_agent__compile_write, Read, Write, Edit, Glob, Grep
 ---
 
 # Compile
@@ -10,8 +10,8 @@ Compile raw inputs from `<HOME>/knowledge/raw/` into structured wiki articles. T
 
 ## Loop
 
-1. Call `mcp__plugin_agent-kevin_kevin__compile_status` to see what's pending.
-2. Call `mcp__plugin_agent-kevin_kevin__compile_next`:
+1. Call `mcp__plugin_agentlayer_agent__compile_status` to see what's pending.
+2. Call `mcp__plugin_agentlayer_agent__compile_next`:
    - If `done: true`, you're finished. Stop.
    - Otherwise, item is `{ itemId, kind, fileName, prompt, meta }`. `kind` is `session` | `feedback` | `inbox`.
 3. **Read the `prompt` field carefully.** It contains:
@@ -26,7 +26,7 @@ Compile raw inputs from `<HOME>/knowledge/raw/` into structured wiki articles. T
    - Updates to `<HOME>/knowledge/memory/index.md` (active threads, recent decisions, learnings)
    - New or updated `<HOME>/knowledge/concepts/<slug>.md` (cross-cutting patterns)
    - Updates to `<HOME>/USER.md` (durable facts about you)
-5. After all edits land, call `mcp__plugin_agent-kevin_kevin__compile_write` with the `itemId`. State is updated: session items advance chunk counter (or promote on last chunk); feedback marks hash; inbox items archive the source file.
+5. After all edits land, call `mcp__plugin_agentlayer_agent__compile_write` with the `itemId`. State is updated: session items advance chunk counter (or promote on last chunk); feedback marks hash; inbox items archive the source file.
 6. Goto step 2.
 
 ## Gap pass (on completion)

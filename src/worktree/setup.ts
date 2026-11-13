@@ -1,6 +1,6 @@
 /**
  * Worktree lifecycle — the shared implementation behind the `setup_worktree` /
- * `list_worktrees` / `remove_worktree` MCP tools and the `kevin worktree` CLI command.
+ * `list_worktrees` / `remove_worktree` MCP tools and the `agentlayer worktree` CLI command.
  *
  * `setupWorktree` creates a sibling git worktree, copies the gitignored local files a fresh
  * checkout lacks (`.env*`, `.claude/settings.local.json`, `.cmux`, root `.cursor`/`.cursorignore`),

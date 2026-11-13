@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
-  "name": "agent-kevin",
+  "name": "agentlayer",
   "version": "0.9.4",
   "description": "Portable, file-based personal AI assistant. Compiles raw sessions into a queryable wiki, manages tasks across project lifecycles, drives SEO/web tools (GSC, PageSpeed, SerpAPI, headless browser, web search), and ships 20+ skills covering onboarding, daily/weekly/monthly cadences, audits, and content workflows. All data stays as local markdown + YAML.",
   "author": {
@@ -8,7 +8,7 @@
     "url": "https://agentlayer.one"
   },
   "homepage": "https://agentlayer.one",
-  "repository": "https://github.com/AgentLayer1/agent-kevin",
+  "repository": "https://github.com/AgentLayer1/agentlayer-agent",
   "license": "Apache-2.0",
   "keywords": [
     "personal-ai",
@@ -23,7 +23,7 @@
   "hooks": "./hooks/claude.json",
   "types": "./mods/types/index.d.ts",
   "mcpServers": {
-    "kevin": {
+    "agent": {
       "command": "bun",
       "args": [
         "${CLAUDE_PLUGIN_ROOT}/src/server.ts"
