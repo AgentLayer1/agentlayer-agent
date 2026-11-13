@@ -90,7 +90,7 @@ const writeAt = (root: string, rel: string, content: string): void => {
 };
 
 const plugin = JSON.parse(readFileSync(join(REPO, '.claude-plugin', 'plugin.json'), 'utf-8'));
-const AGENT = String(plugin.name).replace(/^agent-/, '');
+const AGENT = Object.keys(plugin.mcpServers)[0];
 const renderTemplate = (name: string, values: Record<string, string>): string =>
   Object.entries(values).reduce(
     (text, [key, value]) => text.replaceAll(`{{${key}}}`, value),

@@ -29,7 +29,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-const AGENT_CLI = pluginName().replace(/^agent-/, '');
+const AGENT_CLI = pluginName();
 
 const log = baseLog.slack.with('oauth');
 

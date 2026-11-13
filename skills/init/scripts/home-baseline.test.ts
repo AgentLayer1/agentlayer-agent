@@ -3,10 +3,10 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { pluginName } from '../../../src/shared/naming';
+import { agentSlug, pluginName } from '../../../src/shared/naming';
 
 const PLUGIN_NAME = pluginName();
-const AGENT_SLUG = PLUGIN_NAME.replace(/^agent-/, '');
+const AGENT_SLUG = agentSlug();
 
 const SCRIPT = resolve(import.meta.dir, 'home-baseline.ts');
 const TEMPLATE = readFileSync(resolve(import.meta.dir, '..', '..', '..', 'templates', '.gitignore'), 'utf-8');

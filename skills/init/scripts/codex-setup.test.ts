@@ -3,10 +3,10 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { legacyEnvPrefix, pluginName } from '../../../src/shared/naming';
+import { agentSlug, legacyEnvPrefix, pluginName } from '../../../src/shared/naming';
 
 const PLUGIN_NAME = pluginName();
-const AGENT_SLUG = PLUGIN_NAME.replace(/^agent-/, '');
+const AGENT_SLUG = agentSlug();
 
 const SCRIPT = resolve(import.meta.dir, 'codex-setup.ts');
 const CLI = resolve(import.meta.dir, '..', '..', '..', 'src', 'cli.ts');

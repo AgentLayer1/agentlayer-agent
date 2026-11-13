@@ -13,7 +13,7 @@ import { getAccessToken } from './oauth';
 import type { SlackChannel, SlackMessage, SlackUser } from './types';
 import { pluginName } from '@/shared/naming';
 
-const AGENT_CLI = pluginName().replace(/^agent-/, '');
+const AGENT_CLI = pluginName();
 
 const log = baseLog.slack.with('client');
 const SLACK_API_BASE = 'https://slack.com/api';

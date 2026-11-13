@@ -84,8 +84,9 @@ const expandTilde = (path: string): string => path.replace(/^~(?=$|\/)/, homedir
 const manifestPath = [pluginRoot, resolve(import.meta.dir, '..', '..', '..')]
   .map((root) => resolve(root, '.claude-plugin', 'plugin.json'))
   .find((path) => existsSync(path));
-const pluginName = String(readJson(String(manifestPath)).name ?? '');
-const agent = pluginName.replace(/^agent-/, '');
+const manifest = readJson(String(manifestPath));
+const pluginName = String(manifest.name ?? '');
+const agent = Object.keys(isRecord(manifest.mcpServers) ? manifest.mcpServers : {})[0] ?? '';
 if (!agent) {
   throw new Error(`${manifestPath}: the plugin manifest names no agent`);
 }

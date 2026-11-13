@@ -1,4 +1,4 @@
-import { PLUGIN_SOURCE_ROOT, dataDirOf } from '@/shared/naming';
+import { PLUGIN_SOURCE_ROOT, agentSlug, dataDirOf, pluginName } from '@/shared/naming';
 import { agentHomePath, env, isAgentHome, loadedSecretKeyNames } from '@/shared/env';
 import { expandTilde } from '@/shared/paths';
 import { existsSync, readFileSync } from 'node:fs';
@@ -74,14 +74,11 @@ export const SUBSCRIPTION_MARKER = 'AGENT_SUBSCRIPTION';
  *  defaults to Obsidian. */
 export const MARKDOWN_URL = env('MARKDOWN_URL') || 'obsidian://open?path={path}&paneType=tab';
 
-/** Plugin name used to detect "is this plugin enabled in cwd?" in cross-agent
- * defer logic. Mirrors `.claude-plugin/plugin.json` `name`. Kept here so the
- * harness-agnostic capture core stays one substitution away from a fork. */
-export const PLUGIN_NAME = 'agent-kevin';
+/** This plugin's name, from its manifest. */
+export const PLUGIN_NAME = pluginName();
 
-/** `kevin` for `agent-kevin`: the CLI's file name under `bin/`, the MCP server's key in the
- *  manifest, and the agent's handle in task frontmatter and threads. */
-export const AGENT_SLUG = PLUGIN_NAME.replace(/^agent-/, '');
+/** The agent's handle, from the manifest: its MCP server's key, and its name in task frontmatter and threads. */
+export const AGENT_SLUG = agentSlug();
 
 /** How Claude Code names this plugin's MCP tools in permission rules:
  *  `${MCP_PREFIX}<tool>`. */

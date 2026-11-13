@@ -107,8 +107,8 @@ describe("the agent's names", () => {
     expect(json('mods', '.claude-plugin', 'plugin.json').name).toBe(PLUGIN_NAME);
   });
 
-  test("the slug names the agent's own MCP server in the manifest", () => {
-    expect(Object.keys(json('.claude-plugin', 'plugin.json').mcpServers as object)).toContain(AGENT_SLUG);
+  test("the slug is the manifest's one MCP server key", () => {
+    expect(Object.keys(json('.claude-plugin', 'plugin.json').mcpServers as object)).toEqual([AGENT_SLUG]);
   });
 
   test("the mods' state contract is keyed by the plugin name", () => {

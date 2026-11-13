@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { FILES, FOLDERS, PLUGIN_VERSION, staticContextFiles } from '@/config';
+import { AGENT_SLUG, FILES, FOLDERS, PLUGIN_VERSION, staticContextFiles } from '@/config';
 import { CLI_FILE, HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
 import { sessionStart, sessionStartCodex } from '@/knowledge/session-start';
 import { recordOutcome } from '@/notices/ledger';
@@ -137,7 +137,7 @@ describe('sessionStart', () => {
         }),
       () => sessionStartCodex()
     );
-    expect(first.additionalContext).toContain(`${pluginName().replace(/^agent-/, '')} static context · harness: codex`);
+    expect(first.additionalContext).toContain(`${AGENT_SLUG} static context · harness: codex`);
     expect(first.additionalContext).toContain('<!-- file: SOUL.md -->');
     expect(first.additionalContext).toContain('Sharp, a little spicy.');
     expect(first.additionalContext).toContain('<!-- file: IDENTITY.md -->');

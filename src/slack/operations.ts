@@ -182,7 +182,7 @@ export type Whoami = SignedIn | { connected: false; hint: string };
 
 export async function getWhoami(): Promise<Whoami> {
   if (!existsSync(slackTokensFile())) {
-    const cli = pluginName().replace(/^agent-/, '');
+    const cli = pluginName();
     return { connected: false, hint: `No Slack sign-in yet. Run \`${cli} slack auth\` from your own terminal.` };
   }
   const tokens = loadTokens();

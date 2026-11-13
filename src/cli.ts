@@ -133,11 +133,10 @@ function parseHookInput(raw: string): HookInput {
 }
 
 const PLUGIN = pluginName();
-const CLI = PLUGIN.replace(/^agent-/, '');
-const PLUGIN_TITLE = `Agent-${CLI.replace(/^./, (first) => first.toUpperCase())}`;
+const CLI = PLUGIN;
 
 const HELP = `\
-${CLI} — ${PLUGIN_TITLE} CLI
+${CLI} CLI
 
 Usage:
   ${CLI} <group> <command> [flags]

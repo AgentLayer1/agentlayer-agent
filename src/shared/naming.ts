@@ -25,7 +25,7 @@ import { dirname, join, resolve } from 'node:path';
  * agent.
  */
 
-let cachedPluginName: string | undefined;
+let cachedManifest: PluginManifest | undefined;
 let cachedEnvPrefix: string | undefined;
 
 const MANIFEST_FILE = join('.claude-plugin', 'plugin.json');
@@ -63,29 +63,44 @@ const brokenManifest = (reason: string, cause?: unknown): Error =>
     { cause }
   );
 
-/**
- * This plugin's manifest name (`agent-kevin`), read once. Throws when the
- * manifest can't be read; only successes are cached, so a transient read
- * failure can't poison the process.
- */
-export const pluginName = (): string => {
-  if (cachedPluginName === undefined) {
-    cachedPluginName = readPluginName();
+interface PluginManifest {
+  name?: unknown;
+  mcpServers?: unknown;
+}
+
+/** The manifest, read once. Only a successful read is cached, so a transient failure can't poison the process. */
+const manifest = (): PluginManifest => {
+  if (cachedManifest === undefined) {
+    try {
+      cachedManifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf-8')) as PluginManifest;
+    } catch (cause) {
+      throw brokenManifest('the plugin manifest is missing or malformed', cause);
+    }
   }
-  return cachedPluginName;
+  return cachedManifest;
 };
 
-const readPluginName = (): string => {
-  let name: unknown;
-  try {
-    name = (JSON.parse(readFileSync(MANIFEST_PATH, 'utf-8')) as { name?: unknown }).name;
-  } catch (cause) {
-    throw brokenManifest('the plugin manifest is missing or malformed', cause);
-  }
+/** This plugin's manifest name (`agent-kevin`): its slash-command namespace and the owner a home records. */
+export const pluginName = (): string => {
+  const { name } = manifest();
   if (typeof name !== 'string' || !name) {
     throw brokenManifest(`the plugin manifest has no usable "name"`);
   }
   return name;
+};
+
+/**
+ * The agent's handle (`kevin`): the key of the one MCP server the manifest declares. It names
+ * that server's tools in permission rules and the agent in task frontmatter and threads.
+ */
+export const agentSlug = (): string => {
+  const { mcpServers } = manifest();
+  const keys = typeof mcpServers === 'object' && mcpServers !== null ? Object.keys(mcpServers) : [];
+  const [key] = keys;
+  if (keys.length !== 1 || !key) {
+    throw brokenManifest('the plugin manifest must declare exactly one MCP server');
+  }
+  return key;
 };
 
 /**

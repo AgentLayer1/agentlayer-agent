@@ -35,7 +35,7 @@ import {
 import { runAuthFlow } from './oauth';
 import { pluginName } from '@/shared/naming';
 
-const AGENT_CLI = pluginName().replace(/^agent-/, '');
+const AGENT_CLI = pluginName();
 
 const log = baseLog.slack.with('cli');
 

@@ -13,7 +13,7 @@ import { defineTool, type ToolDef } from '@/shared/types';
 import { z } from 'zod';
 import { pluginName } from '@/shared/naming';
 
-const AGENT_CLI = pluginName().replace(/^agent-/, '');
+const AGENT_CLI = pluginName();
 
 const SINCE = z
   .string()
