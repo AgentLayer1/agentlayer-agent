@@ -51,8 +51,7 @@ bun "${CLAUDE_SKILL_DIR}/scripts/find_session.ts" "<term>" "<term2>" ...
   - `sessions`: transcript hits in scope. Each carries `title` (operator's `/rename` wins
     over the auto-title), `started` / `last_timestamp`, `cwds` (every directory the session
     roamed into), `git_branches`, `first_user_msg`, `slash_commands`, `hits` per term,
-    `terms_in_user_prompts` (which terms appear in the operator's own messages), and
-    `in_brain`.
+    `terms_in_user_prompts` (which terms appear in the operator's own messages).
   - `brain`: session-log hits in this home, whatever the scope. Each carries
     `first_date` / `last_date`, `first_user_msg`, `slash_commands`, `hits`,
     `terms_in_user_prompts`, `transcript` (its `.jsonl` path anywhere on this machine, or
