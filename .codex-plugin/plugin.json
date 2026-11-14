@@ -1,7 +1,7 @@
 {
   "name": "agentlayer",
-  "version": "0.9.4",
-  "description": "Portable, file-based personal AI assistant. Compiles raw sessions into a queryable wiki, manages tasks across project lifecycles, drives SEO/web tools (GSC, PageSpeed, SerpAPI, headless browser, web search), and ships 20+ skills covering onboarding, daily/weekly/monthly cadences, audits, and content workflows. All data stays as local markdown + YAML.",
+  "version": "1.0.0",
+  "description": "An agent that remembers your work, in a folder you own. It captures every session, compiles what it learned into plain markdown, and loads it back before you type. Tasks, briefings, a dashboard, and packs for GitHub, databases, support desks, SEO and a browser. All data stays local.",
   "author": {
     "name": "AgentLayer",
     "url": "https://agentlayer.one"
