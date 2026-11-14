@@ -1,16 +1,24 @@
 ---
 name: find-session
-description: Find a specific past Claude Code session by what it worked on — a branch, a PR number, a worktree, a bug, a feature, a task id — and hand back its resume command. Content search over all transcript history, not a time-boxed list. Use when the operator asks "find the session that…", "which session was working on/with X", "give me the session that did X", "what session was I fixing X in", "search my sessions for X", or "resume the session about X". Complements the attention skill's checkpoint all (the recent-sessions radar) — reach for this when the operator names WHAT the session did rather than WHEN it ran.
+description: Find a past session by what it worked on — a branch, a PR number, a worktree, a bug, a feature, a task id — and hand back its resume command or its notes from the brain. Searches all transcripts and session logs. Use when the operator asks "find the session that…", "which session was working on/with X", "give me the session that did X", "what session was I fixing X in", "search my sessions for X", or "resume the session about X". Complements the attention skill's checkpoint all (the recent-sessions radar) — reach for this when the operator names WHAT the session did rather than WHEN it ran.
 allowed-tools: Bash, Read, AskUserQuestion
 ---
 
 # find-session — locate a session by its content
 
 The operator remembers the work, not the session id. This skill turns "the session that
-was reworking the dashboard radar" into `claude --resume <id>`. The deterministic
-work (grep + signal extraction across `~/.claude/projects/`) lives in a bundled script;
-your job is the discrimination: separating the session that *did* the work from the
-briefings, syncs, and standups that merely *mentioned* it.
+was reworking the dashboard radar" into `claude --resume <id>`, or into its notes in
+context when it can't be resumed from here. It searches two places:
+
+- **Claude Code's transcripts** (`~/.claude/projects/`): resumable, but filed under the
+  folder a session started in, and kept only by that tool.
+- **The brain's session logs** (`<home>/knowledge/raw/sessions/`): every captured session,
+  whichever tool or folder it ran in, including sessions from before a home moved. Never
+  pruned, so this is the history that lasts.
+
+The deterministic work (search + signal extraction) lives in a bundled script; your job is
+the discrimination: separating the session that *did* the work from the briefings, syncs,
+and standups that merely *mentioned* it.
 
 ## Step 1 — derive search terms
 
@@ -39,10 +47,18 @@ bun "${CLAUDE_SKILL_DIR}/scripts/find_session.ts" "<term>" "<term2>" ...
   sessions launched in or beneath any of them. Zero matches → retry with `--scope all`
   before declaring it not found.
 - Output is JSON sorted by raw hit count — **that sort is a starting point, not the
-  answer** (Step 3). Each match carries: `title` (operator's `/rename` wins over the
-  auto-title), `started` / `last_timestamp`, `cwds` (every directory the session roamed
-  into), `git_branches`, `first_user_msg`, `slash_commands`, `hits` per term,
-  `terms_in_user_prompts` (which terms appear in the operator's own messages).
+  answer** (Step 3). Two lists:
+  - `sessions`: transcript hits in scope. Each carries `title` (operator's `/rename` wins
+    over the auto-title), `started` / `last_timestamp`, `cwds` (every directory the session
+    roamed into), `git_branches`, `first_user_msg`, `slash_commands`, `hits` per term,
+    `terms_in_user_prompts` (which terms appear in the operator's own messages), and
+    `in_brain`.
+  - `brain`: session-log hits in this home, whatever the scope. Each carries
+    `first_date` / `last_date`, `first_user_msg`, `slash_commands`, `hits`,
+    `terms_in_user_prompts`, `transcript` (its `.jsonl` path anywhere on this machine, or
+    null), and `blocks`: each captured entry as `file`, `start_line`, `end_line`, `date`,
+    `turns` and its own `hits`.
+  - The same session can appear in both; treat it as one candidate.
 
 ## Step 3 — rank by signal, not by hit count
 
@@ -57,6 +73,9 @@ the session that did the work. Weigh, first match wins ties:
 4. **Hit concentration** — many hits in a session *not* explained by 1–3 usually means a
    reporting session. `slash_commands` names them (`/sync`, `/attention standup`, a briefing); a
    high-hit session that is just a skill run is a mention, not the work.
+
+Brain hits have no title or cwd trail: lean on `terms_in_user_prompts`, `slash_commands`,
+and the opening of the block with the most hits.
 
 Traps, learned the hard way:
 
@@ -79,6 +98,18 @@ operator described; if that's not conclusive, read the transcript's tail
 verification, put the choice to the operator via `AskUserQuestion` — label = title,
 description = when it ran + what distinguishes it.
 
+How it's reached decides the action:
+
+- **A transcript under the current folder:** hand back `claude --resume <id>`, as below.
+- **A transcript only under another folder** (a home that moved, a code repo): it resumes
+  only from that folder (`cd <folder> && claude --resume <id>`), and an old home reopens on
+  whatever plugin it had. Offer that, and offer loading its notes instead (next bullet).
+- **No transcript** (an older tool, Codex, a transcript deleted or left behind): ask with
+  `AskUserQuestion`, "Load this session's notes into context?". On yes, read its `blocks`
+  with `Read` (`offset` = `start_line`, `limit` = `end_line - start_line + 1`), the block
+  with the most hits first, then offer the rest in date order rather than loading them
+  all; a long session can fill the context.
+
 Deliver as a short card:
 
 ```
@@ -91,9 +122,11 @@ Found it: **<session-id>** — "<title>"
 claude --resume <session-id>
 ```
 
+(or, with nothing to resume here, the load offer in place of the command)
+
 Then one honest line on the **boundary** of what the session contains — e.g. "ends at the
 commit; the PR itself was opened elsewhere" — so the operator isn't surprised on resume.
 Runners-up, if any, get a single line each (id + why they're plausible).
 
 Ephemeral — no report, nothing written. Read-only with respect to sessions: never resume,
-kill, or send input to one yourself.
+kill, or send input to one yourself, and never edit a session log.

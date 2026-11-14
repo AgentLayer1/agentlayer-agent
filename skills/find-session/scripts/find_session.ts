@@ -1,11 +1,13 @@
 #!/usr/bin/env bun
 /**
- * Find Claude Code sessions whose transcripts contain the given search terms.
+ * Find past sessions whose content holds the given search terms, in two places:
+ * Claude Code's transcripts (~/.claude/projects/<encoded-cwd>/<session-id>.jsonl),
+ * which can be resumed, and the brain's session logs (<home>/knowledge/raw/sessions),
+ * which outlive any one tool or folder and can be read back into context.
  *
- * Scans ~/.claude/projects/<encoded-cwd>/<session-id>.jsonl for substring hits,
- * then parses only the matching transcripts to extract the signals that separate
- * "worked on it" from "mentioned it": distinct cwds (worktree roaming), title,
- * per-term hit counts, and whether the operator's own prompts contain a term.
+ * For each hit it extracts the signals that separate "worked on it" from
+ * "mentioned it": distinct cwds (worktree roaming), title, per-term hit counts,
+ * and whether the operator's own prompts contain a term.
  * Read-only, no network. Prints JSON sorted by total hits, then recency.
  *
  * Usage: bun find_session.ts [--scope <path>[,<path>...]|all] [--hours <n>] <term> [term ...]
@@ -13,6 +15,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
+import { ownDataDir } from '../../../src/shared/naming';
+import { searchBrain } from './brain';
 
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 const USER_SNIPPET = 300;
@@ -214,7 +218,10 @@ const loweredTerms = [...new Set(terms.map((term) => term.toLowerCase()))];
 
 // Default roots mirror list_sessions.ts: cwd, the agent HOME, and the code tree, built
 // in-process because a shell-expanded $PWD arrives POSIX-form under Git Bash on Windows.
-const agentHome = process.env.AGENT_HOME?.trim();
+/** The nearest folder at or above `dir` that is this plugin's home. */
+const homeAbove = (dir: string): string | undefined =>
+  ownDataDir(dir) ? dir : dirname(dir) === dir ? undefined : homeAbove(dirname(dir));
+const agentHome = process.env.AGENT_HOME?.trim() || homeAbove(process.cwd());
 const codePath = process.env.AGENT_CODE_PATH?.trim();
 const defaultScope = [process.cwd(), agentHome, codePath && dirname(codePath)]
   .filter((path): path is string => Boolean(path))
@@ -239,8 +246,10 @@ const hours =
   hoursFlag !== undefined && !Number.isNaN(Number.parseFloat(hoursFlag)) ? Number.parseFloat(hoursFlag) : null;
 const cutoffMs = hours === null ? null : Date.now() - hours * 3600 * 1000;
 
-const matches = listTranscripts(PROJECTS_DIR)
-  .filter((path) => !basename(path).startsWith('agent-')) // subagent sidechains aren't resumable
+const transcripts = listTranscripts(PROJECTS_DIR).filter((path) => !basename(path).startsWith('agent-')); // subagent sidechains aren't resumable
+const transcriptOf = new Map(transcripts.map((path) => [basename(path, '.jsonl'), path]));
+
+const matches = transcripts
   .filter(
     (path) => encodedScopes === null || encodedScopes.some((encoded) => inScope(basename(dirname(path)), encoded))
   )
@@ -265,6 +274,17 @@ const matches = listTranscripts(PROJECTS_DIR)
       second.total_hits - first.total_hits || (second.last_timestamp ?? '').localeCompare(first.last_timestamp ?? '')
   );
 
+const knowledge = process.env.AGENT_KNOWLEDGE?.trim() || (agentHome ? join(agentHome, 'knowledge') : null);
+const since = cutoffMs === null ? null : new Date(cutoffMs).toISOString().slice(0, 10);
+// A session id in the brain may be the 8-character prefix older captures used.
+const transcriptFor = (id: string): string | null =>
+  transcriptOf.get(id) ?? transcripts.find((path) => basename(path).startsWith(id)) ?? null;
+const brain = (knowledge ? searchBrain(join(knowledge, 'raw', 'sessions'), loweredTerms, since) : []).map((match) => ({
+  ...match,
+  transcript: transcriptFor(match.session_id)
+}));
+const inBrain = new Set(brain.map((match) => match.session_id));
+
 process.stdout.write(
   JSON.stringify(
     {
@@ -273,7 +293,11 @@ process.stdout.write(
       window_hours: hours,
       matched: matches.length,
       truncated: matches.length > MAX_RESULTS,
-      sessions: matches.slice(0, MAX_RESULTS)
+      sessions: matches
+        .slice(0, MAX_RESULTS)
+        .map((match) => ({ ...match, in_brain: [...inBrain].some((id) => match.session_id.startsWith(id)) })),
+      brain_matched: brain.length,
+      brain: brain.slice(0, MAX_RESULTS)
     },
     null,
     1
