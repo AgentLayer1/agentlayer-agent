@@ -261,6 +261,24 @@ describe('sessionStart', () => {
     expect(result.additionalContext.split('\n\n---\n\n')[1]).toStartWith('## First Session Since Init');
   });
 
+  test('welcome: a moved home is greeted as moved, with its old folder and move note', async () => {
+    const result = await withHome(
+      (home) =>
+        markedHome(home, {
+          [cadence]: '{ "welcome": "pending" }',
+          [`${RUNTIME_DIR}/version.json`]: JSON.stringify({
+            plugin: pluginName(),
+            migratedFrom: { plugin: 'old-plugin', home: '/Users/ada/Agents/Old', name: 'Ada', at: '2026-11-14', note: 'reports/plans/move.md' }
+          })
+        }),
+      () => sessionStart()
+    );
+    expect(result.systemMessage).toContain('first session since the move');
+    expect(result.additionalContext).toContain('## First Session Since the Move');
+    expect(result.additionalContext).toContain('copied here from `/Users/ada/Agents/Old` on 2026-11-14, where the agent was Ada');
+    expect(result.additionalContext).toContain('from `reports/plans/move.md`');
+  });
+
   test('welcome: Codex gets the same welcome through the shared assembler', async () => {
     const result = await withHome(
       (home) => markedHome(home, { [cadence]: '{ "welcome": "pending" }' }),

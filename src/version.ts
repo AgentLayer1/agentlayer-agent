@@ -68,7 +68,37 @@ export const compareSemver = (a: string, b: string): number => {
 
 interface VersionFile {
   templateVersion?: string;
+  migratedFrom?: unknown;
 }
+
+/** Where a move copied this home from, as the move recorded it in `version.json`. */
+export interface MigratedFrom {
+  home: string;
+  /** The agent's name there. */
+  name: string | null;
+  /** The day of the move, YYYY-MM-DD. */
+  at: string | null;
+  /** The move note, relative to the home: the sessions to continue and what the move kept. */
+  note: string | null;
+}
+
+/** Where this home was moved from, or null for a home set up in place. */
+export const readMigratedFrom = (): MigratedFrom | null => {
+  try {
+    const { migratedFrom }: VersionFile = JSON.parse(readFileSync(FILES.VERSION, 'utf-8'));
+    if (typeof migratedFrom !== 'object' || migratedFrom === null) {
+      return null;
+    }
+    const field = (key: string): string | null => {
+      const value: unknown = (migratedFrom as Record<string, unknown>)[key];
+      return typeof value === 'string' && value ? value : null;
+    };
+    const home = field('home');
+    return home ? { home, name: field('name'), at: field('at'), note: field('note') } : null;
+  } catch {
+    return null;
+  }
+};
 
 /** HOME template baseline from `<HOME>/<data-dir>/version.json`, or null when the
  *  file is missing/unreadable (a pre-feature or uninitialized home). */

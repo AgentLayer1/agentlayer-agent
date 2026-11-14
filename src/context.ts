@@ -37,7 +37,7 @@ import { readText, readTextAsync } from '@/shared/text';
 import { countOf } from '@/shared/utils';
 import { livePins } from '@/status/surfaces';
 import { statusLineDrift } from '@/statusline/setting';
-import { getUpgradeStatus } from '@/version';
+import { getUpgradeStatus, readMigratedFrom } from '@/version';
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -251,13 +251,26 @@ const noticeLine = (notice: Notice): string =>
     paint(`run /${notice.command}`, ANSI.dim)
   ].join(' · ');
 
-const welcomePart = (): string =>
-  [
-    '## First Session Since Init',
-    '',
-    `The operator just set this home up and relaunched. On their first message, read \`${resolve(FOLDERS.ROOT, 'skills', 'init', 'references', 'welcome.md')}\` and follow it: it asks where to start, with the roadmap first. Its commands run from the plugin root, \`${FOLDERS.ROOT}\`.`,
+const welcomePart = (): string => {
+  const guide = resolve(FOLDERS.ROOT, 'skills', 'init', 'references', 'welcome.md');
+  const moved = readMigratedFrom();
+  const ask = moved
+    ? [
+        '## First Session Since the Move',
+        '',
+        `This home was copied here from \`${moved.home}\`${moved.at ? ` on ${moved.at}` : ''}${moved.name ? `, where the agent was ${moved.name}` : ''}. On the operator's first message, read \`${guide}\` and follow its section for a moved home: it finishes the move, then offers the sessions to continue${moved.note ? ` from \`${moved.note}\`` : ''}.`
+      ]
+    : [
+        '## First Session Since Init',
+        '',
+        `The operator just set this home up and relaunched. On their first message, read \`${guide}\` and follow it: it asks where to start, with the roadmap first.`
+      ];
+  return [
+    ...ask,
+    `Its commands run from the plugin root, \`${FOLDERS.ROOT}\`.`,
     'If that first message is a concrete task, do the task, then run the welcome at the end of the same turn.'
   ].join('\n');
+};
 
 function renderBanner(
   entries: ManifestEntry[],
@@ -281,7 +294,13 @@ function renderBanner(
   ];
   head.splice(1, 0, ...notices.map(noticeLine));
   if (welcomePending()) {
-    head.splice(1, 0, "  👋 Welcome:   first session, say hi and I'll suggest where to start");
+    head.splice(
+      1,
+      0,
+      readMigratedFrom()
+        ? "  👋 Welcome:   first session since the move, say hi and I'll pick up where you left off"
+        : "  👋 Welcome:   first session, say hi and I'll suggest where to start"
+    );
   }
   if (subscription) {
     head.splice(1, 0, `  ⚠️ Billing:   ${subscription}`);

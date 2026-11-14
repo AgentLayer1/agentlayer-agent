@@ -4,6 +4,19 @@ Init can't ask what to do first: the operator has to exit and relaunch before th
 
 `<PLUGIN_ROOT>` below is the plugin root the session context names.
 
+## A moved home
+
+When `<HOME>/.state/version.json` has `migratedFrom`, this home was copied here from another folder by the previous plugin's move, and the session context says so. Follow this section instead of sections 1, 2 and 4; section 3 still clears the flag.
+
+1. **Finish the move.** Run this plugin's `upgrade` skill first and follow it to the end: it writes the status line, the Codex wiring and the new template lines that the copy doesn't have yet.
+2. **Greet as the agent.** One or two lines in IDENTITY's voice: the name, `Formerly:` when IDENTITY has it, and that the home moved here from `migratedFrom.home` on `migratedFrom.at`.
+3. **Remember where it came from.** Add one line under `## Key Context` in `knowledge/memory/index.md`, unless one is already there:
+   `- **Moved** — this home was copied from \`<migratedFrom.home>\` on <migratedFrom.at>, where the agent was <migratedFrom.name> on the <migratedFrom.plugin> plugin; session logs, reports and archives from before then use those names.`
+   The dated records keep the old names for good, so this line stays as long as they do.
+4. **Ask where to start.** Read the move note at `migratedFrom.note` when there is one. Offer up to three of its sessions to continue as `Pick up: <what it was doing>`, then **Morning brief**. Without a note, or without sessions in it, offer the options in section 2 instead.
+5. **Clear the flag** (section 3).
+6. **Run the pick.** A session to continue runs the `find-session` skill with its id: it loads that session's notes from the brain. Then start on the next step the note gives. Close with one line naming the other sessions in the note, so the operator knows they're still there.
+
 ## 1. Read the home (no writes)
 
 - **Inbox:** how many files sit in `knowledge/raw/inbox/` (documents from init's Step 5d that no compile has absorbed yet).
