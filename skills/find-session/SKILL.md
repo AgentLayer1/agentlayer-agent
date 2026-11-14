@@ -61,6 +61,10 @@ bun "${CLAUDE_SKILL_DIR}/scripts/find_session.ts" "<term>" "<term2>" ...
 
 ## Step 3 — rank by signal, not by hit count
 
+**Given a session id** (or its first 8 characters), skip the ranking: the match whose
+`session_id` starts with it is the answer, and every other hit only mentions it. Go
+straight to Step 4.
+
 Briefings, syncs, standups, and radar runs mention *everything* — they routinely out-hit
 the session that did the work. Weigh, first match wins ties:
 
