@@ -154,7 +154,7 @@ function yamlScalar(value: string): string {
   // whitespace / a leading `-` (list marker). Mid-value hyphens are fine bare.
   // Text YAML reads back as another type (`745`, `true`, `null`) is quoted too,
   // or Obsidian flags a mixed-type list in Properties.
-  if (/^\s|\s$|^-|[:#?{}\[\],&*!|>'%@`"]/.test(value) || !readsBackAsString(value)) {
+  if (/^\s|\s$|^-|[:#?{}\[\],&*!|>'%@`"\n\r]/.test(value) || !readsBackAsString(value)) {
     return JSON.stringify(value);
   }
   return value;
@@ -237,7 +237,9 @@ function findFirstSectionIndex(lines: string[]): number {
 
 function renderBullet(entry: IndexEntry): string {
   const hhmm = `${entry.time.slice(0, 2)}:${entry.time.slice(2, 4)}`;
-  const parts = [`- ${hhmm} · [${entry.title}](${entry.linkPath}) · \`${entry.skill}\``];
+  // One line, and brackets escaped, so a title can't break the bullet or its link.
+  const title = entry.title.replace(/\s+/g, ' ').trim().replace(/[[\]]/g, (bracket) => `\\${bracket}`);
+  const parts = [`- ${hhmm} · [${title}](${entry.linkPath}) · \`${entry.skill}\``];
   if (entry.status) parts.push(`· ${STATUS_ICON[entry.status]} ${entry.status}`);
   return parts.join(' ');
 }

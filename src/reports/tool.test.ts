@@ -14,6 +14,12 @@ describe('report_write extra frontmatter', () => {
     expect(accepts({ round: 1, kind: 'range', task: null, repos: ['acme', 'acme-web'] })).toBe(true);
   });
 
+  test('rejects a key that would break the frontmatter line', () => {
+    expect(accepts({ 'a: b': 1 })).toBe(false);
+    expect(accepts({ 'two\nlines': 1 })).toBe(false);
+    expect(accepts({ round_2: 1, 'related-ids': [] })).toBe(true);
+  });
+
   test('rejects nested objects and lists of objects, which Obsidian shows as raw JSON', () => {
     expect(accepts({ repos: [{ name: 'acme', head: 'abc123' }] })).toBe(false);
     expect(accepts({ owner: { name: 'Ada' } })).toBe(false);
@@ -37,6 +43,20 @@ describe('writeReport frontmatter', () => {
       related_ids: ['abc123', '4096', 'null', ''],
       count: 3,
     });
+  });
+});
+
+describe('a report title or summary with a line break or brackets', () => {
+  test('stays one frontmatter value and one index line', async () => {
+    const title = 'Sweep [draft]\nsecond line';
+    const { path } = await writeReport({ category: 'radar', slug: 'odd-title', title, skill: 'attention', body: 'Body.', summary: 'a\nb' });
+    const block = readFileSync(path, 'utf-8').split('---')[1] ?? '';
+    expect(Bun.YAML.parse(block)).toMatchObject({ title, summary: 'a\nb' });
+    const line = readFileSync(join(FOLDERS.REPORTS, 'index.md'), 'utf-8').split('\n').find((entry) => entry.includes('odd-title'));
+    expect(line).toContain('[Sweep \\[draft\\] second line](');
+    const { collectStatus } = await import('@/status/collect');
+    const titles = (await collectStatus()).reports.map((report) => report.title);
+    expect(titles).toContain('Sweep [draft] second line');
   });
 });
 

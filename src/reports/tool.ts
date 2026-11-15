@@ -40,7 +40,10 @@ export const tools: ToolDef[] = [
         .describe('Optional status. Rendered as 🟢 clean · 🟠 findings · 🔴 critical · ⏳ draft in the index.'),
       tags: z.array(z.string()).optional().describe('Optional tags array stored in frontmatter.'),
       extra: z
-        .record(z.string(), z.union([FRONTMATTER_SCALAR, z.null(), z.array(FRONTMATTER_SCALAR)]))
+        .record(
+          z.string().regex(/^[A-Za-z_][A-Za-z0-9_-]*$/, 'A frontmatter key is letters, digits, _ and -'),
+          z.union([FRONTMATTER_SCALAR, z.null(), z.array(FRONTMATTER_SCALAR)])
+        )
         .optional()
         .describe(
           'Skill-specific frontmatter keys appended after the standard ones. Values are flat: a string, number, boolean, null, or a list of those. Structured data goes in the body.'

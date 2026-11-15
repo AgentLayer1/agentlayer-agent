@@ -1559,7 +1559,8 @@ const collectReports = (): ReportRef[] => {
         day = heading[1];
         continue;
       }
-      const entry = line.match(/^- (\d{2}:\d{2}) · \[([^\]]+)\](?:\(([^)]+)\))?(?: · `([^`]+)`)?(?: · (\S+))?/);
+      // A title's own brackets are written escaped (`\[draft\]`), so the link text runs to the first bare `]`.
+      const entry = line.match(/^- (\d{2}:\d{2}) · \[((?:\\.|[^\]\\])+)\](?:\(([^)]+)\))?(?: · `([^`]+)`)?(?: · (\S+))?/);
       if (!entry) continue;
       // Index links are relative to reports/; the dashboard sits at <HOME>.
       const href = entry[3] ? `reports/${entry[3]}` : '';
@@ -1567,7 +1568,7 @@ const collectReports = (): ReportRef[] => {
       refs.push({
         date: day,
         time: entry[1],
-        title: entry[2],
+        title: entry[2].replace(/\\([[\]])/g, '$1'),
         href,
         skill: entry[4] ?? '',
         status: entry[5] ?? '',
