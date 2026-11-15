@@ -153,7 +153,8 @@ const clip = (text: string): string => (text.length > BODY_LIMIT ? `${text.slice
 
 const fragment = (url: string): string => url.slice(url.indexOf('#') + 1);
 
-const isNew = (at: string, since: string | null): boolean => since !== null && at > since;
+// Compared as instants: GitHub's `…:00Z` and a `…:00.900Z` cutoff sort wrongly as strings.
+const isNew = (at: string, since: string | null): boolean => since !== null && Date.parse(at) > Date.parse(since);
 
 const owedFrom = (
   comment: CommentNode,

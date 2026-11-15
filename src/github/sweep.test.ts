@@ -150,6 +150,11 @@ describe('owed conversation', () => {
     );
     expect(sweep.prs[0]?.owed.map((item) => item.new)).toEqual([false, true]);
   });
+
+  test('a comment in the cutoff second, before a fractional cutoff, is not new', () => {
+    const sweep = run([pr({ comments: { nodes: [comment('bob', '2026-10-20T00:00:00Z')] } })], [], '2026-10-20T00:00:00.900Z');
+    expect(sweep.prs[0]?.owed.map((item) => item.new)).toEqual([false]);
+  });
 });
 
 describe('review state', () => {
