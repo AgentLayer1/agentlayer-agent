@@ -2,7 +2,7 @@ import { FILES } from '@/config';
 import { nowISO } from '@/shared/date';
 import { isRecord } from '@/shared/json-block';
 import { writeJsonAtomic } from '@/shared/utils';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 /**
  * The `cadence.json` watermarks runtime surfaces read. The goals keys belong to the sync skill's
@@ -25,4 +25,18 @@ export const readCadence = (): Cadence => {
   }
 };
 
-export const stampSync = (): void => writeJsonAtomic(FILES.CADENCE, { ...readCadence(), sync: nowISO() });
+/** Set one watermark. A file that won't parse is left for the operator, never replaced, so no watermark is lost. */
+export const stampCadence = (key: string, value: string): void => {
+  if (existsSync(FILES.CADENCE)) {
+    try {
+      if (!isRecord(JSON.parse(readFileSync(FILES.CADENCE, 'utf-8')))) {
+        throw new Error('not an object');
+      }
+    } catch {
+      throw new Error(`${FILES.CADENCE} is not valid JSON; fix or remove it, then try again.`);
+    }
+  }
+  writeJsonAtomic(FILES.CADENCE, { ...readCadence(), [key]: value });
+};
+
+export const stampSync = (): void => stampCadence('sync', nowISO());
