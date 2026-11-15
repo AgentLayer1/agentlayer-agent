@@ -2,6 +2,7 @@
  * PageSpeed Insights MCP tools — typed wrappers using the shared Google OAuth.
  */
 import { log } from '@/shared/log';
+import { fetchSignal } from '@/shared/call-signal';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { google } from 'googleapis';
 import { z } from 'zod';
@@ -36,7 +37,7 @@ const unitless = (audits: Record<string, unknown>, id: string): number | null =>
 
 async function fetchPsi(url: string, strategy: Strategy): Promise<PsiSlice> {
   const psi = google.pagespeedonline({ version: 'v5', auth: authorizedClient() });
-  const res = await psi.pagespeedapi.runpagespeed({ url, strategy, category: ['PERFORMANCE'] });
+  const res = await psi.pagespeedapi.runpagespeed({ url, strategy, category: ['PERFORMANCE'] }, { signal: fetchSignal(120_000) });
   const lh = (res.data.lighthouseResult ?? {}) as {
     categories?: { performance?: { score?: number | null } };
     audits?: Record<string, unknown>;

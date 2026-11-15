@@ -10,6 +10,7 @@
  * Refresh tokens rotate on every refresh and expire after 30d of inactivity.
  */
 import { agentDisplayName } from '@/shared/agent-name';
+import { fetchSignal } from '@/shared/call-signal';
 import { log as baseLog } from '@/shared/log';
 import { CLI_COMMAND, pluginName } from '@/shared/naming';
 import { writeJsonAtomic } from '@/shared/utils';
@@ -152,6 +153,7 @@ async function refreshTokens(current: SlackTokens): Promise<SlackTokens> {
   const res = await fetch(SLACK_OAUTH_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    signal: fetchSignal(),
     body
   });
   const data = (await res.json()) as SlackOAuthResponse;
@@ -265,6 +267,7 @@ export async function runAuthFlow(): Promise<SlackTokens> {
   const exchange = await fetch(SLACK_OAUTH_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    signal: fetchSignal(),
     body
   });
   const data = (await exchange.json()) as SlackOAuthResponse;

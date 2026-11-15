@@ -5,6 +5,7 @@
  * that reaches the origin: three more times, a pause apart, where reviews were seen before
  * (the approach in https://github.com/AsoBeast/asobeast/pull/109).
  */
+import { fetchSignal } from '@/shared/call-signal';
 import { isRecord } from '@/shared/json-block';
 import { inChunks } from '@/shared/utils';
 import type { AppStoreReview, ReviewBatch, ReviewSource, StorefrontCoverage } from './types';
@@ -80,7 +81,7 @@ export const parseFeed = (text: string, storefront: string): FeedPage => {
 };
 
 const getPage = async (url: string, storefront: string): Promise<FeedPage> => {
-  const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: fetchSignal(TIMEOUT_MS) });
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }

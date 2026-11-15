@@ -6,6 +6,7 @@
  */
 import { env } from '@/shared/env';
 import { log } from '@/shared/log';
+import { fetchSignal } from '@/shared/call-signal';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { google } from 'googleapis';
 import { z } from 'zod';
@@ -47,7 +48,7 @@ export const tools: ToolDef[] = [
       const { data } = await webmasters.searchanalytics.query({
         siteUrl: siteUrl(site),
         requestBody: { startDate, endDate, dimensions: dims, dimensionFilterGroups, rowLimit: rowLimit ?? 1000 }
-      });
+      }, { signal: fetchSignal() });
       const rows = data.rows ?? [];
       log.info(`gsc_query ${startDate}→${endDate} dims=${dims.join(',')} rows=${rows.length}`);
       return { rows, rowCount: rows.length };
@@ -64,7 +65,7 @@ export const tools: ToolDef[] = [
       const searchconsole = google.searchconsole({ version: 'v1', auth: authorizedClient() });
       const { data } = await searchconsole.urlInspection.index.inspect({
         requestBody: { inspectionUrl: url, siteUrl: siteUrl(site) }
-      });
+      }, { signal: fetchSignal() });
       log.info(`gsc_inspect ${url}`);
       return data;
     }
@@ -75,7 +76,7 @@ export const tools: ToolDef[] = [
     inputSchema: {},
     handler: async () => {
       const webmasters = google.webmasters({ version: 'v3', auth: authorizedClient() });
-      const { data } = await webmasters.sites.list();
+      const { data } = await webmasters.sites.list({}, { signal: fetchSignal() });
       const entries = data.siteEntry ?? [];
       log.info(`gsc_sites — ${entries.length} properties`);
       return entries;
