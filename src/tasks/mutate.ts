@@ -88,7 +88,7 @@ const appendThreadToDisk = (filePath: string, type: ThreadEntry['type'], author:
   content = replaceFrontmatter(content, fm);
 
   // Format and append the callout block
-  const lines = [`> [!${type}] ${author} · ${now()}`];
+  const lines = [`> [!${type}] ${author.replace(/\s+/g, ' ').trim()} · ${now()}`];
   for (const msgLine of message.split('\n')) {
     lines.push(`> ${msgLine}`);
   }
@@ -124,10 +124,18 @@ export const verifyMutation = (
 
 const PROJECT_SLUG = /^[a-z0-9][a-z0-9_-]*$/i;
 
+/** A section heading inside a description would end the Description section early and swallow what follows. */
+const assertDescription = (description: string | undefined): void => {
+  if (description?.split('\n').some(isSectionHeader)) {
+    throw new Error('A description cannot contain a ## Description, ## Checklist or ## Thread heading');
+  }
+};
+
 export const createTask = (opts: CreateTaskOptions): TaskFile => {
   const projectDir = join(FOLDERS.PROJECTS, opts.project);
   if (!PROJECT_SLUG.test(opts.project) || !existsSync(projectDir))
     throw new Error(`Unknown project: ${opts.project} (directory not found under ${FOLDERS.PROJECTS})`);
+  assertDescription(opts.description);
 
   const id = getNextId(opts.project);
   const slug = slugify(opts.title);
@@ -181,9 +189,7 @@ export const updateTask = (id: string, { description, ...requested }: UpdateTask
       throw new Error(`Invalid status transition: ${task.frontmatter.status} -> ${fields.status}`);
     }
   }
-  if (description?.split('\n').some(isSectionHeader)) {
-    throw new Error('A description cannot contain a ## Description, ## Checklist or ## Thread heading');
-  }
+  assertDescription(description);
 
   updateTaskOnDisk(
     task.filePath,

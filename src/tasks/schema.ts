@@ -128,7 +128,7 @@ const parseYamlValue = (raw: string): string | string[] => {
     }
   }
   if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
-    return trimmed.slice(1, -1);
+    return trimmed.slice(1, -1).replace(/''/g, "'");
   }
   return trimmed;
 };
@@ -156,10 +156,12 @@ const parseFrontmatterFull = (raw: string): ParsedFrontmatter | null => {
         continue;
       }
       const existing = fields[lastKey];
+      const parsed = parseYamlValue(dashMatch[1]);
+      const item = typeof parsed === 'string' ? parsed : dashMatch[1].trim();
       if (Array.isArray(existing)) {
-        existing.push(dashMatch[1].trim());
+        existing.push(item);
       } else {
-        fields[lastKey] = [dashMatch[1].trim()];
+        fields[lastKey] = [item];
       }
       continue;
     }
@@ -221,7 +223,7 @@ const parseFrontmatterFull = (raw: string): ParsedFrontmatter | null => {
 export const parseFrontmatter = (raw: string): TaskFrontmatter | null => parseFrontmatterFull(raw)?.frontmatter ?? null;
 
 const CHECKLIST_RE = /^- \[([ xX])\] (.+)$/;
-const THREAD_RE = /^> \[!(quote|info|warning)\] ([\w-]+) · (\d{4}-\d{2}-\d{2} \d{2}:\d{2})$/;
+const THREAD_RE = /^> \[!(quote|info|warning)\] (.+?) · (\d{4}-\d{2}-\d{2} \d{2}:\d{2})$/;
 
 // Only these headers are section boundaries; anything else (## Objective, ### Details, etc.) stays in the current section.
 const KNOWN_SECTIONS = new Set(['description', 'checklist', 'thread']);
@@ -291,7 +293,7 @@ export const parseTaskFile = (filePath: string): TaskFile | null => {
 
 // ── Serialization ─────────────────────────────────────────────────────
 
-const NEEDS_QUOTING = /[:\[\]{}#&*!|>'"%@`,?]/;
+const NEEDS_QUOTING = /[:\[\]{}#&*!|>'"%@`,?\n\r]/;
 
 export const serializeValue = (val: string | string[] | number): string => {
   if (Array.isArray(val)) {

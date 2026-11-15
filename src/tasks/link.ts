@@ -21,7 +21,7 @@ export const buildTaskMap = (): Map<string, string> => {
 
     for (const file of readdirSync(dir)) {
       if (!file.endsWith('.md') || file.startsWith('.')) continue;
-      const match = file.match(/^([a-z]+-\d+)/);
+      const match = file.match(/^([a-z]+\d*-\d+)/);
       if (!match) continue;
       const id = match[1];
       const stem = file.replace(/\.md$/, '');

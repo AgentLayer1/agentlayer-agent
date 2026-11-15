@@ -13,7 +13,7 @@ const STATUSES = ['done', 'progress', 'planned'];
 
 export const LEGACY_LITERAL = /\bconst ROADMAP\s*=\s*\{/;
 export const ROADMAP_PARSE_LINE = 'const ROADMAP = JSON.parse(document.getElementById("roadmap-data").textContent);';
-const TASK_ID = /\b[a-z]{2}-\d{3,}\b/g;
+const TASK_ID = /\b[a-z]{2}\d*-\d{3,}\b/g;
 
 export type RoadmapRead = JsonBlockRead | { kind: 'legacy' };
 

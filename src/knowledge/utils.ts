@@ -92,7 +92,7 @@ export async function loadTaskTargets(): Promise<Set<string>> {
         if (!file.endsWith('.md')) continue;
         const slug = file.replace(/\.md$/, '');
         targets.add(slug);
-        const bareId = slug.match(/^([a-z]{2}-\d{3})/i)?.[1];
+        const bareId = slug.match(/^([a-z]{2}\d*-\d{3})/i)?.[1];
         if (bareId) targets.add(bareId.toLowerCase());
       }
     })

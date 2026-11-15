@@ -45,6 +45,24 @@ describe('frontmatter round trip', () => {
     expect(parseFrontmatter(raw)?.labels).toEqual(['C:dir', 'ok']);
   });
 
+  test('a title holding a line break stays one quoted value', () => {
+    const title = 'Fix A\n---\nmore';
+    const raw = task(title, []);
+    expect(parseFrontmatter(raw)?.title).toBe(title);
+    expect(parseFrontmatter(raw)?.project).toBe('acme');
+  });
+
+  test('block-list items and single-quoted values read the way YAML writes them', () => {
+    const raw = task('x', [])
+      .replace('title: x', "title: 'It''s here'")
+      .replace('depends_on: []', 'depends_on:\n  - "ac-002"\n  - ac-003')
+      .replace('labels: []', "labels:\n  - 'needs: review'\n  - plain");
+    const parsed = parseFrontmatter(raw);
+    expect(parsed?.title).toBe("It's here");
+    expect(parsed?.depends_on).toEqual(['ac-002', 'ac-003']);
+    expect(parsed?.labels).toEqual(['needs: review', 'plain']);
+  });
+
   test('an older unescaped title still reads', () => {
     const raw = task('x', []).replace('title: x', 'title: "Build a "voice of Ada" profile"');
     expect(parseFrontmatter(raw)?.title).toBe('Build a "voice of Ada" profile');

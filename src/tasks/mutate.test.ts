@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FOLDERS } from '@/config';
+import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
 import { appendThread, closeTask, createTask, updateTask } from './mutate';
 import { findTaskById } from './scan';
 
@@ -22,6 +24,54 @@ describe('createTask', () => {
   test('refuses a project that is not a plain slug, so nothing is written outside projects/', () => {
     mkdirSync(join(FOLDERS.PROJECTS, '..', 'outside', 'tasks'), { recursive: true });
     expect(() => createTask({ project: '../outside', title: 'Escape', description: '', assignee: ['user'] })).toThrow(/Unknown project/);
+  });
+});
+
+describe('task files that must survive a round trip', () => {
+  test('a title or blocked_by with a line break keeps every other field', () => {
+    const id = newTask().frontmatter.id;
+    updateTask(id, { title: 'Fix A\n---\nmore', priority: 'P0', status: 'blocked', blocked_by: 'Waiting on vendor\n- then legal' });
+    const task = findTaskById(id);
+    expect(task?.frontmatter).toMatchObject({ title: 'Fix A\n---\nmore', priority: 'P0', project: 'acme', blocked_by: 'Waiting on vendor\n- then legal' });
+  });
+
+  test('a new description with a section heading is refused, like an update', () => {
+    mkdirSync(join(FOLDERS.PROJECTS, 'acme', 'tasks'), { recursive: true });
+    expect(() =>
+      createTask({ project: 'acme', title: 'Headings', description: 'intro\n## Checklist\n- [x] fake', assignee: ['user'] })
+    ).toThrow(/heading/);
+  });
+
+  test('a thread author with a space or symbol reads back', () => {
+    const id = newTask().frontmatter.id;
+    appendThread(id, 'Ada (operator)', 'first');
+    appendThread(id, 'oppi', 'second');
+    expect(findTaskById(id)?.thread.map((entry) => [entry.author, entry.message])).toEqual([
+      ['Ada (operator)', 'first'],
+      ['oppi', 'second']
+    ]);
+  });
+});
+
+describe('a collision prefix', () => {
+  test('tasks under a digit-suffixed prefix are scanned like any other', async () => {
+    const home = mkdtempSync(join(tmpdir(), 'tasks-prefix-'));
+    mkdirSync(join(home, RUNTIME_DIR), { recursive: true });
+    writeFileSync(join(home, RUNTIME_DIR, HOME_MARKER_FILES[0]), `${JSON.stringify({ plugin: pluginName() })}\n`);
+    const preload = process.env.AGENT_HOME;
+    process.env.AGENT_HOME = home;
+    try {
+      ['home-server', 'home-stuff'].forEach((project) => mkdirSync(join(FOLDERS.PROJECTS, project, 'tasks'), { recursive: true }));
+      const ids = ['home-server', 'home-stuff'].map(
+        (project) => createTask({ project, title: 'First', description: '', assignee: ['user'] }).frontmatter.id
+      );
+      expect(ids).toEqual(['hs-001', 'hs2-001']);
+      const { scanAllTasks } = await import('./scan');
+      expect(scanAllTasks().map((task) => task.frontmatter.id).toSorted()).toEqual(['hs-001', 'hs2-001']);
+    } finally {
+      process.env.AGENT_HOME = preload;
+      rmSync(home, { recursive: true, force: true });
+    }
   });
 });
 
