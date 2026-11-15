@@ -188,6 +188,12 @@ describe('readEnvFile', () => {
     expect(readEnvFile(resolve(dir, '.env'))).toEqual({ CARD: '4111111111111111', CVV: '123', EMPTY: '' });
   });
 
+  test('reads a shell-style export line', () => {
+    const dir = mkdtempSync(resolve(tmpdir(), 'agentlayer-flowenv-'));
+    writeFileSync(resolve(dir, '.env'), 'export FOO=bar\nexport  QUOTED="x y"\nPLAIN=1\n');
+    expect(readEnvFile(resolve(dir, '.env'))).toEqual({ FOO: 'bar', QUOTED: 'x y', PLAIN: '1' });
+  });
+
   test('returns {} for an absent file', () => {
     expect(readEnvFile(resolve(tmpdir(), 'agentlayer-does-not-exist-xyz', '.env'))).toEqual({});
   });

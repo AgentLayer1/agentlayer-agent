@@ -1,5 +1,18 @@
 import { describe, expect, test } from 'bun:test';
-import { inChunks } from './utils';
+import { chmodSync, mkdtempSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { inChunks, writeFileAtomic } from './utils';
+
+describe('writeFileAtomic', () => {
+  test("a rewrite keeps the file's permissions", () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'atomic-')), 'settings.local.json');
+    writeFileSync(file, '{}');
+    chmodSync(file, 0o600);
+    writeFileAtomic(file, '{"env": {}}');
+    expect(statSync(file).mode & 0o777).toBe(0o600);
+  });
+});
 
 describe('inChunks', () => {
   test('keeps the order and never runs more than the chunk size at once', async () => {

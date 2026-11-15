@@ -119,7 +119,7 @@ const gatedSecretsDir = (): string => resolve(agentHomePath(), RUNTIME_DIR, 'sec
 function parseDotenv(raw: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const line of raw.split('\n')) {
-    const trimmed = line.trim();
+    const trimmed = line.trim().replace(/^export\s+/, '');
     if (!trimmed || trimmed.startsWith('#')) continue;
     const eq = trimmed.indexOf('=');
     if (eq <= 0) continue;
