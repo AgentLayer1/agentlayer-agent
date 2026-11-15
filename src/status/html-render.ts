@@ -25,9 +25,9 @@
  */
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import type { ManifestEntry } from '@/context';
+import type { ManifestEntry } from '@/hooks/context';
 import type { HistoryState } from '@/home/history';
-import { BANNER_LINES, bannerTag } from '@/shared/banner';
+import { BANNER_LINES, bannerTag } from '@/hooks/banner';
 import { daysBetween } from '@/shared/date';
 import { jsonBlock } from '@/shared/json-block';
 import { RUNTIME_DIR } from '@/shared/naming';

@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { posix, win32 } from 'node:path';
-import { existingTarget } from '../shared/paths';
+import { existingTarget } from '@/shared/paths';
 import { commandWords, scanShell, type ShellCommand, type ShellJoiner } from './shell-scan';
 
 /** One platform's path rules, with the home and the starting cwd already in that platform's form. */

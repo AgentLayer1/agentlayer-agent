@@ -21,7 +21,7 @@ import {
   type SecretEntry,
   TIMEZONE
 } from '@/config';
-import { contextManifest, type ManifestEntry } from '@/context';
+import { contextManifest, type ManifestEntry } from '@/hooks/context';
 import { type HistoryState, historyStatus, type LastCommit } from '@/home/history';
 import { HOST_FLOORS } from '@/upgrade/hosts';
 import { listInboxFiles } from '@/knowledge/utils';

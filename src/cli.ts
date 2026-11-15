@@ -33,12 +33,13 @@ if (process.argv[2] === 'statusline') {
 }
 
 await loadProjectEnv();
-const { env } = await import('@/shared/env');
 
 const [, , group, command, ...args] = process.argv;
+// Flags may follow the group directly (`session-start --hook-protocol=claude`), so they're read from the command slot too.
+const verbArgs = [command, ...args].filter((arg): arg is string => Boolean(arg));
 
 function flag(name: string): string | undefined {
-  const f = args.find((a) => a.startsWith(`--${name}=`));
+  const f = verbArgs.find((a) => a.startsWith(`--${name}=`));
   return f?.slice(name.length + 3);
 }
 
@@ -53,35 +54,14 @@ function flagArr(name: string): string[] {
 }
 
 function flagAll(name: string): string[] {
-  return args
+  return verbArgs
     .filter((a) => a.startsWith(`--${name}=`))
     .map((a) => a.slice(name.length + 3))
     .filter(Boolean);
 }
 
 function bool(name: string): boolean {
-  return args.includes(`--${name}`);
-}
-
-interface HookInput {
-  session_id?: string;
-  transcript_path?: string;
-  cwd?: string;
-  tool_input?: { command?: unknown };
-}
-
-/**
- * Parse hook JSON arriving on stdin. Falls back to escaping unescaped
- * backslashes (a workaround for some Claude hook payload variants that
- * emit Windows-style paths without re-escaping).
- */
-function parseHookInput(raw: string): HookInput {
-  try {
-    return JSON.parse(raw);
-  } catch {
-    const fixed = raw.replace(/(?<!\\)\\(?!["\\])/g, '\\\\');
-    return JSON.parse(fixed);
-  }
+  return verbArgs.includes(`--${name}`);
 }
 
 const PLUGIN = pluginName();
@@ -524,120 +504,12 @@ async function run(): Promise<void> {
     }
   }
 
-  if (group === 'guard') {
-    // A hook process runs in the session's cwd, which a Bash `cd` moves; the home still
-    // resolves through the host's project dir (Claude) or --home (Codex). Outside a home
-    // there is nothing to protect.
-    if (!isInitialized()) return;
-    const raw = await Bun.stdin.text();
-    const input: HookInput = raw.trim() ? parseHookInput(raw) : {};
-    const commandText = input.tool_input?.command;
-    if (typeof commandText !== 'string' || !input.cwd) return;
-    const { shellGuard } = await import('@/knowledge/bash-guard');
-    const host = [command, ...args].includes('--hook-protocol=codex') ? 'codex' : 'claude';
-    const refusal = shellGuard(commandText, input.cwd, FOLDERS.HOME, host, { launch: env('CLAUDE_PROJECT_DIR') });
-    if (refusal) {
-      console.error(refusal);
-      process.exit(2);
-    }
-    return;
-  }
-
-  if (group === 'session-start') {
-    const allArgs = [command, ...args].filter((a): a is string => Boolean(a));
-    const localFlag = (name: string): string | undefined => {
-      const f = allArgs.find((a) => a.startsWith(`--${name}=`));
-      return f?.slice(name.length + 3);
-    };
-
-    const hookProtocol = localFlag('hook-protocol');
-    if (hookProtocol !== undefined && hookProtocol !== 'claude' && hookProtocol !== 'codex') {
-      throw new Error(`Unknown --hook-protocol: ${hookProtocol} (supported: claude, codex)`);
-    }
-
-    const { sessionStart, sessionStartCodex } = await import('@/knowledge/session-start');
-    // Only Claude Code's terminal is known to render the banner's color and to draw the mods' prompt row;
-    // the banner leaves nudges and alerts to the row once the row has shown it fetches them.
-    const isTerminal = hookProtocol === 'claude' && env('CLAUDE_CODE_ENTRYPOINT') === 'cli';
-    const { rowDraws } = await import('@/notices/notices');
-    const result =
-      hookProtocol === 'codex'
-        ? await sessionStartCodex()
-        : await sessionStart({ promptRow: isTerminal && rowDraws(), color: isTerminal });
-
-    if (hookProtocol === 'claude' || hookProtocol === 'codex') {
-      process.stdout.write(
-        JSON.stringify({
-          systemMessage: result.systemMessage,
-          hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: result.additionalContext }
-        })
-      );
-      if (result.error) process.exit(1);
-    } else {
-      console.log(JSON.stringify(result, null, 2));
-    }
-    return;
-  }
-
-  if (group === 'session-capture') {
-    const allArgs = [command, ...args].filter((a): a is string => Boolean(a));
-    const localFlag = (name: string): string | undefined => {
-      const f = allArgs.find((a) => a.startsWith(`--${name}=`));
-      return f?.slice(name.length + 3);
-    };
-
-    const mode = localFlag('mode');
-    if (mode !== 'session-end' && mode !== 'pre-compact') {
-      throw new Error(
-        `Usage: ${CLI_COMMAND} session-capture --mode=session-end|pre-compact [--hook-protocol=claude|codex] [--transcript=PATH --cwd=PATH --session-id=X] [--format=claude|codex]`
-      );
-    }
-
-    const hookProtocol = localFlag('hook-protocol');
-    let transcriptPath: string;
-    let cwd: string;
-    let sessionId: string;
-
-    // Codex's hook payload uses Claude's field names (session_id, transcript_path, cwd).
-    if (hookProtocol === 'claude' || hookProtocol === 'codex') {
-      const raw = await Bun.stdin.text();
-      const parsed = parseHookInput(raw);
-      transcriptPath = parsed.transcript_path ?? '';
-      // Claude reports the shell's cwd, which a Bash `cd` moves; the session lives where
-      // it was launched, which the host exports separately. Codex's cwd is stable.
-      cwd = (hookProtocol === 'claude' ? env('CLAUDE_PROJECT_DIR') : undefined) ?? parsed.cwd ?? '';
-      sessionId = parsed.session_id ?? 'unknown';
-    } else if (hookProtocol) {
-      throw new Error(`Unknown --hook-protocol: ${hookProtocol}`);
-    } else {
-      transcriptPath = localFlag('transcript') ?? '';
-      cwd = localFlag('cwd') ?? process.cwd();
-      sessionId = localFlag('session-id') ?? 'cli';
-    }
-
-    const formatFlag = localFlag('format') ?? (hookProtocol === 'codex' ? 'codex' : undefined);
-    if (formatFlag !== undefined && formatFlag !== 'claude' && formatFlag !== 'codex') {
-      throw new Error(`Unknown --format: ${formatFlag} (supported: claude, codex)`);
-    }
-
-    const { captureSession } = await import('@/knowledge/session-capture');
-    const result = await captureSession({
-      transcriptPath,
-      cwd,
-      sessionId,
-      mode,
-      format: formatFlag
-    });
-
-    if (hookProtocol === 'claude') {
-      if (result.saved && mode === 'pre-compact') {
-        const systemMessage = `💾 Saved ${result.turns} turn${result.turns === 1 ? '' : 's'} to ${result.filename}`;
-        process.stdout.write(
-          JSON.stringify({ systemMessage, hookSpecificOutput: { hookEventName: 'PreCompact' } })
-        );
-      }
-    } else {
-      console.log(JSON.stringify(result, null, 2));
+  if (group === 'guard' || group === 'session-start' || group === 'session-capture') {
+    const { runGuard, runSessionCapture, runSessionStart } = await import('@/hooks/handlers');
+    const handler = { guard: runGuard, 'session-start': runSessionStart, 'session-capture': runSessionCapture }[group];
+    const code = await handler(flag);
+    if (code) {
+      process.exit(code);
     }
     return;
   }
@@ -646,25 +518,20 @@ async function run(): Promise<void> {
     // Combine command + args so flags can land anywhere after `capture`. The
     // first non-flag arg (if any) is treated as inline positional text, so
     // `capture "the thought"` works without --text=.
-    const allArgs = [command, ...args].filter((a): a is string => Boolean(a));
-    const localFlag = (name: string): string | undefined => {
-      const f = allArgs.find((a) => a.startsWith(`--${name}=`));
-      return f?.slice(name.length + 3);
-    };
-    const positional = allArgs.find((a) => !a.startsWith('--'));
-    const wantStdin = allArgs.includes('--stdin');
-    let text = positional ?? localFlag('text');
-    if (!text && !localFlag('file') && !localFlag('url') && (wantStdin || !process.stdin.isTTY)) {
+    const positional = verbArgs.find((a) => !a.startsWith('--'));
+    const wantStdin = bool('stdin');
+    let text = positional ?? flag('text');
+    if (!text && !flag('file') && !flag('url') && (wantStdin || !process.stdin.isTTY)) {
       text = await Bun.stdin.text();
     }
     const { capture } = await import('@/knowledge/capture');
     const result = await capture({
       text,
-      file: localFlag('file'),
-      url: localFlag('url'),
-      kind: localFlag('kind') as 'inbox' | 'feedback' | undefined,
-      title: localFlag('title'),
-      label: localFlag('label')
+      file: flag('file'),
+      url: flag('url'),
+      kind: flag('kind') as 'inbox' | 'feedback' | undefined,
+      title: flag('title'),
+      label: flag('label')
     });
     console.log(JSON.stringify(result, null, 2));
     return;

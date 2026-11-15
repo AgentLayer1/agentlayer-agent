@@ -27,7 +27,7 @@ import { checkHosts, hostIssues, requiredHosts, type HostName } from '@/upgrade/
 import type { Notice, NoticeFact, NoticeLevel } from '@/notices/notices';
 import { collectNotices } from '@/notices/notices';
 import { agentDisplayName } from '@/shared/agent-name';
-import { ANSI, paint } from '@/shared/banner';
+import { ANSI, paint } from '@/hooks/banner';
 import { env } from '@/shared/env';
 import { readCadence } from '@/shared/cadence';
 import { log as baseLog } from '@/shared/log';
@@ -42,7 +42,7 @@ import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { basename, relative, resolve, sep } from 'node:path';
-import { FIRST_SESSION_HEADER_RE, SESSION_BLOCK_SEPARATOR_RE, TRAILING_SEPARATOR_RE } from './knowledge/session-format';
+import { FIRST_SESSION_HEADER_RE, SESSION_BLOCK_SEPARATOR_RE, TRAILING_SEPARATOR_RE } from '@/knowledge/session-format';
 
 const log = baseLog.session.with('context');
 

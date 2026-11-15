@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { homeRelativeLeak, shellGuard } from './bash-guard';
+import { homeRelativeLeak, shellGuard } from './guard';
 
 const root = mkdtempSync(join(tmpdir(), 'bash-guard-'));
 const home = join(root, 'Agents', 'Scout');
