@@ -37,7 +37,14 @@ export const quoteIdent = (name: string): string => `"${name.replaceAll('"', '""
 
 /** Hosts a write/DDL tool may act on. Empty host = unix-socket connection (local). */
 const LOCAL_HOSTS = new Set(['', 'localhost', '127.0.0.1', '::1']);
-export const isLocalHost = (host: string): boolean => LOCAL_HOSTS.has(host.replace(/^\[|\]$/g, ''));
+export const isLocalHost = (host: string): boolean => host.startsWith('/') || LOCAL_HOSTS.has(host.replace(/^\[|\]$/g, ''));
+
+/** Every host a connection string can reach: node-postgres lets `?host=` and `?hostaddr=` override the URL's own. */
+export const connectionHosts = (url: string): string[] => {
+  const parsed = new URL(url);
+  const overrides = ['host', 'hostaddr'].flatMap((param) => parsed.searchParams.getAll(param).flatMap((value) => value.split(',')));
+  return [parsed.hostname, ...overrides];
+};
 
 /** Resolve a configured connection name (or the first configured one) to its string. */
 const resolveConnection = (name?: string): { name: string; url: string } => {
@@ -115,7 +122,8 @@ export const upsertEnvLine = (content: string, envVar: string, value: string): s
   const line = `${envVar}="${value}"`;
   const pattern = new RegExp(`^${escaped}=.*$`, 'm');
   if (pattern.test(content)) {
-    return content.replace(pattern, line);
+    // A replacer function, so a `$&` or `$1` in the value (a password) is written as is.
+    return content.replace(pattern, () => line);
   }
   return content === '' ? `${line}\n` : `${content.replace(/\n?$/, '\n')}${line}\n`;
 };
@@ -234,8 +242,8 @@ export const tools: ToolDef[] = [
     }) => {
       const resolved = resolveConnection(connection);
       const sourceUrl = resolved.url;
-      const host = new URL(sourceUrl).hostname;
-      if (!isLocalHost(host)) {
+      const host = connectionHosts(sourceUrl).find((candidate) => !isLocalHost(candidate));
+      if (host !== undefined) {
         throw new Error(
           `Refusing to fork a remote database (host="${host}"). database_fork only operates on a local server.`
         );

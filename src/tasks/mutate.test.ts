@@ -18,6 +18,13 @@ const newTask = (extra: { parent?: string; checklist?: string[] } = {}) => {
 
 const from = (content: string, heading: string) => content.slice(content.indexOf(heading));
 
+describe('createTask', () => {
+  test('refuses a project that is not a plain slug, so nothing is written outside projects/', () => {
+    mkdirSync(join(FOLDERS.PROJECTS, '..', 'outside', 'tasks'), { recursive: true });
+    expect(() => createTask({ project: '../outside', title: 'Escape', description: '', assignee: ['user'] })).toThrow(/Unknown project/);
+  });
+});
+
 describe('parent, depends_on and checklist', () => {
   test('create stores parent and checklist, update changes parent and depends_on', () => {
     const epic = newTask();

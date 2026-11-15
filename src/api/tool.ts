@@ -23,21 +23,78 @@ import { z } from 'zod';
 
 const MAX_OUTPUT_CHARS = 12_000;
 
-/** Flags that make curl write/read local files or config — refused outright.
+/** Flags that make curl write/read local files or config, or pick its protocols — refused outright.
  *  The tool returns response text; file I/O belongs to the operator's own shell. */
 const BLOCKED_LONG = [
   '--output',
   '--output-dir',
+  '--remote-name',
   '--remote-name-all',
+  '--remote-header-name',
+  '--create-dirs',
   '--dump-header',
   '--cookie-jar',
+  '--etag-save',
+  '--etag-compare',
+  '--stderr',
   '--trace',
   '--trace-ascii',
   '--trace-config',
   '--config',
-  '--libcurl'
+  '--libcurl',
+  '--upload-file',
+  '--hsts',
+  '--alt-svc',
+  '--netrc-file',
+  '--proto',
+  '--proto-redir',
+  '--proto-default'
 ];
-const BLOCKED_SHORT = new Set(['o', 'O', 'D', 'c', 'K']);
+const BLOCKED_SHORT = new Set(['o', 'O', 'D', 'c', 'K', 'J', 'T']);
+
+/** Pinned on every run, so `file://` and curl's other local protocols never fetch. */
+const PROTOCOLS = ['--proto', '=http,https', '--proto-redir', '=http,https'];
+
+const fromFile = (value: string): boolean => value.startsWith('@');
+const namedFromFile = (value: string): boolean => /^[^=]*@/.test(value);
+const formFromFile = (value: string): boolean => /=[@<]/.test(value);
+const cookieFile = (value: string): boolean => value !== '' && !value.includes('=');
+
+/** Options whose value can name a local file to read (`-d @file`, `-F field=@file`, `-H @file`, `-b jar`). */
+const FILE_VALUES: Record<string, (value: string) => boolean> = {
+  '--data': fromFile,
+  '--data-ascii': fromFile,
+  '--data-binary': fromFile,
+  '--json': fromFile,
+  '--data-urlencode': namedFromFile,
+  '--variable': namedFromFile,
+  '--form': formFromFile,
+  '--header': fromFile,
+  '--write-out': fromFile,
+  '--cookie': cookieFile,
+  d: fromFile,
+  F: formFromFile,
+  H: fromFile,
+  w: fromFile,
+  b: cookieFile
+};
+
+/** The option value that sends a local file, as `--data=@x`, `--data @x`, `-d@x`, `-sd @x` or `-F f=@x`. */
+const sendsLocalFile = (arg: string, next: string | undefined): boolean => {
+  if (arg.startsWith('--')) {
+    const [name = '', attached] = arg.split(/=(.*)/s);
+    const reads = FILE_VALUES[name];
+    return reads !== undefined && reads(attached ?? next ?? '');
+  }
+  if (!arg.startsWith('-') || arg.length < 2) {
+    return false;
+  }
+  const letters = arg.slice(1);
+  // The first value-taking letter consumes the rest of the cluster, or the next argument.
+  const at = [...letters].findIndex((letter) => Object.hasOwn(FILE_VALUES, letter));
+  const reads = at === -1 ? undefined : FILE_VALUES[letters[at] ?? ''];
+  return reads !== undefined && reads(letters.slice(at + 1) || next || '');
+};
 
 const PLACEHOLDER = /\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g;
 
@@ -46,7 +103,10 @@ const PLACEHOLDER = /\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g;
  *  conservative (a blocked letter inside an attached value also refuses), but a
  *  false refusal just means "pass the flag separately"; a miss writes files. */
 export function findBlockedFlag(args: string[]): string | undefined {
-  return args.find((arg) => {
+  return args.find((arg, index) => {
+    if (sendsLocalFile(arg, args[index + 1])) {
+      return true;
+    }
     if (arg.startsWith('--')) {
       return BLOCKED_LONG.some((flag) => arg === flag || arg.startsWith(`${flag}=`));
     }
@@ -107,7 +167,7 @@ export const tools: ToolDef[] = [
   defineTool({
     name: 'curl_run',
     description:
-      'Fire ONE curl request with collection-scoped secrets, returning transcript-safe output. Args are curl arguments (no leading "curl"); reference secrets as {{KEY}} placeholders — the tool interpolates them from the collection .env (default: reports/api/bruno/.env, then reports/api/curl/.env; override with envFile) and scrubs every value back out of the returned command/output, so credentials never appear in the conversation. Response bodies are NOT scrubbed beyond that — prod data stays sensitive. File-writing curl flags (-o, -D, -c, --trace, …) are refused. This tool is never pre-granted: each call prompts the operator. Use it to verify drafts from the api-collections skill or debug an endpoint — not as a general download tool.',
+      'Fire ONE curl request with collection-scoped secrets, returning transcript-safe output. Args are curl arguments (no leading "curl"); reference secrets as {{KEY}} placeholders — the tool interpolates them from the collection .env (default: reports/api/bruno/.env, then reports/api/curl/.env; override with envFile) and scrubs every value back out of the returned command/output, so credentials never appear in the conversation. Response bodies are NOT scrubbed beyond that — prod data stays sensitive. Flags that write or send local files (-o, -O, -D, -c, --trace, -T, -d @file, -F f=@file, …) are refused, and only http(s) URLs are fetched. This tool is never pre-granted: each call prompts the operator. Use it to verify drafts from the api-collections skill or debug an endpoint — not as a general download tool.',
     inputSchema: {
       args: z
         .array(z.string())
@@ -135,8 +195,11 @@ export const tools: ToolDef[] = [
       const envPath = envFile ?? defaultEnvFile(FOLDERS.REPORTS);
       const env = envPath ? readEnvFile(envPath) : {};
       const argv = interpolateArgs(args, env);
+      if (findBlockedFlag(argv)) {
+        throw new Error('A {{KEY}} value turns an argument into one curl_run refuses (a file to send or write); check the collection .env.');
+      }
 
-      const proc = Bun.spawn(['curl', '-sS', '--max-time', String(timeoutSeconds), ...argv], {
+      const proc = Bun.spawn(['curl', '-sS', '--max-time', String(timeoutSeconds), ...argv, ...PROTOCOLS], {
         cwd: FOLDERS.HOME,
         stdout: 'pipe',
         stderr: 'pipe'

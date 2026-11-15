@@ -57,6 +57,33 @@ describe('findBlockedFlag', () => {
     expect(findBlockedFlag(['-sSD', 'headers.txt'])).toBe('-sSD');
   });
 
+  test('flags the long and short forms that write files', () => {
+    for (const arg of ['--remote-name', '-J', '-T', '--etag-save=e', '--stderr', '--create-dirs', '--upload-file', '--proto=-all,file']) {
+      expect(findBlockedFlag([arg, 'x'])).toBe(arg);
+    }
+  });
+
+  test('flags data and form values that send a local file', () => {
+    expect(findBlockedFlag(['-d', '@/etc/hosts'])).toBe('-d');
+    expect(findBlockedFlag(['-d@/etc/hosts'])).toBe('-d@/etc/hosts');
+    expect(findBlockedFlag(['-sd', '@/etc/hosts'])).toBe('-sd');
+    expect(findBlockedFlag(['--data-binary=@notes.txt'])).toBe('--data-binary=@notes.txt');
+    expect(findBlockedFlag(['--data-urlencode', 'q@notes.txt'])).toBe('--data-urlencode');
+    expect(findBlockedFlag(['-F', 'upload=@id_rsa'])).toBe('-F');
+    expect(findBlockedFlag(['--form', 'body=<notes.txt'])).toBe('--form');
+    expect(findBlockedFlag(['-H', '@headers.txt'])).toBe('-H');
+    expect(findBlockedFlag(['-b', 'cookies.txt'])).toBe('-b');
+    expect(findBlockedFlag(['-w', '@format.txt'])).toBe('-w');
+  });
+
+  test('allows literal data, including an @ inside a value', () => {
+    expect(findBlockedFlag(['-d', '{"email":"ada@example.com"}'])).toBeUndefined();
+    expect(findBlockedFlag(['--data-urlencode', 'email=ada@example.com'])).toBeUndefined();
+    expect(findBlockedFlag(['-F', 'name=Ada'])).toBeUndefined();
+    expect(findBlockedFlag(['-b', 'session=abc'])).toBeUndefined();
+    expect(findBlockedFlag(['-H', 'accept: application/json'])).toBeUndefined();
+  });
+
   test('allows normal request flags', () => {
     expect(findBlockedFlag(['-X', 'POST', '-H', 'content-type: application/json', '-d', '{}'])).toBeUndefined();
     expect(findBlockedFlag(['-sSL', '-u', 'user:pass', 'https://api.example.com'])).toBeUndefined();

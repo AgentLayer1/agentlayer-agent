@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from './naming';
@@ -210,6 +210,23 @@ describe('readEnvFile', () => {
         expect(readEnvFile(resolve(home, RUNTIME_DIR, 'secrets', 'nested', '.env'))).toEqual({});
         expect(readEnvFile(flowPath)).toEqual({ CARD: '4111111111111111' });
       }
+    );
+  });
+});
+
+describe.skipIf(secretsReadBlocked())('readEnvFile through a link', () => {
+  test('refuses a flow .env that is a symlink into the secret store', () => {
+    const home = mkdtempSync(resolve(tmpdir(), 'agentlayer-home-'));
+    mkdirSync(resolve(home, RUNTIME_DIR, 'secrets'), { recursive: true });
+    writeFileSync(resolve(home, RUNTIME_DIR, 'secrets', '.env'), 'GITHUB_TOKEN=ghp_realsecretvalue\n');
+    mkdirSync(resolve(home, 'scripts', 'browser', 'x'), { recursive: true });
+    const link = resolve(home, 'scripts', 'browser', 'x', '.env');
+    symlinkSync(resolve(home, RUNTIME_DIR, 'secrets', '.env'), link);
+    withHomeEnv(
+      () => {
+        process.env.AGENT_HOME = home;
+      },
+      () => expect(readEnvFile(link)).toEqual({})
     );
   });
 });

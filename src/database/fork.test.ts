@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import {
   configuredDatabases,
+  connectionHosts,
   deriveForkName,
   isLocalHost,
   quoteIdent,
@@ -52,6 +53,20 @@ describe('upsertEnvLine', () => {
   test('replaces an existing line in place, leaving others untouched', () => {
     const out = upsertEnvLine('DATABASE_URL="old"\nFOO=bar\n', 'DATABASE_URL', 'new');
     expect(out).toBe('DATABASE_URL="new"\nFOO=bar\n');
+  });
+
+  test('writes a value holding $& or $1 as is', () => {
+    const value = 'postgres://u:pa$&ss$1@localhost/app_fork';
+    expect(upsertEnvLine('DATABASE_URL="old"\n', 'DATABASE_URL', value)).toBe(`DATABASE_URL="${value}"\n`);
+  });
+});
+
+describe('connectionHosts', () => {
+  test('counts the ?host= and ?hostaddr= overrides node-postgres honours', () => {
+    expect(connectionHosts('postgres://u:p@localhost/app?host=prod.example.com')).toEqual(['localhost', 'prod.example.com']);
+    expect(connectionHosts('postgres://u:p@localhost/app?hostaddr=10.0.0.5,127.0.0.1')).toEqual(['localhost', '10.0.0.5', '127.0.0.1']);
+    expect(connectionHosts('postgres://u:p@localhost/app?host=/var/run/postgresql').every(isLocalHost)).toBe(true);
+    expect(connectionHosts('postgres://u:p@localhost/app?host=prod.example.com').every(isLocalHost)).toBe(false);
   });
 });
 

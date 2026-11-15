@@ -122,9 +122,11 @@ export const verifyMutation = (
 // ── Create ────────────────────────────────────────────────────────────
 // New files are fully serialized — no round-trip risk.
 
+const PROJECT_SLUG = /^[a-z0-9][a-z0-9_-]*$/i;
+
 export const createTask = (opts: CreateTaskOptions): TaskFile => {
   const projectDir = join(FOLDERS.PROJECTS, opts.project);
-  if (!existsSync(projectDir))
+  if (!PROJECT_SLUG.test(opts.project) || !existsSync(projectDir))
     throw new Error(`Unknown project: ${opts.project} (directory not found under ${FOLDERS.PROJECTS})`);
 
   const id = getNextId(opts.project);

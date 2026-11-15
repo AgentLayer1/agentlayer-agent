@@ -20,7 +20,7 @@
 
 import { BROWSER, FOLDERS } from '@/config';
 import { callSignal } from '@/shared/call-signal';
-import { readEnvFile } from '@/shared/env';
+import { envWithoutSecrets, readEnvFile } from '@/shared/env';
 import { runGroup } from '@/shared/process-group';
 import { readTextIfExists } from '@/shared/text';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
@@ -93,14 +93,15 @@ export const tools: ToolDef[] = [
       // browser-flows dir on NODE_PATH lets any flow (built-in or HOME) resolve the shared harness.
       const nodePath = [nodeModules, BROWSER_FLOWS_DIR].join(delimiter);
       // Flow secrets: always from HOME (never the distributed plugin repo), scoped to this flow's
-      // child. Flow env overrides inherited values; the harness vars below win over the flow env.
+      // child, which never sees the agent's own secret store. Flow env overrides inherited values;
+      // the harness vars below win over the flow env.
       const flowEnv = readEnvFile(resolve(FOLDERS.HOME_FLOWS, flow, '.env'));
       const { exitCode, stopped, stdout, stderr } = await runGroup(
         ['bun', 'run', resolve(flowRoot, flow, 'index.ts'), ...toFlags(params)],
         {
           cwd: FOLDERS.ROOT,
           env: {
-            ...process.env,
+            ...envWithoutSecrets(),
             ...flowEnv,
             NODE_PATH: nodePath,
             PLAYWRIGHT_BROWSERS_PATH: '0',

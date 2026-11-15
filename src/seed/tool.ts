@@ -64,7 +64,7 @@ export const tools: ToolDef[] = [
         .record(z.string(), z.unknown())
         .optional()
         .describe('HOME .mcp.json server entries to carry (structure references env keys, never values).'),
-      out: z.string().optional().describe('Absolute output path for the zip (default: <HOME>/reports/seeds/...).')
+      out: z.string().optional().describe('Absolute path for a new .zip, refused when the file exists (default: <HOME>/reports/seeds/..., replaced on a same-day re-export).')
     },
     handler: async (args) => exportSeed(args)
   }),

@@ -222,6 +222,17 @@ describe('exportSeed', () => {
     ).toThrow(/credential-shaped/);
   });
 
+  test('a named out only ever creates a new zip', () => {
+    const existing = join(sourceHome, 'keep.json');
+    writeFileSync(existing, '{"keep": true}');
+    expect(() => asSource(() => exportSeed({ include: ['IDENTITY.md'], agentName: 'Scout', out: existing }))).toThrow(/\.zip/);
+    const taken = join(sourceHome, 'taken.zip');
+    writeFileSync(taken, 'not ours');
+    expect(() => asSource(() => exportSeed({ include: ['IDENTITY.md'], agentName: 'Scout', out: taken }))).toThrow(/already exists/);
+    expect(readFileSync(existing, 'utf-8')).toBe('{"keep": true}');
+    expect(readFileSync(taken, 'utf-8')).toBe('not ours');
+  });
+
   test('refuses paths outside the allowed roots', () => {
     expect(() => asSource(() => exportSeed({ include: ['USER.md'], agentName: 'Scout' }))).toThrow(
       /allowed seed roots/

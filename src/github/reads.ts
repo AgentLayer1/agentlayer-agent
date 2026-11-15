@@ -24,7 +24,7 @@
 import { configuredRepoPaths, PLUGIN_NAME } from '@/config';
 import { callSignal } from '@/shared/call-signal';
 import { RUNTIME_DIR } from '@/shared/naming';
-import { env, GITHUB_TOKEN_KEY, githubTokenKeyFor, githubTokenKeys, isGitHubTokenKey } from '@/shared/env';
+import { env, envWithoutSecrets, GITHUB_TOKEN_KEY, githubTokenKeyFor, githubTokenKeys, isGitHubTokenKey } from '@/shared/env';
 import { log } from '@/shared/log';
 import { expandTilde } from '@/shared/paths';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
@@ -68,7 +68,7 @@ const ownerOf = (slug: string): string => slug.slice(0, slug.indexOf('/'));
 
 /** Secrets are loaded into process.env, so every GitHub token is dropped before a child runs. */
 const envWithoutGitHubTokens = (): NodeJS.ProcessEnv =>
-  Object.fromEntries(Object.entries(process.env).filter(([key]) => !isGitHubTokenKey(key) && key !== 'GH_TOKEN'));
+  Object.fromEntries(Object.entries(envWithoutSecrets()).filter(([key]) => !isGitHubTokenKey(key) && key !== 'GH_TOKEN'));
 
 /**
  * Suppress gh's pager, colour, and update checks so stdout is clean, parseable text. Only the

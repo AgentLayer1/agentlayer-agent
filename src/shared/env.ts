@@ -1,6 +1,6 @@
 import { RUNTIME_DIR, ownDataDir, resolveEnv } from '@/shared/naming';
 import { expandTilde } from '@/shared/paths';
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 
 /**
@@ -155,9 +155,17 @@ function parseDotenv(raw: string): Record<string, string> {
  * resolved, nothing is read.
  */
 export function readEnvFile(path: string): Record<string, string> {
-  const resolved = resolve(path);
+  // Compared as real paths, so a symlink into the store is refused like the store itself.
+  const real = (target: string): string => {
+    try {
+      return realpathSync(target);
+    } catch {
+      return resolve(target);
+    }
+  };
+  const resolved = real(path);
   try {
-    const gated = gatedSecretsDir();
+    const gated = real(gatedSecretsDir());
     if (resolved === gated || resolved.startsWith(gated + sep)) {
       return {};
     }
@@ -229,6 +237,12 @@ export const env = (key: string): string | undefined => {
 export const loadedSecretKeyNames = (): readonly string[] => {
   loadSecretsEnv();
   return secretKeyNames;
+};
+
+/** `process.env` without the keys the secret store loaded, for a child process the store isn't meant for. */
+export const envWithoutSecrets = (): NodeJS.ProcessEnv => {
+  const secrets = new Set(loadedSecretKeyNames());
+  return Object.fromEntries(Object.entries(process.env).filter(([key]) => !secrets.has(key)));
 };
 
 export interface DbConnection {

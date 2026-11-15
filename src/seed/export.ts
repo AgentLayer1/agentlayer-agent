@@ -35,7 +35,7 @@ import {
   writeFileSync
 } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, extname, join, relative, resolve } from 'node:path';
 
 export interface SeedExportOptions {
   /** Home-relative paths to include — files, or directories expanded recursively (e.g. `.claude/skills/acme-logs`). */
@@ -118,6 +118,15 @@ const ensureZipAvailable = (): void => {
 
 export const exportSeed = (options: SeedExportOptions): SeedExportResult => {
   const home = FOLDERS.HOME;
+  // The server runs outside the sandbox and the tool doesn't prompt, so a named `out` may only create a new zip.
+  if (options.out !== undefined) {
+    if (extname(options.out).toLowerCase() !== '.zip') {
+      throw new Error(`out must name a .zip file: ${options.out}`);
+    }
+    if (existsSync(resolve(options.out))) {
+      throw new Error(`${options.out} already exists. Seed export writes a new file and never replaces one; pick another name.`);
+    }
+  }
   ensureZipAvailable();
 
   const expanded = [...new Set(options.include.flatMap((entry) => expandInclude(home, entry)))];
