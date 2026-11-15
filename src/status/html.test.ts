@@ -102,10 +102,10 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
   mcp: {
     toolCount: 3,
     toolDetails: [
-      { name: 'mcp__agent__dashboard', description: 'Rebuild TASKS.md + the Agent OS dashboard.' },
-      { name: 'mcp__agent__task_scan', description: 'Resolve cross-task state.' },
+      { name: 'mcp__agentlayer__dashboard', description: 'Rebuild TASKS.md + the Agent OS dashboard.' },
+      { name: 'mcp__agentlayer__task_scan', description: 'Resolve cross-task state.' },
       {
-        name: 'mcp__agent__db_list',
+        name: 'mcp__agentlayer__db_list',
         description: 'List the Postgres connections.',
         dbConnections: [
           { name: 'app', host: 'localhost', port: '5432', database: 'app_dev' },
@@ -593,7 +593,7 @@ describe('renderDashboardHtml', () => {
   test('a db tool with zero connections shows a non-clickable 0-databases chip', () => {
     const snap = makeSnapshot();
     snap.mcp.toolDetails = [
-      { name: 'mcp__agent__db_list', description: 'List the Postgres connections.', dbConnections: [] }
+      { name: 'mcp__agentlayer__db_list', description: 'List the Postgres connections.', dbConnections: [] }
     ];
     const html = renderDashboardHtml(snap);
     expect(html).toContain('0 databases');

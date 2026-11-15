@@ -311,7 +311,7 @@ maps in `src/shared/retired-skills.ts`), whatever an older release's action name
 `$HOME_DIR/.codex/hooks.json` exists, or this session itself runs under Codex (the `<skill>`
 block wrapper; no agent context or tools yet is the symptom of an unwired home), so a home
 first run from Codex is wired then. When it holds, generate or regenerate the hooks and the
-`[mcp_servers.agent]` registration in `$HOME_DIR/.codex/config.toml` so both point at the
+`[mcp_servers.agentlayer]` registration in `$HOME_DIR/.codex/config.toml` so both point at the
 checkout that just loaded (a version-pinned plugin cache moves on every release; under
 Claude Code that is Claude's copy of the plugin, which Codex runs the hooks and the server
 from, its own plugin cache carrying only the skills). Call the `codex_setup` MCP tool; it runs
@@ -331,9 +331,9 @@ effort derived from Claude. If Sol is unavailable to the operator, help them cho
 model and set it in the home config.
 
 The generator also writes the home's permission posture from its Claude settings
-(a `[permissions.agent]` profile that denies the secrets store and `.env` reads, makes
+(a `[permissions.agentlayer]` profile that denies the secrets store and `.env` reads, makes
 `.git` writable, and lists the code path and `additionalDirectories` as workspace roots) and
-`.codex/rules/agent.rules` (one prompt rule per `Bash(…)` entry in `permissions.ask`, and one forbidden rule per
+`.codex/rules/agentlayer.rules` (one prompt rule per `Bash(…)` entry in `permissions.ask`, and one forbidden rule per
 `Bash(…)` entry in `permissions.deny`), it
 mirrors any MCP server a pack registered in `$HOME_DIR/.mcp.json` (the Xcode pack's `xcode`),
 and any server there Claude has approved, into its own `[mcp_servers.<name>]` table, which is

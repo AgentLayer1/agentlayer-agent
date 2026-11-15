@@ -5,7 +5,7 @@
  * PreCompact capture that saves a long session before Codex compacts it, and the
  * PreToolUse guard against home trees written relative to a drifted cwd), the agent's MCP
  * server plus its permission posture in `<home>/.codex/config.toml`, and the command rules
- * in `<home>/.codex/rules/<agent>.rules`, every command pointing at this plugin checkout
+ * in `<home>/.codex/rules/<plugin>.rules`, every command pointing at this plugin checkout
  * and this home. Codex has no `@-import`, and a plugin cannot bundle hooks or an MCP
  * server that knows which home it serves (the server is launched inside the plugin
  * cache, with no workspace variable and no MCP roots), so init and upgrade write these
@@ -86,12 +86,14 @@ const manifestPath = [pluginRoot, PLUGIN_SOURCE_ROOT]
   .map((root) => resolve(root, '.claude-plugin', 'plugin.json'))
   .find((path) => existsSync(path));
 const manifest = readJson(String(manifestPath));
+/** Codex knows the agent by the plugin's name: its tables share one namespace with the operator's own. */
 const pluginName = String(manifest.name ?? '');
-const agent = Object.keys(isRecord(manifest.mcpServers) ? manifest.mcpServers : {})[0] ?? '';
-if (!agent) {
-  throw new Error(`${manifestPath}: the plugin manifest names no agent`);
+/** The server key Claude Code namespaces under the plugin, needed only to read Claude's ask rules. */
+const claudeServer = Object.keys(isRecord(manifest.mcpServers) ? manifest.mcpServers : {})[0] ?? '';
+if (!pluginName || !claudeServer) {
+  throw new Error(`${manifestPath}: the plugin manifest names no plugin or no MCP server`);
 }
-const rulesPath = resolve(homeDir, '.codex', 'rules', `${agent}.rules`);
+const rulesPath = resolve(homeDir, '.codex', 'rules', `${pluginName}.rules`);
 
 // ── The home's Claude settings: the posture's source of truth ─────────────────
 interface ClaudeSettings {
@@ -188,7 +190,7 @@ const OWNED_SERVERS = [
   ...new Set([
     ...PACK_SERVERS,
     ...Object.keys(mcpRegistrations).filter(
-      (name) => /^[A-Za-z0-9_-]+$/.test(name) && name !== agent && isStdio(mcpRegistrations[name])
+      (name) => /^[A-Za-z0-9_-]+$/.test(name) && name !== pluginName && isStdio(mcpRegistrations[name])
     )
   ])
 ];
@@ -299,14 +301,14 @@ const headerPath = (line: string): string[] | undefined => {
 };
 /** The tables this script owns outright; everything under them is regenerated. */
 const OWNED_TABLES: string[][] = [
-  ['mcp_servers', agent],
+  ['mcp_servers', pluginName],
   ...OWNED_SERVERS.map((name) => ['mcp_servers', name]),
-  ['permissions', agent],
+  ['permissions', pluginName],
   ['shell_environment_policy']
 ];
 /** The top-level keys it sets when absent; an operator's own value is kept. */
 const OWNED_KEYS: Record<string, string> = {
-  default_permissions: agent,
+  default_permissions: pluginName,
   approval_policy: 'on-request',
   approvals_reviewer: 'user',
   model: 'gpt-6.1-sol',
@@ -467,38 +469,38 @@ const serverTables = Object.entries(mirroredServers).flatMap(([name, server]) =>
 });
 
 const agentTables = [
-  `[mcp_servers.${agent}]`,
+  `[mcp_servers.${pluginName}]`,
   'command = "bun"',
   `args = [${tomlString(resolve(pluginRoot, 'src', 'server.ts'))}]`,
-  ...keptEntries(['mcp_servers', agent], ['command', 'args', 'env', 'tools']),
+  ...keptEntries(['mcp_servers', pluginName], ['command', 'args', 'env', 'tools']),
   '',
-  `[mcp_servers.${agent}.env]`,
+  `[mcp_servers.${pluginName}.env]`,
   `AGENT_HOME = ${tomlString(homeDir)}`,
   'PLAYWRIGHT_BROWSERS_PATH = "0"',
-  ...keptEntries(['mcp_servers', agent, 'env'], ['AGENT_HOME', 'PLAYWRIGHT_BROWSERS_PATH']),
+  ...keptEntries(['mcp_servers', pluginName, 'env'], ['AGENT_HOME', 'PLAYWRIGHT_BROWSERS_PATH']),
   '',
-  ...toolTables(agent, `mcp__plugin_${pluginName}_${agent}__`),
+  ...toolTables(pluginName, `mcp__plugin_${pluginName}_${claudeServer}__`),
   ...serverTables,
   // The posture: write the home and its repos, commit in them, reach the network, never read the
   // secrets store. An approved escalation does not lift a profile (verified on 0.153), so every
   // writable root and the network have to be granted here or they are unreachable.
-  `[permissions.${agent}]`,
-  `description = ${tomlString(`${agent} home: write the home and its repos, commit in them, never read the secrets store`)}`,
+  `[permissions.${pluginName}]`,
+  `description = ${tomlString(`${pluginName} home: write the home and its repos, commit in them, never read the secrets store`)}`,
   'extends = ":workspace"',
   '',
-  `[permissions.${agent}.filesystem]`,
+  `[permissions.${pluginName}.filesystem]`,
   `${tomlString(resolve(homeDir, '.state', 'secrets'))} = "deny"`,
   ...absoluteDenies.map((glob) => `${tomlString(glob)} = "deny"`),
   '',
-  `[permissions.${agent}.filesystem.":workspace_roots"]`,
+  `[permissions.${pluginName}.filesystem.":workspace_roots"]`,
   '".git" = "write"',
   '"**/.state/secrets/**" = "deny"',
   ...[...new Set(['**/*.env', '**/.env.*', ...relativeDenies])].map((glob) => `${tomlString(glob)} = "deny"`),
   '',
-  `[permissions.${agent}.network]`,
+  `[permissions.${pluginName}.network]`,
   'enabled = true',
   ...(workspaceRoots.length > 0
-    ? ['', `[permissions.${agent}.workspace_roots]`, ...workspaceRoots.map((root) => `${tomlString(root)} = true`)]
+    ? ['', `[permissions.${pluginName}.workspace_roots]`, ...workspaceRoots.map((root) => `${tomlString(root)} = true`)]
     : []),
   '',
   '[shell_environment_policy]',
@@ -542,7 +544,7 @@ const newTables = tableFills
   .map(({ table, missing }) => [`[${table}]`, ...missing].join('\n'));
 const configText = [topKeys, operatorConfig, ...newTables, agentTables].filter(Boolean).join('\n\n');
 const generatedTables = parseToml(configText, 'the generated config');
-if (lookup(generatedTables, ['mcp_servers', agent, 'env', 'AGENT_HOME']) !== homeDir) {
+if (lookup(generatedTables, ['mcp_servers', pluginName, 'env', 'AGENT_HOME']) !== homeDir) {
   throw new Error(`the generated ${configPath} does not register this home; nothing written`);
 }
 /** Everything this script does not own, for the equality check. */
@@ -645,6 +647,12 @@ if (!args.includes('--write')) {
   const mcp = writeIfChanged(configPath, configText);
   const rules = writeIfChanged(rulesPath, rulesText);
   const hooks = writeIfChanged(hooksPath, hooksText);
-  const profile = { name: agent, workspaceRoots, rules: askPrefixes, forbidden: denyPrefixes, servers: Object.keys(mirroredServers) };
+  const profile = {
+    name: pluginName,
+    workspaceRoots,
+    rules: askPrefixes,
+    forbidden: denyPrefixes,
+    servers: Object.keys(mirroredServers)
+  };
   process.stdout.write(`${JSON.stringify({ hooks, mcp, rules, entries: 4, profile, notes })}\n`);
 }
