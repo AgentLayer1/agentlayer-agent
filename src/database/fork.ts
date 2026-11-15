@@ -39,12 +39,8 @@ export const quoteIdent = (name: string): string => `"${name.replaceAll('"', '""
 const LOCAL_HOSTS = new Set(['', 'localhost', '127.0.0.1', '::1']);
 export const isLocalHost = (host: string): boolean => host.startsWith('/') || LOCAL_HOSTS.has(host.replace(/^\[|\]$/g, ''));
 
-/** Every host a connection string can reach: node-postgres lets `?host=` and `?hostaddr=` override the URL's own. */
-export const connectionHosts = (url: string): string[] => {
-  const parsed = new URL(url);
-  const overrides = ['host', 'hostaddr'].flatMap((param) => parsed.searchParams.getAll(param).flatMap((value) => value.split(',')));
-  return [parsed.hostname, ...overrides];
-};
+/** The host node-postgres will reach for this connection string: its own resolution, `?host=` and an empty host's PGHOST included. */
+export const connectionHost = (url: string): string => new pg.Client({ connectionString: url }).host;
 
 /** Resolve a configured connection name (or the first configured one) to its string. */
 const resolveConnection = (name?: string): { name: string; url: string } => {
@@ -120,7 +116,7 @@ const OVERRIDE_FILE = '.env.local';
 export const upsertEnvLine = (content: string, envVar: string, value: string): string => {
   const escaped = envVar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const line = `${envVar}="${value}"`;
-  const pattern = new RegExp(`^${escaped}=.*$`, 'm');
+  const pattern = new RegExp(`^(?:export\\s+)?${escaped}=.*$`, 'm');
   if (pattern.test(content)) {
     // A replacer function, so a `$&` or `$1` in the value (a password) is written as is.
     return content.replace(pattern, () => line);
@@ -131,14 +127,14 @@ export const upsertEnvLine = (content: string, envVar: string, value: string): s
 /** The current value of `<envVar>` in a dotenv body (quotes stripped), or null if unset. */
 export const readEnvLine = (content: string, envVar: string): string | null => {
   const escaped = envVar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = content.match(new RegExp(`^${escaped}=(.*)$`, 'm'));
+  const match = content.match(new RegExp(`^(?:export\\s+)?${escaped}=(.*)$`, 'm'));
   return match ? match[1].trim().replace(/^["']|["']$/g, '') : null;
 };
 
 /** Remove the `<envVar>=` line; returns null when nothing meaningful remains. */
 export const removeEnvLine = (content: string, envVar: string): string | null => {
   const escaped = envVar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const stripped = content.replace(new RegExp(`^${escaped}=.*\\r?\\n?`, 'm'), '');
+  const stripped = content.replace(new RegExp(`^(?:export\\s+)?${escaped}=.*\\r?\\n?`, 'm'), '');
   return stripped.trim() === '' ? null : stripped;
 };
 
@@ -242,8 +238,8 @@ export const tools: ToolDef[] = [
     }) => {
       const resolved = resolveConnection(connection);
       const sourceUrl = resolved.url;
-      const host = connectionHosts(sourceUrl).find((candidate) => !isLocalHost(candidate));
-      if (host !== undefined) {
+      const host = connectionHost(resolveConnectionString(sourceUrl, 'postgres'));
+      if (!isLocalHost(host)) {
         throw new Error(
           `Refusing to fork a remote database (host="${host}"). database_fork only operates on a local server.`
         );

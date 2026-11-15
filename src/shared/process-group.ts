@@ -1,3 +1,4 @@
+import { envWithoutSecrets } from '@/shared/env';
 import { log } from '@/shared/log';
 import { type ChildProcess, spawn } from 'node:child_process';
 import { closeSync, openSync } from 'node:fs';
@@ -7,7 +8,7 @@ const WINDOWS = process.platform === 'win32';
 
 interface GroupOptions {
   cwd: string;
-  /** The child's whole environment; omitted, it inherits the server's. */
+  /** The child's whole environment; omitted, it inherits the server's without the secret store's keys. */
   env?: NodeJS.ProcessEnv;
   /** Append stdout and stderr here instead of capturing them. */
   logFile?: string;
@@ -39,7 +40,7 @@ export const runGroup = async (
   const logFd = logFile ? openSync(logFile, 'a') : undefined;
   const child = spawn(command, args, {
     cwd,
-    env,
+    env: env ?? envWithoutSecrets(),
     shell,
     detached: !WINDOWS,
     stdio: ['ignore', logFd ?? 'pipe', logFd ?? 'pipe']

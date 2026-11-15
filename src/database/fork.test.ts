@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import {
   configuredDatabases,
-  connectionHosts,
+  connectionHost,
   deriveForkName,
   isLocalHost,
   quoteIdent,
@@ -61,12 +61,28 @@ describe('upsertEnvLine', () => {
   });
 });
 
-describe('connectionHosts', () => {
-  test('counts the ?host= and ?hostaddr= overrides node-postgres honours', () => {
-    expect(connectionHosts('postgres://u:p@localhost/app?host=prod.example.com')).toEqual(['localhost', 'prod.example.com']);
-    expect(connectionHosts('postgres://u:p@localhost/app?hostaddr=10.0.0.5,127.0.0.1')).toEqual(['localhost', '10.0.0.5', '127.0.0.1']);
-    expect(connectionHosts('postgres://u:p@localhost/app?host=/var/run/postgresql').every(isLocalHost)).toBe(true);
-    expect(connectionHosts('postgres://u:p@localhost/app?host=prod.example.com').every(isLocalHost)).toBe(false);
+describe('connectionHost', () => {
+  test("is the host node-postgres will reach, ?host= and an empty host's PGHOST included", () => {
+    expect(isLocalHost(connectionHost('postgres://u:p@localhost/app?host=prod.example.com'))).toBe(false);
+    expect(isLocalHost(connectionHost('postgres://u:p@localhost/app?host=/var/run/postgresql'))).toBe(true);
+    expect(isLocalHost(connectionHost('postgres://u:p@[::1]:5432/app'))).toBe(true);
+    const pgHost = process.env.PGHOST;
+    process.env.PGHOST = 'remote.example.com';
+    try {
+      expect(isLocalHost(connectionHost('postgres:///app'))).toBe(false);
+    } finally {
+      if (pgHost === undefined) delete process.env.PGHOST;
+      else process.env.PGHOST = pgHost;
+    }
+  });
+});
+
+describe('the .env.local line writers', () => {
+  test('read, replace and remove a shell-style export line instead of adding a second one', () => {
+    const content = 'export DATABASE_URL="old"\nFOO=bar\n';
+    expect(readEnvLine(content, 'DATABASE_URL')).toBe('old');
+    expect(upsertEnvLine(content, 'DATABASE_URL', 'new')).toBe('DATABASE_URL="new"\nFOO=bar\n');
+    expect(removeEnvLine(content, 'DATABASE_URL')).toBe('FOO=bar\n');
   });
 });
 

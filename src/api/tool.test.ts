@@ -58,7 +58,7 @@ describe('findBlockedFlag', () => {
   });
 
   test('flags the long and short forms that write files', () => {
-    for (const arg of ['--remote-name', '-J', '-T', '--etag-save=e', '--stderr', '--create-dirs', '--upload-file', '--proto=-all,file']) {
+    for (const arg of ['--remote-name', '-J', '-T', '--etag-save=e', '--stderr', '--create-dirs', '--upload-file', '--proto=-all,file', '--next', '-:']) {
       expect(findBlockedFlag([arg, 'x'])).toBe(arg);
     }
   });

@@ -15,8 +15,9 @@
  * credentials only — a response body can still contain sensitive API data.
  */
 import { FOLDERS } from '@/config';
-import { readEnvFile } from '@/shared/env';
+import { envWithoutSecrets, readEnvFile } from '@/shared/env';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
+import { untrusted } from '@/shared/untrusted';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
@@ -48,9 +49,10 @@ const BLOCKED_LONG = [
   '--netrc-file',
   '--proto',
   '--proto-redir',
-  '--proto-default'
+  '--proto-default',
+  '--next'
 ];
-const BLOCKED_SHORT = new Set(['o', 'O', 'D', 'c', 'K', 'J', 'T']);
+const BLOCKED_SHORT = new Set(['o', 'O', 'D', 'c', 'K', 'J', 'T', ':']);
 
 /** Pinned on every run, so `file://` and curl's other local protocols never fetch. */
 const PROTOCOLS = ['--proto', '=http,https', '--proto-redir', '=http,https'];
@@ -199,21 +201,24 @@ export const tools: ToolDef[] = [
         throw new Error('A {{KEY}} value turns an argument into one curl_run refuses (a file to send or write); check the collection .env.');
       }
 
+      // Without the store's keys, so `--variable %NAME` can't read one; the collection's keys come in as {{KEY}}.
       const proc = Bun.spawn(['curl', '-sS', '--max-time', String(timeoutSeconds), ...argv, ...PROTOCOLS], {
         cwd: FOLDERS.HOME,
+        env: envWithoutSecrets(),
         stdout: 'pipe',
         stderr: 'pipe'
       });
       const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
       const exitCode = await proc.exited;
 
-      return {
+      const result = {
         exitCode,
         command: `curl ${args.join(' ')}`, // as given — placeholders intact, values never echoed
         envKeys: referencedKeys(args), // names only — the keys this request injected
         envFile: envPath ?? null,
         output: scrub(tail(`${stdout}${stderr}`.trim(), MAX_OUTPUT_CHARS), env)
       };
+      return untrusted('curl', JSON.stringify(result, null, 2));
     }
   })
 ];

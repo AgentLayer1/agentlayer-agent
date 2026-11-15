@@ -24,6 +24,7 @@ import { envWithoutSecrets, readEnvFile } from '@/shared/env';
 import { runGroup } from '@/shared/process-group';
 import { readTextIfExists } from '@/shared/text';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
+import { untrusted } from '@/shared/untrusted';
 import { existsSync, readdirSync } from 'node:fs';
 import { delimiter, resolve } from 'node:path';
 import { z } from 'zod';
@@ -112,13 +113,14 @@ export const tools: ToolDef[] = [
         }
       );
 
+      // The output is scraped from outside sites, so it comes back marked as data.
       return {
         flow,
         exitCode,
         ...(stopped && { stopped }),
         envKeys: Object.keys(flowEnv), // names only — the injected secret values never leave the child
         guidance: readGuidance(resolve(flowRoot, flow)),
-        output: tail(`${stdout}${stderr}`.trim(), MAX_OUTPUT_CHARS)
+        output: untrusted(`flow:${flow}`, tail(`${stdout}${stderr}`.trim(), MAX_OUTPUT_CHARS))
       };
     }
   })
