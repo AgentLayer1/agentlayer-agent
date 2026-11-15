@@ -24,100 +24,92 @@ import { z } from 'zod';
 
 const MAX_OUTPUT_CHARS = 12_000;
 
-/** Flags that make curl write/read local files or config, or pick its protocols — refused outright.
- *  The tool returns response text; file I/O belongs to the operator's own shell. */
-const BLOCKED_LONG = [
-  '--output',
-  '--output-dir',
-  '--remote-name',
-  '--remote-name-all',
-  '--remote-header-name',
-  '--create-dirs',
-  '--dump-header',
-  '--cookie-jar',
-  '--etag-save',
-  '--etag-compare',
-  '--stderr',
-  '--trace',
-  '--trace-ascii',
-  '--trace-config',
-  '--config',
-  '--libcurl',
-  '--upload-file',
-  '--hsts',
-  '--alt-svc',
-  '--netrc-file',
-  '--proto',
-  '--proto-redir',
-  '--proto-default',
-  '--next'
-];
-const BLOCKED_SHORT = new Set(['o', 'O', 'D', 'c', 'K', 'J', 'T', ':']);
+interface ValueRule {
+  ok: (value: string) => boolean;
+  needs: string;
+}
 
-/** Pinned on every run, so `file://` and curl's other local protocols never fetch. */
-const PROTOCOLS = ['--proto', '=http,https', '--proto-redir', '=http,https'];
+const TEXT: ValueRule = { ok: () => true, needs: 'a value' };
+const INLINE: ValueRule = { ok: (value) => !value.startsWith('@'), needs: 'an inline value (a leading @ reads a file)' };
+const INLINE_NAMED: ValueRule = { ok: (value) => !/^[^=]*@/.test(value), needs: 'an inline value (name@file reads a file)' };
+const NUMBER: ValueRule = { ok: (value) => /^\d+(\.\d+)?$/.test(value), needs: 'a number' };
 
-const fromFile = (value: string): boolean => value.startsWith('@');
-const namedFromFile = (value: string): boolean => /^[^=]*@/.test(value);
-const formFromFile = (value: string): boolean => /=[@<]/.test(value);
-const cookieFile = (value: string): boolean => value !== '' && !value.includes('=');
-
-/** Options whose value can name a local file to read (`-d @file`, `-F field=@file`, `-H @file`, `-b jar`). */
-const FILE_VALUES: Record<string, (value: string) => boolean> = {
-  '--data': fromFile,
-  '--data-ascii': fromFile,
-  '--data-binary': fromFile,
-  '--json': fromFile,
-  '--data-urlencode': namedFromFile,
-  '--variable': namedFromFile,
-  '--form': formFromFile,
-  '--header': fromFile,
-  '--write-out': fromFile,
-  '--cookie': cookieFile,
-  d: fromFile,
-  F: formFromFile,
-  H: fromFile,
-  w: fromFile,
-  b: cookieFile
+/**
+ * The flags curl_run accepts, each with what its value may be (`null`: it takes none). Anything else is
+ * refused, so a curl option nobody listed can never write, read or send a local file.
+ */
+const FLAGS: Readonly<Record<string, ValueRule | null>> = {
+  '-X': TEXT,
+  '--request': TEXT,
+  '-u': TEXT,
+  '--user': TEXT,
+  '-A': TEXT,
+  '--user-agent': TEXT,
+  '-e': TEXT,
+  '--referer': TEXT,
+  '-H': INLINE,
+  '--header': INLINE,
+  '-d': INLINE,
+  '--data': INLINE,
+  '--data-raw': TEXT,
+  '--data-binary': INLINE,
+  '--json': INLINE,
+  '--data-urlencode': INLINE_NAMED,
+  '--max-redirs': NUMBER,
+  '--connect-timeout': NUMBER,
+  '-G': null,
+  '--get': null,
+  '-i': null,
+  '--include': null,
+  '-I': null,
+  '--head': null,
+  '-L': null,
+  '--location': null,
+  '-f': null,
+  '--fail': null,
+  '-v': null,
+  '--verbose': null,
+  '--compressed': null
 };
 
-/** The option value that sends a local file, as `--data=@x`, `--data @x`, `-d@x`, `-sd @x` or `-F f=@x`. */
-const sendsLocalFile = (arg: string, next: string | undefined): boolean => {
-  if (arg.startsWith('--')) {
-    const [name = '', attached] = arg.split(/=(.*)/s);
-    const reads = FILE_VALUES[name];
-    return reads !== undefined && reads(attached ?? next ?? '');
+/** Pinned on every run, so `file://` and curl's other local protocols never fetch, redirects included. */
+const PROTOCOLS = ['--proto', '=http,https', '--proto-redir', '=http,https'];
+
+const urlProblem = (urls: readonly string[]): string | undefined => {
+  if (urls.length !== 1) {
+    return `curl_run takes exactly one URL; it got ${urls.length}.`;
   }
-  if (!arg.startsWith('-') || arg.length < 2) {
-    return false;
+  const protocol = URL.parse(urls[0] ?? '')?.protocol;
+  return protocol === 'http:' || protocol === 'https:' ? undefined : 'The URL must be an http:// or https:// address.';
+};
+
+/**
+ * Why curl_run refuses these (already filled-in) arguments, or undefined to run them: every flag must be one
+ * it accepts, with its value as the next argument, and exactly one http(s) URL. The reason never quotes a value.
+ */
+export const argsProblem = (argv: readonly string[], urls: readonly string[] = []): string | undefined => {
+  const [arg, ...rest] = argv;
+  if (arg === undefined) {
+    return urlProblem(urls);
   }
-  const letters = arg.slice(1);
-  // The first value-taking letter consumes the rest of the cluster, or the next argument.
-  const at = [...letters].findIndex((letter) => Object.hasOwn(FILE_VALUES, letter));
-  const reads = at === -1 ? undefined : FILE_VALUES[letters[at] ?? ''];
-  return reads !== undefined && reads(letters.slice(at + 1) || next || '');
+  if (!arg.startsWith('-')) {
+    return argsProblem(rest, [...urls, arg]);
+  }
+  if (!Object.hasOwn(FLAGS, arg)) {
+    return `${arg.split('=')[0]} isn't a flag curl_run accepts. It takes ${Object.keys(FLAGS).join(' ')}, each value as its own argument.`;
+  }
+  const rule = FLAGS[arg];
+  if (!rule) {
+    return argsProblem(rest, urls);
+  }
+  const [value, ...after] = rest;
+  if (value === undefined || !rule.ok(value)) {
+    return `${arg} takes ${rule.needs}.`;
+  }
+  return argsProblem(after, urls);
 };
 
 const PLACEHOLDER = /\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g;
-
-/** curl allows `-ooutfile` (attached value) and `-sSo out` (clusters), so a
- *  short option is blocked if its letter appears ANYWHERE in a short cluster —
- *  conservative (a blocked letter inside an attached value also refuses), but a
- *  false refusal just means "pass the flag separately"; a miss writes files. */
-export function findBlockedFlag(args: string[]): string | undefined {
-  return args.find((arg, index) => {
-    if (sendsLocalFile(arg, args[index + 1])) {
-      return true;
-    }
-    if (arg.startsWith('--')) {
-      return BLOCKED_LONG.some((flag) => arg === flag || arg.startsWith(`${flag}=`));
-    }
-    if (arg.startsWith('-') && arg.length > 1) {
-      return [...arg.slice(1)].some((letter) => BLOCKED_SHORT.has(letter));
-    }
-    return false;
-  });
-}
 
 /** Interpolate `{{KEY}}` placeholders from the env map. Throws listing missing
  *  key NAMES (never values) so the error is transcript-safe too. */
@@ -169,7 +161,7 @@ export const tools: ToolDef[] = [
   defineTool({
     name: 'curl_run',
     description:
-      'Fire ONE curl request with collection-scoped secrets, returning transcript-safe output. Args are curl arguments (no leading "curl"); reference secrets as {{KEY}} placeholders — the tool interpolates them from the collection .env (default: reports/api/bruno/.env, then reports/api/curl/.env; override with envFile) and scrubs every value back out of the returned command/output, so credentials never appear in the conversation. Response bodies are NOT scrubbed beyond that — prod data stays sensitive. Flags that write or send local files (-o, -O, -D, -c, --trace, -T, -d @file, -F f=@file, …) are refused, and only http(s) URLs are fetched. This tool is never pre-granted: each call prompts the operator. Use it to verify drafts from the api-collections skill or debug an endpoint — not as a general download tool.',
+      'Fire ONE curl request with collection-scoped secrets, returning transcript-safe output. Args are curl arguments (no leading "curl"); reference secrets as {{KEY}} placeholders — the tool interpolates them from the collection .env (default: reports/api/bruno/.env, then reports/api/curl/.env; override with envFile) and scrubs every value back out of the returned command/output, so credentials never appear in the conversation. Response bodies are NOT scrubbed beyond that — prod data stays sensitive. It accepts exactly one http(s) URL and only these flags, each value as its own argument: -X/--request, -H/--header, -d/--data, --data-raw, --data-binary, --json, --data-urlencode, -u/--user, -A/--user-agent, -e/--referer, -G/--get, -i/--include, -I/--head, -L/--location, -f/--fail, -v/--verbose, --compressed, --max-redirs, --connect-timeout; a value may not start with @ (curl would read a file). This tool is never pre-granted: each call prompts the operator. Use it to verify drafts from the api-collections skill or debug an endpoint — not as a general download tool.',
     inputSchema: {
       args: z
         .array(z.string())
@@ -187,18 +179,13 @@ export const tools: ToolDef[] = [
     },
     askOnly: true,
     handler: async ({ args, envFile, timeoutSeconds }) => {
-      const blocked = findBlockedFlag(args);
-      if (blocked) {
-        throw new Error(
-          `Flag ${blocked} is not allowed — curl_run returns response text; it never writes or reads local files/config.`
-        );
-      }
-
       const envPath = envFile ?? defaultEnvFile(FOLDERS.REPORTS);
       const env = envPath ? readEnvFile(envPath) : {};
+      // Checked after {{KEY}} values are filled in, so a value can't turn into a flag, a file or another URL.
       const argv = interpolateArgs(args, env);
-      if (findBlockedFlag(argv)) {
-        throw new Error('A {{KEY}} value turns an argument into one curl_run refuses (a file to send or write); check the collection .env.');
+      const problem = argsProblem(argv);
+      if (problem) {
+        throw new Error(scrub(problem, env));
       }
 
       // Without the store's keys, so `--variable %NAME` can't read one; the collection's keys come in as {{KEY}}.

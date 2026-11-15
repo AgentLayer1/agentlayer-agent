@@ -45,6 +45,7 @@ A collection is just a directory of files. **Resolve the target before writing:*
 Authoring is run-free, but you may **verify** a draft (confirm it returns 201, debug a 4xx) with the **`curl_run`** MCP tool — the one sanctioned way to fire a request. It runs outside the Bash sandbox, loads the collection `.env`, interpolates `{{KEY}}` placeholders, and **scrubs every secret value back out** of the returned command + output, so what lands in the conversation is shareable (`Bearer {{ACME_API_KEY}}`). It's never pre-granted — every call prompts the operator, and you never run one unbidden.
 
 - Pass curl args referencing secrets as `{{KEY}}` (never a literal): `curl_run args=["-X","POST","https://api.example.com/things","-H","authorization: Bearer {{ACME_API_KEY}}","-d","..."]`. Point `envFile` at the collection's `.env` when it isn't the default.
+- It takes exactly one http(s) URL and a short list of request flags (its description names them), each value as its own argument: `["-H","accept: application/json"]`, never `-Haccept:…` or bundled `-sSL`. A request that needs anything else (a multipart `-F` upload, a file body, saving the response) is the operator's to run in their own shell; hand them the command.
 - Two honest limits to state when it matters: scrubbing covers **injected credentials only** — a response body can still hold sensitive API data; and it fires real requests at real systems, so offer it, don't assume it (especially against prod).
 
 ## Standing rules — every adapter, no exceptions

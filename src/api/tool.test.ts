@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { findBlockedFlag, interpolateArgs, scrub } from './tool';
+import { argsProblem, interpolateArgs, scrub } from './tool';
 
 describe('interpolateArgs', () => {
   test('substitutes placeholders from the env map', () => {
@@ -44,48 +44,44 @@ describe('scrub', () => {
   });
 });
 
-describe('findBlockedFlag', () => {
-  test('flags file-writing options', () => {
-    expect(findBlockedFlag(['-sS', '-o', 'out.bin'])).toBe('-o');
-    expect(findBlockedFlag(['--cookie-jar', 'jar.txt'])).toBe('--cookie-jar');
-    expect(findBlockedFlag(['--output=x.bin'])).toBe('--output=x.bin');
+describe('argsProblem', () => {
+  const URL_ARG = 'https://api.example.com/things';
+
+  test("accepts the requests the api-collections skill drafts", () => {
+    expect(argsProblem(['-X', 'POST', URL_ARG, '-H', 'authorization: Bearer x', '-d', '{"name":"x"}'])).toBeUndefined();
+    expect(argsProblem(['-i', '-L', '--compressed', '-u', 'user:pass', '--max-redirs', '3', URL_ARG])).toBeUndefined();
+    expect(argsProblem(['--json', '{"email":"ada@example.com"}', URL_ARG])).toBeUndefined();
+    expect(argsProblem(['--data-urlencode', 'email=ada@example.com', '-G', URL_ARG])).toBeUndefined();
+    expect(argsProblem(['--data-raw', '@literal', URL_ARG])).toBeUndefined();
   });
 
-  test('catches attached values and short-flag clusters', () => {
-    expect(findBlockedFlag(['-oout.bin'])).toBe('-oout.bin');
-    expect(findBlockedFlag(['-sSo', 'out.bin'])).toBe('-sSo');
-    expect(findBlockedFlag(['-sSD', 'headers.txt'])).toBe('-sSD');
-  });
-
-  test('flags the long and short forms that write files', () => {
-    for (const arg of ['--remote-name', '-J', '-T', '--etag-save=e', '--stderr', '--create-dirs', '--upload-file', '--proto=-all,file', '--next', '-:']) {
-      expect(findBlockedFlag([arg, 'x'])).toBe(arg);
+  test('refuses every flag it does not list, including the ones that write, read or send files', () => {
+    const unlisted = ['-o', '-O', '-D', '-c', '-K', '-T', '-J', '-F', '-b', '-w', '--next', '-:', '--variable', '--config', '--output', '--url', '--proto', '--stderr', '--trace'];
+    for (const flag of unlisted) {
+      expect(argsProblem([flag, 'x', URL_ARG])).toContain("isn't a flag curl_run accepts");
     }
   });
 
-  test('flags data and form values that send a local file', () => {
-    expect(findBlockedFlag(['-d', '@/etc/hosts'])).toBe('-d');
-    expect(findBlockedFlag(['-d@/etc/hosts'])).toBe('-d@/etc/hosts');
-    expect(findBlockedFlag(['-sd', '@/etc/hosts'])).toBe('-sd');
-    expect(findBlockedFlag(['--data-binary=@notes.txt'])).toBe('--data-binary=@notes.txt');
-    expect(findBlockedFlag(['--data-urlencode', 'q@notes.txt'])).toBe('--data-urlencode');
-    expect(findBlockedFlag(['-F', 'upload=@id_rsa'])).toBe('-F');
-    expect(findBlockedFlag(['--form', 'body=<notes.txt'])).toBe('--form');
-    expect(findBlockedFlag(['-H', '@headers.txt'])).toBe('-H');
-    expect(findBlockedFlag(['-b', 'cookies.txt'])).toBe('-b');
-    expect(findBlockedFlag(['-w', '@format.txt'])).toBe('-w');
+  test('refuses bundled short flags and attached values, so every value is its own argument', () => {
+    for (const arg of ['-sSL', '-oout.bin', '-d@notes.txt', '--request=POST', '--data=@notes.txt']) {
+      expect(argsProblem([arg, URL_ARG])).toContain("isn't a flag curl_run accepts");
+    }
   });
 
-  test('allows literal data, including an @ inside a value', () => {
-    expect(findBlockedFlag(['-d', '{"email":"ada@example.com"}'])).toBeUndefined();
-    expect(findBlockedFlag(['--data-urlencode', 'email=ada@example.com'])).toBeUndefined();
-    expect(findBlockedFlag(['-F', 'name=Ada'])).toBeUndefined();
-    expect(findBlockedFlag(['-b', 'session=abc'])).toBeUndefined();
-    expect(findBlockedFlag(['-H', 'accept: application/json'])).toBeUndefined();
+  test('refuses a value that would read a local file', () => {
+    expect(argsProblem(['-d', '@/etc/hosts', URL_ARG])).toContain('a leading @ reads a file');
+    expect(argsProblem(['-H', '@headers.txt', URL_ARG])).toContain('a leading @ reads a file');
+    expect(argsProblem(['--json', '@-', URL_ARG])).toContain('a leading @ reads a file');
+    expect(argsProblem(['--data-urlencode', 'q@notes.txt', URL_ARG])).toContain('name@file reads a file');
+    expect(argsProblem(['--max-redirs', 'many', URL_ARG])).toContain('a number');
+    expect(argsProblem([URL_ARG, '-X'])).toContain('-X takes a value');
   });
 
-  test('allows normal request flags', () => {
-    expect(findBlockedFlag(['-X', 'POST', '-H', 'content-type: application/json', '-d', '{}'])).toBeUndefined();
-    expect(findBlockedFlag(['-sSL', '-u', 'user:pass', 'https://api.example.com'])).toBeUndefined();
+  test('takes exactly one http(s) URL', () => {
+    expect(argsProblem(['-X', 'GET'])).toContain('exactly one URL');
+    expect(argsProblem([URL_ARG, 'https://api.example.com/other'])).toContain('exactly one URL');
+    for (const url of ['file:///etc/hosts', 'ftp://example.com/x', 'api.example.com/things', 'gopher://example.com']) {
+      expect(argsProblem([url])).toContain('http:// or https://');
+    }
   });
 });
