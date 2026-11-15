@@ -69,11 +69,22 @@ const FLAGS: Readonly<Record<string, ValueRule | null>> = {
   '--fail': null,
   '-v': null,
   '--verbose': null,
-  '--compressed': null
+  '--compressed': null,
+  '-k': null,
+  '--insecure': null,
+  '--http1.1': null,
+  '--http2': null,
+  '-s': null,
+  '--silent': null,
+  '-S': null,
+  '--show-error': null
 };
 
-/** Pinned on every run, so `file://` and curl's other local protocols never fetch, redirects included. */
-const PROTOCOLS = ['--proto', '=http,https', '--proto-redir', '=http,https'];
+/**
+ * Pinned on every run: `file://` and curl's other local protocols never fetch, redirects included, and
+ * `--globoff` keeps `{a,b}` and `[1-9]` in the URL literal, so one URL is one request.
+ */
+const PINNED = ['--globoff', '--proto', '=http,https', '--proto-redir', '=http,https'];
 
 const urlProblem = (urls: readonly string[]): string | undefined => {
   if (urls.length !== 1) {
@@ -161,7 +172,7 @@ export const tools: ToolDef[] = [
   defineTool({
     name: 'curl_run',
     description:
-      'Fire ONE curl request with collection-scoped secrets, returning transcript-safe output. Args are curl arguments (no leading "curl"); reference secrets as {{KEY}} placeholders — the tool interpolates them from the collection .env (default: reports/api/bruno/.env, then reports/api/curl/.env; override with envFile) and scrubs every value back out of the returned command/output, so credentials never appear in the conversation. Response bodies are NOT scrubbed beyond that — prod data stays sensitive. It accepts exactly one http(s) URL and only these flags, each value as its own argument: -X/--request, -H/--header, -d/--data, --data-raw, --data-binary, --json, --data-urlencode, -u/--user, -A/--user-agent, -e/--referer, -G/--get, -i/--include, -I/--head, -L/--location, -f/--fail, -v/--verbose, --compressed, --max-redirs, --connect-timeout; a value may not start with @ (curl would read a file). This tool is never pre-granted: each call prompts the operator. Use it to verify drafts from the api-collections skill or debug an endpoint — not as a general download tool.',
+      'Fire ONE curl request with collection-scoped secrets, returning transcript-safe output. Args are curl arguments (no leading "curl"); reference secrets as {{KEY}} placeholders — the tool interpolates them from the collection .env (default: reports/api/bruno/.env, then reports/api/curl/.env; override with envFile) and scrubs every value back out of the returned command/output, so credentials never appear in the conversation. Response bodies are NOT scrubbed beyond that — prod data stays sensitive. It accepts exactly one http(s) URL and only these flags, each value as its own argument: -X/--request, -H/--header, -d/--data, --data-raw, --data-binary, --json, --data-urlencode, -u/--user, -A/--user-agent, -e/--referer, -G/--get, -i/--include, -I/--head, -L/--location, -f/--fail, -v/--verbose, -k/--insecure, --http1.1, --http2, --compressed, --max-redirs, --connect-timeout (-s and -S are already on); a value may not start with @ (curl would read a file), and the URL is never expanded ({a,b} and [1-9] stay literal). This tool is never pre-granted: each call prompts the operator. Use it to verify drafts from the api-collections skill or debug an endpoint — not as a general download tool.',
     inputSchema: {
       args: z
         .array(z.string())
@@ -189,7 +200,7 @@ export const tools: ToolDef[] = [
       }
 
       // Without the store's keys, so `--variable %NAME` can't read one; the collection's keys come in as {{KEY}}.
-      const proc = Bun.spawn(['curl', '-sS', '--max-time', String(timeoutSeconds), ...argv, ...PROTOCOLS], {
+      const proc = Bun.spawn(['curl', '-sS', '--max-time', String(timeoutSeconds), ...argv, ...PINNED], {
         cwd: FOLDERS.HOME,
         env: envWithoutSecrets(),
         stdout: 'pipe',

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { argsProblem, interpolateArgs, scrub } from './tool';
+import { argsProblem, interpolateArgs, scrub, tools } from './tool';
 
 describe('interpolateArgs', () => {
   test('substitutes placeholders from the env map', () => {
@@ -83,5 +83,13 @@ describe('argsProblem', () => {
     for (const url of ['file:///etc/hosts', 'ftp://example.com/x', 'api.example.com/things', 'gopher://example.com']) {
       expect(argsProblem([url])).toContain('http:// or https://');
     }
+  });
+});
+
+describe.skipIf(!Bun.which('curl'))('curl_run', () => {
+  test('sends one request for one URL: a {a,b} in it is never expanded into several', async () => {
+    const curlRun = tools.find((tool) => tool.name === 'curl_run');
+    const result = String(await curlRun?.handler({ args: ['http://127.0.0.1:1/{first,second}'], timeoutSeconds: 5 }));
+    expect(result.match(/Failed to connect/g)).toHaveLength(1);
   });
 });
