@@ -17,10 +17,12 @@ import { CLI_COMMAND, RUNTIME_DIR, pluginName } from '@/shared/naming';
 async function loadProjectEnv(): Promise<void> {
   // Settings first, through the side-effect-free loader: importing shared/env resolves the
   // home and loads secrets on import, which would freeze a home a settings block meant to set.
-  const { loadSettingsEnv, pinHome } = await import('@/shared/settings-env');
+  // The server's bootstrap does the walk, from the named home when there is one, else the cwd,
+  // so `AGENT_HOME=… cli` run from elsewhere reads that home's settings, not the cwd's.
+  const { pinHome } = await import('@/shared/settings-env');
   const home = process.argv.find((arg) => arg.startsWith('--home='))?.slice('--home='.length);
   if (home) pinHome(home);
-  loadSettingsEnv(process.cwd());
+  await import('@/bootstrap');
   const { agentHomePath } = await import('@/shared/env');
   agentHomePath();
 }
@@ -515,10 +517,9 @@ async function run(): Promise<void> {
   }
 
   if (group === 'capture') {
-    // Combine command + args so flags can land anywhere after `capture`. The
-    // first non-flag arg (if any) is treated as inline positional text, so
-    // `capture "the thought"` works without --text=.
-    const positional = verbArgs.find((a) => !a.startsWith('--'));
+    // Flags can land anywhere after `capture`. The first argument that isn't one of capture's own flags is
+    // the note, so `capture "the thought"` works without --text=, even when the note starts with `--`.
+    const positional = verbArgs.find((a) => !/^--(text|file|url|kind|title|label)=|^--stdin$/.test(a));
     const wantStdin = bool('stdin');
     let text = positional ?? flag('text');
     if (!text && !flag('file') && !flag('url') && (wantStdin || !process.stdin.isTTY)) {

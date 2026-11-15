@@ -20,7 +20,8 @@ import {
   PLUGIN_NAME,
   PLUGIN_VERSION,
   SUBSCRIPTION_MARKER,
-  TIMEZONE
+  TIMEZONE,
+  TIMEZONE_ISSUE
 } from '@/config';
 import { followMove, historyStatus, restorePointer } from '@/home/history';
 import { checkHosts, hostIssues, requiredHosts, type HostName } from '@/upgrade/hosts';
@@ -507,6 +508,11 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
         'actually loaded; a by-hand edit of `settings.json` is what the sandbox exists to prevent.'
       ].join('\n')
     );
+  }
+
+  if (TIMEZONE_ISSUE) {
+    entries.push({ label: 'time zone', status: 'unavailable', bytes: 0, note: 'AGENT_TIMEZONE invalid' });
+    warnings.push(['## ⚠️ Time zone', '', `- ${TIMEZONE_ISSUE}`, '', '**Report this to the operator.** The value lives in `.claude/settings.local.json` `env`.'].join('\n'));
   }
 
   const hosts = hostIssues(checkHosts(requiredHosts(FOLDERS.HOME)));

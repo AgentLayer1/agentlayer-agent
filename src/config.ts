@@ -53,7 +53,27 @@ export function listSecretEntries(): SecretEntry[] {
   return [...loadedSecretKeyNames().map((name) => ({ name, present: true })), ...google, ...slack];
 }
 
-export const TIMEZONE = env('AGENT_TIMEZONE') || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+const isTimeZone = (zone: string): boolean => {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const CONFIGURED_TIMEZONE = env('AGENT_TIMEZONE');
+
+/** Set when `AGENT_TIMEZONE` names no time zone; every date then uses the system's, and session start says so. */
+export const TIMEZONE_ISSUE =
+  CONFIGURED_TIMEZONE && !isTimeZone(CONFIGURED_TIMEZONE)
+    ? `AGENT_TIMEZONE is "${CONFIGURED_TIMEZONE}", which isn't an IANA time zone (e.g. Asia/Kuala_Lumpur); dates use the system zone until it's fixed.`
+    : undefined;
+
+export const TIMEZONE =
+  (CONFIGURED_TIMEZONE && !TIMEZONE_ISSUE ? CONFIGURED_TIMEZONE : undefined) ||
+  Intl.DateTimeFormat().resolvedOptions().timeZone ||
+  'UTC';
 
 /** The operator's home-base IANA timezone, set via `AGENT_HOME_TIMEZONE` in
  *  `.claude/settings.local.json` `env`. When set and different from `TIMEZONE`,
