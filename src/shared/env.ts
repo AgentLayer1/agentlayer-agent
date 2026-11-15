@@ -1,7 +1,7 @@
 import { RUNTIME_DIR, ownDataDir, resolveEnv } from '@/shared/naming';
-import { expandTilde } from '@/shared/paths';
-import { readFileSync, realpathSync } from 'node:fs';
-import { dirname, resolve, sep } from 'node:path';
+import { existingTarget, expandTilde, isInside } from '@/shared/paths';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 
 /**
  * The env gate: `shared/naming.ts` plus the home's secret store.
@@ -156,17 +156,9 @@ function parseDotenv(raw: string): Record<string, string> {
  */
 export function readEnvFile(path: string): Record<string, string> {
   // Compared as real paths, so a symlink into the store is refused like the store itself.
-  const real = (target: string): string => {
-    try {
-      return realpathSync(target);
-    } catch {
-      return resolve(target);
-    }
-  };
-  const resolved = real(path);
+  const resolved = existingTarget(resolve(path));
   try {
-    const gated = real(gatedSecretsDir());
-    if (resolved === gated || resolved.startsWith(gated + sep)) {
+    if (isInside(resolved, existingTarget(gatedSecretsDir()))) {
       return {};
     }
   } catch {

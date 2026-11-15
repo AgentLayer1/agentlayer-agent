@@ -15,8 +15,7 @@ import { untrusted } from '@/shared/untrusted';
 import { z } from 'zod';
 
 /** Message text, names and channel topics are other people's words: data for the model, never instructions. */
-const fromSlack = async (label: string, read: Promise<unknown>): Promise<string> =>
-  untrusted(`slack:${label}`, JSON.stringify(await read, null, 2));
+const fromSlack = (label: string, data: unknown): string => untrusted(`slack:${label}`, JSON.stringify(data, null, 2));
 
 const SINCE = z
   .string()
@@ -34,7 +33,7 @@ export const tools: ToolDef[] = [
     name: 'slack_channels',
     description: 'List the Slack channels the operator is a member of (sorted by name). Read-only.',
     inputSchema: {},
-    handler: async () => fromSlack('channels', getChannels())
+    handler: async () => fromSlack('channels', await getChannels())
   }),
   defineTool({
     name: 'slack_history',
@@ -45,7 +44,7 @@ export const tools: ToolDef[] = [
       since: SINCE.optional(),
       limit: z.number().int().positive().max(1000).optional().describe('Max messages to return. Default 100.')
     },
-    handler: async (args) => fromSlack('history', getHistory(args))
+    handler: async (args) => fromSlack('history', await getHistory(args))
   }),
   defineTool({
     name: 'slack_thread',
@@ -64,7 +63,7 @@ export const tools: ToolDef[] = [
       if (!target.channel || !target.thread_ts) {
         throw new Error('Provide either `url`, or both `channel` and `thread_ts`.');
       }
-      return fromSlack('thread', getThread({ channel: target.channel, thread_ts: target.thread_ts }));
+      return fromSlack('thread', await getThread({ channel: target.channel, thread_ts: target.thread_ts }));
     }
   }),
   defineTool({
@@ -76,7 +75,7 @@ export const tools: ToolDef[] = [
       in: z.string().optional().describe('Scope to a single channel #name.'),
       since: SINCE.optional()
     },
-    handler: async (args) => fromSlack('search', searchSlack(args))
+    handler: async (args) => fromSlack('search', await searchSlack(args))
   }),
   defineTool({
     name: 'slack_batch_history',
@@ -97,7 +96,7 @@ export const tools: ToolDef[] = [
         const written = await writeBatchDir(batch, args.outDir, 'json');
         return { requested: batch.requested, resolved: batch.resolved, missing: batch.missing, written };
       }
-      return fromSlack('batch_history', Promise.resolve(batch));
+      return fromSlack('batch_history', batch);
     }
   }),
   defineTool({

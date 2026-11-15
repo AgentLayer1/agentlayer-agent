@@ -22,7 +22,7 @@ interface HookInput {
  * backslashes (a workaround for some Claude hook payload variants that
  * emit Windows-style paths without re-escaping).
  */
-export const parseHookInput = (raw: string): HookInput => {
+const parseHookInput = (raw: string): HookInput => {
   try {
     return JSON.parse(raw);
   } catch {

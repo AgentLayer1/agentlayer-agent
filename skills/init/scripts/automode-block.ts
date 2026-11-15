@@ -80,9 +80,8 @@ const listedHomes = (entry: string): string[] =>
     .map((path) => path.trim())
     .filter(Boolean)
     .map((path) => resolve(expandTilde(path)));
-const homeListed = (mine.environment ?? []).some(
-  (entry) => entry.startsWith('Agent homes:') && listedHomes(entry).includes(resolve(expandTilde(home)))
-);
+const homePath = resolve(expandTilde(home));
+const homeListed = (mine.environment ?? []).some((entry) => entry.startsWith('Agent homes:') && listedHomes(entry).includes(homePath));
 const status = !adopted ? 'absent' : !homeListed || rules.some((rule) => rule.state !== 'current') ? 'stale' : 'current';
 const replacements = rules.filter((rule) => rule.state !== 'current');
 

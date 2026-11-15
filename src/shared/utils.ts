@@ -1,7 +1,7 @@
 import { FOLDERS } from '@/config';
 import { existingTarget } from '@/shared/paths';
 import { randomUUID } from 'node:crypto';
-import { chmodSync, existsSync, mkdirSync, renameSync, rmSync, statSync, writeFileSync } from 'fs';
+import { chmodSync, mkdirSync, renameSync, rmSync, statSync, writeFileSync } from 'fs';
 import { dirname, relative } from 'path';
 
 // ── Async helpers ─────────────────────────────────────────────────────
@@ -37,7 +37,8 @@ export function writeFileAtomic(path: string, content: string | Uint8Array, mode
   mkdirSync(dirname(target), { recursive: true });
   const tmp = `${target}.${process.pid}.${randomUUID()}.tmp`;
   // A rewrite keeps the file's permissions (a settings file the operator made 0600 stays 0600).
-  const keep = mode ?? (existsSync(target) ? statSync(target).mode & 0o7777 : undefined);
+  const existing = statSync(target, { throwIfNoEntry: false });
+  const keep = mode ?? (existing ? existing.mode & 0o7777 : undefined);
   try {
     writeFileSync(tmp, content);
     if (keep !== undefined) {

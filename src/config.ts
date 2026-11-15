@@ -63,17 +63,15 @@ const isTimeZone = (zone: string): boolean => {
 };
 
 const CONFIGURED_TIMEZONE = env('AGENT_TIMEZONE');
+const VALID_TIMEZONE = CONFIGURED_TIMEZONE && isTimeZone(CONFIGURED_TIMEZONE) ? CONFIGURED_TIMEZONE : undefined;
 
 /** Set when `AGENT_TIMEZONE` names no time zone; every date then uses the system's, and session start says so. */
 export const TIMEZONE_ISSUE =
-  CONFIGURED_TIMEZONE && !isTimeZone(CONFIGURED_TIMEZONE)
+  CONFIGURED_TIMEZONE && !VALID_TIMEZONE
     ? `AGENT_TIMEZONE is "${CONFIGURED_TIMEZONE}", which isn't an IANA time zone (e.g. Asia/Kuala_Lumpur); dates use the system zone until it's fixed.`
     : undefined;
 
-export const TIMEZONE =
-  (CONFIGURED_TIMEZONE && !TIMEZONE_ISSUE ? CONFIGURED_TIMEZONE : undefined) ||
-  Intl.DateTimeFormat().resolvedOptions().timeZone ||
-  'UTC';
+export const TIMEZONE = VALID_TIMEZONE || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
 /** The operator's home-base IANA timezone, set via `AGENT_HOME_TIMEZONE` in
  *  `.claude/settings.local.json` `env`. When set and different from `TIMEZONE`,

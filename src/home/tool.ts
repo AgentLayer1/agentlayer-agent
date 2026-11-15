@@ -25,7 +25,7 @@ interface SetupResult {
   message: string;
 }
 
-export const runCodexSetup = async (): Promise<SetupResult> => {
+const runCodexSetup = async (): Promise<SetupResult> => {
   const script = resolve(FOLDERS.ROOT, 'skills', 'init', 'scripts', 'codex-setup.ts');
   const proc = await runGroup(
     [process.execPath, script, '--home', FOLDERS.HOME, '--plugin-root', FOLDERS.ROOT, '--write'],

@@ -439,7 +439,8 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
   ];
 
   const traveling = HOME_TIMEZONE && HOME_TIMEZONE !== TIMEZONE ? ` — ✈️ traveling (home: ${HOME_TIMEZONE})` : '';
-  const parts: string[] = [`## Today\n${dateStr} (${TIMEZONE})${traveling}`];
+  const today = `## Today\n${dateStr} (${TIMEZONE})${traveling}`;
+  const parts: string[] = [];
   if (welcomePending()) parts.push(welcomePart());
   if (tail.content) parts.push(`## Last Session Memory (archived — not this conversation)\n\n${tail.content}`);
   if (reports.content) parts.push(`## Today's Reports\n\n${reports.content}`);
@@ -452,43 +453,41 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
 
   // Home-check warnings sit right after `## Today`, ahead of the long lanes, so the size cap never cuts them.
   const warnings: string[] = [];
+  const warn = (label: string, note: string, section: string[]): void => {
+    entries.push({ label, status: 'unavailable', bytes: 0, note });
+    warnings.push(section.join('\n'));
+  };
   const stranded = unresolvedPlaceholders();
   if (stranded.length > 0) {
-    entries.push({ label: 'identity files', status: 'unavailable', bytes: 0, note: 'unresolved placeholders' });
-    warnings.push(
-      [
-        '## ⚠️ Unresolved scaffold placeholders',
-        '',
-        'These files still contain template placeholders that `init` or `upgrade` should have',
-        'substituted. They are loaded into context every session, so the agent is reading its own',
-        'identity with the placeholder in place:',
-        '',
-        ...stranded.map((line) => `- ${line}`),
-        '',
-        '**Report this to the operator and let them decide. Do not edit these files yourself',
-        'unless they ask you to.** The likely cause is a failed substitution during init or',
-        'upgrade, in which case the fix is to replace each placeholder with its intended value —',
-        `\`{{AGENT_NAME}}\` is whatever \`IDENTITY.md\` gives as **Name**. But an operator may also`,
-        'have written this text deliberately (notes about a templating system, for instance), and',
-        'silently rewriting their own words would be worse than the warning. Do not re-run init to',
-        'repair it either: the re-run path offers to overwrite these same files.'
-      ].join('\n')
-    );
+    warn('identity files', 'unresolved placeholders', [
+      '## ⚠️ Unresolved scaffold placeholders',
+      '',
+      'These files still contain template placeholders that `init` or `upgrade` should have',
+      'substituted. They are loaded into context every session, so the agent is reading its own',
+      'identity with the placeholder in place:',
+      '',
+      ...stranded.map((line) => `- ${line}`),
+      '',
+      '**Report this to the operator and let them decide. Do not edit these files yourself',
+      'unless they ask you to.** The likely cause is a failed substitution during init or',
+      'upgrade, in which case the fix is to replace each placeholder with its intended value —',
+      `\`{{AGENT_NAME}}\` is whatever \`IDENTITY.md\` gives as **Name**. But an operator may also`,
+      'have written this text deliberately (notes about a templating system, for instance), and',
+      'silently rewriting their own words would be worse than the warning. Do not re-run init to',
+      'repair it either: the re-run path offers to overwrite these same files.'
+    ]);
   }
 
   const layout = manualLayoutIssues();
   if (layout.length > 0) {
-    entries.push({ label: 'manual layout', status: 'unavailable', bytes: 0, note: 'needs upgrade' });
-    warnings.push(
-      [
-        '## ⚠️ Operating manual layout',
-        '',
-        ...layout.map((line) => `- ${line}`),
-        '',
-        '**Report this to the operator.** Do not move or delete the files yourself; the upgrade',
-        'backs up, verifies, and rolls back, and a by-hand move has none of that.'
-      ].join('\n')
-    );
+    warn('manual layout', 'needs upgrade', [
+      '## ⚠️ Operating manual layout',
+      '',
+      ...layout.map((line) => `- ${line}`),
+      '',
+      '**Report this to the operator.** Do not move or delete the files yourself; the upgrade',
+      'backs up, verifies, and rolls back, and a by-hand move has none of that.'
+    ]);
   }
 
   // A due upgrade re-points the footer itself, and the banner's upgrade line already says to run it.
@@ -497,41 +496,39 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
       ? statusLineDrift(resolve(FOLDERS.HOME, '.claude'), CLI_PATH)
       : undefined;
   if (statusLine) {
-    entries.push({ label: 'status line', status: 'unavailable', bytes: 0, note: 'needs upgrade' });
-    warnings.push(
-      [
-        '## ⚠️ Status line',
-        '',
-        `- ${statusLine}`,
-        '',
-        '**Report this to the operator.** The upgrade re-points the entry from the plugin that is',
-        'actually loaded; a by-hand edit of `settings.json` is what the sandbox exists to prevent.'
-      ].join('\n')
-    );
+    warn('status line', 'needs upgrade', [
+      '## ⚠️ Status line',
+      '',
+      `- ${statusLine}`,
+      '',
+      '**Report this to the operator.** The upgrade re-points the entry from the plugin that is',
+      'actually loaded; a by-hand edit of `settings.json` is what the sandbox exists to prevent.'
+    ]);
   }
 
   if (TIMEZONE_ISSUE) {
-    entries.push({ label: 'time zone', status: 'unavailable', bytes: 0, note: 'AGENT_TIMEZONE invalid' });
-    warnings.push(['## ⚠️ Time zone', '', `- ${TIMEZONE_ISSUE}`, '', '**Report this to the operator.** The value lives in `.claude/settings.local.json` `env`.'].join('\n'));
+    warn('time zone', 'AGENT_TIMEZONE invalid', [
+      '## ⚠️ Time zone',
+      '',
+      `- ${TIMEZONE_ISSUE}`,
+      '',
+      '**Report this to the operator.** The value lives in `.claude/settings.local.json` `env`.'
+    ]);
   }
 
   const hosts = hostIssues(checkHosts(requiredHosts(FOLDERS.HOME)));
   if (hosts.length > 0) {
-    entries.push({ label: 'host versions', status: 'unavailable', bytes: 0, note: 'update the host' });
-    warnings.push(
-      [
-        '## ⚠️ Host versions',
-        '',
-        ...hosts.map((line) => `- ${line}`),
-        '',
-        '**Report this to the operator.** The plugin carries no compatibility shims for older hosts;',
-        'init and upgrade refuse to run until the host is updated.'
-      ].join('\n')
-    );
+    warn('host versions', 'update the host', [
+      '## ⚠️ Host versions',
+      '',
+      ...hosts.map((line) => `- ${line}`),
+      '',
+      '**Report this to the operator.** The plugin carries no compatibility shims for older hosts;',
+      'init and upgrade refuse to run until the host is updated.'
+    ]);
   }
 
-  const [today = '', ...lanes] = parts;
-  return { dateStr, entries, parts: [today, ...warnings, ...lanes] };
+  return { dateStr, entries, parts: [today, ...warnings, ...parts] };
 }
 
 /** Join the parts under the hook's size cap; a cut inside a code fence closes the fence so what follows isn't swallowed. */

@@ -15,10 +15,8 @@ import { CLI_COMMAND, RUNTIME_DIR, pluginName } from '@/shared/naming';
 // AGENT_HOME first: the Codex hooks pass the home that way because their command
 // line has to parse under sh and PowerShell alike, and an env prefix does not.
 async function loadProjectEnv(): Promise<void> {
-  // Settings first, through the side-effect-free loader: importing shared/env resolves the
-  // home and loads secrets on import, which would freeze a home a settings block meant to set.
-  // The server's bootstrap does the walk, from the named home when there is one, else the cwd,
-  // so `AGENT_HOME=… cli` run from elsewhere reads that home's settings, not the cwd's.
+  // Pin the home before the server's bootstrap walks the settings, so it walks from that home; importing
+  // shared/env first would resolve the home and load secrets before a settings block could name it.
   const { pinHome } = await import('@/shared/settings-env');
   const home = process.argv.find((arg) => arg.startsWith('--home='))?.slice('--home='.length);
   if (home) pinHome(home);
@@ -67,6 +65,9 @@ function bool(name: string): boolean {
 }
 
 const PLUGIN = pluginName();
+
+/** capture's own flags, plus the global --home: anything else is the note. */
+const CAPTURE_FLAGS = ['text', 'file', 'url', 'kind', 'title', 'label', 'home'] as const;
 
 const HELP = `\
 ${PLUGIN} CLI
@@ -247,7 +248,7 @@ async function run(): Promise<void> {
   // Runs before a home exists: init gates on it before scaffolding anything.
   if (group === 'hosts') {
     const { checkHosts, requiredHosts } = await import('@/upgrade/hosts');
-    const report = checkHosts(requiredHosts(FOLDERS.HOME, [command, ...args].includes('--codex')));
+    const report = checkHosts(requiredHosts(FOLDERS.HOME, bool('codex')));
     console.log(JSON.stringify(report, null, 2));
     process.exit(report.ok ? 0 : 1);
   }
@@ -519,7 +520,7 @@ async function run(): Promise<void> {
   if (group === 'capture') {
     // Flags can land anywhere after `capture`. The first argument that isn't one of capture's own flags is
     // the note, so `capture "the thought"` works without --text=, even when the note starts with `--`.
-    const positional = verbArgs.find((a) => !/^--(text|file|url|kind|title|label)=|^--stdin$/.test(a));
+    const positional = verbArgs.find((a) => a !== '--stdin' && !CAPTURE_FLAGS.some((name) => a.startsWith(`--${name}=`)));
     const wantStdin = bool('stdin');
     let text = positional ?? flag('text');
     if (!text && !flag('file') && !flag('url') && (wantStdin || !process.stdin.isTTY)) {

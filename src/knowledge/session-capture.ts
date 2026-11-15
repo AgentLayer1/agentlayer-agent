@@ -196,7 +196,8 @@ function formatTurnList(turns: TranscriptTurn[]): string {
 /** One-line briefing seeded on a session's first capture (first user turn). */
 function briefingStub(turns: TranscriptTurn[]): string {
   const firstUser = turns.find((turn) => turn.role === 'user');
-  const text = redactSecrets((firstUser?.text ?? turns[0]?.text ?? '').replace(/\s+/g, ' ').trim());
+  // Redacted before the cut, over a window wide enough that a token crossing the cut is still whole.
+  const text = redactSecrets((firstUser?.text ?? turns[0]?.text ?? '').slice(0, 4_000).replace(/\s+/g, ' ').trim());
   return text.length > 240 ? `${text.slice(0, 240)}…` : text;
 }
 
