@@ -1,5 +1,5 @@
 import { FILES, FOLDERS, TIMEZONE } from '@/config';
-import { pinnedReports, subscriptionIssue, todaysReports } from '@/hooks/context';
+import { fitContext, pinnedReports, subscriptionIssue, tailOf, todaysReports } from '@/hooks/context';
 import { describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -57,5 +57,22 @@ describe('the Claude subscription guard', () => {
   test('a session started with the subscription file, or a home without one, stays quiet', () => {
     expect(subscriptionIssue(true, '1')).toBeNull();
     expect(subscriptionIssue(false, undefined)).toBeNull();
+  });
+});
+
+describe('the session context under its size cap', () => {
+  test('a cut inside a code fence closes the fence, with as many backticks as opened it', () => {
+    const fitted = fitContext(['## Today', '## Git\n\n````\n' + 'commit line\n'.repeat(50) + '````'], 120);
+    expect(fitted.endsWith('\n````\n\n...(truncated)')).toBe(true);
+    expect(fitContext(['short'], 120)).toBe('short');
+  });
+
+  test("a long session tail keeps its header and the session's newest turns", () => {
+    const turns = Array.from({ length: 60 }, (_unused, i) => `**User:** question ${i}\n\n**Assistant:** answer ${i}\n`).join('\n');
+    const tail = tailOf(`### Session (14:15) [abc] · turns 1–120\n\n${turns}`, 600);
+    expect(tail.startsWith('### Session (14:15) [abc] · turns 1–120')).toBe(true);
+    expect(tail).toContain('answer 59');
+    expect(tail).not.toContain('question 0\n');
+    expect(tail.split('\n…\n\n')[1]?.startsWith('**')).toBe(true);
   });
 });

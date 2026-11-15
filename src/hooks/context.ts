@@ -99,6 +99,21 @@ const CAVEAT_BLOCK_RE = /\*\*User:\*\* <local-command-caveat>[\s\S]*?<\/local-co
 /** Fence length must exceed any backtick run inside the quoted transcript. */
 const longestBacktickRun = (text: string) => Math.max(0, ...Array.from(text.matchAll(/`+/g), (m) => m[0].length));
 
+/**
+ * A block over the cap keeps its header line and its newest turns, starting at a turn: the tail is where
+ * the session left off, not how it began.
+ */
+export const tailOf = (block: string, maxBytes: number): string => {
+  if (block.length <= maxBytes) {
+    return block;
+  }
+  const newline = block.indexOf('\n');
+  const header = newline === -1 ? '' : block.slice(0, newline);
+  const recent = block.slice(-Math.max(0, maxBytes - header.length));
+  const turn = recent.search(/^\*\*[A-Z][a-z]+:\*\*/m);
+  return `${header}\n\n…\n\n${(turn > 0 ? recent.slice(turn) : recent).trimStart()}`;
+};
+
 async function lastSessionTail(maxBytes: number): Promise<TailResult> {
   const now = new Date();
   for (let offset = 0; offset < 7; offset++) {
@@ -113,9 +128,9 @@ async function lastSessionTail(maxBytes: number): Promise<TailResult> {
       if (start === -1) continue;
       const block = content.slice(start).replace(TRAILING_SEPARATOR_RE, '').replace(CAVEAT_BLOCK_RE, '');
       const overflows = block.length > maxBytes;
-      const body = overflows ? block.slice(0, maxBytes).trimEnd() : block;
+      const body = tailOf(block, maxBytes).trimEnd();
       const fence = '`'.repeat(Math.max(3, longestBacktickRun(body) + 1));
-      const suffix = overflows ? `\n\n_(truncated — full block in \`${logPath}\`)_` : '';
+      const suffix = overflows ? `\n\n_(earlier turns left out — full block in \`${logPath}\`)_` : '';
       const wrapped = `${TAIL_PREAMBLE}\n\n${fence}text\n${body}\n${fence}${suffix}`;
       return {
         content: wrapped,
@@ -434,10 +449,12 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
     .map((log) => `### ${log.label}\n\n\`\`\`\n${log.output}\n\`\`\``);
   if (gitSections.length > 0) parts.push(`## Recent Git Activity\n\n${gitSections.join('\n\n')}`);
 
+  // Home-check warnings sit right after `## Today`, ahead of the long lanes, so the size cap never cuts them.
+  const warnings: string[] = [];
   const stranded = unresolvedPlaceholders();
   if (stranded.length > 0) {
     entries.push({ label: 'identity files', status: 'unavailable', bytes: 0, note: 'unresolved placeholders' });
-    parts.push(
+    warnings.push(
       [
         '## ⚠️ Unresolved scaffold placeholders',
         '',
@@ -461,7 +478,7 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
   const layout = manualLayoutIssues();
   if (layout.length > 0) {
     entries.push({ label: 'manual layout', status: 'unavailable', bytes: 0, note: 'needs upgrade' });
-    parts.push(
+    warnings.push(
       [
         '## ⚠️ Operating manual layout',
         '',
@@ -480,7 +497,7 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
       : undefined;
   if (statusLine) {
     entries.push({ label: 'status line', status: 'unavailable', bytes: 0, note: 'needs upgrade' });
-    parts.push(
+    warnings.push(
       [
         '## ⚠️ Status line',
         '',
@@ -495,7 +512,7 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
   const hosts = hostIssues(checkHosts(requiredHosts(FOLDERS.HOME)));
   if (hosts.length > 0) {
     entries.push({ label: 'host versions', status: 'unavailable', bytes: 0, note: 'update the host' });
-    parts.push(
+    warnings.push(
       [
         '## ⚠️ Host versions',
         '',
@@ -507,8 +524,30 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
     );
   }
 
-  return { dateStr, entries, parts };
+  const [today = '', ...lanes] = parts;
+  return { dateStr, entries, parts: [today, ...warnings, ...lanes] };
 }
+
+/** Join the parts under the hook's size cap; a cut inside a code fence closes the fence so what follows isn't swallowed. */
+export const fitContext = (parts: readonly string[], maxChars: number): string => {
+  const context = parts.join('\n\n---\n\n');
+  if (context.length <= maxChars) {
+    return context;
+  }
+  const cut = context.slice(0, maxChars);
+  // A fence closes only on a bare run of at least as many backticks as opened it.
+  const open = cut.split('\n').reduce<string | null>((fence, line) => {
+    const run = line.match(/^`{3,}/)?.[0];
+    if (run === undefined) {
+      return fence;
+    }
+    if (fence === null) {
+      return run;
+    }
+    return run.length >= fence.length && line.trim() === run ? null : fence;
+  }, null);
+  return `${cut}${open === null ? '' : `\n${open}`}\n\n...(truncated)`;
+};
 
 /**
  * A home with its own Claude subscription file, in a session that didn't start with it, bills the default login.
@@ -585,10 +624,7 @@ export async function assembleContext({
       ]
     : gathered.parts;
 
-  let context = parts.join('\n\n---\n\n');
-  if (context.length > CONTEXT.MAX_CHARS) {
-    context = context.slice(0, CONTEXT.MAX_CHARS) + '\n\n...(truncated)';
-  }
+  const context = fitContext(parts, CONTEXT.MAX_CHARS);
   const notices = (await pendingNotices).filter((notice) => !promptRow || notice.level === 'hint');
   const banner = renderBanner(entries, context.length, notices, subscription);
   const hasIssues = subscription !== null || entries.some((entry) => entry.status !== 'loaded' && entry.status !== 'off');
