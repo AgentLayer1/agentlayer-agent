@@ -16,12 +16,12 @@ writeFileSync(pidFile, String(child.pid));
 await child.exited;
 `;
 
-let tools: typeof import('@/tools/browser-flows').tools;
+let tools: typeof import('@/browser/flows').tools;
 
 beforeAll(async () => {
   mkdirSync(resolve(HOME, 'scripts', 'browser', 'hang'), { recursive: true });
   writeFileSync(resolve(HOME, 'scripts', 'browser', 'hang', 'index.ts'), FLOW_WITH_HANGING_CHILD);
-  ({ tools } = await import('@/tools/browser-flows'));
+  ({ tools } = await import('@/browser/flows'));
 });
 
 afterAll(() => {

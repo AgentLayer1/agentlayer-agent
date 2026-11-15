@@ -47,7 +47,6 @@ import { readText } from '@/shared/text';
 import type { TaskFile } from '@/shared/types';
 import { discoverProjects, scanAllTasks, scanArchivedTasks, scanMalformedTasks } from '@/tasks/scan';
 import { resolveTasks } from '@/tasks/resolve';
-import { TOOL_MODULES } from '@/tools/modules';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
@@ -602,38 +601,26 @@ const collectMcp = async (): Promise<StatusSnapshot['mcp']> => {
 };
 
 /**
- * Authoritative tool list: gather the side-effect-free `tools` arrays from
- * the same TOOL_MODULES list server.ts registers from. server.ts itself can't
- * be imported (its top-level `server.connect()` would start a server).
+ * Authoritative tool list: the same registry server.ts registers from. Imported lazily, since
+ * the registry reaches this module back through the status tools, and server.ts itself can't be
+ * imported (its top-level `server.connect()` would start a server).
  */
 const collectMcpTools = async (): Promise<ToolInfo[]> => {
-  const lists = await Promise.all(
-    TOOL_MODULES.map(async (name) => {
-      try {
-        const mod = (await import(`@/tools/${name}`)) as {
-          tools?: Array<{ name?: string; description?: string }>;
-          discoverConnections?: () => Array<{ name: string; envKey: string }>;
-          safeConnectionInfo?: (url: string) => { host: string; port: string; database: string };
-        };
-        const { discoverConnections, safeConnectionInfo } = mod;
-        const dbConnections =
-          name === 'database' && discoverConnections && safeConnectionInfo
-            ? discoverConnections().map((conn) => ({
-                name: conn.name,
-                ...safeConnectionInfo(env(conn.envKey) ?? '')
-              }))
-            : undefined;
-        return (mod.tools ?? []).map((tool) => ({
-          name: tool.name ?? '?',
-          description: firstSentence(tool.description ?? ''),
-          ...(dbConnections ? { dbConnections } : {})
-        }));
-      } catch {
-        return [];
-      }
-    })
-  );
-  return lists.flat().sort((a, b) => a.name.localeCompare(b.name));
+  try {
+    const [{ TOOLS }, database] = await Promise.all([import('@/tools'), import('@/database/query')]);
+    const databaseTools = new Set(database.tools.map((tool) => tool.name));
+    const dbConnections = database.discoverConnections().map((conn) => ({
+      name: conn.name,
+      ...database.safeConnectionInfo(env(conn.envKey) ?? '')
+    }));
+    return TOOLS.map((tool) => ({
+      name: tool.name,
+      description: firstSentence(tool.description),
+      ...(databaseTools.has(tool.name) ? { dbConnections } : {})
+    })).sort((a, b) => a.name.localeCompare(b.name));
+  } catch {
+    return [];
+  }
 };
 
 interface HookConfig {

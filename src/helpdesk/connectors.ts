@@ -1,4 +1,4 @@
-import { PYLON_TOKEN_KEY } from '@/pylon/config';
+import { PYLON_TOKEN_KEY } from '@/helpdesk/pylon/config';
 import { namedKeys } from '@/shared/env';
 import { pluginName } from '@/shared/naming';
 import { pylon } from './pylon';

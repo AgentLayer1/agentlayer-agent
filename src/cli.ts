@@ -471,9 +471,8 @@ async function run(): Promise<void> {
     // self-loads the data-dir secrets/.env on first read — no manual preload needed.
     // Like worktree/database_fork, these run outside the Bash sandbox — this CLI
     // path is the real-terminal entry point.
-    const { tools: readTools } = await import('@/tools/database');
-    const { tools: forkTools } = await import('@/tools/database-fork');
-    const byName = new Map([...readTools, ...forkTools].map((tool) => [tool.name, tool] as const));
+    const { tools } = await import('@/database/tool');
+    const byName = new Map(tools.map((tool) => [tool.name, tool] as const));
     const call = async (name: string, params: Record<string, unknown>): Promise<void> => {
       const tool = byName.get(name);
       if (!tool) throw new Error(`Tool not found: ${name}`);

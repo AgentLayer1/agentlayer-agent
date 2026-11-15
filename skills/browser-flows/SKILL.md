@@ -69,7 +69,7 @@ A flow resolves each field `params.x ?? process.env.SECRET ?? config.x ?? defaul
 |---|---|
 | `lib/browser.ts` — headed persistent launch, `ensureLoggedIn`, `step()`, the `Target` type | `flows/<flow>/index.ts` — entry, owning its `targets` (urls + optional `auth`) |
 | `lib/flow.ts` — `runFlow(targets, handler)` harness (arg parse, env→target, launch, login-wait, cleanup) | `flows/<flow>/*.ts` — the flow's building blocks (e.g. `stories.ts`, `types.ts`) |
-| `src/tools/browser-flows.ts` — generic folder dispatcher | `flows/<flow>/index.md` — guidance · `flows/<flow>/assets/` — upload templates |
+| `src/browser/flows.ts` — generic folder dispatcher | `flows/<flow>/index.md` — guidance · `flows/<flow>/assets/` — upload templates |
 | `BROWSER` group in `src/config.ts` | |
 
 The dispatcher lists any `flows/<dir>/index.ts`. Compose a flow from small blocks so variants reuse the overlap. Screenshots are scoped per run under `reports/captures/browser/<env>/<flow>/<run>/`.

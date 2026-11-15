@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { assertDbName, discoverConnections, resolveConnectionString, safeConnectionInfo } from '@/tools/database';
+import { assertDbName, discoverConnections, resolveConnectionString, safeConnectionInfo } from '@/database/query';
 
 describe('discoverConnections', () => {
   const added: string[] = [];

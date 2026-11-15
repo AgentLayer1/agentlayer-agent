@@ -9,7 +9,7 @@ import { defineTool, type ToolDef } from '@/shared/types';
 import { untrusted } from '@/shared/untrusted';
 import { operatorGithubLogin } from '@/status/collect';
 import { z } from 'zod';
-import { repoField, resolveRepo, runGh } from './github';
+import { repoField, resolveRepo, runGh } from './reads';
 
 const LOGIN_RE = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;
 const BODY_LIMIT = 600;

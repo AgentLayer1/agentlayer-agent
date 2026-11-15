@@ -7,7 +7,7 @@ import {
   readEnvLine,
   removeEnvLine,
   upsertEnvLine
-} from '@/tools/database-fork';
+} from '@/database/fork';
 
 describe('quoteIdent', () => {
   test('wraps a plain name in double quotes', () => {

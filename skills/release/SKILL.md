@@ -95,7 +95,7 @@ severity, let the maintainer confirm/override:
 **Settings** — do new MCP tools or skills need `permissions.allow` entries?
 
 ```bash
-git -C "${CLAUDE_PLUGIN_ROOT}" diff <range> -- src/tools/ | grep -E "name:\s*'[a-z_]+'" || true   # new defineTool names
+git -C "${CLAUDE_PLUGIN_ROOT}" diff <range> -- src/ | grep -E "name:\s*'[a-z_]+'" || true   # new defineTool names
 git -C "${CLAUDE_PLUGIN_ROOT}" diff --stat <range> -- skills/                                                 # new skill dirs
 ```
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readStats, STOREFRONTS } from '@/appstore/storefronts';
 import type { ReviewQuery, ReviewSource } from '@/appstore/types';
-import { cutoffOf, readReviews } from './appstore';
+import { cutoffOf, readReviews } from './tool';
 
 const NOW = new Date('2026-10-21T00:00:00Z');
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { findBlockedFlag, interpolateArgs, scrub } from './curl';
+import { findBlockedFlag, interpolateArgs, scrub } from './tool';
 
 describe('interpolateArgs', () => {
   test('substitutes placeholders from the env map', () => {

@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { childEnv } from './github';
-import { assertOwnComment, attachArgs, commentEditArgs, issueCreateArgs, issueEditArgs, prCreateArgs, prEditArgs } from './github-writes';
+import { childEnv } from './reads';
+import { assertOwnComment, attachArgs, commentEditArgs, issueCreateArgs, issueEditArgs, prCreateArgs, prEditArgs } from './writes';
 
 describe('issueCreateArgs', () => {
   test('repeats --label per label and adds the milestone when given', () => {

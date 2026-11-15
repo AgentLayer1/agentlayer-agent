@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { classifyFetchFailure, fastForwardBranch, isPermissionDenied, isRejectedToken, parseGitHubRemote, prListArgs, tokenFor } from './github';
+import { classifyFetchFailure, fastForwardBranch, isPermissionDenied, isRejectedToken, parseGitHubRemote, prListArgs, tokenFor } from './reads';
 
 describe('parseGitHubRemote', () => {
   test('SSH remote', () => {

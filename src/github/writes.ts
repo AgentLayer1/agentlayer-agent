@@ -11,7 +11,7 @@ import { defineTool, type ToolDef } from '@/shared/types';
 import { existsSync } from 'node:fs';
 import { extname } from 'node:path';
 import { z } from 'zod';
-import { resolveRepo, runGh } from './github';
+import { resolveRepo, runGh } from './reads';
 
 /** The file types gh's `--attach` uploads. */
 const ATTACHABLE = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.mp4', '.mov', '.webm'] as const;

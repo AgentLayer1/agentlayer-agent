@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
-import { installDeps, installRoot, runMigration, tools } from '@/tools/upgrade';
+import { installDeps, installRoot, runMigration, tools } from '@/upgrade/tool';
 
 const runUpgrade = (version: string) =>
   tools[0].handler({ version }) as Promise<Record<string, unknown>>;

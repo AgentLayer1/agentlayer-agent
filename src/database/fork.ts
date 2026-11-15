@@ -24,7 +24,7 @@ import { isAbsolute, join } from 'node:path';
 import { RUNTIME_DIR } from '@/shared/naming';
 import { dbConnections, env } from '@/shared/env';
 import { defineTool, type ToolDef } from '@/shared/types';
-import { assertDbName, decodeDbName, encodeConnectionCredentials, resolveConnectionString } from '@/tools/database';
+import { assertDbName, decodeDbName, encodeConnectionCredentials, resolveConnectionString } from '@/database/query';
 import pg from 'pg';
 import { z } from 'zod';
 

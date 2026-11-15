@@ -71,10 +71,10 @@ A skill that is part of the agent's standing capability set lives here in plugin
 
 ## Adding an MCP tool
 
-1. Add a file under `src/tools/<your-tool>.ts` exporting a `tools: ToolDef[]` array. Use `defineTool({ name, description, inputSchema, handler })` from `@/shared/types`.
-2. Register it in `src/tools/modules.ts` by adding an import and listing the module in `TOOL_MODULES`.
+1. Define it in its domain's `src/<domain>/tool.ts`, which exports one `tools: ToolDef[]` array. Use `defineTool({ name, description, inputSchema, handler })` from `@/shared/types`. A new domain gets its own folder and `tool.ts`.
+2. A new `tool.ts` gets one import line in `src/tools.ts`, the registry the server and the dashboard read. `src/contracts/tools.test.ts` fails on a `tool.ts` that isn't registered, a duplicate name, or an `askOnly` tool missing from init's baseline `permissions.ask`.
 3. Add the tool name to `skills/init/SKILL.md`'s `permissions.allow` list (use the `mcp__plugin_agentlayer_agent__<tool_name>` prefix). Pack-gated tools go in the matching `configure-skills` walk instead of the init baseline.
-4. `bun run typecheck` must pass before submitting.
+4. `bun run typecheck` and `bun test` must pass before submitting.
 
 In the plugin's `.mcp.json`, `env` entries hold only host-owned interpolations (`${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`) or literal values. A server already inherits the session's environment, so never redeclare a user variable as `"X": "${X}"`.
 

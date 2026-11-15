@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { classify, type IssueNode, type PrNode, sinceOf, tally } from './github-sweep';
+import { classify, type IssueNode, type PrNode, sinceOf, tally } from './sweep';
 
 const ME = 'alice';
 const user = (login: string) => ({ __typename: 'User', login });

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { tools } from '@/tools/helpdesk';
+import { tools } from '@/helpdesk/tool';
 import { assertFilters, connectors, noteHtml, resolveConnector } from './connectors';
 import { safeName, saveToTemp } from './download';
 import { issueFilter, mapAccount, mapIssue, mapMessage, pylon } from './pylon';

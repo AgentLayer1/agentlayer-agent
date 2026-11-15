@@ -7,7 +7,7 @@
  *
  * Entry points:
  *   CLI:        the CLI's `knowledge lint [--fix]`
- *   MCP tool:   `knowledge_lint` (defined in tools/knowledge.ts)
+ *   MCP tool:   `knowledge_lint` (defined in knowledge/tool.ts)
  *   Library:    import { run } from "./lint";  run({ fixMode })
  *
  * Auto-fix (`--fix`) rewrites stale wikilinks and inserts missing backlinks.

@@ -247,7 +247,7 @@ Connects the agent to one or more Postgres databases. Three read-only MCP tools 
 > Give each a short connection name (lowercase, e.g. `app`, `analytics`, `local`). You can list several comma-separated, and add more later by re-running this walk. The name is just a label — you'll paste the actual connection string into your editor afterward.
 
 For each name the user gives:
-- Normalize it the way the tool resolves connections: upper-case and replace every non-alphanumeric character with `_`, then prefix `AGENT_DB_`. So `analytics` → `AGENT_DB_ANALYTICS`, `read-replica` → `AGENT_DB_READ_REPLICA`. (This matches `envKeyFor` in the plugin's `src/tools/database.ts`; the tool lowercases the suffix back to the connection name.)
+- Normalize it the way the tool resolves connections: upper-case and replace every non-alphanumeric character with `_`, then prefix `AGENT_DB_`. So `analytics` → `AGENT_DB_ANALYTICS`, `read-replica` → `AGENT_DB_READ_REPLICA`. (This matches `dbEnvKeyFor` in the plugin's `src/shared/env.ts`; the tool lowercases the suffix back to the connection name.)
 - Ensure the secret store exists (§D.1) and tell the user to add an `AGENT_DB_<NAME>=<connection string>` line to `.state/secrets/.env` in their editor. Claude doesn't read/write the gated file, so re-running to add a connection just surfaces the line(s) to add — it never clobbers existing ones.
 
 If the user adds zero connections, still grant the tool permissions and note that `database_list` will report none until they add an `AGENT_DB_<NAME>` env var.

@@ -2,9 +2,9 @@ import { describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { FOLDERS } from '@/config';
-import { writeReport } from '@/reports';
+import { writeReport } from '@/reports/reports';
 import { z } from 'zod';
-import { tools } from './reports';
+import { tools } from './tool';
 
 const extra = tools.find((tool) => tool.name === 'report_write')?.inputSchema.extra;
 const accepts = (value: unknown): boolean => extra !== undefined && z.safeParse(extra, value).success;

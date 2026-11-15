@@ -15,18 +15,10 @@ import { withCallSignal } from '@/shared/call-signal';
 import { log } from '@/shared/log';
 import { RUNTIME_DIR } from '@/shared/naming';
 import { existsSync } from 'node:fs';
-import type { ToolDef } from '@/shared/types';
 import { McpServer } from '@modelcontextprotocol/server';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
+import { TOOLS } from '@/tools';
 import { z } from 'zod';
-import { TOOL_MODULES } from './tools/modules';
-
-// Tool modules load from the shared TOOL_MODULES list so registration and
-// the dashboard's capability listing can never drift. A broken module still
-// fails the boot — Promise.all rejects before the server connects.
-const TOOLS: ToolDef[] = (
-  await Promise.all(TOOL_MODULES.map(async (name): Promise<{ tools: ToolDef[] }> => import(`./tools/${name}`)))
-).flatMap((mod) => mod.tools);
 
 const server = new McpServer({ name: AGENT_SLUG, version: '0.1.0' });
 

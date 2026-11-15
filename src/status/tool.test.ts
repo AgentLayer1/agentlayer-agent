@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { FILES, FOLDERS } from '@/config';
 import { createTask } from '@/tasks/mutate';
 import { AttentionDataSchema, readAttentionData } from '@/status/attention-data';
-import { tools } from './attention';
+import { tools } from './tool';
 
 const attentionWrite = tools.find((tool) => tool.name === 'attention_write');
 

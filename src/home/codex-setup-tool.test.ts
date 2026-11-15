@@ -9,12 +9,12 @@ const HOME = mkdtempSync(resolve(tmpdir(), 'codex-setup-tool-'));
 const PRELOAD_HOME = process.env.AGENT_HOME;
 process.env.AGENT_HOME = HOME;
 
-let tools: typeof import('@/tools/codex-setup').tools;
+let tools: typeof import('@/home/tool').tools;
 
 beforeAll(async () => {
   mkdirSync(resolve(HOME, RUNTIME_DIR), { recursive: true });
   writeFileSync(resolve(HOME, RUNTIME_DIR, HOME_MARKER_FILES[0]), `${JSON.stringify({ plugin: pluginName() })}\n`);
-  ({ tools } = await import('@/tools/codex-setup'));
+  ({ tools } = await import('@/home/tool'));
 });
 
 afterAll(() => {
@@ -25,8 +25,10 @@ afterAll(() => {
 
 describe('codex_setup tool', () => {
   test('runs the generator against this home and returns its report', async () => {
-    const [tool] = tools;
-    expect(tool.name).toBe('codex_setup');
+    const tool = tools.find((item) => item.name === 'codex_setup');
+    if (!tool) {
+      throw new Error('codex_setup is not registered');
+    }
     const result = (await tool.handler({})) as {
       ok: boolean;
       report?: { entries: number; hooks: { path: string } };

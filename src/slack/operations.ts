@@ -3,7 +3,7 @@
  * hydration, and message formatting on top of the raw `client.ts` primitives.
  *
  * Both entry points consume these: the CLI's `slack` commands (cli.ts, wraps the
- * results in stdout rendering) and the `slack_*` MCP tools (tools/slack.ts,
+ * results in stdout rendering) and the `slack_*` MCP tools (slack/tool.ts,
  * return the structured results directly). Keeping the orchestration here means
  * the two surfaces can never drift — and the MCP tools run inside the
  * unsandboxed server process, so they read the deny-gated token file that a

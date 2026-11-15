@@ -12,7 +12,7 @@ const GIT_DIR = resolve(ROOT, 'ada-data.git');
 const PRELOAD_HOME = process.env.AGENT_HOME;
 process.env.AGENT_HOME = HOME;
 
-let tools: typeof import('@/tools/home-history').tools;
+let tools: typeof import('@/home/tool').tools;
 
 beforeAll(async () => {
   mkdirSync(resolve(HOME, RUNTIME_DIR), { recursive: true });
@@ -21,8 +21,16 @@ beforeAll(async () => {
   writeFileSync(resolve(HOME, '.claude', 'settings.local.json'), JSON.stringify({ env: { AGENT_HOME_GIT_DIR: GIT_DIR } }));
   execFileSync('git', ['-C', HOME, 'init', '-q', '-b', 'main', '--separate-git-dir', GIT_DIR], { env: process.env });
   execFileSync('git', ['--git-dir', GIT_DIR, 'config', 'agent.home', HOME], { env: process.env });
-  ({ tools } = await import('@/tools/home-history'));
+  ({ tools } = await import('@/home/tool'));
 });
+
+const homeHistory = () => {
+  const tool = tools.find((item) => item.name === 'home_history');
+  if (!tool) {
+    throw new Error('home_history is not registered');
+  }
+  return tool;
+};
 
 afterAll(() => {
   rmSync(ROOT, { recursive: true, force: true });
@@ -36,12 +44,12 @@ afterAll(() => {
 describe('home_history tool', () => {
   test('status puts back a .git link a synced folder deleted, then reports', async () => {
     rmSync(resolve(HOME, '.git'));
-    expect(await tools[0].handler({ action: 'status' })).toMatchObject({ restored: true, state: 'on' });
+    expect(await homeHistory().handler({ action: 'status' })).toMatchObject({ restored: true, state: 'on' });
     expect(readFileSync(resolve(HOME, '.git'), 'utf-8')).toBe(`gitdir: ${GIT_DIR}\n`);
   });
 
   test('setup regenerates the Codex wiring only on a Codex-wired home whose grants it just recorded', async () => {
-    const setup = () => tools[0].handler({ action: 'setup', name: 'Ada' }) as Promise<Record<string, unknown>>;
+    const setup = () => homeHistory().handler({ action: 'setup', name: 'Ada' }) as Promise<Record<string, unknown>>;
     const withoutCodex = await setup();
     expect(withoutCodex).toMatchObject({ settingsChanged: true, codexWired: false });
     expect(withoutCodex.codex).toBeUndefined();

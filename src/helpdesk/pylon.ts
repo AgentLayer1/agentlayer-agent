@@ -2,12 +2,12 @@
  * Pylon connector — maps the Pylon client's issues and messages into the
  * helpdesk shape.
  */
-import { addNote, getIssue, getIssueMessages, listAccounts, listMacros, listTags, listUsers, searchIssues, type IssueFilter } from '@/pylon/client';
-import { pylonToken, pylonTokenKey } from '@/pylon/config';
+import { addNote, getIssue, getIssueMessages, listAccounts, listMacros, listTags, listUsers, searchIssues, type IssueFilter } from '@/helpdesk/pylon/client';
+import { pylonToken, pylonTokenKey } from '@/helpdesk/pylon/config';
 import { env } from '@/shared/env';
 import { htmlToText } from '@/shared/html-to-markdown';
 import { fetchFile } from './download';
-import type { PylonAccount, PylonIssue, PylonMessage } from '@/pylon/types';
+import type { PylonAccount, PylonIssue, PylonMessage } from '@/helpdesk/pylon/types';
 import { MESSAGE_KINDS, type HelpdeskAccount, type HelpdeskConnector, type HelpdeskMessage, type HelpdeskPerson, type HelpdeskTicket, type MessageKind, type TicketQuery } from './types';
 
 const person = (who: { id?: string; email?: string } | undefined): HelpdeskPerson | undefined =>
