@@ -16,9 +16,17 @@ When `<HOME>/.state/version.json` has `migratedFrom`, this home was copied here 
    - The upgrade ended with its own sync: done.
    - The upgrade asked for a restart first (it installed dependencies or picked up new server code): **stop here and leave the flag pending**. Tell the operator to exit and reopen; the next session's welcome comes back to this step, the upgrade reports it's current, and you run the `sync` skill.
    - Otherwise: run the `sync` skill now.
-4. **Ask where to start.** Read the move note at `migratedFrom.note` when there is one. Offer up to three of its sessions to continue as `Pick up: <what it was doing>`, then **Morning brief**. Without a note, or without sessions in it, offer the options in section 2 instead.
-5. **Clear the flag** (section 3).
-6. **Run the pick.** A session to continue runs the `find-session` skill with its id: it loads that session's notes from the brain. Then start on the next step the note gives. Close with one line naming the other sessions in the note, and saying that any past session, noted or not, can be picked up by asking for it by id or by what it worked on.
+4. **Check the move.** The move saved its full change list in the copy; read it once, with the operator, before anything else changes:
+   ```bash
+   bun "<PLUGIN_ROOT>/skills/init/scripts/move-check.ts" --home "<HOME>"
+   ```
+   - `log: null`: the home was moved by a release that kept no list. Say so in one line and go on.
+   - Read every line under `renames` for meaning, as the move's keep review did. A rename is wrong where the old name meant someone or something else: another person or another team's agent, an account or a role, a document as sent or signed, a dated record, or a fact only true of the old plugin. Add those to the script's `flagged` list.
+   - Show one table: each flagged line, what it says now, what it said before the move, and why. Below it, any `stale` file still naming the old home and a `history` that isn't `ok`. With nothing to show, say the move checked out in one line.
+   - Ask once which lines to put back (`AskUserQuestion` with multiSelect under Claude Code; a numbered list under Codex): all, a pick, or none. Run the script again with one `--restore <path:line>` per pick, and report each result. A `stale` file or a broken `history` is fixed by hand with the operator. The next sync commits the restored lines.
+5. **Ask where to start.** Read the move note at `migratedFrom.note` when there is one. Offer up to three of its sessions to continue as `Pick up: <what it was doing>`, then **Morning brief**. Without a note, or without sessions in it, offer the options in section 2 instead.
+6. **Clear the flag** (section 3).
+7. **Run the pick.** A session to continue runs the `find-session` skill with its id: it loads that session's notes from the brain. Then start on the next step the note gives. Close with one line naming the other sessions in the note, and saying that any past session, noted or not, can be picked up by asking for it by id or by what it worked on.
 
 ## 1. Read the home (no writes)
 
