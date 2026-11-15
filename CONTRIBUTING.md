@@ -1,6 +1,6 @@
 # Contributing
 
-Pull requests and issues welcome. Below is what we look for and the dev loop.
+Pull requests and issues welcome. Below is what we look for and the dev loop. [AGENTS.md](AGENTS.md) covers the source layout, the paths installed homes depend on, and the rules a change has to keep.
 
 ## Welcome contributions
 

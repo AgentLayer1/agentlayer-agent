@@ -24,7 +24,8 @@ certificates/
 *.key
 
 # ai
-.claude
+.claude/*
+!.claude/CLAUDE.md
 
 # logs
 logs/
