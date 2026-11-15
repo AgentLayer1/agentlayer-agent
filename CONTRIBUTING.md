@@ -72,7 +72,7 @@ A skill that is part of the agent's standing capability set lives here in plugin
 ## Adding an MCP tool
 
 1. Define it in its domain's `src/<domain>/tool.ts`, which exports one `tools: ToolDef[]` array. Use `defineTool({ name, description, inputSchema, handler })` from `@/shared/tool-def`. A new domain gets its own folder and `tool.ts`.
-2. A new `tool.ts` gets one import line in `src/tools.ts`, the registry the server and the dashboard read. `src/contracts/tools.test.ts` fails on a `tool.ts` that isn't registered, a duplicate name, or an `askOnly` tool missing from init's baseline `permissions.ask`.
+2. A new `tool.ts` gets one import line in `src/tools.ts`, the registry the server and the dashboard read. `src/contracts/tools.test.ts` fails on a module exporting `tools` that never reaches the registry, a duplicate name, or an `askOnly` tool missing from init's baseline `permissions.ask`.
 3. Add the tool name to `skills/init/SKILL.md`'s `permissions.allow` list (use the `mcp__plugin_agentlayer_agent__<tool_name>` prefix). Pack-gated tools go in the matching `configure-skills` walk instead of the init baseline.
 4. `bun run typecheck` and `bun test` must pass before submitting.
 

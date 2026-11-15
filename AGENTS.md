@@ -23,7 +23,7 @@ The `agentlayer` plugin: an MCP server, hook handlers, a CLI, skills and mods th
 
 ## Tools
 
-Each domain exports one `tools: ToolDef[]` from `src/<domain>/tool.ts`, built with `defineTool` from `@/shared/tool-def`. A small domain declares its tools there; a domain whose tools sit beside their logic (`github`, `database`, `browser`, `seo`) keeps those files and its `tool.ts` concatenates their arrays. A new `tool.ts` gets one import line in `src/tools.ts`. `src/contracts/tools.test.ts` fails on an unregistered `tool.ts`, a duplicate name, or an `askOnly` tool missing from init's baseline `permissions.ask`.
+Each domain exports one `tools: ToolDef[]` from `src/<domain>/tool.ts`, built with `defineTool` from `@/shared/tool-def`. A small domain declares its tools there; a domain whose tools sit beside their logic (`github`, `database`, `browser`, `seo`) keeps those files and its `tool.ts` concatenates their arrays. A new `tool.ts` gets one import line in `src/tools.ts`. `src/contracts/tools.test.ts` fails on a module exporting `tools` that never reaches the registry (a sibling file a domain's `tool.ts` forgot included), a duplicate name, or an `askOnly` tool missing from init's baseline `permissions.ask`.
 
 `src/status/collect.ts` imports the registry lazily, because the registry reaches it back through the status tools. Keep that import inside the function.
 

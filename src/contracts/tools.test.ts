@@ -15,9 +15,11 @@ describe('the tool registry', () => {
     expect(names.filter((name, index) => names.indexOf(name) !== index)).toEqual([]);
   });
 
-  test("every domain's tool.ts is registered", async () => {
-    const files = [...new Bun.Glob('*/tool.ts').scanSync(SRC)];
-    expect(files.length).toBeGreaterThan(10);
+  test('every module that exports tools reaches the registry, sibling files under a domain included', async () => {
+    const files = [...new Bun.Glob('**/*.ts').scanSync(SRC)].filter(
+      (file) => !file.endsWith('.test.ts') && /^export const tools\b/m.test(readFileSync(join(SRC, file), 'utf-8'))
+    );
+    expect(files.length).toBeGreaterThan(20);
     const unregistered = await Promise.all(
       files.map(async (file) => {
         const { tools } = (await import(join(SRC, file))) as { tools: ToolDef[] };
