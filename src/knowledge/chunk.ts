@@ -13,11 +13,11 @@
  * gets diverted to a disk file the model can't consume.
  */
 
-import { ENTRY_HEADER_RE, ENTRY_SPLIT_RE } from './session-format';
+import { ENTRY_HEADER_RE, ENTRY_SPLIT_RE, TURN_MARKER } from './session-format';
 
 /** Split an entry into single-turn pieces at `\n\n**User:**` / `\n\n**Assistant:**` boundaries. */
 const splitTurns = (entry: string): string[] => {
-  const pieces = entry.split(/(?=\n\n\*\*(?:User|Assistant):\*\*)/);
+  const pieces = entry.split(new RegExp(`(?=\\n\\n${TURN_MARKER})`));
   return pieces.filter((p) => p.length > 0);
 };
 

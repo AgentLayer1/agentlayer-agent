@@ -75,4 +75,12 @@ describe('the session context under its size cap', () => {
     expect(tail).not.toContain('question 0\n');
     expect(tail.split('\n…\n\n')[1]?.startsWith('**')).toBe(true);
   });
+
+  test('a last turn longer than the budget keeps its role label and its end', () => {
+    const block = `### Session (14:15) [abc] · turns 1–2\n\n**User:** short question\n\n**Assistant:** ${'long '.repeat(1000)}the last words`;
+    const tail = tailOf(block, 600);
+    expect(tail.length).toBeLessThanOrEqual(600);
+    expect(tail.split('\n…\n\n')[1]?.startsWith('**Assistant:** …')).toBe(true);
+    expect(tail.endsWith('the last words')).toBe(true);
+  });
 });

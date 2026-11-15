@@ -43,7 +43,7 @@ import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { basename, relative, resolve, sep } from 'node:path';
-import { FIRST_SESSION_HEADER_RE, SESSION_BLOCK_SEPARATOR_RE, TRAILING_SEPARATOR_RE } from '@/knowledge/session-format';
+import { FIRST_SESSION_HEADER_RE, SESSION_BLOCK_SEPARATOR_RE, TRAILING_SEPARATOR_RE, TURN_MARKER } from '@/knowledge/session-format';
 
 const log = baseLog.session.with('context');
 
@@ -100,19 +100,27 @@ const CAVEAT_BLOCK_RE = /\*\*User:\*\* <local-command-caveat>[\s\S]*?<\/local-co
 /** Fence length must exceed any backtick run inside the quoted transcript. */
 const longestBacktickRun = (text: string) => Math.max(0, ...Array.from(text.matchAll(/`+/g), (m) => m[0].length));
 
+const TURN_START = new RegExp(`^${TURN_MARKER}`, 'gm');
+
 /**
- * A block over the cap keeps its header line and its newest turns, starting at a turn: the tail is where
- * the session left off, not how it began.
+ * A block over the cap keeps its header line and its newest whole turns: the tail is where the session left
+ * off, not how it began. When the last turn alone is over the cap, it keeps that turn's label and its end.
  */
 export const tailOf = (block: string, maxBytes: number): string => {
   if (block.length <= maxBytes) {
     return block;
   }
   const newline = block.indexOf('\n');
-  const header = newline === -1 ? '' : block.slice(0, newline);
-  const recent = block.slice(-Math.max(0, maxBytes - header.length));
-  const turn = recent.search(/^\*\*[A-Z][a-z]+:\*\*/m);
-  return `${header}\n\n…\n\n${(turn > 0 ? recent.slice(turn) : recent).trimStart()}`;
+  const header = `${newline === -1 ? '' : block.slice(0, newline)}\n\n…\n\n`;
+  const budget = Math.max(0, maxBytes - header.length);
+  const starts = [...block.matchAll(TURN_START)].map((match) => ({ at: match.index, label: match[0] }));
+  const whole = starts.find(({ at }) => block.length - at <= budget);
+  if (whole) {
+    return `${header}${block.slice(whole.at)}`;
+  }
+  const label = starts.at(-1)?.label ?? '';
+  const end = block.slice(-Math.max(0, budget - label.length - 2)).trimStart();
+  return `${header}${label ? `${label} …${end}` : end}`;
 };
 
 async function lastSessionTail(maxBytes: number): Promise<TailResult> {

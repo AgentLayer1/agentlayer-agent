@@ -12,6 +12,9 @@ const ENTRY_HEADER_PATTERN = '### (?:Session|Pre-Compact) \\(';
 const SESSION_HEADER_PATTERN = '### Session \\(\\d{2}:\\d{2}\\) ';
 const ESCAPED_SEPARATOR = ENTRY_SEPARATOR.replace(/\n/g, '\\n');
 
+/** The bold role label that opens each turn in an entry: `**User:**` or `**Assistant:**`. */
+export const TURN_MARKER = '\\*\\*(?:User|Assistant):\\*\\*';
+
 /** Matches an entry header opening (Session or Pre-Compact) at line start. */
 export const ENTRY_HEADER_RE = new RegExp(`^${ENTRY_HEADER_PATTERN}`, 'm');
 
