@@ -3,7 +3,7 @@ import { getStatus } from '@/knowledge/compile';
 import { readCadence } from '@/shared/cadence';
 import { daysBetween, todayDate } from '@/shared/date';
 import { countOf } from '@/shared/utils';
-import { getUpgradeStatus } from '@/version';
+import { getUpgradeStatus } from '@/upgrade/version';
 import type { NoticeLedger } from './ledger';
 import { readLedger } from './ledger';
 

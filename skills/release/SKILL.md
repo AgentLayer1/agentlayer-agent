@@ -163,7 +163,7 @@ it "(Recommended)"), but the maintainer's choice wins.
 
 Then bump `version` in both manifests, `.claude-plugin/plugin.json` and
 `.codex-plugin/plugin.json`, to the chosen (or determined) value (edit that one field in
-each; `src/manifests.test.ts` fails when they drift).
+each; `src/contracts/manifests.test.ts` fails when they drift).
 
 > Note: `package.json` carries its own, separate `version` that is not used
 > for plugin versioning and has drifted — leave it unless the maintainer asks to sync it.

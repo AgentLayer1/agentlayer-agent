@@ -23,10 +23,10 @@ import {
 } from '@/config';
 import { contextManifest, type ManifestEntry } from '@/context';
 import { type HistoryState, historyStatus, type LastCommit } from '@/home/history';
-import { HOST_FLOORS } from '@/hosts';
+import { HOST_FLOORS } from '@/upgrade/hosts';
 import { listInboxFiles } from '@/knowledge/utils';
 import { readLedger } from '@/notices/ledger';
-import { type ChangelogEntry, getUpgradeStatus, parseChangelog, type UpgradeState } from '@/version';
+import { type ChangelogEntry, getUpgradeStatus, parseChangelog, type UpgradeState } from '@/upgrade/version';
 import { readCadence } from '@/shared/cadence';
 import { nowISO, nowTime, todayDate } from '@/shared/date';
 import { agentDisplayName } from '@/shared/agent-name';

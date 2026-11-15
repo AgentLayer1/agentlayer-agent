@@ -1,12 +1,13 @@
 import { describe, expect, test } from 'bun:test';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
+import { PLUGIN_SOURCE_ROOT } from '@/shared/naming';
 import { routerPlaybooks } from '@/shared/playbooks';
 import { RETIRED_SKILLS, RETIRED_TOOLS } from '@/shared/retired-skills';
 import { TOOLS } from '@/tools';
-import { PHASES } from '../mods/sync/phases';
+import { PHASES } from '../../mods/sync/phases';
 
-const ROOT = resolve(import.meta.dir, '..');
+const ROOT = PLUGIN_SOURCE_ROOT;
 const SKILLS = join(ROOT, 'skills');
 const DESCRIPTION_CAP = 1024;
 // Hosts list every model-invocable description up to a budget (Codex ~2% of the window, Claude Code 1%);

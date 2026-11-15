@@ -23,7 +23,7 @@ import {
   TIMEZONE
 } from '@/config';
 import { followMove, historyStatus, restorePointer } from '@/home/history';
-import { checkHosts, hostIssues, requiredHosts, type HostName } from '@/hosts';
+import { checkHosts, hostIssues, requiredHosts, type HostName } from '@/upgrade/hosts';
 import type { Notice, NoticeFact, NoticeLevel } from '@/notices/notices';
 import { collectNotices } from '@/notices/notices';
 import { agentDisplayName } from '@/shared/agent-name';
@@ -37,7 +37,7 @@ import { readText, readTextAsync } from '@/shared/text';
 import { countOf } from '@/shared/utils';
 import { livePins } from '@/status/surfaces';
 import { statusLineDrift } from '@/statusline/setting';
-import { getUpgradeStatus, readMigratedFrom } from '@/version';
+import { getUpgradeStatus, readMigratedFrom } from '@/upgrade/version';
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';

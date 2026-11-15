@@ -132,7 +132,7 @@ no settings rename → continue to Step 1. Otherwise (a finding, a rename, or bo
 
 ## Step 0c — Host version gate
 
-The plugin is built against the Claude Code and Codex versions in `src/hosts.ts`,
+The plugin is built against the Claude Code and Codex versions in `src/upgrade/hosts.ts`,
 with no backwards compatibility: an older host is refused, never shimmed.
 
 ```bash

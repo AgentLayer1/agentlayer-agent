@@ -2,9 +2,9 @@ import { describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AGENT_SLUG } from '@/config';
-import { CLI_FILE } from '@/shared/naming';
+import { CLI_FILE, PLUGIN_SOURCE_ROOT } from '@/shared/naming';
 
-const ROOT = resolve(import.meta.dir, '..');
+const ROOT = PLUGIN_SOURCE_ROOT;
 const read = (rel: string) => JSON.parse(readFileSync(resolve(ROOT, rel), 'utf-8'));
 
 describe('plugin manifests', () => {

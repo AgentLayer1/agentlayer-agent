@@ -1,4 +1,4 @@
-import { HOST_FLOORS, checkHosts, hostIssues, parseHostVersion, requiredHosts, type ToolName } from '@/hosts';
+import { HOST_FLOORS, checkHosts, hostIssues, parseHostVersion, requiredHosts, type ToolName } from '@/upgrade/hosts';
 import { describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

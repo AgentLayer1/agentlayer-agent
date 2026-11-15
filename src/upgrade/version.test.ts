@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { parseChangelogText, releasesBetween } from '@/version';
+import { parseChangelogText, releasesBetween } from '@/upgrade/version';
 
 const CHANGELOG = `# Changelog
 

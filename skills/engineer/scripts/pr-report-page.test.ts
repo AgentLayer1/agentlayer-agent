@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import { type DOMWindow, JSDOM, VirtualConsole } from 'jsdom';
 import { readFileSync } from 'node:fs';
-import { isRecord, readJsonBlock } from '@/shared/json-block';
-import { BLOCK_ID, TEMPLATE_PATH, renderPage } from '../skills/engineer/scripts/pr-report';
+import { isRecord, readJsonBlock } from '../../../src/shared/json-block';
+import { BLOCK_ID, TEMPLATE_PATH, renderPage } from './pr-report';
 
 // The engineer skill's PR report page renders entirely in the browser, so its script is run here against real data.
 const TEMPLATE = readFileSync(TEMPLATE_PATH, 'utf-8');

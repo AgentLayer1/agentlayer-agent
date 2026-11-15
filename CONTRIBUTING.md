@@ -101,8 +101,8 @@ It renders in isolation (its own `HOME`, environment, and working directory), re
 - **Product docs are host-neutral.** Anything describing agentlayer (docs, README, wizard copy) names skills bare, says "your host" for the CLI, and puts host-specific commands in per-host tabs, so a new host is a tab and a page, not a rewrite.
 - **Generated HTML pages share their chrome.** The Auto / Light / Dark switch (`src/shared/theme.ts`) and, on any page that draws Mermaid into `.diagram` boxes, the expand-and-zoom viewer (`src/shared/diagram-viewer.ts`) are blocks carried verbatim in each template's `<head>`. A new template that draws diagrams joins `DIAGRAM_TEMPLATES` and runs `bun src/shared/diagram-viewer.ts sync`; the block's test fails until it does.
 - **Frontmatter the plugin writes is flat:** scalars and lists of scalars only, since Obsidian shows anything nested as raw JSON. `report_write` rejects a nested `extra` value and the knowledge lint flags one; structured data goes in the body.
-- **Frontmatter keys come from the host's docs.** Don't invent keys; `src/skills.test.ts` parses every `SKILL.md`, holds the description to 1,024 characters, and resolves relative links.
-- **Invocability:** see *Adding a new skill* above; `src/skills.test.ts` holds the slash-only set to `init`, `release` and `rename-agent`.
+- **Frontmatter keys come from the host's docs.** Don't invent keys; `src/contracts/skills.test.ts` parses every `SKILL.md`, holds the description to 1,024 characters, and resolves relative links.
+- **Invocability:** see *Adding a new skill* above; `src/contracts/skills.test.ts` holds the slash-only set to `init`, `release` and `rename-agent`.
 
 ## License
 

@@ -175,7 +175,7 @@ Default: abort. The preservation guards below in Step 7 are what make these clai
 
 ## Step 0b — Host version gate
 
-The plugin is built against the Claude Code, Codex and bun versions in `src/hosts.ts`,
+The plugin is built against the Claude Code, Codex and bun versions in `src/upgrade/hosts.ts`,
 with no backwards compatibility. Check before scaffolding anything:
 
 ```bash
