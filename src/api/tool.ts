@@ -200,7 +200,8 @@ export const tools: ToolDef[] = [
       }
 
       // Without the store's keys, so `--variable %NAME` can't read one; the collection's keys come in as {{KEY}}.
-      const proc = Bun.spawn(['curl', '-sS', '--max-time', String(timeoutSeconds), ...argv, ...PINNED], {
+      // -q must come first: it stops curl reading a .curlrc, whose options would bypass the list above.
+      const proc = Bun.spawn(['curl', '-q', '-sS', '--max-time', String(timeoutSeconds), ...argv, ...PINNED], {
         cwd: FOLDERS.HOME,
         env: envWithoutSecrets(),
         stdout: 'pipe',

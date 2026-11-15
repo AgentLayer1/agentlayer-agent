@@ -1,4 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { argsProblem, interpolateArgs, scrub, tools } from './tool';
 
 describe('interpolateArgs', () => {
@@ -91,5 +94,21 @@ describe.skipIf(!Bun.which('curl'))('curl_run', () => {
     const curlRun = tools.find((tool) => tool.name === 'curl_run');
     const result = String(await curlRun?.handler({ args: ['http://127.0.0.1:1/{first,second}'], timeoutSeconds: 5 }));
     expect(result.match(/Failed to connect/g)).toHaveLength(1);
+  });
+
+  test("reads no .curlrc, so a config file can't add a URL or an output the list refuses", async () => {
+    const curlHome = mkdtempSync(join(tmpdir(), 'curl-home-'));
+    writeFileSync(join(curlHome, '.curlrc'), 'url = "http://127.0.0.1:2/"\n');
+    const previous = process.env.CURL_HOME;
+    process.env.CURL_HOME = curlHome;
+    try {
+      const curlRun = tools.find((tool) => tool.name === 'curl_run');
+      const result = String(await curlRun?.handler({ args: ['http://127.0.0.1:1/'], timeoutSeconds: 5 }));
+      expect(result.match(/Failed to connect/g)).toHaveLength(1);
+      expect(result).not.toContain('port 2');
+    } finally {
+      if (previous === undefined) delete process.env.CURL_HOME;
+      else process.env.CURL_HOME = previous;
+    }
   });
 });
