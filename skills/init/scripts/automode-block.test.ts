@@ -105,6 +105,17 @@ describe('automode-block', () => {
     expect(note).toContain('never compared or replaced');
   });
 
+  test('--check: a listed path only counts as the home when it is the home, not a sibling sharing its prefix', () => {
+    const dir = scratch();
+    const canonical = run('--home', dir, '--settings', join(dir, 'none.json')).json;
+    const listed = (entry: string): boolean => {
+      writeFileSync(join(dir, 'settings.json'), JSON.stringify({ autoMode: { ...canonical.autoMode, environment: ['$defaults', entry] } }));
+      return run('--home', dir, '--check', '--settings', join(dir, 'settings.json'), '--out', join(dir, 'note.md')).json.homeListed;
+    };
+    expect(listed(`Agent homes: ${dir}-old — the custom rules key off this entry`)).toBe(false);
+    expect(listed(`Agent homes: /Users/ada/Agents/Old, ${dir}/ — the custom rules key off this entry`)).toBe(true);
+  });
+
   test("--check: a home missing from the operator's Agent homes entry is flagged, with the rules current", () => {
     const dir = scratch();
     const canonical = run('--home', dir, '--settings', join(dir, 'none.json')).json;

@@ -14,6 +14,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { pluginName } from '../../../src/shared/naming';
+import { expandTilde } from '../../../src/shared/paths';
 import { fencedJsonAfter } from './fenced-json';
 
 const args = process.argv.slice(2);
@@ -72,7 +73,16 @@ const rules = LISTS.flatMap((list) =>
 );
 const adopted = LISTS.some((list) => (mine[list] ?? []).some((rule) => rule !== '$defaults'));
 // The entries themselves are the operator's, but the rules only see this home once that list names it.
-const homeListed = (mine.environment ?? []).some((entry) => entry.startsWith('Agent homes:') && entry.includes(home));
+// Compared as paths, so `…/Oppi` isn't listed by `…/Oppi-old`, and a `~/…` spelling still counts.
+const listedHomes = (entry: string): string[] =>
+  (entry.slice('Agent homes:'.length).split(' — ')[0] ?? '')
+    .split(/,|\s+and\s+/)
+    .map((path) => path.trim())
+    .filter(Boolean)
+    .map((path) => resolve(expandTilde(path)));
+const homeListed = (mine.environment ?? []).some(
+  (entry) => entry.startsWith('Agent homes:') && listedHomes(entry).includes(resolve(expandTilde(home)))
+);
 const status = !adopted ? 'absent' : !homeListed || rules.some((rule) => rule.state !== 'current') ? 'stale' : 'current';
 const replacements = rules.filter((rule) => rule.state !== 'current');
 

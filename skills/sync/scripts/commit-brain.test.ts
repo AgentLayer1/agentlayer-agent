@@ -112,6 +112,20 @@ describe("commitBrain guards", () => {
 });
 
 describe("commitBrain grouping", () => {
+  test("a change someone already staged lands in its own group's commit, not the first one", () => {
+    const home = makeHome();
+    write(home, "knowledge/index.md", "changed\n");
+    write(home, "projects/TASKS.md", "staged by the operator\n");
+    git(home, "add", "projects/TASKS.md");
+
+    const outcome = commitBrain(home);
+    expect(outcome.commits.map((entry) => entry.message)).toEqual(["Sync: update knowledge", "Sync: update projects"]);
+    const [knowledge, projects] = outcome.commits;
+    expect(filesIn(home, knowledge?.sha ?? "HEAD")).toEqual(["M\tknowledge/index.md"]);
+    expect(filesIn(home, projects?.sha ?? "HEAD")).toEqual(["M\tprojects/TASKS.md"]);
+    rmSync(home, { recursive: true, force: true });
+  });
+
   test("changes land in ordered group commits; strays and secrets stay out", () => {
     const home = makeHome();
     write(home, "knowledge/index.md", "changed\n");

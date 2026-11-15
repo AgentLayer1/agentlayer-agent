@@ -153,9 +153,9 @@ export const groupChanges = (
   return { buckets, leftUncommitted };
 };
 
-const hasStaged = (home: string): boolean => {
+const hasStaged = (home: string, paths: readonly string[]): boolean => {
   try {
-    git(home, "diff", "--cached", "--quiet");
+    git(home, "diff", "--cached", "--quiet", "--", ...paths);
     return false;
   } catch {
     return true;
@@ -258,10 +258,11 @@ export const commitBrain = (home: string, options: { start?: boolean } = {}): Br
       }
       const paths = bucket.flatMap((change) => (change.origPath ? [change.path, change.origPath] : [change.path]));
       git(home, "add", "-A", "--", ...paths);
-      if (!hasStaged(home)) {
+      if (!hasStaged(home, paths)) {
         continue;
       }
-      git(home, "commit", "-q", "-m", message);
+      // Only this group's paths: anything else already staged (by the operator or another session) stays staged.
+      git(home, "commit", "-q", "-m", message, "--", ...paths);
       commits.push({
         message,
         sha: git(home, "rev-parse", "--short", "HEAD"),

@@ -130,7 +130,8 @@ const recommendations: Recommendation[] = [
   { path: ['tui', 'animations'], value: false, why: 'no shimmer or spinner redraws, the Claude home sets no-flicker' },
   { path: ['tui', 'alternate_screen'], value: 'never', why: 'keep the scrollback so earlier output stays selectable' },
   {
-    path: ['projects', home, 'trust_level'],
+    // The key Codex matches is the resolved path, as codex-setup writes it.
+    path: ['projects', resolve(home), 'trust_level'],
     value: 'trusted',
     why: "Codex reads the home's .codex/ (hooks, MCP registration, profile) only for a trusted folder; this skips the first-launch prompt"
   }

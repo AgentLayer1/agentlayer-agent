@@ -126,6 +126,16 @@ describe('codex-user-config', () => {
     expect(set.json.missing.map((m: { key: string }) => m.key)).not.toContain('model_auto_compact_token_limit');
   });
 
+  test("the trust key is the home's resolved path, whatever spelling --home was given", () => {
+    const dir = scratch();
+    const proc = spawnSync(
+      process.execPath,
+      [SCRIPT, '--home', '/Users/ada/Agents/Scout/', '--config', join(dir, 'none.toml'), '--claude-settings', join(dir, 'none.json'), '--rules', NO_RULES, '--models-cache', NO_CACHE],
+      { encoding: 'utf-8' }
+    );
+    expect(JSON.parse(proc.stdout).missing.map((m: { key: string }) => m.key)).toContain('projects."/Users/ada/Agents/Scout".trust_level');
+  });
+
   test('the home is recommended as a trusted project, rendered as a quoted table', () => {
     const dir = scratch();
     const { json } = run('--config', join(dir, 'none.toml'), '--claude-settings', join(dir, 'none.json'));

@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { dataDirOf } from "../../../src/shared/naming";
 import { agentHomePath, isAgentHome } from "../../../src/shared/env";
+import { writeJsonAtomic } from "../../../src/shared/utils";
 
 /**
  * Stamp a cadence watermark: `bun watermark.ts <key> <YYYY-MM-DD>` (`goals-week`,
@@ -23,11 +24,14 @@ if (!isAgentHome(home)) {
 }
 
 const file = join(dataDirOf(home), "cadence.json");
+// A file that won't parse is left for the operator rather than replaced, which would lose its other watermarks.
 const readJson = (): Record<string, string> => {
+  if (!existsSync(file)) return {};
   try {
     return JSON.parse(readFileSync(file, "utf8")) as Record<string, string>;
   } catch {
-    return {};
+    console.error(`${file} is not valid JSON; fix or remove it, then stamp again`);
+    process.exit(1);
   }
 };
-writeFileSync(file, JSON.stringify({ ...readJson(), [key]: date }, null, 2) + "\n");
+writeJsonAtomic(file, { ...readJson(), [key]: date });
