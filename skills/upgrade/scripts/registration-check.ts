@@ -21,7 +21,7 @@ const PUBLISHED = {
 
 interface Finding {
   host: 'claude' | 'codex';
-  kind: 'renamed-catalog' | 'retired-marketplace';
+  kind: 'renamed-catalog' | 'retired-marketplace' | 'not-installed';
   detail: string;
   commands: string[];
 }
@@ -151,8 +151,8 @@ interface CodexConfig {
   plugins?: Record<string, unknown>;
 }
 const codexConfigPath = resolve(codexDir, 'config.toml');
+let config: CodexConfig = {};
 if (existsSync(codexConfigPath)) {
-  let config: CodexConfig = {};
   try {
     config = Bun.TOML.parse(readFileSync(codexConfigPath, 'utf-8')) as CodexConfig;
   } catch (err) {
@@ -175,6 +175,17 @@ if (existsSync(codexConfigPath)) {
       ]
     });
   }
+}
+const codexHasPlugin = Object.keys(config.plugins ?? {}).some((id) => id.startsWith(`${plugin}@`));
+if (existsSync(resolve(homeDir, '.codex', 'hooks.json')) && !codexHasPlugin) {
+  const [source, catalog] =
+    devName && existsSync(resolve(pluginRoot, '.git')) ? [pluginRoot, devName] : [PUBLISHED.repo, PUBLISHED.name];
+  findings.push({
+    host: 'codex',
+    kind: 'not-installed',
+    detail: `This home is wired for Codex, but Codex has no ${plugin} plugin, so Codex sessions here load none of its skills.`,
+    commands: [`codex plugin marketplace add ${source}`, `codex plugin add ${plugin}@${catalog}`]
+  });
 }
 
 const ok = findings.length === 0 && Object.keys(settings).length === 0;

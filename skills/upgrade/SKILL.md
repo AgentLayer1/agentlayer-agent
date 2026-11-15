@@ -362,7 +362,7 @@ shaped to parse under the PowerShell Codex uses there, but the agent's skills ar
 
 `hooks.changed: true` means the hook commands are new or moved and Codex does not trust them
 yet: carry the re-trust line into the Step 6 report, and for a first wiring add the two
-install lines the operator still owes if the plugin is not installed in Codex yet
+install lines the operator still owes if the plugin is not installed in Codex yet (Step 0b's check reports it as `not-installed`)
 (`codex plugin marketplace add <plugin checkout or marketplace>` then
 `codex plugin add agentlayer@<marketplace>`) and the folder-trust prompt on first launch. Never drop it. An untrusted hook does not run at
 all, silently under `codex exec`, which is a home that stops capturing its Codex sessions.

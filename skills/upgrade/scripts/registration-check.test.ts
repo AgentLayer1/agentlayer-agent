@@ -196,4 +196,27 @@ describe('registration-check', () => {
       })
     ]);
   });
+
+  test('a home wired for Codex whose Codex has no copy of the plugin', () => {
+    const { root, write, run } = machine();
+    write('home/.codex/hooks.json', { hooks: {} });
+    write('codex/config.toml', '[plugins."agent-other@elsewhere"]\nenabled = true\n');
+    expect(run().findings).toEqual([
+      expect.objectContaining({
+        host: 'codex',
+        kind: 'not-installed',
+        commands: [
+          'codex plugin marketplace add AgentLayer1/agentlayer-agent-marketplace',
+          'codex plugin add agent-scout@agentlayer'
+        ]
+      })
+    ]);
+    mkdirSync(join(root, 'plugin', '.git'));
+    expect(run().findings[0].commands).toEqual([
+      `codex plugin marketplace add ${join(root, 'plugin')}`,
+      'codex plugin add agent-scout@agentdev-scout'
+    ]);
+    write('codex/config.toml', '[plugins."agent-scout@agentdev-scout"]\nenabled = true\n');
+    expect(run().ok).toBe(true);
+  });
 });
