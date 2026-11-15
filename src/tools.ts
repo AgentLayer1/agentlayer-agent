@@ -14,7 +14,7 @@ import { tools as media } from '@/media/tool';
 import { tools as reports } from '@/reports/tool';
 import { tools as seed } from '@/seed/tool';
 import { tools as seo } from '@/seo/tool';
-import type { ToolDef } from '@/shared/types';
+import type { ToolDef } from '@/shared/tool-def';
 import { tools as slack } from '@/slack/tool';
 import { tools as status } from '@/status/tool';
 import { tools as tasks } from '@/tasks/tool';

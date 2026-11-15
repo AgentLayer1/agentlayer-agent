@@ -24,7 +24,7 @@
  * `.mcp.json`) that the seatbelt denies under the Bash tool. Invoked via the CLI from a
  * sandboxed Bash, those same writes are still blocked — the CLI is the terminal/automation path.
  */
-import { detectPackageManager, readPkg } from '@/shared/package-manager';
+import { detectPackageManager, readPkg } from '@/worktree/package-manager';
 import { runGroup } from '@/shared/process-group';
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readdirSync, realpathSync, rmSync, statSync } from 'node:fs';

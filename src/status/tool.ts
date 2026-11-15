@@ -1,6 +1,6 @@
 import { FILES } from '@/config';
 import { stampSync } from '@/shared/cadence';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { collectAttentionView, saveAttentionQueue, writeAttentionPage } from '@/status/attention';
 import { AttentionGroupSchema, attentionData } from '@/status/attention-data';
 import { rebuildDashboards } from '@/status/html';

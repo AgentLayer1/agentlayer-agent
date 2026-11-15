@@ -7,7 +7,7 @@ import type {
   TaskStatus,
   TaskType,
   ThreadEntry
-} from '@/shared/types';
+} from '@/tasks/types';
 import { todayDate } from '@/shared/date';
 import { readText } from '@/shared/text';
 

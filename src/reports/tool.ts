@@ -1,5 +1,5 @@
 import { writeReport, type ReportCategory, type ReportStatus } from '@/reports/reports';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { writeDashboardSafe } from '@/tasks/dashboard';
 import { z } from 'zod';
 

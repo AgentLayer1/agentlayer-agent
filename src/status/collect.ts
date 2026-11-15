@@ -31,7 +31,7 @@ import { readCadence } from '@/shared/cadence';
 import { nowISO, nowTime, todayDate } from '@/shared/date';
 import { agentDisplayName } from '@/shared/agent-name';
 import { CLI_PATH } from '@/shared/naming';
-import { routerPlaybooks } from '@/shared/playbooks';
+import { routerPlaybooks } from '@/status/playbooks';
 import { env } from '@/shared/env';
 import {
   composeMetaBox,
@@ -42,9 +42,9 @@ import {
   RESUME_LINE,
   type RadarTaskRef
 } from './radar-refs';
-import { sanitizeHtml } from '@/shared/sanitize-html';
+import { sanitizeHtml } from '@/status/sanitize-html';
 import { readText } from '@/shared/text';
-import type { TaskFile } from '@/shared/types';
+import type { TaskFile } from '@/tasks/types';
 import { discoverProjects, scanAllTasks, scanArchivedTasks, scanMalformedTasks } from '@/tasks/scan';
 import { resolveTasks } from '@/tasks/resolve';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';

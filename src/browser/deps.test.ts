@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { withBrowserLaunch } from './browser-deps';
+import { withBrowserLaunch } from './deps';
 
 const timeoutError = (): Error =>
   Object.assign(new Error('launch: Timeout 20000ms exceeded.'), { name: 'TimeoutError' });

@@ -1,4 +1,4 @@
-import type { ToolDef } from '@/shared/types';
+import type { ToolDef } from '@/shared/tool-def';
 import { tools as reads } from './reads';
 import { tools as sweep } from './sweep';
 import { tools as writes } from './writes';

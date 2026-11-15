@@ -10,7 +10,7 @@
 import { FOLDERS, PLUGIN_VERSION, TIMEZONE, isInitialized } from '@/config';
 import { historyStatus, restorePointer, setupHistory } from '@/home/history';
 import { runGroup } from '@/shared/process-group';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';

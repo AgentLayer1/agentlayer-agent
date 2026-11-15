@@ -1,9 +1,9 @@
 import { BROWSER } from '@/config';
 import { stampedPath } from '@/media/files';
-import { acquireContext, getChromium } from '@/shared/browser-deps';
+import { acquireContext, getChromium } from '@/browser/deps';
 import { htmlToMarkdown, renderExtracted } from '@/shared/html-to-markdown';
 import { log } from '@/shared/log';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { marked } from 'marked';
 import { mkdirSync, rmdirSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';

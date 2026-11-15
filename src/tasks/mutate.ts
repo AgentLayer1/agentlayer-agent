@@ -8,7 +8,7 @@ import {
   type TaskStatus,
   type ThreadEntry,
   type UpdateTaskOptions
-} from '@/shared/types';
+} from '@/tasks/types';
 import { todayDate } from '@/shared/date';
 import { readText } from '@/shared/text';
 import { writeFileAtomic } from '@/shared/utils';

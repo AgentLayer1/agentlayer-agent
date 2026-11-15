@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MCP_PREFIX } from '@/config';
 import { PLUGIN_SOURCE_ROOT } from '@/shared/naming';
-import type { ToolDef } from '@/shared/types';
+import type { ToolDef } from '@/shared/tool-def';
 import { TOOLS } from '@/tools';
 
 const SRC = join(PLUGIN_SOURCE_ROOT, 'src');

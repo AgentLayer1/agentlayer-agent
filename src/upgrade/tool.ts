@@ -18,7 +18,7 @@
 import { FOLDERS, PLUGIN_NAME } from '@/config';
 import { callSignal } from '@/shared/call-signal';
 import { runGroup } from '@/shared/process-group';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { existsSync, realpathSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { z } from 'zod';

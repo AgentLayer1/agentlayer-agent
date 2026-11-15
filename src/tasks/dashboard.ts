@@ -8,7 +8,7 @@
  */
 import { FOLDERS } from '@/config';
 import { agentDisplayName } from '@/shared/agent-name';
-import type { TaskFile, TaskFrontmatter } from '@/shared/types';
+import type { TaskFile, TaskFrontmatter } from '@/tasks/types';
 import { daysAgoDate, todayDate } from '@/shared/date';
 import { readText } from '@/shared/text';
 import { writeFileSync } from 'fs';

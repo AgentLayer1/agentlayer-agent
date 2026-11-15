@@ -10,7 +10,7 @@ import { run as runLint } from '@/knowledge/lint';
 import { pruneMemory } from '@/knowledge/prune';
 import { log as baseLog } from '@/shared/log';
 import { RUNTIME_DIR } from '@/shared/naming';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { z } from 'zod';
 
 const captureLog = baseLog.knowledge.with('capture');

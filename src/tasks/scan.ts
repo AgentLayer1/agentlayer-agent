@@ -1,6 +1,6 @@
 import { FOLDERS } from '@/config';
 import { createLogger } from '@/shared/log';
-import type { TaskFile } from '@/shared/types';
+import type { TaskFile } from '@/tasks/types';
 import { existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { assignPrefixes, derivePrefix } from './prefix';

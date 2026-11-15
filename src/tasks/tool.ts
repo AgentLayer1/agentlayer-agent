@@ -1,8 +1,8 @@
 /**
  * Task MCP tools — read + mutate the Projects/<project>/tasks/<id>.md files.
  */
-import type { TaskFile, TaskPriority, TaskType, ThreadEntry } from '@/shared/types';
-import { defineTool, type ToolDef } from '@/shared/types';
+import type { TaskFile, TaskPriority, TaskType, ThreadEntry } from '@/tasks/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { HORIZON_BUCKETS, horizonBucket } from '@/tasks/horizon';
 import { appendThread, closeTask, createTask, updateTask } from '@/tasks/mutate';
 import { resolveTasks } from '@/tasks/resolve';

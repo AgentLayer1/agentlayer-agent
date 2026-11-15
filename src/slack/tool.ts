@@ -9,7 +9,7 @@ import {
   writeBatchDir
 } from '@/slack/operations';
 import { getWaiting } from '@/slack/waiting';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { z } from 'zod';
 import { CLI_COMMAND } from '@/shared/naming';
 

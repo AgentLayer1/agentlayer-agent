@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FOLDERS } from '@/config';
-import type { TaskFile, TaskFrontmatter } from '@/shared/types';
+import type { TaskFile, TaskFrontmatter } from '@/tasks/types';
 import { roadmapDataBlock } from '@/roadmap/data';
 import { todayDate } from '@/shared/date';
 import { THEME_BLOCK } from '@/shared/theme';

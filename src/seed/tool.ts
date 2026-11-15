@@ -6,7 +6,7 @@
  * import can merge settings.json / .mcp.json and ensure the secrets store —
  * the writes the seatbelt denies under the Bash tool.
  */
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { exportSeed } from '@/seed/export';
 import { SEED_AUDIENCES } from '@/seed/format';
 import { importSeed } from '@/seed/import';

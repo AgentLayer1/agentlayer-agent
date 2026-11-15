@@ -1,4 +1,4 @@
-import type { TaskFile } from '@/shared/types';
+import type { TaskFile } from '@/tasks/types';
 import { daysAgoDate, todayDate } from '@/shared/date';
 import { isValidTransition } from './schema';
 

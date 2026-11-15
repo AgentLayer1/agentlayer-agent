@@ -10,7 +10,7 @@ import { plainText, readRoadmapFile, roadmapMilestones, type RoadmapMilestone, t
 import { agentDisplayName } from '@/shared/agent-name';
 import { nowTime, todayDate } from '@/shared/date';
 import { createLogger } from '@/shared/log';
-import type { TaskFile } from '@/shared/types';
+import type { TaskFile } from '@/tasks/types';
 import { writeFileAtomic } from '@/shared/utils';
 import { HORIZON_BUCKETS, horizonBucket, horizonWithin, isoWeekOf, type HorizonBucket } from '@/tasks/horizon';
 import { discoverProjects, scanAllTasks, scanArchivedTasks } from '@/tasks/scan';

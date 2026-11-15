@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { TaskFile, TaskFrontmatter } from '@/shared/types';
+import type { TaskFile, TaskFrontmatter } from '@/tasks/types';
 import { formatDashboard } from './dashboard';
 
 const task = (id: string, project: string, updated: string): TaskFile => {

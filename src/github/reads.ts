@@ -27,7 +27,7 @@ import { RUNTIME_DIR } from '@/shared/naming';
 import { env, GITHUB_TOKEN_KEY, githubTokenKeyFor, githubTokenKeys, isGitHubTokenKey } from '@/shared/env';
 import { log } from '@/shared/log';
 import { expandTilde } from '@/shared/paths';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { untrusted } from '@/shared/untrusted';
 import { execFile } from 'node:child_process';
 import { stat } from 'node:fs/promises';

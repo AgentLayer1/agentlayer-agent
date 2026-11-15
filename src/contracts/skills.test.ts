@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { PLUGIN_SOURCE_ROOT } from '@/shared/naming';
-import { routerPlaybooks } from '@/shared/playbooks';
+import { routerPlaybooks } from '@/status/playbooks';
 import { RETIRED_SKILLS, RETIRED_TOOLS } from '@/shared/retired-skills';
 import { TOOLS } from '@/tools';
 import { PHASES } from '../../mods/sync/phases';

@@ -8,7 +8,7 @@
  * does the mechanical create + bootstrap. The same logic backs the CLI's `worktree` command.
  */
 import { callSignal } from '@/shared/call-signal';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { listWorktrees, removeWorktree, setupWorktree } from '@/worktree/setup';
 import { z } from 'zod';
 

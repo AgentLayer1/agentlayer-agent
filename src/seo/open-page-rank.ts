@@ -2,7 +2,7 @@
  * OpenPageRank MCP tool.
  */
 import { env } from '@/shared/env';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { untrusted } from '@/shared/untrusted';
 import { z } from 'zod';
 

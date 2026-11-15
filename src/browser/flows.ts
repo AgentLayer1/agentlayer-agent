@@ -23,7 +23,7 @@ import { callSignal } from '@/shared/call-signal';
 import { readEnvFile } from '@/shared/env';
 import { runGroup } from '@/shared/process-group';
 import { readTextIfExists } from '@/shared/text';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { existsSync, readdirSync } from 'node:fs';
 import { delimiter, resolve } from 'node:path';
 import { z } from 'zod';

@@ -13,7 +13,7 @@
 
 import { FILES } from '@/config';
 import { createLogger } from '@/shared/log';
-import type { CompileState } from '@/shared/types';
+import type { CompileState } from '@/knowledge/types';
 import { writeJsonAtomic } from '@/shared/utils';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';

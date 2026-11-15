@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { DATA_DIR, HOME_MARKERS } from '../../mods/manuals/repo';
 import { LIVE_STATUSES } from '../../mods/tasks/statuses';
 import { isValidTransition } from '@/tasks/schema';
-import type { TaskStatus } from '@/shared/types';
+import type { TaskStatus } from '@/tasks/types';
 import { MOD_FEATURES } from '../../mods/shared/catalog';
 import { DEFAULT_AGENT_NAME as MODS_DEFAULT_NAME } from '../../mods/shared/agent';
 import { DEFAULT_AGENT_NAME } from '@/shared/persona';

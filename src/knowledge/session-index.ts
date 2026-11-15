@@ -16,7 +16,7 @@ import { FILES } from '@/config';
 import { hashBuffer, listRawFiles } from '@/knowledge/utils';
 import { parseEntryHeaders } from '@/knowledge/session-format';
 import { log as baseLog } from '@/shared/log';
-import type { SessionIndex, SessionRecord, TranscriptTurn } from '@/shared/types';
+import type { SessionIndex, SessionRecord, TranscriptTurn } from '@/knowledge/types';
 import { writeJsonAtomic } from '@/shared/utils';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { daysAgoDate } from '@/shared/date';
-import type { TaskFile, TaskFrontmatter, TaskStatus } from '@/shared/types';
+import type { TaskFile, TaskFrontmatter, TaskStatus } from '@/tasks/types';
 import { DUE_SOON_DAYS, resolveTasks } from './resolve';
 
 const task = (id: string, due: string, status: TaskStatus = 'open'): TaskFile => {

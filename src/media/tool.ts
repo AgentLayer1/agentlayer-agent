@@ -12,7 +12,7 @@ import { extractFrames } from '@/media/frames';
 import { transcribe } from '@/media/transcribe';
 import { callSignal } from '@/shared/call-signal';
 import { log as baseLog } from '@/shared/log';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { z } from 'zod';
 
 const log = baseLog.tools.with('media');

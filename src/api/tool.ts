@@ -16,7 +16,7 @@
  */
 import { FOLDERS } from '@/config';
 import { readEnvFile } from '@/shared/env';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';

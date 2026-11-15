@@ -9,7 +9,7 @@ import { fullSweep, planStorefronts, readStats, STOREFRONTS, updateStats, writeS
 import { REVIEW_SOURCES, type ReviewSource } from '@/appstore/types';
 import { sinceToStartTime } from '@/shared/date';
 import { log } from '@/shared/log';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { untrusted } from '@/shared/untrusted';
 import { z } from 'zod';
 

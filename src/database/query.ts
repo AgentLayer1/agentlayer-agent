@@ -22,7 +22,7 @@
  */
 import { RUNTIME_DIR } from '@/shared/naming';
 import { dbConnections, dbEnvKeyFor, env } from '@/shared/env';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import pg from 'pg';
 import { z } from 'zod';
 

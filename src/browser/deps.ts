@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import type { BrowserContext, BrowserContextOptions, BrowserType } from 'playwright';
-import { log } from './log';
-import { PLUGIN_SOURCE_ROOT } from './naming';
+import { log } from '@/shared/log';
+import { PLUGIN_SOURCE_ROOT } from '@/shared/naming';
 
 export interface AcquiredContext {
   context: BrowserContext;

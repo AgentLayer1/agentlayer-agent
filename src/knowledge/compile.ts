@@ -10,7 +10,7 @@ import { chunkSessionLog } from '@/knowledge/chunk';
 import { ENTRY_HEADER_RE } from '@/knowledge/session-format';
 import { loadState, saveState } from '@/knowledge/state';
 import { hashBuffer, listInboxFiles, listRawFiles, loadScriptTemplate, renderTemplate } from '@/knowledge/utils';
-import type { CompileState, IngestedEntry, PartialEntry } from '@/shared/types';
+import type { CompileState, IngestedEntry, PartialEntry } from '@/knowledge/types';
 import { agentDisplayName, agentFormerNames } from '@/shared/agent-name';
 import { nowISO } from '@/shared/date';
 import { readTextAsync } from '@/shared/text';

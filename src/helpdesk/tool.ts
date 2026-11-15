@@ -10,7 +10,7 @@ import { saveToTemp } from '@/helpdesk/download';
 import { OPEN_STATUSES, queueStats } from '@/helpdesk/stats';
 import { HELPDESKS, LOOKUP_KINDS } from '@/helpdesk/types';
 import { sinceToStartTime } from '@/shared/date';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { untrusted } from '@/shared/untrusted';
 import { z } from 'zod';
 

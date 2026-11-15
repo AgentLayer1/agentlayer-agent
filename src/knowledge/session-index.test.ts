@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { formatEntryHeader, parseEntryHeaders } from '@/knowledge/session-format';
 import { adoptLegacyKey, diffTurns, fingerprintTurn, recordCapture } from '@/knowledge/session-index';
-import type { SessionIndex, SessionRecord, TranscriptTurn } from '@/shared/types';
+import type { SessionIndex, SessionRecord, TranscriptTurn } from '@/knowledge/types';
 
 const turn = (role: 'user' | 'assistant', text: string): TranscriptTurn => ({ role, text });
 

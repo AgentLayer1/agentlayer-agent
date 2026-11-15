@@ -7,7 +7,7 @@
  * decide what they may do: Issues or Pull requests write. Attaching needs no more on the token,
  * only the Write role on the repo. With no token for the owner they run as the operator's `gh auth login`.
  */
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { existsSync } from 'node:fs';
 import { extname } from 'node:path';
 import { z } from 'zod';

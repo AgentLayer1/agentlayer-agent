@@ -3,7 +3,7 @@
  */
 import { env } from '@/shared/env';
 import { log } from '@/shared/log';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { untrusted } from '@/shared/untrusted';
 import { z } from 'zod';
 

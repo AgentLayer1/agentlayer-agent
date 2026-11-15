@@ -2,7 +2,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium, type BrowserContext, type Page } from 'playwright';
 import { BROWSER } from '../../../src/config';
-import { withBrowserLaunch } from '../../../src/shared/browser-deps';
+import { withBrowserLaunch } from '../../../src/browser/deps';
 
 /**
  * Portable browser harness for the browser-flows skill — no flow-specific coupling. Drives a

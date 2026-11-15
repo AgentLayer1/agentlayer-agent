@@ -5,7 +5,7 @@
  * Read-only; the engineer skill's github-sweep playbook drafts the replies and renders the page.
  */
 import { daysAgoDate } from '@/shared/date';
-import { defineTool, type ToolDef } from '@/shared/types';
+import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { untrusted } from '@/shared/untrusted';
 import { operatorGithubLogin } from '@/status/collect';
 import { z } from 'zod';
