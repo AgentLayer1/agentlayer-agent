@@ -37,4 +37,11 @@ describe('pruneMemory', () => {
       `- 2026-09-01 — shipped. Detail in the 2026-09-01 session log.\n- 2026-09-02 — aliased the 2026-09-02 session log.\n- today — [[memory/${today}]].\n`
     );
   });
+
+  test('a link to a day this same run deletes is repointed in that run', async () => {
+    writeFileSync(resolve(MEMORY, '2026-01-03.md'), '# an old day\n');
+    writeFileSync(ARCHIVE, '- 2026-01-03 — see [[memory/2026-01-03]].\n');
+    await pruneMemory();
+    expect(readFileSync(ARCHIVE, 'utf-8')).toBe('- 2026-01-03 — see the 2026-01-03 session log.\n');
+  });
 });

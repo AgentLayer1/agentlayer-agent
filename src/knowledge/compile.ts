@@ -276,6 +276,7 @@ export async function pickNext(): Promise<CompileWorkItem | null> {
   if (fb.changed) {
     const prompt = await buildFeedbackPrompt();
     state.in_flight = 'feedback';
+    state.feedback_picked = fb.hash ?? undefined;
     await saveState(state);
     return {
       itemId: 'feedback',
@@ -340,12 +341,10 @@ const HANDLERS: Array<[string, CompleteHandler]> = [
     'feedback',
     async (_itemId, state) => {
       if (!existsSync(FILES.FEEDBACK)) return true;
-      const buf = await readFile(FILES.FEEDBACK);
-      state.ingested['feedback'] = {
-        hash: hashBuffer(buf),
-        compiled_at: nowISO(),
-        cost_usd: 0
-      };
+      // The hash of what was handed out, so an entry appended mid-compile still reads as new next time.
+      const hash = state.feedback_picked ?? hashBuffer(await readFile(FILES.FEEDBACK));
+      state.ingested['feedback'] = { hash, compiled_at: nowISO(), cost_usd: 0 };
+      delete state.feedback_picked;
       return true;
     }
   ],

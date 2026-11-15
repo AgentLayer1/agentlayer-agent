@@ -37,7 +37,8 @@ export async function loadState(): Promise<CompileState> {
       in_flight: parsed.in_flight ?? null,
       partial: parsed.partial ?? {},
       query_count: parsed.query_count ?? 0,
-      last_lint: parsed.last_lint ?? null
+      last_lint: parsed.last_lint ?? null,
+      ...(typeof parsed.feedback_picked === 'string' && { feedback_picked: parsed.feedback_picked })
     };
   } catch (err) {
     // Corrupt state would silently lose compile-tracking — surface it loud

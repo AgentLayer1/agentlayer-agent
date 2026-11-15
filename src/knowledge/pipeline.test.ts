@@ -239,3 +239,21 @@ describe('incremental compile', () => {
     expect(await pickNext()).toBeNull();
   });
 });
+
+describe('feedback compile', () => {
+  test('an entry appended between compile_next and compile_write is still pending afterwards', async () => {
+    const { FILES } = await import('@/config');
+    mkdirSync(resolve(HOME, 'knowledge', 'raw', 'user'), { recursive: true });
+    writeFileSync(FILES.FEEDBACK, '# Feedback\n\n- first lesson\n');
+    let item = await pickNext();
+    while (item && item.kind !== 'feedback') {
+      await markComplete(item.itemId);
+      item = await pickNext();
+    }
+    expect(item?.kind).toBe('feedback');
+    appendFileSync(FILES.FEEDBACK, '- a lesson logged mid-compile\n');
+    await markComplete('feedback');
+    expect((await getStatus()).pending.feedback).toBe(1);
+    rmSync(FILES.FEEDBACK, { force: true });
+  });
+});

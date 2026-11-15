@@ -76,4 +76,6 @@ export interface CompileState {
   partial: Record<string, PartialEntry>;
   query_count: number;
   last_lint: string | null;
+  /** Hash of the feedback log when compile_next handed it out; what compile_write marks compiled. */
+  feedback_picked?: string;
 }

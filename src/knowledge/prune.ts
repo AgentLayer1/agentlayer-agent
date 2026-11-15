@@ -29,6 +29,11 @@ export async function pruneMemory(): Promise<void> {
     return dateMatch && dateMatch[1] < cutoffStr;
   });
 
+  for (const f of toDelete) {
+    await unlink(resolve(FOLDERS.MEMORY, f));
+  }
+
+  // After the deletes, so links to the days this run removed are repointed too.
   const relinked = await relinkArchive();
   if (relinked > 0) {
     log.info(`Memory prune: pointed ${relinked} archived [[memory/…]] link(s) at their session logs`);
@@ -37,10 +42,6 @@ export async function pruneMemory(): Promise<void> {
   if (toDelete.length === 0) {
     log.info('Memory prune: nothing to prune');
     return;
-  }
-
-  for (const f of toDelete) {
-    await unlink(resolve(FOLDERS.MEMORY, f));
   }
 
   const prunedDates = toDelete.map((f) => f.match(/^(\d{4}-\d{2}-\d{2})/)?.[1]).filter((d): d is string => Boolean(d));
