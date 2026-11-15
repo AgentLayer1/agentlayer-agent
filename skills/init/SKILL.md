@@ -368,6 +368,8 @@ Resolve the identity tokens from Step 1b: `{{AGENT_NAME}}`, `{{AGENT_EMOJI}}`, a
 `{{AGENT_AVATAR}}`. **When no avatar was staged, delete the whole `![...]({{AGENT_AVATAR}})`
 line and the `- **Avatar:**` line** rather than leaving an empty link — the dashboard
 takes the first image in the file as the avatar, and a dangling one renders broken.
+With the default name, add `- **Nickname:** Ops` under the `- **Name:**` line (the README's
+"Oppi, or Ops to its friends"); a renamed agent gets no nickname line.
 
 ---
 
