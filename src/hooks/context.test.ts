@@ -83,4 +83,12 @@ describe('the session context under its size cap', () => {
     expect(tail.split('\n…\n\n')[1]?.startsWith('**Assistant:** …')).toBe(true);
     expect(tail.endsWith('the last words')).toBe(true);
   });
+
+  test('a cap too small for the label, or a header longer than the cap, still stays within the cap', () => {
+    const reply = `**User:** short question\n\n**Assistant:** ${'long '.repeat(1000)}`;
+    for (const cap of [50, 80]) {
+      expect(tailOf(`### Session (14:15) [abc] · turns 1–2\n\n${reply}`, cap).length).toBeLessThanOrEqual(cap);
+    }
+    expect(tailOf(`### Session ${'x'.repeat(3000)}\n\n${reply}`, 1_500).length).toBeLessThanOrEqual(1_500);
+  });
 });

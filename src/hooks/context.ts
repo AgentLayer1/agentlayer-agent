@@ -111,7 +111,7 @@ export const tailOf = (block: string, maxBytes: number): string => {
     return block;
   }
   const newline = block.indexOf('\n');
-  const header = `${newline === -1 ? '' : block.slice(0, newline)}\n\n…\n\n`;
+  const header = `${(newline === -1 ? '' : block.slice(0, newline)).slice(0, Math.floor(maxBytes / 2))}\n\n…\n\n`;
   const budget = Math.max(0, maxBytes - header.length);
   const starts = [...block.matchAll(TURN_START)].map((match) => ({ at: match.index, label: match[0] }));
   const whole = starts.find(({ at }) => block.length - at <= budget);
@@ -119,8 +119,10 @@ export const tailOf = (block: string, maxBytes: number): string => {
     return `${header}${block.slice(whole.at)}`;
   }
   const label = starts.at(-1)?.label ?? '';
-  const end = block.slice(-Math.max(0, budget - label.length - 2)).trimStart();
-  return `${header}${label ? `${label} …${end}` : end}`;
+  // slice(-0) is the whole block, so no room means no excerpt.
+  const room = budget - (label ? label.length + 2 : 0);
+  const end = room > 0 ? block.slice(-room).trimStart() : '';
+  return `${header}${label && room > 0 ? `${label} …${end}` : end}`;
 };
 
 async function lastSessionTail(maxBytes: number): Promise<TailResult> {
