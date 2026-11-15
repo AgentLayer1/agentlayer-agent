@@ -9,8 +9,18 @@ import type { TaskStatus } from '@/tasks/types';
 import { MOD_FEATURES } from '../../mods/shared/catalog';
 import { DEFAULT_AGENT_NAME as MODS_DEFAULT_NAME } from '../../mods/shared/agent';
 import { DEFAULT_AGENT_NAME } from '@/shared/persona';
+import { TASK_REF } from '@/tasks/prefix';
+import { MAY_HOLD_ID, linkTaskIds } from '../../mods/tasks/link';
 
 describe('mods', () => {
+  test("the task linker's id shape is the plugin's, collision prefixes and four-digit ids included", () => {
+    const ids = ['ac-001', 'hs2-001', 'ab-1234'];
+    expect(ids.every((id) => new RegExp(`^${TASK_REF}$`).test(id))).toBe(true);
+    expect(ids.every((id) => MAY_HOLD_ID.test(id))).toBe(true);
+    const linked = linkTaskIds(ids.join(' and '), new Map(ids.map((id) => [id, `https://tasks.example/${id}`])));
+    expect(ids.every((id) => linked.includes(`https://tasks.example/${id}`))).toBe(true);
+  });
+
   test("the instruction loader marks an agent home with the runtime's own marker files", () => {
     expect(HOME_MARKERS).toEqual([...HOME_MARKER_FILES]);
   });

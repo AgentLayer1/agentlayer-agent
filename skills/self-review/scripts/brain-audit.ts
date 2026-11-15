@@ -10,6 +10,7 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { basename, join, relative, resolve, sep } from 'node:path';
 import { readTextIfExists } from '../../../src/shared/text';
+import { TASK_REF } from '../../../src/tasks/prefix';
 
 const args = process.argv.slice(2);
 const flag = (name: string): string | undefined => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
@@ -41,7 +42,7 @@ const KEEP_QUIET_DAYS = 90;
 const DECISION_DAYS = 45;
 const CAPTURE_DAYS = 30;
 const SESSION_WINDOW_DAYS = 90;
-const TASK_ID = /\b[a-z]{2}-\d{3}\b/g;
+const TASK_ID = new RegExp(`\\b${TASK_REF}\\b`, 'g');
 
 const isDate = (value: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(value);
 const age = (date: string): number | null => (isDate(date) ? daysBetween(date, TODAY) : null);

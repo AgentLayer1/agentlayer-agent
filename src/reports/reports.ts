@@ -17,6 +17,7 @@
 import { FILES, FOLDERS, PLUGIN_NAME } from '@/config';
 import { nowISO, nowTimeCompact, todayDate } from '@/shared/date';
 import { readTextAsync } from '@/shared/text';
+import { yamlScalar } from '@/shared/yaml';
 import { writeFileAtomic } from '@/shared/utils';
 import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
@@ -147,25 +148,6 @@ function renderReport(input: WriteReportInput, created: string): string {
 
   const body = input.body.endsWith('\n') ? input.body : input.body + '\n';
   return fmLines.join('\n') + body;
-}
-
-function yamlScalar(value: string): string {
-  // Quote when the value contains YAML-significant characters or has leading
-  // whitespace / a leading `-` (list marker). Mid-value hyphens are fine bare.
-  // Text YAML reads back as another type (`745`, `true`, `null`) is quoted too,
-  // or Obsidian flags a mixed-type list in Properties.
-  if (/^\s|\s$|^-|[:#?{}\[\],&*!|>'%@`"\n\r]/.test(value) || !readsBackAsString(value)) {
-    return JSON.stringify(value);
-  }
-  return value;
-}
-
-function readsBackAsString(value: string): boolean {
-  try {
-    return Bun.YAML.parse(value) === value;
-  } catch {
-    return false;
-  }
 }
 
 function yamlValue(value: FrontmatterValue): string {

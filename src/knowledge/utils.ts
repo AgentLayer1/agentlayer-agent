@@ -1,6 +1,7 @@
 import { FILES, FOLDERS, KNOWLEDGE } from '@/config';
 import { scrubValues } from '@/shared/env';
 import { readTextAsync } from '@/shared/text';
+import { TASK_REF } from '@/tasks/prefix';
 import { createHash } from 'crypto';
 import { readdirSync, readFileSync } from 'fs';
 import { readdir, stat } from 'fs/promises';
@@ -92,7 +93,7 @@ export async function loadTaskTargets(): Promise<Set<string>> {
         if (!file.endsWith('.md')) continue;
         const slug = file.replace(/\.md$/, '');
         targets.add(slug);
-        const bareId = slug.match(/^([a-z]{2}\d*-\d{3})/i)?.[1];
+        const bareId = slug.match(new RegExp(`^(${TASK_REF})`, 'i'))?.[1];
         if (bareId) targets.add(bareId.toLowerCase());
       }
     })

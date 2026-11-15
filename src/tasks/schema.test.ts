@@ -52,6 +52,15 @@ describe('frontmatter round trip', () => {
     expect(parseFrontmatter(raw)?.project).toBe('acme');
   });
 
+  test('a value YAML would read as a number, a boolean or a list stays a string', () => {
+    for (const title of ['745', 'true', '- draft', ' padded']) {
+      const raw = task(title, [title]);
+      expect(parseFrontmatter(raw)?.title).toBe(title);
+      const block = raw.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '';
+      expect((Bun.YAML.parse(block) as { title: unknown }).title).toBe(title);
+    }
+  });
+
   test('block-list items and single-quoted values read the way YAML writes them', () => {
     const raw = task('x', [])
       .replace('title: x', "title: 'It''s here'")

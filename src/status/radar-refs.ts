@@ -14,6 +14,7 @@
  * freezing AGENT_HOME for the test process — collect.ts owns the disk I/O.
  */
 import { resolve } from 'node:path';
+import { TASK_REF } from '@/tasks/prefix';
 
 export interface RadarTaskRef {
   title: string;
@@ -27,7 +28,7 @@ export interface SessionRefs {
   planHrefs: string[];
 }
 
-const TASK_ID_RE = /\b[a-z]{2}\d*-\d{3}\b/g;
+const TASK_ID_RE = new RegExp(`\\b${TASK_REF}\\b`, 'g');
 const PLAN_HREF_RE = /reports\/plans\/[^"'\s)]+\.md/g;
 const RADAR_TASK_CAP = 8;
 

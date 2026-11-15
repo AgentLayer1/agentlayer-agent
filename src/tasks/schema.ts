@@ -10,6 +10,7 @@ import type {
 } from '@/tasks/types';
 import { todayDate } from '@/shared/date';
 import { readText } from '@/shared/text';
+import { yamlScalar } from '@/shared/yaml';
 
 // ── Valid Status Transitions ──────────────────────────────────────────
 
@@ -293,17 +294,11 @@ export const parseTaskFile = (filePath: string): TaskFile | null => {
 
 // ── Serialization ─────────────────────────────────────────────────────
 
-const NEEDS_QUOTING = /[:\[\]{}#&*!|>'"%@`,?\n\r]/;
-
+// An empty scalar stays bare (`due:`), the way Obsidian's Properties panel writes an empty field.
 export const serializeValue = (val: string | string[] | number): string => {
-  if (Array.isArray(val)) {
-    if (val.length === 0) return '[]';
-    const items = val.map((item) => (NEEDS_QUOTING.test(item) ? JSON.stringify(item) : item));
-    return `[${items.join(', ')}]`;
-  }
+  if (Array.isArray(val)) return `[${val.map(yamlScalar).join(', ')}]`;
   if (typeof val === 'number') return String(val);
-  if (NEEDS_QUOTING.test(val)) return JSON.stringify(val);
-  return val;
+  return val === '' ? '' : yamlScalar(val);
 };
 
 /** Emit a "key: value" line. Empty values get "key:" (no trailing space) to match

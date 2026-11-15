@@ -1,13 +1,14 @@
 // Ported from src/tasks/link.ts `rewriteLinks` (a mod can't import Node code): the same
 // protected spans, but it writes markdown links for a terminal instead of wikilinks for Obsidian.
 
-export const MAY_HOLD_ID = /[a-z]{2}-\d/;
+// The id shape mirrors TASK_REF in src/tasks/prefix.ts; src/contracts/mods.test.ts holds them together.
+export const MAY_HOLD_ID = /[a-z]{2}\d*-\d/;
 
 // One capture group, so `split` alternates free text (even indices) and protected spans (odd).
 const PROTECTED =
   /(```[\s\S]*?```|`[^`\n]+`|\[[^\]\n]*\]\([^)\n]*\)|\[[^\]\n]*\]:|\[\[[^\]\n]*\]\]|(?:https?|file):\/\/\S+)/;
-const FREE_ID = /(?<![\w/.-])[a-z]{2,}-\d{3,}(?![\w-])/g;
-const CODE_ID = /^`([a-z]{2,}-\d{3,})`$/;
+const FREE_ID = /(?<![\w/.-])[a-z]{2,}\d*-\d{3,}(?![\w-])/g;
+const CODE_ID = /^`([a-z]{2,}\d*-\d{3,})`$/;
 
 /**
  * Leaves code, links and URLs alone, except an inline code span that is exactly an id, which is linked whole.

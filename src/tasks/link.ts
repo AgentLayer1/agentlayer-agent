@@ -1,5 +1,6 @@
 import { FOLDERS } from '@/config';
 import { createLogger } from '@/shared/log';
+import { TASK_FILE } from '@/tasks/prefix';
 import { existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { discoverProjects } from './scan';
@@ -21,9 +22,8 @@ export const buildTaskMap = (): Map<string, string> => {
 
     for (const file of readdirSync(dir)) {
       if (!file.endsWith('.md') || file.startsWith('.')) continue;
-      const match = file.match(/^([a-z]+\d*-\d+)/);
-      if (!match) continue;
-      const id = match[1];
+      const id = file.match(TASK_FILE)?.[0];
+      if (!id) continue;
       const stem = file.replace(/\.md$/, '');
       if (map.has(id) && map.get(id) !== stem) {
         const list = collisions.get(id) ?? [map.get(id)!];

@@ -1,5 +1,6 @@
 import { FOLDERS } from '@/config';
 import { createLogger } from '@/shared/log';
+import { TASK_FILE } from '@/tasks/prefix';
 import type { TaskFile } from '@/tasks/types';
 import { existsSync, readdirSync } from 'fs';
 import { join } from 'path';
@@ -29,11 +30,9 @@ const inferPrefixFromTasks = (project: string): string | null => {
   const dir = join(FOLDERS.PROJECTS, project, 'tasks');
   if (!existsSync(dir)) return null;
   const counts = new Map<string, number>();
-  for (const f of readdirSync(dir)) {
-    if (!f.endsWith('.md') || f.startsWith('.')) continue;
-    const m = f.match(/^([a-z]+\d*)-\d+/);
-    if (!m) continue;
-    counts.set(m[1], (counts.get(m[1]) ?? 0) + 1);
+  for (const f of readdirSync(dir).filter(isTaskFile)) {
+    const prefix = f.match(TASK_FILE)?.[1];
+    if (prefix) counts.set(prefix, (counts.get(prefix) ?? 0) + 1);
   }
   if (counts.size === 0) return null;
   return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
@@ -64,7 +63,7 @@ export const getProjectPrefix = (project: string): string => {
 
 /** Task files are `<prefix>-<NNN>...md`; skips README.md and other non-task
  *  markdown (archive/ dirs carry a README) so they don't log parse warnings. */
-const isTaskFile = (name: string): boolean => name.endsWith('.md') && !name.startsWith('.') && /^[a-z]+\d*-\d+/.test(name);
+const isTaskFile = (name: string): boolean => name.endsWith('.md') && !name.startsWith('.') && TASK_FILE.test(name);
 
 /** Parse every task markdown file directly inside `dir` (non-recursive — the
  *  `archive/` subdir is skipped here because it isn't a `.md` file). */
