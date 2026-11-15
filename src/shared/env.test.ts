@@ -3,7 +3,8 @@ import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from './naming';
-import { agentHomePath, env, githubTokenKeyFor, isAgentHome, isGitHubTokenKey, loadSecretsEnv, namedKeys, readEnvFile, suffixedKey } from './env';
+import { agentHomePath, env, envWithoutSecrets, githubTokenKeyFor, isAgentHome, isGitHubTokenKey, loadSecretsEnv, namedKeys, readEnvFile, suffixedKey } from './env';
+import { runGroup } from './process-group';
 import { secretsReadBlocked } from './sandbox-probe';
 import { loadSettingsEnv } from './settings-env';
 
@@ -265,6 +266,24 @@ describe.skipIf(secretsReadBlocked())('loadSecretsEnv', () => {
       process.env.AGENT_HOME = original;
       loadSecretsEnv();
     }
+  });
+
+  test.skipIf(process.platform === 'win32')("a child process gets the server's environment without the store's keys", async () => {
+    const original = process.env.AGENT_HOME;
+    const started = (() => {
+      try {
+        process.env.AGENT_HOME = homeWithSecret('AGENT_PROBE_CHILD', 'store-only-value');
+        loadSecretsEnv();
+        expect(process.env.AGENT_PROBE_CHILD).toBe('store-only-value');
+        expect(envWithoutSecrets().AGENT_PROBE_CHILD).toBeUndefined();
+        // runGroup spawns before its first await, so the child's environment is fixed while this home is current.
+        return runGroup(['sh', '-c', 'printf %s "${AGENT_PROBE_CHILD:-unset}"'], { cwd: tmpdir(), timeoutMs: 10_000 });
+      } finally {
+        process.env.AGENT_HOME = original;
+        loadSecretsEnv();
+      }
+    })();
+    expect((await started).stdout).toBe('unset');
   });
 
   // Synchronous, like the assertions above, so the AGENT_HOME mutation can't interleave with
