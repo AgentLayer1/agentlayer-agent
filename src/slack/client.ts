@@ -12,6 +12,7 @@ import { log as baseLog } from '@/shared/log';
 import { getAccessToken } from './oauth';
 import type { SlackChannel, SlackMessage, SlackUser } from './types';
 import { pluginName } from '@/shared/naming';
+import { fetchSignal } from '@/shared/call-signal';
 
 const AGENT_CLI = pluginName();
 
@@ -31,7 +32,8 @@ async function call<T extends ApiResponse>(method: string, params: Record<string
 
   for (let attempt = 0; attempt < 3; attempt++) {
     const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      signal: fetchSignal()
     });
 
     if (res.status === 429) {

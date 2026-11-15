@@ -15,6 +15,7 @@
 import { log as baseLog } from '@/shared/log';
 import { PYLON_API_BASE } from './config';
 import type { PylonAccount, PylonEnvelope, PylonIssue, PylonMacro, PylonMessage, PylonTag, PylonUser } from './types';
+import { fetchSignal } from '@/shared/call-signal';
 
 const log = baseLog.pylon.with('client');
 
@@ -38,7 +39,8 @@ async function call<T>(token: string, method: 'GET' | 'POST', path: string, opti
         Accept: 'application/json',
         ...(options.body !== undefined && { 'Content-Type': 'application/json' })
       },
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      signal: fetchSignal()
     });
 
     if (res.status === 429) {

@@ -19,6 +19,7 @@ import { slugify } from '@/tasks/mutate';
 import { existsSync, statSync } from 'node:fs';
 import { appendFile, mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import { basename, relative, resolve } from 'node:path';
+import { fetchSignal } from '@/shared/call-signal';
 
 export type CaptureKind = 'inbox' | 'feedback';
 
@@ -48,7 +49,8 @@ async function fetchUrl(url: string): Promise<{ content: string; sourceHint: str
         'User-Agent': 'Mozilla/5.0 (compatible; agentlayer-capture/1.0)',
         Accept: 'text/html,text/markdown,text/plain;q=0.9,*/*;q=0.5'
       },
-      redirect: 'follow'
+      redirect: 'follow',
+      signal: fetchSignal()
     });
   } catch (err) {
     throw new Error(`Fetch failed: ${url} — ${(err as Error).message}`);

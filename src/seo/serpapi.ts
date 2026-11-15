@@ -6,6 +6,7 @@ import { log } from '@/shared/log';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { untrusted } from '@/shared/untrusted';
 import { z } from 'zod';
+import { fetchSignal } from '@/shared/call-signal';
 
 const ENDPOINT = 'https://serpapi.com/search.json';
 
@@ -133,7 +134,7 @@ export const tools: ToolDef[] = [
       if (location) params.set('location', location);
       if (googleDomain) params.set('google_domain', googleDomain);
 
-      const res = await fetch(`${ENDPOINT}?${params.toString()}`);
+      const res = await fetch(`${ENDPOINT}?${params.toString()}`, { signal: fetchSignal() });
       const body = await res.text();
       if (!res.ok) {
         let detail = body.slice(0, 400);

@@ -6,6 +6,7 @@ import { log } from '@/shared/log';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { untrusted } from '@/shared/untrusted';
 import { z } from 'zod';
+import { fetchSignal } from '@/shared/call-signal';
 
 const ENDPOINT = 'https://api.perplexity.ai/search';
 
@@ -66,7 +67,8 @@ export const tools: ToolDef[] = [
           Authorization: `Bearer ${key}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
+        signal: fetchSignal()
       });
       const text = await res.text();
       if (!res.ok) {

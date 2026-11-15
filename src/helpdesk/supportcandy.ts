@@ -15,6 +15,7 @@ import { htmlToText } from '@/shared/html-to-markdown';
 import { inChunks } from '@/shared/utils';
 import { fetchFile } from './download';
 import { MESSAGE_KINDS, type HelpdeskConnector, type HelpdeskLookup, type HelpdeskMessage, type HelpdeskPerson, type HelpdeskTicket, type MessageKind } from './types';
+import { fetchSignal } from '@/shared/call-signal';
 
 const API_PATH = '/wp-json/supportcandy/v2';
 const PAGE_SIZE = 50;
@@ -125,7 +126,8 @@ const call = async <T>(creds: Credentials, path: string, init: { method?: 'GET' 
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
       Accept: 'application/json'
     },
-    body: init.form ? new URLSearchParams(init.form) : undefined
+    body: init.form ? new URLSearchParams(init.form) : undefined,
+    signal: fetchSignal()
   });
   const text = await response.text();
   if (!response.ok) {
