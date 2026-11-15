@@ -132,6 +132,15 @@ describe('captureSession', () => {
     expect(index).not.toContain(token);
   });
 
+  test('a token far into the first turn, behind collapsible whitespace, is redacted whole in the briefing', async () => {
+    const key = ['AKIA', 'Z7Q3XK2MBNTW5RLP'].join('');
+    writeFileSync(transcriptPath, [`Hello ${' '.repeat(3_975)}${key} is the key`, 'ok'].map((content, i) => JSON.stringify({ message: { role: i === 0 ? 'user' : 'assistant', content } })).join('\n'));
+    await captureSession({ transcriptPath, cwd: HOME, sessionId: 'briefcafe02', mode: 'session-end' });
+    const briefing = (JSON.parse(readFileSync(SESSION_INDEX, 'utf-8')) as { sessions: Record<string, { briefing: string }> }).sessions.briefcafe02?.briefing ?? '';
+    expect(briefing).toContain('<REDACTED:AWS_KEY_ID>');
+    expect(briefing).not.toContain('AKIA');
+  });
+
   test('a rewritten transcript no longer than the cursor is captured again, not skipped', async () => {
     writeTranscript(6);
     await captureSession({ transcriptPath, cwd: HOME, sessionId: 'shrunk00beef', mode: 'session-end' });
