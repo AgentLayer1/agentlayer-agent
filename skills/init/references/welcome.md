@@ -18,7 +18,7 @@ When `<HOME>/.state/version.json` has `migratedFrom`, this home was copied here 
    - Otherwise: run the `sync` skill now.
 4. **Ask where to start.** Read the move note at `migratedFrom.note` when there is one. Offer up to three of its sessions to continue as `Pick up: <what it was doing>`, then **Morning brief**. Without a note, or without sessions in it, offer the options in section 2 instead.
 5. **Clear the flag** (section 3).
-6. **Run the pick.** A session to continue runs the `find-session` skill with its id: it loads that session's notes from the brain. Then start on the next step the note gives. Close with one line naming the other sessions in the note, so the operator knows they're still there.
+6. **Run the pick.** A session to continue runs the `find-session` skill with its id: it loads that session's notes from the brain. Then start on the next step the note gives. Close with one line naming the other sessions in the note, and saying that any past session, noted or not, can be picked up by asking for it by id or by what it worked on.
 
 ## 1. Read the home (no writes)
 
