@@ -55,15 +55,14 @@ export function diffTurns(allTurns: TranscriptTurn[], prior: SessionRecord | nul
   if (cursor <= 0) {
     return { newTurns: allTurns, from: 1, to: total, reanchored: false };
   }
-  if (total <= cursor) {
-    // Nothing new (or transcript shrank — treat as nothing new, never negative).
+  if (total === 0) {
     return { newTurns: [], from: cursor + 1, to: cursor, reanchored: false };
   }
 
-  if (fingerprintTurn(allTurns[cursor - 1]) === prior?.last_turn_fp) {
+  if (total >= cursor && fingerprintTurn(allTurns[cursor - 1]) === prior?.last_turn_fp) {
     return { newTurns: allTurns.slice(cursor), from: cursor + 1, to: total, reanchored: false };
   }
-  // Anchor mismatch — the transcript was rewritten, so the cursor count can no
+  // Anchor mismatch, or fewer turns than the cursor — the transcript was rewritten, so the cursor count can no
   // longer be trusted to align with content. Re-emit the whole session rather
   // than risk slicing past real turns: a rare one-time re-dump (the compile
   // continuation pass dedups it) is safer for the brain than silent loss.

@@ -196,7 +196,7 @@ function formatTurnList(turns: TranscriptTurn[]): string {
 /** One-line briefing seeded on a session's first capture (first user turn). */
 function briefingStub(turns: TranscriptTurn[]): string {
   const firstUser = turns.find((turn) => turn.role === 'user');
-  const text = (firstUser?.text ?? turns[0]?.text ?? '').replace(/\s+/g, ' ').trim();
+  const text = redactSecrets((firstUser?.text ?? turns[0]?.text ?? '').replace(/\s+/g, ' ').trim());
   return text.length > 240 ? `${text.slice(0, 240)}…` : text;
 }
 
@@ -322,12 +322,16 @@ async function drainPending(): Promise<void> {
   const lines = (await readFile(pendingPath, 'utf-8')).split('\n').filter((line) => line.trim());
   await rm(pendingPath, { force: true });
   for (const line of lines) {
-    const queued = JSON.parse(line) as CaptureSessionOpts;
-    if (!existsSync(queued.transcriptPath)) continue;
-    const result = await captureUnderLock(queued);
-    log.info(
-      `drained (${queued.mode}) [${queued.sessionId}] — ${result.saved ? `saved ${result.turns} turns` : result.reason}`
-    );
+    try {
+      const queued = JSON.parse(line) as CaptureSessionOpts;
+      if (!existsSync(queued.transcriptPath)) continue;
+      const result = await captureUnderLock(queued);
+      log.info(
+        `drained (${queued.mode}) [${queued.sessionId}] — ${result.saved ? `saved ${result.turns} turns` : result.reason}`
+      );
+    } catch (err) {
+      log.warn(`dropped a queued capture that could not run: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 }
 

@@ -120,6 +120,36 @@ describe('captureSession', () => {
     expect(index.sessions.racer123beef.captured_turns).toBe(8);
     expect(index.sessions.racer123beef.blocks).toHaveLength(1);
   });
+
+  test("the session's one-line briefing is redacted like its turns", async () => {
+    const token = ['ghp', '_', 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8'].join('');
+    const turns = [`use the token ${token} for the push`, 'done', 'next', 'ok'];
+    writeFileSync(transcriptPath, turns.map((content, i) => JSON.stringify({ message: { role: i % 2 === 0 ? 'user' : 'assistant', content } })).join('\n'));
+    const result = await captureSession({ transcriptPath, cwd: HOME, sessionId: 'briefcafe01', mode: 'session-end' });
+    expect(result.saved).toBe(true);
+    const index = readFileSync(SESSION_INDEX, 'utf-8');
+    expect(index).toContain('<REDACTED:GITHUB_TOKEN>');
+    expect(index).not.toContain(token);
+  });
+
+  test('a rewritten transcript no longer than the cursor is captured again, not skipped', async () => {
+    writeTranscript(6);
+    await captureSession({ transcriptPath, cwd: HOME, sessionId: 'shrunk00beef', mode: 'session-end' });
+    const lines = Array.from({ length: 4 }, (_unused, i) => JSON.stringify({ message: { role: i % 2 === 0 ? 'user' : 'assistant', content: `rewritten turn ${i + 1}` } }));
+    writeFileSync(transcriptPath, lines.join('\n'));
+    const result = await captureSession({ transcriptPath, cwd: HOME, sessionId: 'shrunk00beef', mode: 'session-end' });
+    expect(result.saved).toBe(true);
+    expect(readFileSync(logPath, 'utf-8')).toContain('rewritten turn 4');
+  });
+
+  test('a damaged deferred-capture line costs only that line, never the capture running now', async () => {
+    const pending = resolve(HOME, RUNTIME_DIR, 'capture-pending.jsonl');
+    writeTranscript(4);
+    writeFileSync(pending, '{"transcriptPath": "/nowhere", "sessionId": \n');
+    const result = await captureSession({ transcriptPath, cwd: HOME, sessionId: 'drained0beef', mode: 'session-end' });
+    expect(result.saved).toBe(true);
+    expect(readFileSync(logPath, 'utf-8')).toContain('[drained0beef]');
+  });
 });
 
 // ── Compile: incremental, today-inclusive, corruption-safe ───────────

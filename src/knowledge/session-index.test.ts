@@ -62,11 +62,16 @@ describe('diffTurns', () => {
     expect(diff.newTurns).toHaveLength(15);
   });
 
-  test('shrunken transcript never produces negative slice', () => {
+  test('a shrunken transcript is re-emitted whole and flagged, never sliced negative or skipped', () => {
     const turns = transcript(3);
     const prior = recordFor(transcript(8), 8);
     const diff = diffTurns(turns, prior);
-    expect(diff.newTurns).toHaveLength(0);
+    expect(diff).toMatchObject({ from: 1, to: 3, reanchored: true });
+    expect(diff.newTurns).toHaveLength(3);
+  });
+
+  test('an empty transcript is never a rewrite', () => {
+    expect(diffTurns([], recordFor(transcript(8), 8)).newTurns).toHaveLength(0);
   });
 
   test('PreCompact → SessionEnd cycle: second capture is empty', () => {

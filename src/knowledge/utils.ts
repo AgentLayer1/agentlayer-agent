@@ -218,14 +218,15 @@ export const listInboxFiles = (): string[] => {
  *
  * 2. **Heuristic prefix redaction** — catch keys the user typed but hasn't saved yet
  *    (e.g. during a configure-skills walk where they pasted a value just before the
- *    session ended). Matches well-known prefixes: `sk-…`, `pplx-…`, `AIza…`, generic
- *    `<KEY>=value` env-var assignments. Limits length to avoid eating prose.
+ *    session ended). Matches well-known prefixes (`sk-…`, `sk_live_…`, `pplx-…`, `AIza…`,
+ *    `ghp_…`, `github_pat_…`, `AKIA…`, `xoxb-…`), JWTs, and generic `<KEY>=value`
+ *    assignments. Limits length to avoid eating prose.
  *
  * 3. **Base64 blob redaction** — pasted PNG/JPEG/PDF payloads make session logs
  *    unreadable and choke Obsidian's indexer. Catches `data:<mime>;base64,XXXX`
  *    data URIs and standalone runs of ≥200 base64-alphabet characters. The
- *    200-char floor is well above hex hashes (64), JWTs (segments are
- *    dot-separated and caught by Pass 2), and URL-safe IDs, so prose and
+ *    200-char floor is well above hex hashes (64), JWTs (caught whole by
+ *    Pass 2), and URL-safe IDs, so prose and
  *    identifiers pass through untouched.
  */
 export function redactSecrets(text: string): string {
@@ -236,6 +237,8 @@ export function redactSecrets(text: string): string {
   // Order matters — the more specific patterns must run before the generic
   // `sk-` catch-all, otherwise Anthropic keys get tagged as SK_KEY.
   out = out
+    // JWT: three base64url segments, the first an encoded `{"…`. Runs before the generic rule below, which stops at a dot.
+    .replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g, '<REDACTED:JWT>')
     // Anthropic: sk-ant-...
     .replace(/\bsk-ant-[A-Za-z0-9_-]{20,}/g, '<REDACTED:ANTHROPIC_KEY>')
     // OpenAI-style: sk-..., sk-proj-..., sk-svcacct-...
@@ -246,6 +249,14 @@ export function redactSecrets(text: string): string {
     .replace(/\bAIza[A-Za-z0-9_-]{30,}/g, '<REDACTED:GOOGLE_API_KEY>')
     // GitHub PAT/OAuth/server/user/app: ghp_, gho_, ghs_, ghu_, gha_
     .replace(/\bgh[pousa]_[A-Za-z0-9]{30,}/g, '<REDACTED:GITHUB_TOKEN>')
+    // GitHub fine-grained PAT: github_pat_...
+    .replace(/\bgithub_pat_[A-Za-z0-9_]{20,}/g, '<REDACTED:GITHUB_TOKEN>')
+    // Stripe secret and restricted keys: sk_live_, rk_test_, ...
+    .replace(/\b[sr]k_(?:live|test)_[A-Za-z0-9]{16,}/g, '<REDACTED:STRIPE_KEY>')
+    // AWS access key ids: AKIA... (long-term), ASIA... (temporary)
+    .replace(/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, '<REDACTED:AWS_KEY_ID>')
+    // Slack tokens: xoxb-, xoxp-, xoxa-, xoxr-, xoxs-
+    .replace(/\bxox[abprs]-[A-Za-z0-9-]{10,}/g, '<REDACTED:SLACK_TOKEN>')
     // Connection strings with embedded credentials: scheme://user:pass@host
     .replace(/\b[a-z][a-z0-9+.-]*:\/\/[^\s/@]+:[^\s/@]+@\S+/gi, '<REDACTED:DB_URL>')
     // Generic URL-query / form-param secrets — catches any provider whose key
