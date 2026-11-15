@@ -105,6 +105,18 @@ describe('automode-block', () => {
     expect(note).toContain('never compared or replaced');
   });
 
+  test("--check: a home missing from the operator's Agent homes entry is flagged, with the rules current", () => {
+    const dir = scratch();
+    const canonical = run('--home', dir, '--settings', join(dir, 'none.json')).json;
+    const environment = ['$defaults', 'Agent homes: /Users/ada/Agents/Old and /Users/ada/Agents/Team — the custom rules key off this entry'];
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ autoMode: { ...canonical.autoMode, environment } }));
+    const { json } = run('--home', dir, '--check', '--settings', join(dir, 'settings.json'), '--out', join(dir, 'note.md'));
+    expect([json.status, json.homeListed, json.replacements]).toEqual(['stale', false, []]);
+    const note = readFileSync(join(dir, 'note.md'), 'utf-8');
+    expect(note).toContain(`Add \`${dir}\` to its list of paths and keep the others`);
+    expect(note).not.toContain('## Full recommended block');
+  });
+
   test('--check: current when every rule matches', () => {
     const dir = scratch();
     const canonical = run('--home', dir, '--settings', join(dir, 'none.json')).json;

@@ -42,7 +42,7 @@ const settingsPath = flag('settings') ?? resolve(homedir(), '.claude', 'settings
 const settings = existsSync(settingsPath)
   ? (JSON.parse(readFileSync(settingsPath, 'utf-8')) as {
       permissions?: { defaultMode?: string };
-      autoMode?: Partial<Record<'allow' | 'soft_deny', string[]>>;
+      autoMode?: Partial<Record<'allow' | 'soft_deny' | 'environment', string[]>>;
     })
   : {};
 const mine = settings.autoMode ?? {};
@@ -71,12 +71,15 @@ const rules = LISTS.flatMap((list) =>
     })
 );
 const adopted = LISTS.some((list) => (mine[list] ?? []).some((rule) => rule !== '$defaults'));
-const status = !adopted ? 'absent' : rules.some((rule) => rule.state !== 'current') ? 'stale' : 'current';
+// The entries themselves are the operator's, but the rules only see this home once that list names it.
+const homeListed = (mine.environment ?? []).some((entry) => entry.startsWith('Agent homes:') && entry.includes(home));
+const status = !adopted ? 'absent' : !homeListed || rules.some((rule) => rule.state !== 'current') ? 'stale' : 'current';
 const replacements = rules.filter((rule) => rule.state !== 'current');
 
 const report = {
   status,
   defaultMode: settings.permissions?.defaultMode ?? null,
+  homeListed,
   settingsPath,
   rules: rules.map(({ list, name, state }) => ({ list, name, state })),
   replacements: replacements.map(({ list, name, state, text, changes }) => ({ list, name, state, text, changes })),
@@ -100,11 +103,20 @@ const note = (): string => {
     );
   } else {
     lines.push(
-      `**Status: stale.** ${replacements.length} of ${rules.length} rules need replacing in \`${settingsPath}\`.`,
+      `**Status: stale.** ${replacements.length} of ${rules.length} rules need replacing in \`${settingsPath}\`${homeListed ? '' : ', and the list of agent homes needs this one'}.`,
       'Each rule is one long string inside the `autoMode` arrays; replace the whole string.',
       '',
       '## What to change'
     );
+    if (!homeListed) {
+      lines.push(
+        '',
+        '### `autoMode.environment` → the string starting `"Agent homes:`',
+        '',
+        `It doesn't name this home yet. Add \`${home}\` to its list of paths and keep the others: the rules key off`,
+        'that entry, so until it names this folder, a session here is not treated as an agent-home session.'
+      );
+    }
     for (const rule of replacements) {
       lines.push('', `### \`autoMode.${rule.list}\` → the string starting \`"${rule.name}\``, '');
       if (rule.state === 'missing') {

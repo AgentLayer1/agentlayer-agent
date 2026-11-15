@@ -639,7 +639,9 @@ so the operator can open it after the session instead of scrolling back. In the 
 `rules` lists every canonical rule with `current` / `stale` / `missing`; `replacements`
 carries the exact text of each rule that needs replacing; `block` is the whole recommended
 block with this home's path substituted. `environment` is never compared or proposed —
-operators extend it per home.
+operators extend it per home. `homeListed` says whether its `Agent homes:` entry names this home;
+when it's `false` the status is `stale`, and the note tells the operator to add this home's path to
+that entry, keeping the homes already there (a moved home is the usual case).
 
 - `current` — silent.
 - `stale` — a `manual:` note in the Step 6 report: for each `replacements` entry, its list and
