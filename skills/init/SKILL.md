@@ -217,7 +217,7 @@ Then below the banner, plain prose (no leading whitespace, no numbered lists —
 > ❓ Communication style and values
 > ❓ Signal topics to track in your briefings (<AGENT_NAME> proposes a starter set)
 > ❓ Keep a history of <AGENT_NAME>'s memory, so changes can be undone (recommended)
-> ❓ Optional: configure skill packs (SEO, Browser, Database, GitHub, Xcode, Helpdesk, App Store, Slack, third-party libraries)
+> ❓ Optional: configure skill packs (SEO, Browser, Database, GitHub, Xcode, Helpdesk, App Store, Slack, cmux, third-party libraries)
 > ❓ Confirm + scaffold
 >
 > A few of the steps will prompt Claude Code for permission to run Bash commands, write files, or fetch URLs.
@@ -1662,16 +1662,19 @@ The scaffold is done. Before showing the final confirmation, offer to wire up AP
 > - ☐ GitHub pack **(recommended when you gave a code path)** (PR, issue + GitHub Actions access — `github_pr_*` / `github_issue_*` / `github_run_*` — to review PRs/issues and diagnose failing CI builds, and the writes the token allows: issues and a PR's title or description, plus `github_fast_forward`, which is what keeps your checkouts current on every `/agentlayer:sync`; needs a token per repo owner (`GITHUB_TOKEN_<OWNER>`, or one `GITHUB_TOKEN`) **and** the `gh` CLI)
 > - ☐ Xcode pack (build, test, run and debug Apple apps + Swift packages through Apple's headless Xcode MCP server, with the sandbox and permission posture the toolchain needs; Xcode 27+, no API key)
 > - ☐ Slack pack (read-only Slack through your own account: pulses, the replies you owe, external threads waiting; needs a Slack app in your workspace, which the walk helps create, and a one-time sign-in from your terminal)
+> - ☐ cmux pack (the AgentLayer sidebar in cmux's right panel: every agent session on the Mac sorted by what needs you, and this agent's tasks and projects with its dashboard and roadmap a tap away; cmux 0.65.2+, no key)
 > - ☐ Third-party libraries (aaron-he-zhu SEO/GEO skills, coreyhaines31 marketing playbooks, others)
 
 Default-select **Browser** (recommended — Playwright's capture tools work immediately with no key, and Perplexity is optional: briefings use the built-in web search until a key is added). Leave the others unticked; the user ticks any they want.
 
 **Never show the Xcode row on Windows, WSL2 or Linux** — render it only when `$AGENT_PLATFORM` = `macos`. Apple's toolchain doesn't exist on those hosts, so drop the row entirely rather than offering a pack that can only fail; a Windows operator should never see it as a choice. Leave it unticked even on macOS: plenty of Mac operators never open Xcode, and the pack asks for two manual steps (a sandbox exclusion and a sudo enablement) that are wasted on them.
 
+**Show the cmux row only on macOS with cmux installed** (`$AGENT_PLATFORM` = `macos` and `test -d /Applications/cmux.app`); drop it everywhere else. **Default-tick it when init itself runs inside cmux** (`CMUX_WORKSPACE_ID` is set in every cmux terminal): the operator is already living in the app the sidebar belongs to. Leave it unticked when cmux is installed but init runs elsewhere.
+
 **Also default-tick GitHub when Step 4b captured a real code path.** `github_fast_forward` is what keeps those checkouts current during `/agentlayer:sync`, and it needs a GitHub token; without the pack it returns `NOT_CONFIGURED` and the operator's code silently never refreshes — the one failure mode that degrades *answers* rather than surfacing an error, since the agent keeps grounding confidently against a frozen checkout. An operator who just told init where their code lives has effectively asked for this. Leave it unticked when Step 4b returned `skip` (no checkout, nothing to fast-forward — the common case for an agent home). Either way it stays a tick the operator can clear.
 
 Behavior on the response:
-- **Each ticked option**: run the matching configure-skills section in order — SEO (A.2a) → Browser (A.2b) → Database (A.2c) → GitHub (A.2d) → Xcode (A.2f) → Slack (A.2i) → Third-party (F). The walks **never prompt for API key values or connection strings in chat** — they add MCP grants to `settings.json`, plant the `GSC_SITE_URL` placeholder, and ensure `.state/secrets/.env` exists. The user adds the secret lines + values via their editor after relaunch.
+- **Each ticked option**: run the matching configure-skills section in order — SEO (A.2a) → Browser (A.2b) → Database (A.2c) → GitHub (A.2d) → Xcode (A.2f) → Slack (A.2i) → cmux (A.2j) → Third-party (F). The walks **never prompt for API key values or connection strings in chat** — they add MCP grants to `settings.json`, plant the `GSC_SITE_URL` placeholder, and ensure `.state/secrets/.env` exists. The user adds the secret lines + values via their editor after relaunch.
 - **Nothing ticked**: skip — note "skill packs not activated — run `/agentlayer:configure-skills` after relaunch" for Step 9's status block. Don't touch settings files.
 
 For each picked option: **delegate to configure-skills** — open `${CLAUDE_PLUGIN_ROOT}/skills/configure-skills/SKILL.md` and follow the matching section. Honor every per-skill skip option inside that flow; don't force the user through items they don't want.

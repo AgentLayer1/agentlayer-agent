@@ -80,11 +80,11 @@ Branch into the matching section below. For authoring brand-new custom skills (n
 > - ☐ Xcode — build, test, run and debug Apple apps and Swift packages through Apple's Xcode MCP server, plus the sandbox and permission posture that makes the toolchain reachable. **macOS with Xcode 27 or later** (the headless server ships there). No API key.
 > - ☐ Helpdesk — read support tickets and leave private draft notes in SupportCandy or Pylon (`helpdesk_*`); a person sends every reply
 > - ☐ App Store — read any app's App Store reviews (`appstore_reviews`); no key, read-only, never replies
-> - ☐ cmux — the AgentLayer sidebar in cmux's right panel: every agent on the Mac, who needs you, the dashboard's pages, projects and pins, and requests typed into a new chat (never sent). **macOS with cmux 0.65.2 or later.** No key.
+> - ☐ cmux — the AgentLayer sidebar in cmux's right panel: every agent session on the Mac sorted by what needs you, and each agent's tasks and projects with its dashboard and roadmap a tap away. **macOS with cmux 0.65.2 or later.** No key.
 > - ☐ Slack — read-only Slack through your own account (`slack_*`): pulses, the replies you owe and the external threads waiting; never posts or reads DMs. Needs a Slack app in your workspace (the walk creates one if there isn't)
 > - ☐ Third-party libraries — clone separately-authored skill libraries (e.g. SEO/GEO from `aaron-he-zhu`, marketing playbooks from `coreyhaines31`) into `<HOME>/.claude/skills/`. Apache-2.0 licensed.
 
-**Never offer the Xcode tick on Windows, WSL2 or Linux.** Render it only when `$AGENT_PLATFORM` = `macos` (or `[ "$(uname -s)" = "Darwin" ]`); on every other host drop the row entirely rather than showing a pack that can only fail. The A.2f preflight is a second wall, but a Windows operator should never see the option in the first place.
+**Never offer the Xcode tick on Windows, WSL2 or Linux.** Render it only when `$AGENT_PLATFORM` = `macos` (or `[ "$(uname -s)" = "Darwin" ]`); on every other host drop the row entirely rather than showing a pack that can only fail. The A.2f preflight is a second wall, but a Windows operator should never see the option in the first place. **The cmux tick follows the same rule**, and also needs the app: render it only on macOS with `/Applications/cmux.app` present.
 
 If nothing is ticked, cancel and return to Step 1. Otherwise run the matching sub-section(s) below in order: SEO (A.2a) → Browser (A.2b) → Database (A.2c) → GitHub (A.2d) → API (A.2e) → Xcode (A.2f) → Helpdesk (A.2g) → App Store (A.2h) → Slack (A.2i) → cmux (A.2j) → Third-party (Section F).
 
