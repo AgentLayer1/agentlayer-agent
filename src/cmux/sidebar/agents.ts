@@ -1,10 +1,24 @@
-import { chip } from 'cmux-custom-manager/components';
 import { packLines } from './lines';
 import { homeLabel } from './view';
 
 // Points across the sidebar for chips: the first line shares its row with the tab pill.
 const FIRST_LINE = 190;
 const LINE = 260;
+
+// As tall as the tab pill beside it (a 12 pt icon with 5 pt padding, inside 2 pt), and filled like it.
+const agentButton = (label: string, active: () => boolean, onTap: () => void) =>
+  Text(label)
+    .font(11)
+    .weight('semibold')
+    .paddingHorizontal(9)
+    .paddingVertical(8)
+    .cornerRadius(8)
+    .color(() => (active() ? 'primary' : 'secondary'))
+    .background(() => (active() ? '#7f7f7f3d' : '#7f7f7f1f'))
+    .hoverBackground('#7f7f7f3d')
+    .cursor('pointer')
+    .fixedSize('horizontal')
+    .onTap(onTap);
 
 export interface AgentHeaderOptions {
   pill: View;
@@ -19,7 +33,7 @@ export interface AgentHeaderOptions {
  */
 export const agentHeader = ({ pill, homes, home, pick }: AgentHeaderOptions) => {
   const agentChip = (path: string) =>
-    chip(
+    agentButton(
       homeLabel(path),
       () => home() === path,
       () => pick(path)

@@ -1,5 +1,6 @@
 import type { TaskItem } from './data';
 import { dueLabel, isoDay, type DueLabel } from './due';
+import { TITLE_OPACITY } from './style';
 
 const OPEN = { symbol: 'circle', color: '#8E8E93' };
 const STATUS: Readonly<Record<string, { symbol: string; color: string }>> = {
@@ -66,7 +67,7 @@ const taskMeta = (task: TaskItem, projectColor?: string) =>
  */
 export const taskRow = (task: TaskItem, projectColor?: string) =>
   VStack({ spacing: 2, alignment: 'leading' }, [
-    Text(task.title).font(12).lineLimit(3).truncation('tail'),
+    Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(3).truncation('tail'),
     taskMeta(task, projectColor)
   ])
     .paddingHorizontal(4)

@@ -1,9 +1,18 @@
 import { searchField } from 'cmux-custom-manager/components';
 import { daysUntil } from '../../work/due';
 import type { HomeEntry, PinItem, ReportItem } from './data';
-import { CARD, groupTitle, hueColor, note } from './style';
+import { CARD, foldTitle, hueColor, note, TITLE_OPACITY } from './style';
 import { today } from './tasks';
 import { openTarget, targetKey } from './view';
+
+// 24-hour `HH:MM` as the index writes it, shown as `8:30 AM`.
+const clock = (time: string): string => {
+  const [hour, minute] = time.split(':').map(Number);
+  if (hour === undefined || minute === undefined || Number.isNaN(hour) || Number.isNaN(minute)) {
+    return time;
+  }
+  return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
+};
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -58,10 +67,10 @@ const badge = (label: string, color: string) =>
 const reportCard = (item: ReportItem) =>
   tile(
     VStack({ spacing: 3, alignment: 'leading' }, [
-      Text(item.title).font(12).lineLimit(2).truncation('tail'),
+      Text(item.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation('tail'),
       HStack({ spacing: 6 }, [
         badge(item.kind, hueColor(item.hue)),
-        Text(item.time).font(10).monospaced().color('tertiary'),
+        Text(clock(item.time)).font(10).monospaced().color('tertiary'),
         ...(item.status ? [Text(item.status).font(9)] : []),
         Spacer({ minLength: 0 })
       ])
@@ -73,7 +82,7 @@ const pinCard = ({ pin, project }: Pinned) =>
   tile(
     HStack({ spacing: 6 }, [
       Text(pin.icon).font(11).frame({ width: 14 }),
-      Text(pin.title).font(12).lineLimit(2).truncation('tail'),
+      Text(pin.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation('tail'),
       Spacer({ minLength: 4 }),
       ...(project ? [badge(project.slug, project.color)] : [])
     ]),
@@ -114,32 +123,31 @@ export const reportsBody = (entry: HomeEntry) => {
   );
   const days = computed(() => byDay(entry.reports.filter((report) => matches(query(), report.title, report.kind))));
   const empty = computed(() => !shownPins().length && !days().length);
+  const [pinsOpen, setPinsOpen] = signal(true);
   return VStack({ spacing: 10 }, [
     searchField('Search reports…', setQuery),
     ForEach({ items: () => (shownPins().length ? ['pinned'] : []), key: (name) => name }, () =>
       VStack({ spacing: 4 }, [
-        groupTitle('Pinned', shownPins().length),
-        ForEach({ items: shownPins, key: (item) => targetKey(item.pin.target) }, (item) => pinCard(item()))
-      ])
-    ),
-    ForEach({ items: days, key: (group) => group.date }, (group) =>
-      VStack({ spacing: 4 }, [
-        HStack({ spacing: 4 }, [
-          Text(() => dayTitle(group().date, today()).toUpperCase())
-            .font(10)
-            .weight('semibold')
-            .color('tertiary'),
-          Text(() => String(group().reports.length))
-            .font(10)
-            .monospaced()
-            .color('quaternary'),
-          Spacer({ minLength: 0 })
-        ]).paddingHorizontal(4),
-        ForEach({ items: () => group().reports, key: (report) => targetKey(report.target) }, (report) =>
-          reportCard(report())
+        foldTitle('Pinned', () => shownPins().length, pinsOpen, setPinsOpen, 'pin.fill'),
+        ForEach({ items: () => (pinsOpen() ? shownPins() : []), key: (item) => targetKey(item.pin.target) }, (item) =>
+          pinCard(item())
         )
       ])
     ),
+    ForEach({ items: days, key: (group) => group.date }, (group) => {
+      const [open, setOpen] = signal(true);
+      return VStack({ spacing: 4 }, [
+        foldTitle(
+          () => dayTitle(group().date, today()),
+          () => group().reports.length,
+          open,
+          setOpen
+        ),
+        ForEach({ items: () => (open() ? group().reports : []), key: (report) => targetKey(report.target) }, (report) =>
+          reportCard(report())
+        )
+      ]);
+    }),
     Text(() => (empty() ? (query().trim() ? 'No matching reports.' : 'No reports yet.') : ''))
       .font(11)
       .color('tertiary')

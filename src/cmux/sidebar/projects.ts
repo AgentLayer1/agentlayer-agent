@@ -2,7 +2,7 @@ import { searchField } from 'cmux-custom-manager/components';
 import type { HomeEntry, PinItem, ProjectCard, TaskItem } from './data';
 import { BUCKETS, dueBucket, type DueBucket } from '../../work/due';
 import { dueLabel } from './due';
-import { card, groupTitle, hueColor, note, progressBar } from './style';
+import { card, chevron, foldTitle, groupTitle, hueColor, note, progressBar } from './style';
 import { count, taskRow, today } from './tasks';
 import { openTarget, targetKey } from './view';
 
@@ -22,12 +22,6 @@ const linkRow = ({ icon, title, target }: PinItem) =>
     .onTap(() => openTarget(target));
 
 const roadmapLink = (url: string): PinItem => ({ title: 'Roadmap', icon: '🗺️', target: { kind: 'page', url } });
-
-const chevron = (expanded: () => boolean) =>
-  Image(() => (expanded() ? 'chevron.down' : 'chevron.right'))
-    .font(9)
-    .weight('semibold')
-    .color('tertiary');
 
 const fraction = (done: number, live: number) => (done + live ? done / (done + live) : 0);
 
@@ -169,10 +163,7 @@ const STATES = [
 const stateGroup = (title: string, projects: ProjectCard[]) => {
   const [expanded, setExpanded] = signal(true);
   return VStack({ spacing: 6 }, [
-    HStack({ spacing: 4 }, [groupTitle(title, projects.length), chevron(expanded)])
-      .paddingTrailing(4)
-      .cursor('pointer')
-      .onTap(() => setExpanded(!expanded())),
+    foldTitle(title, projects.length, expanded, setExpanded),
     ForEach({ items: () => (expanded() ? projects : []), key: (project) => project.slug }, projectCard)
   ]);
 };

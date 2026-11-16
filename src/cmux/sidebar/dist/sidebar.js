@@ -288,11 +288,17 @@ var progressBar = (fraction, color) => {
   const filled = Math.round(Math.min(Math.max(fraction, 0), 1) * SEGMENTS);
   return HStack({ spacing: 0 }, Array.from({ length: SEGMENTS }, (_, index) => Rectangle().fill(index < filled ? color : "#7f7f7f33").frame({ maxWidth: "infinity", height: 4 }))).cornerRadius(2);
 };
-var groupTitle = (title, count) => HStack({ spacing: 4 }, [
-  Text(title.toUpperCase()).font(10).weight("semibold").color("tertiary"),
-  Text(String(count)).font(10).monospaced().color("quaternary"),
+var textOf = (text) => typeof text === "string" ? text : text();
+var countOf = (count) => typeof count === "number" ? count : count();
+var groupTitle = (title, count, icon) => HStack({ spacing: 4 }, [
+  ...icon ? [Image(icon).font(9).color("tertiary")] : [],
+  Text(() => textOf(title).toUpperCase()).font(10).weight("semibold").color("tertiary"),
+  Text(() => String(countOf(count))).font(10).monospaced().color("quaternary"),
   Spacer({ minLength: 0 })
 ]).paddingHorizontal(4);
+var chevron = (expanded) => Image(() => expanded() ? "chevron.down" : "chevron.right").font(9).weight("semibold").color("tertiary");
+var foldTitle = (title, count, expanded, setExpanded, icon) => HStack({ spacing: 4 }, [groupTitle(title, count, icon), chevron(expanded)]).paddingTrailing(4).cursor("pointer").onTap(() => setExpanded(!expanded()));
+var TITLE_OPACITY = 0.88;
 var toolIcon = (symbol, help, onTap) => Image(symbol).font(11).color("secondary").padding(5).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
 var CARD = "#7f7f7f12";
 var card = (view) => view.paddingHorizontal(10).paddingVertical(8).background(CARD).cornerRadius(10);
@@ -324,8 +330,9 @@ var scopedPage = (home, ready) => {
 // src/cmux/sidebar/agents.ts
 var FIRST_LINE = 190;
 var LINE = 260;
+var agentButton = (label, active, onTap) => Text(label).font(11).weight("semibold").paddingHorizontal(9).paddingVertical(8).cornerRadius(8).color(() => active() ? "primary" : "secondary").background(() => active() ? "#7f7f7f3d" : "#7f7f7f1f").hoverBackground("#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(onTap);
 var agentHeader = ({ pill, homes, home, pick }) => {
-  const agentChip = (path) => chip(homeLabel(path), () => home() === path, () => pick(path));
+  const agentChip = (path) => agentButton(homeLabel(path), () => home() === path, () => pick(path));
   const [first = [], ...rest] = packLines(homes, homeLabel, FIRST_LINE, LINE);
   return VStack({ spacing: 4, alignment: "leading" }, [
     HStack({ spacing: 8 }, [pill, HStack({ spacing: 4 }, first.map(agentChip)), Spacer({ minLength: 0 })]),
@@ -422,7 +429,7 @@ var taskMeta = (task, projectColor) => HStack({ spacing: 6 }, [
   ] : []
 ]);
 var taskRow = (task, projectColor) => VStack({ spacing: 2, alignment: "leading" }, [
-  Text(task.title).font(12).lineLimit(3).truncation("tail"),
+  Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(3).truncation("tail"),
   taskMeta(task, projectColor)
 ]).paddingHorizontal(4).paddingVertical(5).cornerRadius(8).hoverBackground("#7f7f7f26").cursor("pointer").frame({ maxWidth: "infinity", alignment: "leading" }).onTap(() => cmux("file.open", { path: task.path }));
 
@@ -434,7 +441,6 @@ var linkRow = ({ icon, title, target }) => HStack({ spacing: 6 }, [
   Spacer({ minLength: 0 })
 ]).paddingHorizontal(4).paddingVertical(2).cornerRadius(6).hoverBackground("#7f7f7f26").cursor("pointer").onTap(() => openTarget(target));
 var roadmapLink = (url) => ({ title: "Roadmap", icon: "\uD83D\uDDFA️", target: { kind: "page", url } });
-var chevron = (expanded) => Image(() => expanded() ? "chevron.down" : "chevron.right").font(9).weight("semibold").color("tertiary");
 var fraction = (done, live) => done + live ? done / (done + live) : 0;
 var AGENDA = {
   overdue: "Overdue",
@@ -527,7 +533,7 @@ var STATES = [
 var stateGroup = (title, projects) => {
   const [expanded, setExpanded] = signal(true);
   return VStack({ spacing: 6 }, [
-    HStack({ spacing: 4 }, [groupTitle(title, projects.length), chevron(expanded)]).paddingTrailing(4).cursor("pointer").onTap(() => setExpanded(!expanded())),
+    foldTitle(title, projects.length, expanded, setExpanded),
     ForEach({ items: () => expanded() ? projects : [], key: (project) => project.slug }, projectCard)
   ]);
 };
@@ -561,6 +567,13 @@ var projectsBody = (entry) => {
 };
 
 // src/cmux/sidebar/reports.ts
+var clock = (time) => {
+  const [hour, minute] = time.split(":").map(Number);
+  if (hour === undefined || minute === undefined || Number.isNaN(hour) || Number.isNaN(minute)) {
+    return time;
+  }
+  return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${hour < 12 ? "AM" : "PM"}`;
+};
 var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 var dayTitle = (date, day) => {
@@ -584,17 +597,17 @@ var badge2 = (label, color) => HStack({ spacing: 4 }, [
   Text(label).font(10).color("secondary").lineLimit(1).truncation("tail")
 ]).fixedSize("horizontal");
 var reportCard = (item) => tile(VStack({ spacing: 3, alignment: "leading" }, [
-  Text(item.title).font(12).lineLimit(2).truncation("tail"),
+  Text(item.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail"),
   HStack({ spacing: 6 }, [
     badge2(item.kind, hueColor(item.hue)),
-    Text(item.time).font(10).monospaced().color("tertiary"),
+    Text(clock(item.time)).font(10).monospaced().color("tertiary"),
     ...item.status ? [Text(item.status).font(9)] : [],
     Spacer({ minLength: 0 })
   ])
 ]), () => openTarget(item.target));
 var pinCard = ({ pin, project }) => tile(HStack({ spacing: 6 }, [
   Text(pin.icon).font(11).frame({ width: 14 }),
-  Text(pin.title).font(12).lineLimit(2).truncation("tail"),
+  Text(pin.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail"),
   Spacer({ minLength: 4 }),
   ...project ? [badge2(project.slug, project.color)] : []
 ]), () => openTarget(pin.target));
@@ -615,20 +628,20 @@ var reportsBody = (entry) => {
   const shownPins = computed(() => pinned.filter(({ pin, project }) => matches2(query(), pin.title, project?.slug ?? "")));
   const days = computed(() => byDay(entry.reports.filter((report) => matches2(query(), report.title, report.kind))));
   const empty = computed(() => !shownPins().length && !days().length);
+  const [pinsOpen, setPinsOpen] = signal(true);
   return VStack({ spacing: 10 }, [
     searchField("Search reports…", setQuery),
     ForEach({ items: () => shownPins().length ? ["pinned"] : [], key: (name) => name }, () => VStack({ spacing: 4 }, [
-      groupTitle("Pinned", shownPins().length),
-      ForEach({ items: shownPins, key: (item) => targetKey(item.pin.target) }, (item) => pinCard(item()))
+      foldTitle("Pinned", () => shownPins().length, pinsOpen, setPinsOpen, "pin.fill"),
+      ForEach({ items: () => pinsOpen() ? shownPins() : [], key: (item) => targetKey(item.pin.target) }, (item) => pinCard(item()))
     ])),
-    ForEach({ items: days, key: (group) => group.date }, (group) => VStack({ spacing: 4 }, [
-      HStack({ spacing: 4 }, [
-        Text(() => dayTitle(group().date, today()).toUpperCase()).font(10).weight("semibold").color("tertiary"),
-        Text(() => String(group().reports.length)).font(10).monospaced().color("quaternary"),
-        Spacer({ minLength: 0 })
-      ]).paddingHorizontal(4),
-      ForEach({ items: () => group().reports, key: (report) => targetKey(report.target) }, (report) => reportCard(report()))
-    ])),
+    ForEach({ items: days, key: (group) => group.date }, (group) => {
+      const [open, setOpen] = signal(true);
+      return VStack({ spacing: 4 }, [
+        foldTitle(() => dayTitle(group().date, today()), () => group().reports.length, open, setOpen),
+        ForEach({ items: () => open() ? group().reports : [], key: (report) => targetKey(report.target) }, (report) => reportCard(report()))
+      ]);
+    }),
     Text(() => empty() ? query().trim() ? "No matching reports." : "No reports yet." : "").font(11).color("tertiary").paddingHorizontal(4),
     ...entry.olderReports ? [
       note(`${entry.olderReports} older reports are on the dashboard.`).cursor("pointer").onTap(() => cmux("browser.tab.new", { url: `${entry.dashboard}#reports` }))

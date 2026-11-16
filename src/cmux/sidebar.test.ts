@@ -226,7 +226,7 @@ run('Reports lists the pins, then the newest reports by day, worded against the 
     'pins first, then newest first'
   ).toEqual(titles);
   expect(texts).toEqual(
-    expect.arrayContaining(['Launch checklist', 'Pricing page', 'acme-app', 'briefing', '08:30', '🟠'])
+    expect.arrayContaining(['Launch checklist', 'Pricing page', 'acme-app', 'briefing', '8:30 AM', '🟠'])
   );
   expect(texts).not.toContain('AT WORK');
 });
@@ -269,4 +269,17 @@ run('a dozen agents all get a chip', () => {
   );
   const texts = onProjects(homes).visibleTexts();
   expect(names.every((name) => texts.includes(`🤖 ${name}`))).toBe(true);
+});
+
+run('every report group folds away and back on its own, and times read in twelve hours', () => {
+  const sidebar = onReports();
+  expect(sidebar.visibleTexts()).toEqual(expect.arrayContaining(['8:30 AM', '7:10 AM', '9:00 PM', '2:20 PM']));
+  sidebar.tap('TODAY');
+  expect(sidebar.visibleTexts()).not.toContain('Morning brief — Mon 9 Nov');
+  expect(sidebar.visibleTexts()).toContain('Evening wrap — Sun 8 Nov');
+  sidebar.tap('TODAY');
+  expect(sidebar.visibleTexts()).toContain('Morning brief — Mon 9 Nov');
+  sidebar.tap('PINNED');
+  expect(sidebar.visibleTexts()).not.toContain('Support playbook');
+  expect(sidebar.visibleTexts()).toContain('PINNED');
 });

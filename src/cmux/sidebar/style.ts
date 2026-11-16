@@ -32,12 +32,49 @@ export const progressBar = (fraction: number, color: string) => {
   ).cornerRadius(2);
 };
 
-export const groupTitle = (title: string, count: number) =>
+type LiveText = string | (() => string);
+type LiveCount = number | (() => number);
+
+const textOf = (text: LiveText): string => (typeof text === 'string' ? text : text());
+const countOf = (count: LiveCount): number => (typeof count === 'number' ? count : count());
+
+export const groupTitle = (title: LiveText, count: LiveCount, icon?: string) =>
   HStack({ spacing: 4 }, [
-    Text(title.toUpperCase()).font(10).weight('semibold').color('tertiary'),
-    Text(String(count)).font(10).monospaced().color('quaternary'),
+    ...(icon ? [Image(icon).font(9).color('tertiary')] : []),
+    Text(() => textOf(title).toUpperCase())
+      .font(10)
+      .weight('semibold')
+      .color('tertiary'),
+    Text(() => String(countOf(count)))
+      .font(10)
+      .monospaced()
+      .color('quaternary'),
     Spacer({ minLength: 0 })
   ]).paddingHorizontal(4);
+
+export const chevron = (expanded: () => boolean) =>
+  Image(() => (expanded() ? 'chevron.down' : 'chevron.right'))
+    .font(9)
+    .weight('semibold')
+    .color('tertiary');
+
+/**
+ * A group title that folds its group: tapping it flips `expanded`.
+ */
+export const foldTitle = (
+  title: LiveText,
+  count: LiveCount,
+  expanded: () => boolean,
+  setExpanded: (next: boolean) => void,
+  icon?: string
+) =>
+  HStack({ spacing: 4 }, [groupTitle(title, count, icon), chevron(expanded)])
+    .paddingTrailing(4)
+    .cursor('pointer')
+    .onTap(() => setExpanded(!expanded()));
+
+// Titles sit a step below full white (or black) so a list of them reads softer.
+export const TITLE_OPACITY = 0.88;
 
 /**
  * A plain icon button for the top row; `help` names it on hover.
