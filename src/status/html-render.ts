@@ -78,10 +78,12 @@ const esc = escapeHtml;
 
 // ── small primitives ──────────────────────────────────────────────────
 
+const opensInObsidian = (snap: StatusSnapshot): boolean => snap.markdownUrl.startsWith('obsidian://');
+
 /** Obsidian opens an HTML page through its own link, like a note; every other viewer gets the page itself in a new
  *  tab, which a browser (cmux's included) renders. Notes always go through the opener app. */
 const fileHref = (snap: StatusSnapshot, absPath: string): string =>
-  !snap.markdownUrl.startsWith('obsidian://') && extname(absPath) === '.html'
+  !opensInObsidian(snap) && extname(absPath) === '.html'
     ? `href="${esc(pathToFileURL(absPath).href)}" target="_blank"`
     : `href="${esc(snap.markdownUrl.replace('{path}', encodeURIComponent(absPath)))}"`;
 
@@ -2109,7 +2111,7 @@ const sidebarLinks = (snap: StatusSnapshot, label: string, links: SurfaceLink[])
     .map((surface) => {
       const inner = `<span class="ico">${esc(surface.icon)}</span>${esc(surface.title)}<span class="out">↗</span>`;
       const absPath = resolve(snap.runtime.home, surface.href);
-      return surface.appTab || !snap.markdownUrl.startsWith('obsidian://')
+      return surface.appTab || !opensInObsidian(snap)
         ? `<a class="nav-item" ${fileHref(snap, absPath)}>${inner}</a>`
         : `<div class="nav-item" data-href="${esc(surface.href)}">${inner}</div>`;
     })

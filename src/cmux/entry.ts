@@ -26,13 +26,13 @@ export interface EntrySettings {
 
 const fileUrl = (path: string): string => pathToFileURL(path).href;
 
-const linkTo = (title: string, path: string): Link | null => {
+const linkTo = (title: string, path: string): Link[] => {
   const kind = extname(path);
   return kind === '.md'
-    ? { title, kind: 'md', target: path }
+    ? [{ title, kind: 'md', target: path }]
     : kind === '.html'
-      ? { title, kind: 'html', target: fileUrl(path) }
-      : null;
+      ? [{ title, kind: 'html', target: fileUrl(path) }]
+      : [];
 };
 
 export const homeEntry = (source: EntrySource, settings: EntrySettings): HomeEntry => {
@@ -53,6 +53,6 @@ export const homeEntry = (source: EntrySource, settings: EntrySettings): HomeEnt
         readme: join(settings.projectsDir, project, 'README.md')
       }))
       .sort((a, b) => a.slug.localeCompare(b.slug)),
-    pinned: source.pinned.flatMap(({ title, href }) => linkTo(title, resolve(home, href)) ?? [])
+    pinned: source.pinned.flatMap(({ title, href }) => linkTo(title, resolve(home, href)))
   };
 };

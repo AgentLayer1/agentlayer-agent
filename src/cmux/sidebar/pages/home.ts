@@ -1,29 +1,17 @@
 import { cardRow } from 'cmux-custom-dashboard/components';
-import { agentCards, type Card } from 'cmux-custom-dashboard/model';
-import { SCHEMA, type HomeEntry, type Link } from '../data';
-import { homeOf } from '../scope';
+import type { HomeEntry, Link } from '../data';
+import { needsIn } from '../cards';
 import { hueColor, label, note, open, row, symbol } from '../style';
-
-interface Scoped {
-  path: string;
-  entry: HomeEntry;
-}
+import { scopedPage } from '../view';
 
 interface PageLink extends Link {
   symbolName: string;
 }
 
-const newestFirst = (first: Card, second: Card) =>
-  (second.agent.lastActivityAt ?? 0) - (first.agent.lastActivityAt ?? 0);
-
 // The entry never changes while the sidebar is loaded (a new one arrives as a rewrite), so plain conditionals
 // decide what each home's page holds; only the sessions are live.
-const body = ({ path, entry }: Scoped, homes: readonly string[]) => {
-  const needs = computed(() =>
-    agentCards()
-      .filter((card) => card.section === 'needs' && homeOf(homes, card.agent.directory) === path)
-      .toSorted(newestFirst)
-  );
+const body = (path: string, entry: HomeEntry, homes: readonly string[]) => {
+  const needs = computed(() => needsIn(homes, path));
   const roadmap: PageLink[] = entry.roadmap
     ? [{ title: 'Roadmap', kind: 'html', target: entry.roadmap, symbolName: 'map' }]
     : [];
@@ -68,29 +56,5 @@ const body = ({ path, entry }: Scoped, homes: readonly string[]) => {
 /**
  * The scoped agent's page: who needs you, the dashboard's pages, its projects and its pins.
  */
-export const homePage = (home: () => string | undefined, homes: readonly string[]) => {
-  const scoped = computed((): Scoped | null => {
-    const path = home();
-    const entry = path ? DATA.homes[path] : undefined;
-    return path && entry ? { path, entry } : null;
-  });
-  return VStack({ spacing: 0 }, [
-    ForEach(
-      {
-        items: () => [scoped()].filter((item): item is Scoped => item?.entry.schema === SCHEMA),
-        key: (item) => item.path
-      },
-      (item) => body(item(), homes)
-    ),
-    ForEach(
-      {
-        items: () => [scoped()].filter((item): item is Scoped => item !== null && item.entry.schema !== SCHEMA),
-        key: (item) => `update:${item.path}`
-      },
-      (item) => note(`${item().entry.emoji} ${item().entry.name} needs its agent updated to show here.`)
-    ),
-    ForEach({ items: () => (scoped() ? [] : ['empty']), key: (item) => item }, () =>
-      note('No agent has joined this sidebar yet. In an agent’s home, run its cmux sidebar install.')
-    )
-  ]);
-};
+export const homePage = (home: () => string | undefined, homes: readonly string[]) =>
+  scopedPage(home, (path, entry) => body(path, entry, homes));

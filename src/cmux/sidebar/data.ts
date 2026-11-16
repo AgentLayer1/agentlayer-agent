@@ -12,7 +12,7 @@ export interface Link {
   target: string;
 }
 
-export interface ProjectLink {
+interface ProjectLink {
   slug: string;
   hue: number;
   /**

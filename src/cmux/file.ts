@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { isRecord } from '@/shared/json-block';
 import { compareSemver } from '@/upgrade/version';
 import type { HomeEntry } from './sidebar/data';
 
@@ -24,9 +25,6 @@ export interface SidebarParts extends SidebarCode {
 
 const META = /^\/\* agentlayer sidebar · bundle (\S+) \*\/\n/;
 const DATA = /^const DATA = (.*);\n/;
-
-const isRecord = (input: unknown): input is Record<string, unknown> =>
-  typeof input === 'object' && input !== null && !Array.isArray(input);
 
 const parseHomes = (json: string): Record<string, HomeEntry> | null => {
   try {

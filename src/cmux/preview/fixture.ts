@@ -38,7 +38,7 @@ export const SCOUT: EntrySource = {
 export const fixtureEntry = (source: EntrySource, launcher = 'claude'): HomeEntry =>
   homeEntry(source, { launcher, projectsDir: join(source.runtime.home, 'projects') });
 
-export const NOW = 1_794_218_400;
+const NOW = 1_794_218_400;
 
 const session = (
   workspace: string,

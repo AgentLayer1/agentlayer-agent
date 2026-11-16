@@ -3,17 +3,9 @@ import { CLI_COMMAND } from '@/shared/naming';
 import { collectStatus } from '@/status/collect';
 import { cmuxVersion, runCmux } from './app';
 import { homeEntry } from './entry';
-import { SIDEBAR_NAME, sidebarFile } from './file';
-import {
-  defaultTarget,
-  entrySettings,
-  installSidebar,
-  previewSidebar,
-  refreshSidebar,
-  removeSidebar
-} from './lifecycle';
+import { defaultTarget, entrySettings, installSidebar, refreshSidebar, removeSidebar } from './lifecycle';
 
-const USAGE = `Usage: ${CLI_COMMAND} cmux sidebar <install|refresh|remove|preview [path]>`;
+const USAGE = `Usage: ${CLI_COMMAND} cmux sidebar <install|refresh|remove>`;
 const INSTALL = `${CLI_COMMAND} cmux sidebar install`;
 
 const REFRESHED = {
@@ -34,7 +26,7 @@ const REMOVED = {
  * `cmux sidebar …`: the cmux pack's verbs. Returns the process exit code.
  */
 export const runCmuxCommand = async (command: string | undefined, args: string[]): Promise<number> => {
-  const [verb, path] = args.filter((arg) => !arg.startsWith('--'));
+  const [verb] = args.filter((arg) => !arg.startsWith('--'));
   const target = defaultTarget();
   if (command !== 'sidebar') {
     console.error(USAGE);
@@ -53,14 +45,6 @@ export const runCmuxCommand = async (command: string | undefined, args: string[]
   }
   if (verb === 'remove') {
     console.log(REMOVED[removeSidebar(FOLDERS.HOME, target)]);
-    return 0;
-  }
-  if (verb === 'preview') {
-    const out = path ?? sidebarFile(target.dir, `${SIDEBAR_NAME}-preview`);
-    previewSidebar(out, target.own());
-    console.log(
-      path ? `Wrote ${out}.` : `Wrote ${out}. Show it with: cmux right-sidebar set custom ${SIDEBAR_NAME}-preview`
-    );
     return 0;
   }
   console.error(USAGE);

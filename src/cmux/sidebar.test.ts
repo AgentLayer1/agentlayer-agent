@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { bundleSidebar, DIST } from './build';
 import { renderSidebar } from './file';
-import { previewText } from './lifecycle';
 import { CMUX_DATA, fixtureEntry, NOVA, SCOUT, selecting } from './preview/fixture';
+import { previewText } from './preview/preview';
 import { hasRuntime, mount } from './runtime-harness';
 import type { HomeEntry } from './sidebar/data';
 
@@ -88,9 +88,12 @@ run('Home’s rows open the dashboard’s pages, notes and HTML pages beside the
 });
 
 run('an entry from an older plugin asks for its agent to be updated', () => {
-  const texts = mount(installed({ [NOVA_HOME]: { ...NOVA_ENTRY, schema: 0 } }), CMUX_DATA).visibleTexts();
-  expect(texts).toContain('🦉 Nova needs its agent updated to show here.');
-  expect(texts).not.toContain('PROJECTS');
+  const sidebar = mount(installed({ [NOVA_HOME]: { ...NOVA_ENTRY, schema: 0 } }), CMUX_DATA);
+  expect(sidebar.visibleTexts()).toContain('🦉 Nova needs its agent updated to show here.');
+  expect(sidebar.visibleTexts()).not.toContain('PROJECTS');
+  sidebar.tap('Ask');
+  expect(sidebar.visibleTexts()).toContain('🦉 Nova needs its agent updated to show here.');
+  expect(sidebar.visibleTexts()).not.toContain('Brief me');
 });
 
 run('Agents lists every session under its agent, most urgent first, with the rest under Other', () => {

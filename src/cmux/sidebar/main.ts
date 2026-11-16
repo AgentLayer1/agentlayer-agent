@@ -10,13 +10,14 @@
  */
 
 import { chip } from 'cmux-custom-dashboard/components';
-import { agentCards } from 'cmux-custom-dashboard/model';
+import { SECTIONS } from 'cmux-custom-dashboard/model';
 import { createAsk } from './ask';
+import { needsIn } from './cards';
 import { agentsPage } from './pages/agents';
 import { askPage } from './pages/ask';
 import { homePage } from './pages/home';
-import { homeOf, scopedHome, type Pin } from './scope';
-import { NEEDS_COLOR } from './style';
+import { scopedHome, type Pin } from './scope';
+import { homeLabel } from './view';
 
 const PAGES = ['Home', 'Agents', 'Ask'] as const;
 type Page = (typeof PAGES)[number];
@@ -35,8 +36,6 @@ const app = () => {
     }
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
-  const needsIn = (home: string) =>
-    agentCards().filter((card) => card.section === 'needs' && homeOf(homes, card.agent.directory) === home).length;
 
   const ask = createAsk();
   const views: Record<Page, () => View> = {
@@ -46,19 +45,18 @@ const app = () => {
   };
 
   const agentChip = (home: () => string) => {
-    const entry = DATA.homes[home()];
     const active = () => current() === home();
     return HStack({ spacing: 4 }, [
-      Text(`${entry?.emoji ?? ''} ${entry?.name ?? ''}`.trim())
+      Text(homeLabel(home()))
         .font(11)
         .weight('semibold')
         .color(() => (active() ? 'primary' : 'secondary')),
-      ForEach({ items: () => [needsIn(home())].filter(Boolean), key: () => 'needs' }, (count) =>
+      ForEach({ items: () => [needsIn(homes, home()).length].filter(Boolean), key: () => 'needs' }, (count) =>
         Text(() => String(count()))
           .font(9)
           .weight('bold')
           .monospaced()
-          .color(NEEDS_COLOR)
+          .color(SECTIONS.needs.color)
       )
     ])
       .paddingHorizontal(8)

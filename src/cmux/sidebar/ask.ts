@@ -7,8 +7,7 @@ type Launch =
   | { stage: 'starting'; workspaceId: string; tabId: string; surfaceId: string; prompt: string; name: string }
   | { stage: 'drafted'; name: string };
 
-const STATUS: Record<Launch['stage'], (name: string) => string> = {
-  idle: () => '',
+const STATUS: Record<Exclude<Launch['stage'], 'idle'>, (name: string) => string> = {
   opening: (name) => `Opening a tab for ${name}…`,
   starting: (name) => `Starting ${name}…`,
   drafted: (name) => `Typed in for ${name}. Press Enter in that tab to send it.`
@@ -37,7 +36,8 @@ export const createAsk = () => {
       (item) => !state.before.includes(item.id) && item.surfaceId
     );
     if (tab?.surfaceId) {
-      setLaunch({ ...state, stage: 'starting', tabId: tab.id, surfaceId: tab.surfaceId });
+      const { workspaceId, prompt, name } = state;
+      setLaunch({ stage: 'starting', workspaceId, tabId: tab.id, surfaceId: tab.surfaceId, prompt, name });
       send(state.workspaceId, tab.surfaceId, `${state.command}\n`);
     }
   });

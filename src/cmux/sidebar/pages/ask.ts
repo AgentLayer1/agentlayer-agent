@@ -1,6 +1,7 @@
 import type { Ask } from '../ask';
-import { SCHEMA, type HomeEntry } from '../data';
+import type { HomeEntry } from '../data';
 import { label, note, row, symbol } from '../style';
+import { scopedPage } from '../view';
 
 const PROMPTS = [
   { title: 'Brief me', symbolName: 'sun.max', prompt: 'Brief me' },
@@ -61,19 +62,4 @@ const body = (path: string, entry: HomeEntry, ask: Ask) => {
  * Plain-word requests for the scoped agent, typed into a chat and never sent: the person presses Enter.
  */
 export const askPage = (ask: Ask, home: () => string | undefined) =>
-  VStack({ spacing: 0 }, [
-    ForEach(
-      {
-        items: () => {
-          const path = home();
-          const entry = path ? DATA.homes[path] : undefined;
-          return path && entry?.schema === SCHEMA ? [{ path, entry }] : [];
-        },
-        key: (item) => item.path
-      },
-      (item) => body(item().path, item().entry, ask)
-    ),
-    ForEach({ items: () => (home() ? [] : ['empty']), key: (item) => item }, () =>
-      note('No agent has joined this sidebar yet.')
-    )
-  ]);
+  scopedPage(home, (path, entry) => body(path, entry, ask));

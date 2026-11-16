@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
-import { FOLDERS, LAUNCHER } from '@/config';
+import { FOLDERS } from '@/config';
+import { env } from '@/shared/env';
 import { log } from '@/shared/log';
 import { pluginVersion } from '@/shared/naming';
 import { writeFileAtomic } from '@/shared/utils';
@@ -14,9 +15,9 @@ import {
   SIDEBAR_NAME,
   sidebarFile,
   sidebarsDir,
-  type SidebarCode
+  type SidebarCode,
+  type SidebarParts
 } from './file';
-import { CMUX_DATA, fixtureEntry, NOVA, SCOUT } from './preview/fixture';
 import type { HomeEntry } from './sidebar/data';
 
 /**
@@ -38,11 +39,18 @@ export const defaultTarget = (): SidebarTarget => ({
   own: () => ({ version: pluginVersion(), bundle: readFileSync(DIST, 'utf8') })
 });
 
-export const entrySettings = (): EntrySettings => ({ launcher: LAUNCHER, projectsDir: FOLDERS.PROJECTS });
+/**
+ * `AGENT_LAUNCHER` names the command that starts a session in this home, which Ask types into a new tab.
+ */
+export const entrySettings = (): EntrySettings => ({
+  launcher: env('AGENT_LAUNCHER')?.trim() || 'claude',
+  projectsDir: FOLDERS.PROJECTS
+});
 
-const readText = (path: string): string => (existsSync(path) ? readFileSync(path, 'utf8') : '');
+const nextText = (current: SidebarParts | null, home: string, entry: HomeEntry, target: SidebarTarget): string =>
+  renderSidebar({ ...newerCode(current, target.own()), homes: mergeHomes(current, home, entry, target.homeExists) });
 
-export type RefreshResult = 'not-installed' | 'not-joined' | 'unchanged' | 'written';
+type RefreshResult = 'not-installed' | 'not-joined' | 'unchanged' | 'written';
 
 /**
  * Puts this home's latest entry into the installed sidebar, but only when the file exists and the home joined it.
@@ -57,10 +65,7 @@ export const refreshSidebar = (home: string, entry: HomeEntry, target: SidebarTa
   if (!current?.homes[home]) {
     return 'not-joined';
   }
-  const next = renderSidebar({
-    ...newerCode(current, target.own()),
-    homes: mergeHomes(current, home, entry, target.homeExists)
-  });
+  const next = nextText(current, home, entry, target);
   if (next === text) {
     return 'unchanged';
   }
@@ -110,12 +115,9 @@ export const installSidebar = (
   }
   const live = sidebarFile(target.dir);
   const staged = sidebarFile(target.dir, STAGED);
-  const current = parseSidebar(readText(live));
+  const current = parseSidebar(existsSync(live) ? readFileSync(live, 'utf8') : '');
   try {
-    writeFileAtomic(
-      staged,
-      renderSidebar({ ...newerCode(current, target.own()), homes: mergeHomes(current, home, entry, target.homeExists) })
-    );
+    writeFileAtomic(staged, nextText(current, home, entry, target));
     if (!cmux.run(['sidebar', 'validate', STAGED])) {
       return {
         ok: false,
@@ -127,15 +129,12 @@ export const installSidebar = (
   } finally {
     rmSync(staged, { force: true });
   }
-  return cmux.run(['right-sidebar', 'set', 'custom', SIDEBAR_NAME])
-    ? { ok: true, message: `${entry.name} is in the AgentLayer sidebar.` }
-    : {
-        ok: true,
-        message: `${entry.name} is in the AgentLayer sidebar. Show it with: cmux right-sidebar set custom ${SIDEBAR_NAME}`
-      };
+  const shown = cmux.run(['right-sidebar', 'set', 'custom', SIDEBAR_NAME]);
+  const hint = shown ? '' : ` Show it with: cmux right-sidebar set custom ${SIDEBAR_NAME}`;
+  return { ok: true, message: `${entry.name} is in the AgentLayer sidebar.${hint}` };
 };
 
-export type RemoveResult = 'not-installed' | 'not-joined' | 'removed' | 'removed-file';
+type RemoveResult = 'not-installed' | 'not-joined' | 'removed' | 'removed-file';
 
 /**
  * Takes this home out of the sidebar; when it was the last home, the file goes too.
@@ -157,22 +156,3 @@ export const removeSidebar = (home: string, target: SidebarTarget): RemoveResult
   writeFileAtomic(path, renderSidebar({ ...current, homes }));
   return 'removed';
 };
-
-/**
- * The sidebar drawing the two invented homes and their invented sessions with a frozen clock, for screenshots.
- * Parameters shadow cmux's `data` and `cmux` globals, so it never shows real sessions and its taps go nowhere.
- */
-export const previewText = (own: SidebarCode): string =>
-  renderSidebar({
-    version: own.version,
-    homes: Object.fromEntries([NOVA, SCOUT].map((source) => [source.runtime.home, fixtureEntry(source)])),
-    bundle: [
-      `const MOCK = ${JSON.stringify(CMUX_DATA)};`,
-      '((data, cmux) => {',
-      own.bundle,
-      '})({ workspaces: () => MOCK.workspaces, groups: () => undefined, clock: () => MOCK.clock }, () => {});',
-      ''
-    ].join('\n')
-  });
-
-export const previewSidebar = (path: string, own: SidebarCode): void => writeFileAtomic(path, previewText(own));

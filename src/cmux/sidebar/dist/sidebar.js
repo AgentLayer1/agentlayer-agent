@@ -85,6 +85,8 @@ var agentCards = computed(() => {
     ];
   }));
 });
+var needsInputThenNewest = (first, second) => Number(second.agent.status === "needs_input") - Number(first.agent.status === "needs_input") || (second.agent.lastActivityAt ?? 0) - (first.agent.lastActivityAt ?? 0);
+var bySection = (cards) => Object.fromEntries(ORDER.map((section) => [section, cards.filter((card) => card.section === section).toSorted(needsInputThenNewest)]));
 var jump = (workspaceId, focusId) => focusId ? cmux("surface.focus", { surface_id: focusId, workspace_id: workspaceId }) : cmux("workspace.select", { workspace_id: workspaceId });
 
 // node_modules/cmux-custom-dashboard/src/components.ts
@@ -153,7 +155,6 @@ var startCommand = (home, launcher) => `cd ${shellQuote(home)} && ${launcher}`;
 
 // src/cmux/sidebar/ask.ts
 var STATUS = {
-  idle: () => "",
   opening: (name) => `Opening a tab for ${name}…`,
   starting: (name) => `Starting ${name}…`,
   drafted: (name) => `Typed in for ${name}. Press Enter in that tab to send it.`
@@ -170,7 +171,8 @@ var createAsk = () => {
     }
     const tab = (workspaceById(state.workspaceId)?.tabs ?? []).find((item) => !state.before.includes(item.id) && item.surfaceId);
     if (tab?.surfaceId) {
-      setLaunch({ ...state, stage: "starting", tabId: tab.id, surfaceId: tab.surfaceId });
+      const { workspaceId, prompt, name } = state;
+      setLaunch({ stage: "starting", workspaceId, tabId: tab.id, surfaceId: tab.surfaceId, prompt, name });
       send(state.workspaceId, tab.surfaceId, `${state.command}
 `);
     }
@@ -233,8 +235,14 @@ var scopedHome = (homes, workspaces, pin) => {
   return picked ?? homeOf(homes, selected?.directory) ?? newestHome(homes, selected?.agents) ?? newestHome(homes, workspaces.flatMap((workspace) => workspace.agents ?? [])) ?? homes[0];
 };
 
+// src/cmux/sidebar/cards.ts
+var cardsIn = (homes, home) => {
+  const sections = bySection(agentCards().filter((card) => homeOf(homes, card.agent.directory) === home));
+  return ORDER.flatMap((section) => sections[section]);
+};
+var needsIn = (homes, home) => cardsIn(homes, home).filter((card) => card.section === "needs");
+
 // src/cmux/sidebar/style.ts
-var NEEDS_COLOR = "#FF9F0A";
 var hueColor = (hue) => {
   const saturation = 0.55;
   const lightness = 0.62;
@@ -261,19 +269,34 @@ var row = (icon, title, trailing, onTap) => HStack({ spacing: 8 }, [
 var symbol = (name) => Image(name).font(11).color("secondary").frame({ width: 16 });
 var open = (link) => link.kind === "md" ? cmux("markdown.open", { path: link.target }) : cmux("browser.open_split", { url: link.target });
 
-// src/cmux/sidebar/pages/agents.ts
-var byUrgency = (first, second) => ORDER.indexOf(first.section) - ORDER.indexOf(second.section) || (second.agent.lastActivityAt ?? 0) - (first.agent.lastActivityAt ?? 0);
-var agentsPage = (homes) => {
-  const groups = computed(() => {
-    const cards = agentCards();
-    const titled = homes.map((home) => ({
-      key: home,
-      title: `${DATA.homes[home]?.emoji ?? ""} ${DATA.homes[home]?.name ?? home}`.trim(),
-      cards: cards.filter((card) => homeOf(homes, card.agent.directory) === home)
-    }));
-    const other = { key: "other", title: "Other", cards: cards.filter((card) => !homeOf(homes, card.agent.directory)) };
-    return [...titled, other].filter((group) => group.cards.length).map((group) => ({ ...group, cards: group.cards.toSorted(byUrgency) }));
+// src/cmux/sidebar/data.ts
+var SCHEMA = 1;
+
+// src/cmux/sidebar/view.ts
+var homeLabel = (home) => {
+  const entry = DATA.homes[home];
+  return entry ? `${entry.emoji} ${entry.name}`.trim() : home;
+};
+var scopedPage = (home, ready) => {
+  const view = computed(() => {
+    const path = home();
+    const entry = path ? DATA.homes[path] : undefined;
+    return path && entry ? { path, entry, current: entry.schema === SCHEMA } : null;
   });
+  const showing = (current) => () => [view()].filter((item) => item?.current === current);
+  return VStack({ spacing: 0 }, [
+    ForEach({ items: showing(true), key: (item) => item.path }, (item) => ready(item().path, item().entry)),
+    ForEach({ items: showing(false), key: (item) => item.path }, (item) => note(`${homeLabel(item().path)} needs its agent updated to show here.`)),
+    ForEach({ items: () => view() ? [] : ["none"], key: (item) => item }, () => note("No agent has joined this sidebar yet. In an agent’s home, run its cmux sidebar install."))
+  ]);
+};
+
+// src/cmux/sidebar/pages/agents.ts
+var agentsPage = (homes) => {
+  const groups = computed(() => [
+    ...homes.map((home) => ({ key: home, title: homeLabel(home), cards: cardsIn(homes, home) })),
+    { key: "other", title: "Other", cards: cardsIn(homes, undefined) }
+  ].filter((group) => group.cards.length));
   return VStack({ spacing: 4 }, [
     ForEach({ items: groups, key: (group) => group.key }, (group) => VStack({ spacing: 4 }, [
       label(group().title, () => group().cards.length),
@@ -282,9 +305,6 @@ var agentsPage = (homes) => {
     ForEach({ items: () => groups().length ? [] : ["empty"], key: (item) => item }, () => note("No agent sessions in cmux right now."))
   ]);
 };
-
-// src/cmux/sidebar/data.ts
-var SCHEMA = 1;
 
 // src/cmux/sidebar/pages/ask.ts
 var PROMPTS = [
@@ -315,22 +335,11 @@ var body = (path, entry, ask) => {
     Text(ask.status).font(11).color("secondary").paddingHorizontal(10).paddingTop(4)
   ]);
 };
-var askPage = (ask, home) => VStack({ spacing: 0 }, [
-  ForEach({
-    items: () => {
-      const path = home();
-      const entry = path ? DATA.homes[path] : undefined;
-      return path && entry?.schema === SCHEMA ? [{ path, entry }] : [];
-    },
-    key: (item) => item.path
-  }, (item) => body(item().path, item().entry, ask)),
-  ForEach({ items: () => home() ? [] : ["empty"], key: (item) => item }, () => note("No agent has joined this sidebar yet."))
-]);
+var askPage = (ask, home) => scopedPage(home, (path, entry) => body(path, entry, ask));
 
 // src/cmux/sidebar/pages/home.ts
-var newestFirst = (first, second) => (second.agent.lastActivityAt ?? 0) - (first.agent.lastActivityAt ?? 0);
-var body2 = ({ path, entry }, homes) => {
-  const needs = computed(() => agentCards().filter((card) => card.section === "needs" && homeOf(homes, card.agent.directory) === path).toSorted(newestFirst));
+var body2 = (path, entry, homes) => {
+  const needs = computed(() => needsIn(homes, path));
   const roadmap = entry.roadmap ? [{ title: "Roadmap", kind: "html", target: entry.roadmap, symbolName: "map" }] : [];
   const pages = [
     { title: "Today", kind: "html", target: `${entry.dashboard}#today`, symbolName: "sun.max" },
@@ -354,24 +363,7 @@ var body2 = ({ path, entry }, homes) => {
     ] : []
   ]);
 };
-var homePage = (home, homes) => {
-  const scoped = computed(() => {
-    const path = home();
-    const entry = path ? DATA.homes[path] : undefined;
-    return path && entry ? { path, entry } : null;
-  });
-  return VStack({ spacing: 0 }, [
-    ForEach({
-      items: () => [scoped()].filter((item) => item?.entry.schema === SCHEMA),
-      key: (item) => item.path
-    }, (item) => body2(item(), homes)),
-    ForEach({
-      items: () => [scoped()].filter((item) => item !== null && item.entry.schema !== SCHEMA),
-      key: (item) => `update:${item.path}`
-    }, (item) => note(`${item().entry.emoji} ${item().entry.name} needs its agent updated to show here.`)),
-    ForEach({ items: () => scoped() ? [] : ["empty"], key: (item) => item }, () => note("No agent has joined this sidebar yet. In an agent’s home, run its cmux sidebar install."))
-  ]);
-};
+var homePage = (home, homes) => scopedPage(home, (path, entry) => body2(path, entry, homes));
 
 // src/cmux/sidebar/main.ts
 var PAGES = ["Home", "Agents", "Ask"];
@@ -388,7 +380,6 @@ var app = () => {
     }
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
-  const needsIn = (home) => agentCards().filter((card) => card.section === "needs" && homeOf(homes, card.agent.directory) === home).length;
   const ask = createAsk();
   const views = {
     Home: () => homePage(current, homes),
@@ -396,11 +387,10 @@ var app = () => {
     Ask: () => askPage(ask, current)
   };
   const agentChip = (home) => {
-    const entry = DATA.homes[home()];
     const active = () => current() === home();
     return HStack({ spacing: 4 }, [
-      Text(`${entry?.emoji ?? ""} ${entry?.name ?? ""}`.trim()).font(11).weight("semibold").color(() => active() ? "primary" : "secondary"),
-      ForEach({ items: () => [needsIn(home())].filter(Boolean), key: () => "needs" }, (count) => Text(() => String(count())).font(9).weight("bold").monospaced().color(NEEDS_COLOR))
+      Text(homeLabel(home())).font(11).weight("semibold").color(() => active() ? "primary" : "secondary"),
+      ForEach({ items: () => [needsIn(homes, home()).length].filter(Boolean), key: () => "needs" }, (count) => Text(() => String(count())).font(9).weight("bold").monospaced().color(SECTIONS.needs.color))
     ]).paddingHorizontal(8).paddingVertical(3).cornerRadius(6).background(() => active() ? "#7f7f7f3d" : null).hoverBackground("#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(() => setPin({ home: home(), workspaceId: selectedId() }));
   };
   return VStack({ spacing: 8 }, [

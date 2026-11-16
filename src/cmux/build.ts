@@ -1,5 +1,5 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -29,7 +29,6 @@ export const bundleSidebar = async (): Promise<string> => {
 };
 
 if (import.meta.main) {
-  mkdirSync(dirname(DIST), { recursive: true });
   writeFileSync(DIST, await bundleSidebar());
   console.log(`Wrote ${DIST}`);
 }

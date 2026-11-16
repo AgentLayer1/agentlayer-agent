@@ -1,7 +1,5 @@
 import type { Link } from './data';
 
-export const NEEDS_COLOR = '#FF9F0A';
-
 /**
  * A project's dot colour: the dashboard's `hsl(hue, 55%, 62%)`, as hex for the native renderer.
  */
