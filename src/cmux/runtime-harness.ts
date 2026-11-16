@@ -104,5 +104,12 @@ export const mount = (script: string, data: Record<string, unknown> = {}) => {
     context.__dispatch(id, 'tap', '');
     return actions.length > before ? actions.at(-1) : undefined;
   };
-  return { visibleTexts, tap, setData, actions };
+  const type = (text: string) => {
+    const field = walk(scene.root).find((id) => nodes.get(id)?.type === 'textfield');
+    if (!field) {
+      throw new Error('no text field is showing');
+    }
+    context.__dispatch(field, 'edit', JSON.stringify({ text }));
+  };
+  return { visibleTexts, tap, type, setData, actions };
 };

@@ -146,6 +146,84 @@ var cardRow = (card) => VStack({ spacing: 4 }, [
   ForEach({ items: () => card().summary ? [card().summary] : [], key: () => "summary" }, (summary) => Text(() => summary()).font(11).color("tertiary").lineLimit(2).truncation("tail").paddingLeading(14))
 ]).paddingHorizontal(10).paddingVertical(8).cornerRadius(10).background(() => card().agent.status === "needs_input" ? "#FF9F0A1f" : "#7f7f7f0d").hoverBackground("#7f7f7f26").cursor("pointer").frame({ maxWidth: "infinity" }).onTap(() => jump(card().workspaceId, card().focusId));
 
+// src/cmux/sidebar/shell.ts
+var shellQuote = (text) => `'${text.replaceAll("'", `'\\''`)}'`;
+var oneLine = (text) => text.replace(/[\r\n]+/g, " ");
+var startCommand = (home, launcher) => `cd ${shellQuote(home)} && ${launcher}`;
+
+// src/cmux/sidebar/ask.ts
+var STATUS = {
+  idle: () => "",
+  opening: (name) => `Opening a tab for ${name}…`,
+  starting: (name) => `Starting ${name}…`,
+  drafted: (name) => `Typed in for ${name}. Press Enter in that tab to send it.`
+};
+var workspaceById = (id) => (data.workspaces() ?? []).find((workspace) => workspace.id === id);
+var selected = () => (data.workspaces() ?? []).find((workspace) => workspace.selected);
+var send = (workspaceId, surfaceId, text) => cmux("surface.send_text", { surface_id: surfaceId, workspace_id: workspaceId, text });
+var createAsk = () => {
+  const [launch, setLaunch] = signal({ stage: "idle" });
+  computed(() => {
+    const state = launch();
+    if (state.stage !== "opening") {
+      return;
+    }
+    const tab = (workspaceById(state.workspaceId)?.tabs ?? []).find((item) => !state.before.includes(item.id) && item.surfaceId);
+    if (tab?.surfaceId) {
+      setLaunch({ ...state, stage: "starting", tabId: tab.id, surfaceId: tab.surfaceId });
+      send(state.workspaceId, tab.surfaceId, `${state.command}
+`);
+    }
+  });
+  computed(() => {
+    const state = launch();
+    if (state.stage !== "starting") {
+      return;
+    }
+    const agent = (workspaceById(state.workspaceId)?.agents ?? []).find((item) => item.panelId === state.tabId);
+    if (agent?.status === "idle") {
+      setLaunch({ stage: "drafted", name: state.name });
+      send(state.workspaceId, state.surfaceId, state.prompt);
+      cmux("surface.focus", { surface_id: state.surfaceId, workspace_id: state.workspaceId });
+    }
+  });
+  const draftTarget = computed(() => {
+    const workspace = selected();
+    const tab = workspace?.tabs.find((item) => item.focused);
+    const agent = workspace?.agents?.find((item) => item.panelId === tab?.id);
+    return workspace && tab?.surfaceId && agent && agent.status !== "needs_input" && agent.status !== "ended" ? { workspaceId: workspace.id, surfaceId: tab.surfaceId } : null;
+  });
+  return {
+    status: () => {
+      const state = launch();
+      return state.stage === "idle" ? "" : STATUS[state.stage](state.name);
+    },
+    canDraft: () => draftTarget() !== null,
+    newChat: (home, entry, prompt) => {
+      const workspace = selected();
+      if (!workspace) {
+        return;
+      }
+      setLaunch({
+        stage: "opening",
+        workspaceId: workspace.id,
+        before: workspace.tabs.map((tab) => tab.id),
+        command: startCommand(home, entry.launcher),
+        prompt: oneLine(prompt),
+        name: entry.name
+      });
+      cmux("surface.create", { type: "terminal", workspace_id: workspace.id });
+    },
+    draftHere: (prompt) => {
+      const target = draftTarget();
+      if (target && prompt.trim()) {
+        send(target.workspaceId, target.surfaceId, oneLine(prompt));
+        cmux("surface.focus", { surface_id: target.surfaceId, workspace_id: target.workspaceId });
+      }
+    }
+  };
+};
+
 // src/cmux/sidebar/scope.ts
 var homeOf = (homes, path) => path ? homes.filter((home) => path === home || path.startsWith(`${home}/`)).toSorted((a, b) => b.length - a.length)[0] : undefined;
 var newestHome = (homes, agents = []) => agents.toSorted((a, b) => b.lastActivityAt - a.lastActivityAt).map((agent) => homeOf(homes, agent.directory)).find((home) => home !== undefined);
@@ -208,9 +286,50 @@ var agentsPage = (homes) => {
 // src/cmux/sidebar/data.ts
 var SCHEMA = 1;
 
+// src/cmux/sidebar/pages/ask.ts
+var PROMPTS = [
+  { title: "Brief me", symbolName: "sun.max", prompt: "Brief me" },
+  { title: "Plan my day", symbolName: "calendar", prompt: "Plan my day" },
+  { title: "What’s stale?", symbolName: "clock.arrow.circlepath", prompt: "What has gone stale?" },
+  { title: "Check support", symbolName: "lifepreserver", prompt: "Check the support queue" },
+  { title: "Capture a note", symbolName: "square.and.pencil", prompt: "Capture this note: " },
+  { title: "Wrap up the day", symbolName: "moon", prompt: "Wrap up the day" }
+];
+var button = (title, enabled, onTap) => Text(title).font(12).weight("medium").paddingHorizontal(10).paddingVertical(5).background("#7f7f7f24").hoverBackground("#7f7f7f3d").cornerRadius(6).opacity(() => enabled() ? 1 : 0.4).cursor("pointer").onTap(onTap);
+var body = (path, entry, ask) => {
+  const [text, setText] = signal("");
+  const hasText = () => text().trim() !== "";
+  return VStack({ spacing: 2 }, [
+    note(`Each opens a new chat with ${entry.name} and types the request in. Press Enter there to send it.`),
+    label("ASK"),
+    ...PROMPTS.map((item) => row(symbol(item.symbolName), item.title, "plus.bubble", () => ask.newChat(path, entry, item.prompt))),
+    label("YOUR OWN"),
+    HStack([
+      TextField("", { placeholder: `Ask ${entry.name}…`, autofocus: false, onEdit: (typed) => setText(typed ?? "") })
+    ]).paddingHorizontal(9).paddingVertical(6).background("#7f7f7f24").cornerRadius(8).paddingHorizontal(4),
+    HStack({ spacing: 6 }, [
+      button("New chat", hasText, () => hasText() && ask.newChat(path, entry, text())),
+      button("Draft here", () => hasText() && ask.canDraft(), () => ask.draftHere(text())),
+      Spacer()
+    ]).paddingHorizontal(4).paddingTop(4),
+    Text(ask.status).font(11).color("secondary").paddingHorizontal(10).paddingTop(4)
+  ]);
+};
+var askPage = (ask, home) => VStack({ spacing: 0 }, [
+  ForEach({
+    items: () => {
+      const path = home();
+      const entry = path ? DATA.homes[path] : undefined;
+      return path && entry?.schema === SCHEMA ? [{ path, entry }] : [];
+    },
+    key: (item) => item.path
+  }, (item) => body(item().path, item().entry, ask)),
+  ForEach({ items: () => home() ? [] : ["empty"], key: (item) => item }, () => note("No agent has joined this sidebar yet."))
+]);
+
 // src/cmux/sidebar/pages/home.ts
 var newestFirst = (first, second) => (second.agent.lastActivityAt ?? 0) - (first.agent.lastActivityAt ?? 0);
-var body = ({ path, entry }, homes) => {
+var body2 = ({ path, entry }, homes) => {
   const needs = computed(() => agentCards().filter((card) => card.section === "needs" && homeOf(homes, card.agent.directory) === path).toSorted(newestFirst));
   const roadmap = entry.roadmap ? [{ title: "Roadmap", kind: "html", target: entry.roadmap, symbolName: "map" }] : [];
   const pages = [
@@ -245,7 +364,7 @@ var homePage = (home, homes) => {
     ForEach({
       items: () => [scoped()].filter((item) => item?.entry.schema === SCHEMA),
       key: (item) => item.path
-    }, (item) => body(item(), homes)),
+    }, (item) => body2(item(), homes)),
     ForEach({
       items: () => [scoped()].filter((item) => item !== null && item.entry.schema !== SCHEMA),
       key: (item) => `update:${item.path}`
@@ -255,7 +374,7 @@ var homePage = (home, homes) => {
 };
 
 // src/cmux/sidebar/main.ts
-var PAGES = ["Home", "Agents"];
+var PAGES = ["Home", "Agents", "Ask"];
 var app = () => {
   const homes = Object.keys(DATA.homes);
   const [page, setPage] = signal("Home");
@@ -270,9 +389,11 @@ var app = () => {
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
   const needsIn = (home) => agentCards().filter((card) => card.section === "needs" && homeOf(homes, card.agent.directory) === home).length;
+  const ask = createAsk();
   const views = {
     Home: () => homePage(current, homes),
-    Agents: () => agentsPage(homes)
+    Agents: () => agentsPage(homes),
+    Ask: () => askPage(ask, current)
   };
   const agentChip = (home) => {
     const entry = DATA.homes[home()];

@@ -11,12 +11,14 @@
 
 import { chip } from 'cmux-custom-dashboard/components';
 import { agentCards } from 'cmux-custom-dashboard/model';
+import { createAsk } from './ask';
 import { agentsPage } from './pages/agents';
+import { askPage } from './pages/ask';
 import { homePage } from './pages/home';
 import { homeOf, scopedHome, type Pin } from './scope';
 import { NEEDS_COLOR } from './style';
 
-const PAGES = ['Home', 'Agents'] as const;
+const PAGES = ['Home', 'Agents', 'Ask'] as const;
 type Page = (typeof PAGES)[number];
 
 const app = () => {
@@ -36,9 +38,11 @@ const app = () => {
   const needsIn = (home: string) =>
     agentCards().filter((card) => card.section === 'needs' && homeOf(homes, card.agent.directory) === home).length;
 
+  const ask = createAsk();
   const views: Record<Page, () => View> = {
     Home: () => homePage(current, homes),
-    Agents: () => agentsPage(homes)
+    Agents: () => agentsPage(homes),
+    Ask: () => askPage(ask, current)
   };
 
   const agentChip = (home: () => string) => {
