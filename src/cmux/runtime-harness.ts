@@ -113,5 +113,12 @@ export const mount = (script: string, data: Record<string, unknown> = {}) => {
     walk(scene.root)
       .filter((id) => nodes.get(id)?.type === 'button')
       .map((id) => String(nodes.get(id)?.props.text ?? ''));
-  return { visibleTexts, tap, menuItems, setData, actions };
+  const type = (text: string) => {
+    const field = walk(scene.root).find((id) => nodes.get(id)?.type === 'textfield');
+    if (!field) {
+      throw new Error('no text field to type in');
+    }
+    context.__dispatch(field, 'edit', JSON.stringify({ text }));
+  };
+  return { visibleTexts, tap, type, menuItems, setData, actions };
 };

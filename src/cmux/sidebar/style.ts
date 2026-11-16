@@ -1,3 +1,5 @@
+import { SIDEBAR_NAME } from './data';
+
 /**
  * A project's colour: the dashboard's `hsl(hue, 55%, 62%)`, as hex for the native renderer.
  */
@@ -38,6 +40,23 @@ export const groupTitle = (title: string, count: number) =>
     Text(String(count)).font(10).monospaced().color('quaternary'),
     Spacer({ minLength: 0 })
   ]).paddingHorizontal(4);
+
+/**
+ * A plain icon button for the top row; `help` names it on hover.
+ */
+export const toolIcon = (symbol: string, help: string, onTap: () => void) =>
+  Image(symbol)
+    .font(11)
+    .color('secondary')
+    .padding(5)
+    .cornerRadius(6)
+    .hoverBackground('#7f7f7f3d')
+    .cursor('pointer')
+    .help(help)
+    .onTap(onTap);
+
+export const reloadButton = () =>
+  toolIcon('arrow.clockwise', 'Reload the sidebar', () => cmux('sidebar.custom.reload', { name: SIDEBAR_NAME }));
 
 export const note = (text: string) => Text(text).font(11).color('tertiary').paddingHorizontal(10);
 

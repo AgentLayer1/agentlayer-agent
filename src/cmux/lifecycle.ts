@@ -10,13 +10,12 @@ import {
   newerCode,
   parseSidebar,
   renderSidebar,
-  SIDEBAR_NAME,
   sidebarFile,
   sidebarsDir,
   type SidebarCode,
   type SidebarParts
 } from './file';
-import type { HomeEntry } from './sidebar/data';
+import { SIDEBAR_NAME, type HomeEntry } from './sidebar/data';
 
 /**
  * Where the sidebar lives and the code this plugin would write into it (read only when a write needs it).

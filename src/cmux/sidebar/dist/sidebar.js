@@ -3,7 +3,7 @@
  * Every agent on this Mac, and the work each one keeps.
  *
  *   Manager   every session, sorted by what needs you (cmux Manager)
- *   Work      the agent's dashboard and roadmap, and a card per project that opens into its tasks
+ *   Work      a search over the agent's tasks, every task at a glance, and its projects by state
  *
  * The workspace you're in picks the agent; the menu on Work picks another.
  *
@@ -179,7 +179,7 @@ var tally = (section, count) => HStack({ spacing: 4 }, [
 ]).fixedSize();
 
 // node_modules/cmux-custom-manager/src/manager.ts
-var manager = ({ header } = {}) => {
+var manager = ({ header, trailing } = {}) => {
   const [query, setQuery] = signal("");
   const [groupFilter, setGroupFilter] = signal("");
   const [collapsed, setCollapsed] = signal(["ended"]);
@@ -240,13 +240,14 @@ var manager = ({ header } = {}) => {
         Text("Manager").font(13).weight("semibold")
       ]).fixedSize(),
       Spacer({ minLength: 0 }),
-      ...ORDER.filter((section) => section !== "ended").map((section) => tally(section, () => sections()[section].length))
-    ]).paddingHorizontal(10),
+      ...ORDER.filter((section) => section !== "ended").map((section) => tally(section, () => sections()[section].length)),
+      ...trailing ? [trailing] : []
+    ]).paddingHorizontal(4),
     ForEach({ items: () => groupChips().length ? ["chips"] : [], key: (item) => item }, () => HStack({ spacing: 4 }, [
       chip("All", () => !effectiveGroupFilter(), () => setGroupFilter("")),
       ForEach({ items: groupChips, key: (group) => group.id }, (group) => chip(() => group().name, () => effectiveGroupFilter() === group().id, () => setGroupFilter(effectiveGroupFilter() === group().id ? "" : group().id))),
       Spacer()
-    ]).paddingHorizontal(10)),
+    ]).paddingHorizontal(4)),
     searchField("Search sessions…", setQuery),
     Divider(),
     VStack({ spacing: 4 }, [ForEach({ items: entries, key: (entry) => entry.key }, row)]),
@@ -294,6 +295,10 @@ var isoDay = (epochSeconds) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 };
 
+// src/cmux/sidebar/data.ts
+var SCHEMA = 3;
+var SIDEBAR_NAME = "agentlayer";
+
 // src/cmux/sidebar/style.ts
 var hueColor = (hue) => {
   const saturation = 0.55;
@@ -316,12 +321,14 @@ var groupTitle = (title, count) => HStack({ spacing: 4 }, [
   Text(String(count)).font(10).monospaced().color("quaternary"),
   Spacer({ minLength: 0 })
 ]).paddingHorizontal(4);
+var toolIcon = (symbol, help, onTap) => Image(symbol).font(11).color("secondary").padding(5).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
+var reloadButton = () => toolIcon("arrow.clockwise", "Reload the sidebar", () => cmux("sidebar.custom.reload", { name: SIDEBAR_NAME }));
 var note = (text) => Text(text).font(11).color("tertiary").paddingHorizontal(10);
 var tabIcon = (symbol, help, active, onTap) => Image(symbol).font(12).color(() => active() ? "accent" : "secondary").padding(5).background(() => active() ? "#7f7f7f3d" : null).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
 
 // src/cmux/sidebar/tasks.ts
 var STATUS = {
-  active: { symbol: "circle.inset.filled", color: "#34C759" },
+  active: { symbol: "circle.fill", color: "#34C759" },
   blocked: { symbol: "exclamationmark.circle.fill", color: "#FF453A" },
   open: { symbol: "circle", color: "#8E8E93" }
 };
@@ -329,18 +336,16 @@ var statusOf = (status) => STATUS[status] ?? { symbol: "circle", color: "#8E8E93
 var TONE = { overdue: "#FF453A", soon: "#FF9F0A", later: "tertiary" };
 var URGENT = new Set(["P0", "P1"]);
 var today = computed(() => isoDay(data.clock()?.epoch ?? Date.now() / 1000));
-var count = (amount, status) => {
-  const { symbol, color } = statusOf(status);
-  return amount ? [
-    HStack({ spacing: 2 }, [
-      Image(symbol).font(8).color(color),
-      Text(String(amount)).font(10).weight("semibold").monospaced().color("secondary")
-    ]).fixedSize()
-  ] : [];
-};
+var statusIcon = (status, size = 7) => Image(statusOf(status).symbol).font(size).color(statusOf(status).color);
+var count = (amount, status) => amount ? [
+  HStack({ spacing: 3 }, [
+    statusIcon(status, 6),
+    Text(String(amount)).font(10).weight("medium").monospaced().color("secondary")
+  ]).fixedSize()
+] : [];
 var taskMeta = (task, projectColor) => HStack({ spacing: 6 }, [
-  ...projectColor ? [Circle({ size: 6 }).fill(projectColor)] : [],
-  Text(task.id).font(10).monospaced().color("tertiary"),
+  statusIcon(task.status),
+  Text(task.id).font(10).monospaced().color(projectColor ?? "tertiary"),
   Text(task.priority).font(10).weight("semibold").monospaced().color(URGENT.has(task.priority) ? "#FF9F0A" : "tertiary"),
   Text(() => dueLabel(task.due, today())?.text ?? "").font(10).color(() => TONE[dueLabel(task.due, today())?.tone ?? "later"]),
   Spacer({ minLength: 0 }),
@@ -351,19 +356,10 @@ var taskMeta = (task, projectColor) => HStack({ spacing: 6 }, [
     ]).fixedSize()
   ] : []
 ]);
-var taskRow = (task, projectColor) => {
-  const { symbol, color } = statusOf(task.status);
-  return HStack({ spacing: 6, alignment: "top" }, [
-    Image(symbol).font(10).color(color).frame({ width: 12 }).paddingTop(2),
-    VStack({ spacing: 2, alignment: "leading" }, [
-      Text(task.title).font(12).lineLimit(3).truncation("tail"),
-      taskMeta(task, projectColor)
-    ])
-  ]).paddingLeading(2).paddingTrailing(6).paddingVertical(5).cornerRadius(8).hoverBackground("#7f7f7f26").cursor("pointer").frame({ maxWidth: "infinity", alignment: "leading" }).onTap(() => cmux("file.open", { path: task.path }));
-};
-
-// src/cmux/sidebar/data.ts
-var SCHEMA = 3;
+var taskRow = (task, projectColor) => VStack({ spacing: 2, alignment: "leading" }, [
+  Text(task.title).font(12).lineLimit(3).truncation("tail"),
+  taskMeta(task, projectColor)
+]).paddingHorizontal(4).paddingVertical(5).cornerRadius(8).hoverBackground("#7f7f7f26").cursor("pointer").frame({ maxWidth: "infinity", alignment: "leading" }).onTap(() => cmux("file.open", { path: task.path }));
 
 // src/cmux/sidebar/view.ts
 var homeLabel = (home) => {
@@ -388,14 +384,13 @@ var scopedPage = (home, ready) => {
 var ACCENT = "#0A84FF";
 var CARD = "#7f7f7f12";
 var open = (target) => target.kind === "page" ? cmux("browser.tab.new", { url: target.url }) : cmux("file.open", { path: target.path });
-var pageChip = (symbol, title, url) => HStack({ spacing: 4 }, [Image(symbol).font(10).color("secondary"), Text(title).font(11).weight("medium")]).paddingHorizontal(8).paddingVertical(4).background("#7f7f7f1f").cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(() => cmux("browser.tab.new", { url }));
 var linkRow = ({ icon, title, target }) => HStack({ spacing: 6 }, [
   Text(icon).font(11).frame({ width: 14 }),
   Text(title).font(11).color("secondary").lineLimit(1).truncation("tail"),
   Spacer({ minLength: 0 })
-]).paddingLeading(2).paddingVertical(3).cornerRadius(6).hoverBackground("#7f7f7f26").cursor("pointer").onTap(() => open(target));
+]).paddingHorizontal(4).paddingVertical(2).cornerRadius(6).hoverBackground("#7f7f7f26").cursor("pointer").onTap(() => open(target));
 var roadmapLink = (url) => ({ title: "Roadmap", icon: "\uD83D\uDDFA️", target: { kind: "page", url } });
-var chevron = (open) => Image(() => open() ? "chevron.down" : "chevron.right").font(9).weight("semibold").color("tertiary");
+var chevron = (expanded) => Image(() => expanded() ? "chevron.down" : "chevron.right").font(9).weight("semibold").color("tertiary");
 var card = (view) => view.paddingHorizontal(10).paddingVertical(8).background(CARD).cornerRadius(10);
 var fraction = (done, live) => done + live ? done / (done + live) : 0;
 var AGENDA = {
@@ -403,23 +398,23 @@ var AGENDA = {
   today: "Today",
   week: "This week",
   month: "This month",
-  later: "Later",
-  someday: "Someday"
+  later: "Later"
 };
+var listedTasks = (entry) => entry.projects.flatMap((project) => project.tasks.map((task) => ({ task, color: hueColor(project.hue) })));
 var agenda = (listed, day) => {
   const waiting = listed.filter(({ task }) => task.status !== "active");
   return [
     { title: "In flight", tasks: listed.filter(({ task }) => task.status === "active") },
-    ...BUCKETS.map((bucket) => ({
-      title: AGENDA[bucket],
-      tasks: waiting.filter(({ task }) => dueBucket(task.due, day) === bucket)
-    }))
+    ...BUCKETS.flatMap((bucket) => {
+      const title = AGENDA[bucket];
+      return title ? [{ title, tasks: waiting.filter(({ task }) => dueBucket(task.due, day) === bucket) }] : [];
+    })
   ].filter((group) => group.tasks.length);
 };
 var dueTally = (amount, label, color) => Text(() => amount() ? `${amount()} ${label}` : "").font(10).weight("semibold").color(color);
 var tasksCard = (entry) => {
   const [expanded, setExpanded] = signal(false);
-  const listed = entry.projects.flatMap((project) => project.tasks.map((task) => ({ task, color: hueColor(project.hue) })));
+  const listed = listedTasks(entry);
   const total = (field) => entry.projects.reduce((sum, project) => sum + project[field], 0);
   const tone = (wanted) => () => listed.filter(({ task }) => dueLabel(task.due, today())?.tone === wanted).length;
   const groups = computed(() => agenda(listed, today()));
@@ -442,7 +437,7 @@ var tasksCard = (entry) => {
       ])
     ]).cursor("pointer").onTap(() => setExpanded(!expanded())),
     ForEach({ items: () => expanded() ? groups() : [], key: (group) => group.title }, (group) => VStack({ spacing: 1 }, [
-      groupTitle(group().title, group().tasks.length).paddingHorizontal(0).paddingTop(4),
+      groupTitle(group().title, group().tasks.length).paddingTop(4),
       ForEach({ items: () => group().tasks, key: (item) => item.task.id }, (item) => taskRow(item().task, item().color))
     ]))
   ]));
@@ -467,12 +462,14 @@ var projectCard = (item) => {
       ]),
       progressBar(fraction(project.done, project.active + project.blocked + project.open), color),
       ForEach({ items: () => next && !expanded() ? [next] : [], key: (task) => task.id }, (task) => HStack({ spacing: 6 }, [
-        Image(statusOf(task().status).symbol).font(9).color(statusOf(task().status).color),
+        statusIcon(task().status),
         Text(task().title).font(11).color("secondary").lineLimit(1).truncation("tail"),
         Spacer({ minLength: 0 })
       ]))
     ]).cursor("pointer").onTap(() => setExpanded(!expanded())),
-    ForEach({ items: () => expanded() ? links : [], key: (link) => link.title }, (link) => linkRow(link())),
+    VStack({ spacing: 0 }, [
+      ForEach({ items: () => expanded() ? links : [], key: (link) => link.title }, (link) => linkRow(link()))
+    ]),
     VStack({ spacing: 1 }, [
       ForEach({ items: () => expanded() ? project.tasks : [], key: (task) => task.id }, (task) => taskRow(task()))
     ])
@@ -483,46 +480,64 @@ var STATES = [
   { title: "Blocked", holds: (project) => !project.active && project.blocked > 0 },
   { title: "Quiet", holds: (project) => !project.active && !project.blocked }
 ];
-var projectsSection = (projects) => {
+var stateGroup = (title, projects) => {
   const [expanded, setExpanded] = signal(true);
-  const groups = STATES.map(({ title, holds }) => ({ title, projects: projects.filter(holds) })).filter((group) => group.projects.length);
   return VStack({ spacing: 6 }, [
-    HStack({ spacing: 4 }, [
-      Text("PROJECTS").font(10).weight("semibold").color("secondary"),
-      Text(String(projects.length)).font(10).monospaced().color("tertiary"),
-      Spacer({ minLength: 0 }),
-      chevron(expanded)
-    ]).paddingHorizontal(4).cursor("pointer").onTap(() => setExpanded(!expanded())),
-    ForEach({ items: () => expanded() ? groups : [], key: (group) => group.title }, (group) => VStack({ spacing: 6 }, [
-      groupTitle(group().title, group().projects.length),
-      ForEach({ items: group().projects, key: (project) => project.slug }, projectCard)
+    HStack({ spacing: 4 }, [groupTitle(title, projects.length), chevron(expanded)]).paddingTrailing(4).cursor("pointer").onTap(() => setExpanded(!expanded())),
+    ForEach({ items: () => expanded() ? projects : [], key: (project) => project.slug }, projectCard)
+  ]);
+};
+var matches = (listed, query) => {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  return listed.filter(({ task }) => {
+    const haystack = `${task.title} ${task.id}`.toLowerCase();
+    return words.every((word) => haystack.includes(word));
+  });
+};
+var workBody = (entry) => {
+  const [query, setQuery] = signal("");
+  const listed = listedTasks(entry);
+  const found = computed(() => matches(listed, query()));
+  const searching = () => query().trim() !== "";
+  return VStack({ spacing: 10 }, [
+    searchField("Search tasks…", setQuery),
+    ForEach({ items: () => searching() ? ["results"] : [], key: (name) => name }, () => VStack({ spacing: 1 }, [
+      ForEach({ items: found, key: (item) => item.task.id }, (item) => taskRow(item().task, item().color)),
+      Text(() => found().length ? "" : "No matching tasks.").font(11).color("tertiary").paddingHorizontal(4)
+    ])),
+    ForEach({ items: () => searching() ? [] : ["browse"], key: (name) => name }, () => VStack({ spacing: 10 }, [
+      tasksCard(entry),
+      ...STATES.flatMap(({ title, holds }) => {
+        const projects = entry.projects.filter(holds);
+        return projects.length ? [stateGroup(title, projects)] : [];
+      }),
+      ...entry.projects.length ? [] : [note("No projects yet.")]
     ]))
   ]);
 };
-var workBody = (entry) => VStack({ spacing: 10 }, [
-  tasksCard(entry),
-  ...entry.projects.length ? [projectsSection(entry.projects)] : [note("No projects yet.")]
-]);
 var workPage = ({ tabs, home, homes, pick }) => {
   const entry = () => {
     const path = home();
     return path ? DATA.homes[path] : undefined;
   };
   return VStack({ spacing: 8 }, [
-    HStack({ spacing: 6 }, [
+    HStack({ spacing: 2 }, [
       tabs,
+      Spacer({ minLength: 4 }),
       ForEach({ items: () => entry() ? [home() ?? ""] : [], key: (path) => path }, (path) => {
         const current = DATA.homes[path()];
-        return HStack({ spacing: 6 }, [
-          ...current ? [pageChip("square.grid.3x3", "Dashboard", `${current.dashboard}#today`)] : [],
-          ...current?.roadmap ? [pageChip("map", "Roadmap", current.roadmap)] : []
+        return HStack({ spacing: 2 }, [
+          ...current ? [
+            toolIcon("square.grid.3x3", "Dashboard", () => cmux("browser.tab.new", { url: `${current.dashboard}#today` }))
+          ] : [],
+          ...current?.roadmap ? [toolIcon("map", "Roadmap", () => cmux("browser.tab.new", { url: current.roadmap ?? "" }))] : []
         ]);
       }),
-      Spacer({ minLength: 0 }),
       ...homes.length > 1 ? [
         Menu(() => homeLabel(home() ?? ""), homes.map((path) => Button(homeLabel(path), () => pick(path))))
-      ] : []
-    ]).paddingHorizontal(4),
+      ] : [],
+      reloadButton()
+    ]),
     scopedPage(home, (_path, current) => workBody(current))
   ]).paddingHorizontal(6);
 };
@@ -553,9 +568,9 @@ var app = () => {
   const tabs = () => HStack({ spacing: 2 }, [
     tabIcon("square.grid.2x2", "Manager", () => tab() === "manager", () => setTab("manager")),
     tabIcon("square.stack.3d.up.fill", "Work", () => tab() === "work", () => setTab("work"))
-  ]).fixedSize();
+  ]).padding(2).background("#7f7f7f1f").cornerRadius(8).fixedSize();
   return VStack({ spacing: 8 }, [
-    ForEach({ items: () => [tab()], key: (name) => name }, (name) => name() === "manager" ? manager({ header: tabs() }) : workPage({
+    ForEach({ items: () => [tab()], key: (name) => name }, (name) => name() === "manager" ? manager({ header: tabs(), trailing: reloadButton() }) : workPage({
       tabs: tabs(),
       home: current,
       homes,

@@ -3,7 +3,7 @@
  * Every agent on this Mac, and the work each one keeps.
  *
  *   Manager   every session, sorted by what needs you (cmux Manager)
- *   Work      the agent's dashboard and roadmap, and a card per project that opens into its tasks
+ *   Work      a search over the agent's tasks, every task at a glance, and its projects by state
  *
  * The workspace you're in picks the agent; the menu on Work picks another.
  *
@@ -16,7 +16,7 @@
 import { manager } from 'cmux-custom-manager/manager';
 import { workPage } from './pages/work';
 import { scopedHome, type Pin } from './scope';
-import { tabIcon } from './style';
+import { reloadButton, tabIcon } from './style';
 
 type Tab = 'manager' | 'work';
 
@@ -49,13 +49,17 @@ const app = () => {
         () => tab() === 'work',
         () => setTab('work')
       )
-    ]).fixedSize();
+    ])
+      .padding(2)
+      .background('#7f7f7f1f')
+      .cornerRadius(8)
+      .fixedSize();
 
   // Keyed by tab, so leaving one disposes it and coming back builds it fresh.
   return VStack({ spacing: 8 }, [
     ForEach({ items: () => [tab()], key: (name) => name }, (name) =>
       name() === 'manager'
-        ? manager({ header: tabs() })
+        ? manager({ header: tabs(), trailing: reloadButton() })
         : workPage({
             tabs: tabs(),
             home: current,

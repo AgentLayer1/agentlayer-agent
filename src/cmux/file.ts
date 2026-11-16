@@ -3,9 +3,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { isRecord } from '@/shared/json-block';
 import { compareSemver } from '@/upgrade/version';
-import type { HomeEntry } from './sidebar/data';
-
-export const SIDEBAR_NAME = 'agentlayer';
+import { SIDEBAR_NAME, type HomeEntry } from './sidebar/data';
 
 export const sidebarsDir = (): string => join(homedir(), '.config', 'cmux', 'sidebars');
 

@@ -43,11 +43,17 @@ run('Work opens the dashboard and the roadmap as full tabs', () => {
   expect(sidebar.tap('Roadmap')?.params).toEqual({ url: NOVA_ENTRY.roadmap ?? '' });
 });
 
+run('both tabs end their top row with a button that reloads the sidebar’s file', () => {
+  const reload = { kind: 'cmux', method: 'sidebar.custom.reload', params: { name: 'agentlayer' } };
+  expect(mount(installed(), CMUX_DATA).tap('Reload the sidebar')).toEqual(reload);
+  expect(onWork().tap('Reload the sidebar')).toEqual(reload);
+});
+
 const between = (texts: string[], from: string, to: string) => texts.slice(texts.indexOf(from), texts.indexOf(to));
 
 run('the Tasks card leads with every live task counted, what is overdue or due this week, folded', () => {
   const texts = onWork().visibleTexts();
-  expect(between(texts, 'Tasks', 'PROJECTS'), 'title, 1 active, 1 blocked, 3 open, then the due tallies').toEqual([
+  expect(between(texts, 'Tasks', 'AT WORK'), 'title, 1 active, 1 blocked, 3 open, then the due tallies').toEqual([
     'Tasks',
     '1',
     '1',
@@ -57,10 +63,10 @@ run('the Tasks card leads with every live task counted, what is overdue or due t
   ]);
 });
 
-run('the Tasks card opens into the agenda: in flight, then by due date, each row with its project', () => {
+run('the Tasks card opens into the agenda: in flight, then by due date, leaving undated tasks to the counts', () => {
   const sidebar = onWork();
   sidebar.tap('Tasks');
-  const titles = between(sidebar.visibleTexts(), 'IN FLIGHT', 'PROJECTS').filter(
+  const titles = between(sidebar.visibleTexts(), 'IN FLIGHT', 'AT WORK').filter(
     (text) => /^[A-Z ]+$/.test(text) || text.includes(' the ')
   );
   expect(titles).toEqual([
@@ -69,19 +75,16 @@ run('the Tasks card opens into the agenda: in flight, then by due date, each row
     'THIS WEEK',
     'Fix the checkout total',
     'THIS MONTH',
-    'Write the release notes',
-    'SOMEDAY',
-    'Wait on the supplier price list',
-    'Photograph the spring range'
+    'Write the release notes'
   ]);
 });
 
 run('projects are grouped at work, blocked and quiet, each card with its counts and the task it needs next', () => {
   const texts = onWork().visibleTexts();
-  const outline = texts
-    .slice(texts.indexOf('PROJECTS'))
-    .filter((text) => ['PROJECTS', 'AT WORK', 'BLOCKED', 'QUIET', 'acme-app', 'garden-shop', 'blog'].includes(text));
-  expect(outline).toEqual(['PROJECTS', 'AT WORK', 'acme-app', 'BLOCKED', 'garden-shop', 'QUIET', 'blog']);
+  const outline = texts.filter((text) =>
+    ['AT WORK', 'BLOCKED', 'QUIET', 'acme-app', 'garden-shop', 'blog'].includes(text)
+  );
+  expect(outline).toEqual(['AT WORK', 'acme-app', 'BLOCKED', 'garden-shop', 'QUIET', 'blog']);
   expect(texts.slice(texts.indexOf('QUIET'))).toEqual(['QUIET', '1', 'blog']);
   expect(between(texts, 'acme-app', 'BLOCKED'), 'name, 1 active, 2 open, then the next task').toEqual([
     'acme-app',
@@ -91,12 +94,30 @@ run('projects are grouped at work, blocked and quiet, each card with its counts 
   ]);
 });
 
-run('the projects section folds away and back', () => {
+run('each state group folds away and back on its own', () => {
   const sidebar = onWork();
-  sidebar.tap('PROJECTS');
+  sidebar.tap('AT WORK');
   expect(sidebar.visibleTexts()).not.toContain('acme-app');
-  sidebar.tap('PROJECTS');
+  expect(sidebar.visibleTexts()).toContain('garden-shop');
+  sidebar.tap('AT WORK');
   expect(sidebar.visibleTexts()).toContain('acme-app');
+});
+
+run('the search lists the tasks whose title or id has every word, in place of the cards', () => {
+  const sidebar = onWork();
+  sidebar.type('the CHECKOUT');
+  const texts = sidebar.visibleTexts();
+  expect(texts.filter((text) => text.includes(' the '))).toEqual(['Fix the checkout total']);
+  expect(texts).not.toContain('AT WORK');
+  sidebar.type('gs-20');
+  expect(sidebar.visibleTexts().filter((text) => text.includes(' the '))).toEqual([
+    'Wait on the supplier price list',
+    'Photograph the spring range'
+  ]);
+  sidebar.type('nothing like this');
+  expect(sidebar.visibleTexts()).toContain('No matching tasks.');
+  sidebar.type('');
+  expect(sidebar.visibleTexts()).toContain('AT WORK');
 });
 
 run('a card opens into its roadmap, its pins, then its tasks with id, priority, due words and comments', () => {
