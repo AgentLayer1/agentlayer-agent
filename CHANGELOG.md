@@ -6,7 +6,7 @@ All notable changes to **agentlayer** are recorded here. The format follows
 
 This plugin was `agent-kevin` through 0.9.4. Those releases are in the
 [agent-kevin CHANGELOG at v0.9.4](https://github.com/AgentLayer1/agentlayer-agent/blob/v0.9.4/CHANGELOG.md);
-a home moves from it with that plugin's `migrate` command, not with an upgrade.
+a home moves from it with that plugin's `/agent-kevin:move`, not with an upgrade.
 
 The version that matters is the one in `.claude-plugin/plugin.json`. `/plugin update`
 pulls new plugin **code**; it does not touch a consumer's HOME files (`AGENTS.md`,
