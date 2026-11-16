@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { FILES, PLUGIN_VERSION } from '@/config';
 import { nowISO, todayDate } from '@/shared/date';
 import { RUNTIME_DIR, pluginName } from '@/shared/naming';
+import { compareSemver, parseChangelog } from '@/upgrade/version';
 import { readLedger, recordOutcome, stampRow } from './ledger';
 import type { Notice } from './notices';
 import { DOWNGRADE_AFTER, applyLedger, collectNotices, rowDraws, syncLevel, upgradeLevel } from './notices';
@@ -36,6 +37,9 @@ const syncedDaysAgo = (days: number) => ({
 });
 /** Older than any release, so a home recorded at it always has an upgrade waiting. */
 const OLDER = '0.0.1';
+/** The release before the installed one, so a home recorded at it is exactly one behind. */
+const ONE_BEHIND =
+  parseChangelog().find((entry) => compareSemver(entry.version, PLUGIN_VERSION) < 0)?.version ?? OLDER;
 
 const fixture: Notice = {
   id: 'fixture',
@@ -101,7 +105,7 @@ describe('upgrade escalation', () => {
   });
 
   test('leads sync whatever their levels, since the upgrade ends in a sync', async () => {
-    const quiet = await withHome({ ...versionAt(OLDER), ...syncedDaysAgo(9) }, () => collectNotices());
+    const quiet = await withHome({ ...versionAt(ONE_BEHIND), ...syncedDaysAgo(9) }, () => collectNotices());
     expect(quiet.map((notice) => [notice.id, notice.level])).toEqual([
       ['upgrade', 'nudge'],
       ['sync', 'alert']
