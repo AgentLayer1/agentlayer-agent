@@ -1,4 +1,4 @@
-import { cardRow } from 'cmux-custom-dashboard/components';
+import { cardRow } from 'cmux-custom-manager/components';
 import type { HomeEntry, Link } from '../data';
 import { needsIn } from '../cards';
 import { hueColor, label, note, open, row, symbol } from '../style';

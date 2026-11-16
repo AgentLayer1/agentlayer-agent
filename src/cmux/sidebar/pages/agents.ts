@@ -1,5 +1,5 @@
-import { cardRow } from 'cmux-custom-dashboard/components';
-import type { Card } from 'cmux-custom-dashboard/model';
+import { cardRow } from 'cmux-custom-manager/components';
+import type { Card } from 'cmux-custom-manager/model';
 import { cardsIn } from '../cards';
 import { label, note } from '../style';
 import { homeLabel } from '../view';

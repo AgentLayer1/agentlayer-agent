@@ -1,4 +1,4 @@
-import { agentCards, bySection, ORDER, type Card } from 'cmux-custom-dashboard/model';
+import { agentCards, bySection, ORDER, type Card } from 'cmux-custom-manager/model';
 import { homeOf } from './scope';
 
 /**

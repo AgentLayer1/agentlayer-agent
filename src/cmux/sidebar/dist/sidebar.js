@@ -9,7 +9,7 @@
  * Built from src/cmux/sidebar/ in the agentlayer plugin, where the comments explaining the code live.
  */
 
-// node_modules/cmux-custom-dashboard/src/model.ts
+// node_modules/cmux-custom-manager/src/model.ts
 var RECENT_SECS = 60 * 60;
 var ENDED_SECS = 24 * 60 * 60;
 var SECTIONS = {
@@ -89,7 +89,7 @@ var needsInputThenNewest = (first, second) => Number(second.agent.status === "ne
 var bySection = (cards) => Object.fromEntries(ORDER.map((section) => [section, cards.filter((card) => card.section === section).toSorted(needsInputThenNewest)]));
 var jump = (workspaceId, focusId) => focusId ? cmux("surface.focus", { surface_id: focusId, workspace_id: workspaceId }) : cmux("workspace.select", { workspace_id: workspaceId });
 
-// node_modules/cmux-custom-dashboard/src/components.ts
+// node_modules/cmux-custom-manager/src/components.ts
 var YOUR_MOVE = "#FFD60A";
 var MAIN_BRANCH = /^(main|master)$/;
 var dotColor = (card) => card.section === "needs" && card.agent.status !== "needs_input" ? YOUR_MOVE : SECTIONS[card.section].color;

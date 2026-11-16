@@ -9,8 +9,8 @@
  * Built from src/cmux/sidebar/ in the agentlayer plugin, where the comments explaining the code live.
  */
 
-import { chip } from 'cmux-custom-dashboard/components';
-import { SECTIONS } from 'cmux-custom-dashboard/model';
+import { chip } from 'cmux-custom-manager/components';
+import { SECTIONS } from 'cmux-custom-manager/model';
 import { createAsk } from './ask';
 import { needsIn } from './cards';
 import { agentsPage } from './pages/agents';
