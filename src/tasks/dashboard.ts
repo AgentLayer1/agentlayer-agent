@@ -8,122 +8,97 @@
  */
 import { FOLDERS } from '@/config';
 import { agentDisplayName } from '@/shared/agent-name';
-import type { TaskFile, TaskFrontmatter } from '@/tasks/types';
-import { daysAgoDate, todayDate } from '@/shared/date';
+import { shiftDate, todayDate } from '@/shared/date';
 import { readText } from '@/shared/text';
+import { buildWork } from '@/work/build';
+import type { Work, WorkTask } from '@/work/model';
+import { closedSince, inPlace, overdue, stale } from '@/work/views';
 import { writeFileSync } from 'fs';
 import { basename, join } from 'path';
 import { issueLabel } from './issue';
-import { scanAllTasks, scanMalformedTasks } from './scan';
+import { scanMalformedTasks } from './scan';
 
 // ── Section building ──────────────────────────────────────────────────
 
 export interface DashboardSections {
-  active: TaskFile[];
-  blocked: TaskFile[];
-  overdue: TaskFile[];
-  stale: TaskFile[];
-  closedRecent: TaskFile[];
+  active: WorkTask[];
+  blocked: WorkTask[];
+  overdue: WorkTask[];
+  stale: WorkTask[];
+  closedRecent: WorkTask[];
 }
 
 const PRIORITY_ORDER: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
 
-const isOpenStatus = (s: string): boolean => s !== 'done' && s !== 'cancelled';
+const priorityRank = (priority: string): number => PRIORITY_ORDER[priority] ?? 9;
 
-const priorityRank = (p: string): number => PRIORITY_ORDER[p] ?? 9;
+const byPriorityThenProject = (a: WorkTask, b: WorkTask): number =>
+  priorityRank(a.priority) - priorityRank(b.priority) || a.project.localeCompare(b.project);
 
-const byPriorityThenProject = (a: TaskFile, b: TaskFile): number => {
-  const pd = priorityRank(a.frontmatter.priority) - priorityRank(b.frontmatter.priority);
-  return pd !== 0 ? pd : a.frontmatter.project.localeCompare(b.frontmatter.project);
-};
-
-/** Compute all dashboard sections from a flat task list. Pure — no I/O. */
-export const buildSections = (tasks: TaskFile[]): DashboardSections => {
-  const today = todayDate();
-  const sevenDaysAgo = daysAgoDate(7);
-  const fourteenDaysAgo = daysAgoDate(14);
-
-  const active = tasks
-    .filter((t) => t.frontmatter.status === 'active' || t.frontmatter.status === 'open')
-    .sort(byPriorityThenProject);
-
-  const blocked = tasks.filter((t) => t.frontmatter.status === 'blocked').sort(byPriorityThenProject);
-
-  const overdue = tasks
-    .filter((t) => isOpenStatus(t.frontmatter.status) && t.frontmatter.due && t.frontmatter.due < today)
-    .sort((a, b) => a.frontmatter.due.localeCompare(b.frontmatter.due));
-
-  const stale = tasks
-    .filter((t) => isOpenStatus(t.frontmatter.status) && t.frontmatter.updated && t.frontmatter.updated < sevenDaysAgo)
-    .sort((a, b) => a.frontmatter.updated.localeCompare(b.frontmatter.updated));
-
-  const closedRecent = tasks
-    .filter(
-      (t) =>
-        (t.frontmatter.status === 'done' || t.frontmatter.status === 'cancelled') &&
-        t.frontmatter.closed &&
-        t.frontmatter.closed >= fourteenDaysAgo
-    )
-    .sort((a, b) => b.frontmatter.closed.localeCompare(a.frontmatter.closed))
-    .slice(0, 20);
-
-  return { active, blocked, overdue, stale, closedRecent };
+/** Every section of TASKS.md, read from the work model against `today`. Pure — no I/O. */
+export const buildSections = (work: Work, today: string): DashboardSections => {
+  const placed = inPlace(work);
+  return {
+    active: placed.filter((task) => task.status === 'active' || task.status === 'open').toSorted(byPriorityThenProject),
+    blocked: placed.filter((task) => task.status === 'blocked').toSorted(byPriorityThenProject),
+    overdue: overdue(work, today).toSorted((a, b) => a.due.localeCompare(b.due)),
+    stale: stale(work, today).toSorted((a, b) => a.updated.localeCompare(b.updated)),
+    closedRecent: closedSince(work, shiftDate(today, -14))
+      .toSorted((a, b) => b.closed.localeCompare(a.closed))
+      .slice(0, 20)
+  };
 };
 
 // ── Formatting ────────────────────────────────────────────────────────
 
 const fileSlug = (filePath: string, fallback: string): string => basename(filePath, '.md') || fallback;
 
-const taskLink = (t: TaskFile): string => `[[${fileSlug(t.filePath, t.frontmatter.id)}|${t.frontmatter.id}]]`;
+const taskLink = (task: WorkTask): string => `[[${fileSlug(task.path, task.id)}|${task.id}]]`;
 
 type MetaField = keyof Pick<
-  TaskFrontmatter,
-  'project' | 'priority' | 'status' | 'due' | 'updated' | 'closed' | 'blocked_by' | 'depends_on' | 'assignee'
+  WorkTask,
+  'project' | 'priority' | 'status' | 'due' | 'updated' | 'closed' | 'blockedBy' | 'dependsOn' | 'assignee'
 >;
 
-const fmtMeta = (t: TaskFile, fields: MetaField[]): string => {
-  const parts = fields.flatMap((f) => {
-    const v = t.frontmatter[f];
-    const empty = Array.isArray(v) ? v.length === 0 : !v;
-    return empty ? [] : [`${f}: ${Array.isArray(v) ? v.join(', ') : v}`];
+// TASKS.md names each field as the task file's frontmatter does.
+const META_LABEL: Readonly<Partial<Record<MetaField, string>>> = { blockedBy: 'blocked_by', dependsOn: 'depends_on' };
+
+const fmtMeta = (task: WorkTask, fields: MetaField[]): string => {
+  const parts = fields.flatMap((field) => {
+    const entry = task[field];
+    const empty = Array.isArray(entry) ? entry.length === 0 : !entry;
+    return empty ? [] : [`${META_LABEL[field] ?? field}: ${Array.isArray(entry) ? entry.join(', ') : entry}`];
   });
   return parts.length === 0 ? '' : ` _(${parts.join(' · ')})_`;
 };
 
-const issueLink = (t: TaskFile): string => {
-  const label = issueLabel(t.frontmatter.issue);
-  return label ? ` ↗ [${label}](${t.frontmatter.issue})` : '';
+const issueLink = (task: WorkTask): string => {
+  const label = issueLabel(task.issue);
+  return label ? ` ↗ [${label}](${task.issue})` : '';
 };
 
-const taskLine = (t: TaskFile, fields: MetaField[]): string =>
-  `- ${taskLink(t)} **${t.frontmatter.title}**${issueLink(t)}${fmtMeta(t, fields)}`;
+const taskLine = (task: WorkTask, fields: MetaField[]): string =>
+  `- ${taskLink(task)} **${task.title}**${issueLink(task)}${fmtMeta(task, fields)}`;
 
-const groupByProject = (tasks: TaskFile[]): [string, TaskFile[]][] => {
-  const map = new Map<string, TaskFile[]>();
-  for (const t of tasks) {
-    const list = map.get(t.frontmatter.project) ?? [];
-    list.push(t);
-    map.set(t.frontmatter.project, list);
-  }
-  return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
-};
+const groupByProject = (tasks: WorkTask[]): [string, WorkTask[]][] =>
+  [...Map.groupBy(tasks, (task) => task.project).entries()].sort(([a], [b]) => a.localeCompare(b));
 
 const sectionBody = (lines: string[]): string => (lines.length === 0 ? '_(none)_' : lines.join('\n'));
 
 // Every stale task already has its full line under Active or Blocked, so this section is only
 // an index of ids with their last-update date, oldest first.
-const renderStale = (tasks: TaskFile[]): string =>
+const renderStale = (tasks: WorkTask[]): string =>
   sectionBody(
     groupByProject(tasks).map(
       ([project, list]) =>
         `- **${project}**: ${list
-          .toSorted((left, right) => left.frontmatter.updated.localeCompare(right.frontmatter.updated))
-          .map((task) => `${task.frontmatter.id} (${task.frontmatter.updated.slice(5)})`)
+          .toSorted((left, right) => left.updated.localeCompare(right.updated))
+          .map((task) => `${task.id} (${task.updated.slice(5)})`)
           .join(' · ')}`
     )
   );
 
-const renderActive = (tasks: TaskFile[]): string => {
+const renderActive = (tasks: WorkTask[]): string => {
   if (tasks.length === 0) return '_(none)_';
   return groupByProject(tasks)
     .map(([project, list]) => {
@@ -148,7 +123,7 @@ export const formatDashboard = (
     : '';
 
   const blockedBody = sectionBody(
-    sections.blocked.map((t) => taskLine(t, ['project', 'priority', 'blocked_by', 'depends_on']))
+    sections.blocked.map((t) => taskLine(t, ['project', 'priority', 'blockedBy', 'dependsOn']))
   );
   const overdueBody = sectionBody(sections.overdue.map((t) => taskLine(t, ['project', 'priority', 'due', 'status'])));
   const closedBody = sectionBody(sections.closedRecent.map((t) => taskLine(t, ['project', 'status', 'closed'])));
@@ -216,8 +191,8 @@ const sectionCounts = (sections: DashboardSections): DashboardCounts => ({
   closedRecent: sections.closedRecent.length
 });
 
-/** Rebuild and write projects/TASKS.md. Preserves the goals block. */
-export const writeDashboard = (): DashboardCounts => {
+/** Rebuild and write projects/TASKS.md from the work model. Preserves the goals block. */
+export const writeDashboard = (work: Work): DashboardCounts => {
   const tasksFile = join(FOLDERS.PROJECTS, 'TASKS.md');
   let existing = '';
   try {
@@ -227,7 +202,7 @@ export const writeDashboard = (): DashboardCounts => {
   }
   const goalsBlock = extractGoalsBlock(existing);
 
-  const sections = buildSections(scanAllTasks());
+  const sections = buildSections(work, todayDate());
   writeFileSync(tasksFile, formatDashboard(sections, goalsBlock, scanMalformedTasks()));
 
   return sectionCounts(sections);
@@ -243,14 +218,15 @@ export const writeDashboard = (): DashboardCounts => {
 let htmlInFlight = false;
 let htmlDirty = false;
 
-const rebuildHtmlSafe = (): void => {
+// A rebuild that was asked for while another ran reads the files again, since they changed since `work` was built.
+const rebuildHtmlSafe = (work?: Work): void => {
   if (htmlInFlight) {
     htmlDirty = true;
     return;
   }
   htmlInFlight = true;
   void import('@/status/html')
-    .then(({ writeDashboardHtml }) => writeDashboardHtml())
+    .then(({ writeDashboardHtml }) => writeDashboardHtml(work))
     .catch(() => {
       // best-effort — TASKS.md is already written; the HTML view catches up
       // on the next mutation or explicit dashboard call
@@ -284,8 +260,9 @@ export const writeDashboardSafe = (): DashboardCounts | null => {
     return null;
   }
   try {
-    const counts = writeDashboard();
-    rebuildHtmlSafe();
+    const work = buildWork();
+    const counts = writeDashboard(work);
+    rebuildHtmlSafe(work);
     return counts;
   } catch {
     return null;
@@ -302,8 +279,9 @@ export const withDashboardBatch = <T>(fn: () => T): T => {
     if (batchDepth === 0 && pendingWrite) {
       pendingWrite = false;
       try {
-        writeDashboard();
-        rebuildHtmlSafe();
+        const work = buildWork();
+        writeDashboard(work);
+        rebuildHtmlSafe(work);
       } catch {
         // best-effort — caller has already succeeded
       }

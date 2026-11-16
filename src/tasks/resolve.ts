@@ -1,8 +1,7 @@
 import type { TaskFile } from '@/tasks/types';
-import { daysAgoDate, todayDate } from '@/shared/date';
+import { todayDate } from '@/shared/date';
+import { isDueSoon, isOverdue, isStale } from '@/work/views';
 import { isValidTransition } from './schema';
-
-export const DUE_SOON_DAYS = 14;
 
 export interface ScanResult {
   total: number;
@@ -26,28 +25,6 @@ const buildStatusMap = (tasks: TaskFile[]): Map<string, string> =>
 const allChecked = (task: TaskFile): boolean =>
   task.checklist.length > 0 && task.checklist.every((item) => item.checked);
 
-/** Check if a task is overdue. */
-const isOverdue = (task: TaskFile): boolean => {
-  if (!task.frontmatter.due) return false;
-  if (task.frontmatter.status === 'done' || task.frontmatter.status === 'cancelled') return false;
-  return task.frontmatter.due < todayDate();
-};
-
-/** Open work due today or within DUE_SOON_DAYS; overdue tasks are counted as overdue, not here. */
-const isDueSoon = (task: TaskFile): boolean => {
-  if (!task.frontmatter.due) return false;
-  if (task.frontmatter.status === 'done' || task.frontmatter.status === 'cancelled') return false;
-  return task.frontmatter.due >= todayDate() && task.frontmatter.due <= daysAgoDate(-DUE_SOON_DAYS);
-};
-
-/** Check if a task is stale (not closed, no update in 7+ days) — same
- *  definition TASKS.md's Stale section uses, so the two views agree. */
-const isStale = (task: TaskFile): boolean => {
-  if (task.frontmatter.status === 'done' || task.frontmatter.status === 'cancelled') return false;
-  if (!task.frontmatter.updated) return false;
-  return task.frontmatter.updated < daysAgoDate(7);
-};
-
 /**
  * Resolve dependencies and compute auto-status changes.
  * Returns a ScanResult describing what changed — does NOT write files.
@@ -61,6 +38,7 @@ const isStale = (task: TaskFile): boolean => {
  */
 export const resolveTasks = (tasks: TaskFile[], archived: TaskFile[] = []): ScanResult => {
   const statusMap = buildStatusMap([...archived, ...tasks]);
+  const today = todayDate();
   const result: ScanResult = {
     total: tasks.length,
     unblocked: [],
@@ -120,16 +98,16 @@ export const resolveTasks = (tasks: TaskFile[], archived: TaskFile[] = []): Scan
     }
 
     // Overdue check
-    if (isOverdue(task)) {
+    if (isOverdue(fm, today)) {
       result.overdue.push(task);
     }
 
-    if (isDueSoon(task)) {
+    if (isDueSoon(fm, today)) {
       result.dueSoon.push(task);
     }
 
     // Stale check
-    if (isStale(task)) {
+    if (isStale(fm, today)) {
       result.stale.push(task);
     }
 
