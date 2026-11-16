@@ -754,7 +754,7 @@ Gives a cmux user the AgentLayer sidebar: one native panel in cmux's right sideb
 
 **(1) Check cmux:** `test -d /Applications/cmux.app && echo CMUX || echo NO_CMUX`. On `NO_CMUX`, stop: the sidebar needs the cmux app, from https://cmux.com.
 
-**(2) Launcher.** `AskUserQuestion`: "How do you start this agent in a terminal?" — `claude` (Recommended) / another command (Other, for a shell function or alias that starts this agent its own way). The Ask page types `cd '<HOME_DIR>' && <launcher>` into the new tab. For anything but `claude`, set `AGENT_LAUNCHER` to it in `$SETTINGS_FILE` `env` (§D.2).
+**(2) Launcher.** The Ask page types `cd '<HOME_DIR>' && <launcher>` into a new tab. The launcher works itself out: `agent` when the home has its own Claude subscription (`.state/secrets/.env.claude.json`, which the plugin's `agent` launcher loads), otherwise `claude`. Ask only if the operator starts this agent some other way (an alias of their own); then set `AGENT_LAUNCHER` to that command in `$SETTINGS_FILE` `env` (§D.2), which overrides both.
 
 **(3) Install.** The sandbox can't write `~/.config/cmux/`, and cmux's CLI only answers from a terminal inside cmux, so hand the operator this line to run in a cmux terminal:
 
@@ -770,7 +770,7 @@ It checks the cmux version, adds this home to the sidebar (starting the file if 
 ✅ cmux pack activated.
 
 Sidebar:           ~/.config/cmux/sidebars/agentlayer.js (this home joined)
-Launcher:          <launcher>
+Launcher:          <agent or claude, or AGENT_LAUNCHER>
 Tool permissions:  none
 Keys:              none
 
