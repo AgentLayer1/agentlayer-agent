@@ -1,5 +1,5 @@
 /**
- * Wrap third-party content (originating outside the daemon's trust boundary —
+ * Wrap third-party content (originating outside the plugin's trust boundary —
  * web pages, scrapes, external API responses) so the model treats it as data,
  * not instruction. Reach for this whenever a new boundary-crossing source is
  * added. Any wrapper tag spelled inside the label or content is defused, so the

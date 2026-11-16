@@ -16,7 +16,7 @@
  * An explicit `owner/repo` always wins. Mirrors how setup-worktree pins its target.
  *
  * These tools only read: list/view PRs, diffs, checks, and diagnose failing workflow runs. The
- * writes (issues, a PR's title and description) live in github-writes.ts; nothing merges or
+ * writes (issues, a PR's title and description) live in writes.ts; nothing merges or
  * re-runs. Whether a write is allowed is up to the token's permissions.
  *
  * GitHub responses cross a trust boundary, so every payload is wrapped with `untrusted()`.

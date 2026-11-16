@@ -1,6 +1,6 @@
 ---
 name: configure-skills
-description: Configure the agent's optional skill packs (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, Slack) or author a brand-new custom skill. The pack skills ship with the plugin and auto-load — this skill just wires up API keys, MCP server registrations, database connections, coding rules, and tool permissions. Custom-authored skills land in `<HOME>/.claude/skills/<name>/`. Invoked at the end of /agentlayer:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
+description: Configure the agent's optional skill packs (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, Slack) or author a brand-new custom skill. The pack skills ship with the plugin and auto-load — this skill just wires up API keys, MCP server registrations, database connections, coding rules, and tool permissions. Custom-authored skills land in `<HOME>/.claude/skills/<name>/`. Invoked at the end of /agentlayer:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
 allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), Bash(cp *), Bash(ls *), Bash(rm *), Bash(rmdir *), Bash(bunx skills *), Bash(test *), Bash(head *), Bash(command -v *), Bash(bun -e *), Bash(sw_vers *), Bash(xcode-select -p), Bash(xcodebuild -version), Bash(xcrun -f *), Bash(xcrun mcp-server status)
 ---
 
@@ -9,7 +9,7 @@ allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), B
 > **Plugin root.** Claude Code fills in `CLAUDE_PLUGIN_ROOT`; Codex leaves it unset. Under Codex, read every `CLAUDE_PLUGIN_ROOT` path in this skill and its playbooks as this skill's base directory two levels up (the `<skill>` block's `<path>`).
 
 This skill manages the agent's optional capabilities. Use it to:
-1. **Configure a pack** (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, or App Store) — writes API keys, registers MCP servers, sets up database connections, seeds coding rules, grants tool permissions
+1. **Configure a pack** (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, or Slack) — writes API keys, registers MCP servers, sets up database connections, seeds coding rules, grants tool permissions
 2. **Deconfigure a pack** — revokes keys/MCP/permissions (the pack's SKILL.md files stay; they ship with the plugin)
 3. **Author a brand-new custom skill** — writes a new SKILL.md to your `<HOME>/.claude/skills/`
 
@@ -54,7 +54,7 @@ The data dir is the marker; it is the same one the resolver and every runtime gu
 `AskUserQuestion`:
 
 > **What would you like to do?**
-> - Configure a skill pack (SEO / Browser / Database / GitHub / API / Xcode / Helpdesk / App Store — Xcode on macOS only)
+> - Configure a skill pack (SEO / Browser / Database / GitHub / API / Xcode / Helpdesk / App Store / Slack — Xcode on macOS only)
 > - Register an external remote MCP server (hardened wrapper → `<HOME>/.mcp.json`)
 > - Install third-party skill libraries (via skills.sh)
 > - Deconfigure a skill pack

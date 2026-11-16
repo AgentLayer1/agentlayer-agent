@@ -15,11 +15,11 @@ The `agentlayer` plugin: an MCP server, hook handlers, a CLI, skills and mods th
 | `src/hooks/` | Session start (context, banner), the shell guard, and `handlers.ts`, which speaks each host's hook protocol |
 | `src/notices/`, `src/statusline/`, `src/roadmap/` | Banner and prompt-row notices, the status line, roadmap data |
 | `src/shared/` | Cross-domain code only. A module with one consumer lives with that consumer |
-| `src/contracts/` | Repo-wide tests: manifests, mods, skills, the old-name sweep, the tool registry |
+| `src/contracts/` | Repo-wide tests: manifests, mods, skills, the old-name sweep, the tool registry, the CLI's home and settings resolution |
 | `skills/<name>/` | `SKILL.md`, `references/`, and `scripts/` (with their tests beside them) |
 | `mods/` | In-process Claude Code mods; tested with `claude plugin test mods`, not `bun test` |
 | `templates/` | Files scaffolded into a new home |
-| `hooks/claude.json`, `.claude-plugin/`, `.codex-plugin/` | Host manifests |
+| `hooks/claude.json`, `.claude-plugin/`, `.codex-plugin/`, `.agents/plugins/` | Host manifests and marketplaces |
 
 ## Tools
 

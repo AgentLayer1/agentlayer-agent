@@ -6,9 +6,8 @@
  * - `in_flight`: filename if a compile run crashed mid-file, so the next run can re-attempt
  * - `query_count`: rolling counter (for debugging / cost visibility)
  * - `last_lint`: ISO timestamp of the last lint run
- *
- * Module-scoped naming convention: each module owns `.state/<module>.json`.
- * See app/src/heartbeat/state.ts for the sibling pattern.
+ * - `partial`: how far a multi-chunk slice got, and `feedback_picked`: the feedback hash handed out
+ *   (both described on `CompileState` in `knowledge/types.ts`)
  */
 
 import { FILES } from '@/config';

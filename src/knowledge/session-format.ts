@@ -1,7 +1,7 @@
 /**
  * Single source of truth for the session-log entry format. The writer
- * (`scripts/session-capture.ts`) and readers (`chunk.ts`, `context.ts`)
- * both import from here, so any change to the separator or header shape
+ * (`session-capture.ts`) and its readers (`chunk.ts`, `session-index.ts`,
+ * `hooks/context.ts`) import from here, so any change to the separator or header shape
  * propagates to everyone that needs to stay in sync.
  */
 
