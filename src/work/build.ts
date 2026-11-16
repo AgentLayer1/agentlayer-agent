@@ -4,7 +4,8 @@ import { FILES, FOLDERS } from '@/config';
 import { agentDisplayName, agentEmoji } from '@/shared/agent-name';
 import { firstParagraph } from '@/shared/text';
 import { projectHue } from '@/status/html-primitives';
-import { projectHues, projectPinLinks } from '@/status/surfaces';
+import { livePins, projectHues, projectPinLinks } from '@/status/surfaces';
+import { readReports } from '@/reports/read';
 import { discoverProjects, scanTasks } from '@/tasks/scan';
 import type { TaskFile } from '@/tasks/types';
 import { WORK_SCHEMA, type Work, type WorkProject, type WorkTask } from './model';
@@ -67,6 +68,8 @@ export const buildWork = (): Work => {
     roadmap: pageAt(FILES.ROADMAP),
     projects: slugs.map(toProject(projectHues())),
     tasks,
+    reports: readReports(),
+    pins: livePins().map((pin) => ({ title: pin.title, icon: pin.icon ?? '📌', path: fromHome(pin.path) })),
     malformed: scan.malformed.map(fromHome)
   };
 };

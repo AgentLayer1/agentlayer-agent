@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FILES, FOLDERS } from '@/config';
@@ -106,6 +106,16 @@ beforeAll(() => {
   mkdirSync(join(FOLDERS.PROJECTS, 'quiet', 'tasks'), { recursive: true });
   writeFileSync(join(FOLDERS.PROJECTS, 'quiet', 'tasks', 'qu-001-broken.md'), '  ---\nid: qu-001\n');
   writeFileSync(join(FOLDERS.PROJECTS, 'quiet', 'roadmap.html'), '<html></html>');
+  mkdirSync(join(FOLDERS.REPORTS, 'plans'), { recursive: true });
+  writeFileSync(join(FOLDERS.REPORTS, 'plans', '2026-11-08-0900-launch.md'), '# Launch plan\n');
+  writeFileSync(join(FOLDERS.REPORTS, 'plans', 'loose-notes.md'), '---\ntitle: "Loose notes"\n---\n');
+  const looseDay = new Date('2026-11-01T12:00:00Z');
+  utimesSync(join(FOLDERS.REPORTS, 'plans', 'loose-notes.md'), looseDay, looseDay);
+  writeFileSync(
+    FILES.REPORTS_INDEX,
+    '# Reports\n\n## 2026-11-09\n\n- 08:30 · [Morning brief \\[draft\\]](briefings/2026-11-09-0830-morning.md) · `briefing` · 🟠\n'
+  );
+  writeFileSync(FILES.REPORTS_PINNED, '# Pinned\n\n- 🗺️ [Launch plan](plans/2026-11-08-0900-launch.md)\n');
 });
 
 afterAll(() => {
@@ -139,6 +149,26 @@ describe('buildWork', () => {
     expect(work.projects.map((project) => project.slug)).toEqual(['acme', 'garden', 'quiet']);
     expect(work.projects[0]).toMatchObject({ hue: 210, description: 'The acme storefront.', roadmap: '' });
     expect(work.projects[2]?.roadmap).toBe(join('projects', 'quiet', 'roadmap.html'));
+  });
+
+  test('reports from the index and unindexed files, newest first, and the live home pins', () => {
+    const work = buildWork();
+    expect(work.reports.map((report) => [report.date, report.title, report.path, report.skill, report.status])).toEqual(
+      [
+        [
+          '2026-11-09',
+          'Morning brief [draft]',
+          join('reports', 'briefings', '2026-11-09-0830-morning.md'),
+          'briefing',
+          '🟠'
+        ],
+        ['2026-11-08', 'Launch plan', join('reports', 'plans', '2026-11-08-0900-launch.md'), '', ''],
+        ['2026-11-01', 'Loose notes', join('reports', 'plans', 'loose-notes.md'), '', '']
+      ]
+    );
+    expect(work.pins).toEqual([
+      { title: 'Launch plan', icon: '🗺️', path: join('reports', 'plans', '2026-11-08-0900-launch.md') }
+    ]);
   });
 
   test('the same files give the same model', () => {
@@ -214,6 +244,8 @@ test('a model that holds nothing for a home with no projects', () => {
     roadmap: '',
     projects: [],
     tasks: [],
+    reports: [],
+    pins: [],
     malformed: []
   };
   expect(projectLoads(empty)).toEqual([]);

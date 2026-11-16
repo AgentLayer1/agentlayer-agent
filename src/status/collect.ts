@@ -45,7 +45,8 @@ import {
 import { sanitizeHtml } from '@/status/sanitize-html';
 import { firstParagraph, readText, stripMarkdown } from '@/shared/text';
 import { buildWork } from '@/work/build';
-import type { Work, WorkTask } from '@/work/model';
+import type { Work, WorkReport, WorkTask } from '@/work/model';
+import { REPORT_FRONTMATTER_RE } from '@/reports/read';
 import { overdue, projectLoads, queue, stale, touchedRecently, withStatus, type ProjectLoad } from '@/work/views';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -53,7 +54,7 @@ import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { MOD_FEATURES, type ModFeature } from '../../mods/shared/catalog';
 import { collectAttentionView } from './attention';
 import type { AttentionView } from './attention-data';
-import { livePins, projectHues, surfaceFiles } from './surfaces';
+import { projectHues, surfaceFiles } from './surfaces';
 
 export interface SettingsLayer {
   label: string;
@@ -1380,107 +1381,6 @@ const collectRuntime = (): StatusSnapshot['runtime'] => {
   };
 };
 
-const REPORT_CATEGORIES = ['briefings', 'plans', 'radar', 'api', 'reviews', 'helpdesk', 'slack'] as const;
-const REPORT_FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n?/;
-
-/** Category segment from an href like `reports/plans/2026-…md` → `plans`. */
-const categoryFromHref = (href: string): string => href.split('/')[1] ?? '';
-
-/** Display title for an orphan report file (one written outside report_write,
- *  e.g. a plan-mode export): frontmatter `title:`, else the first H1, else the
- *  filename. */
-const orphanReportTitle = (body: string, fileName: string): string => {
-  const frontmatter = body.match(REPORT_FRONTMATTER_RE)?.[1];
-  const fmTitle = frontmatter
-    ?.match(/^title:[ \t]*(.+)$/m)?.[1]
-    ?.trim()
-    .replace(/^["']|["']$/g, '');
-  if (fmTitle) return fmTitle;
-  const h1 = body
-    .replace(REPORT_FRONTMATTER_RE, '')
-    .match(/^#\s+(.+)$/m)?.[1]
-    ?.trim();
-  return h1 ?? fileName.replace(MARKDOWN_RE, '');
-};
-
-/** Report entries for the dashboard, newest first. Two sources merged:
- *  1. `reports/index.md` — the authoritative, curated log (title/skill/status)
- *     written by `report_write`.
- *  2. A disk sweep of each category folder for files NOT in the index — chiefly
- *     plans saved by the harness's plan-mode export, which never touch the
- *     index. Without (2) those plans never surface on the Reports page. */
-const collectReports = (): ReportRef[] => {
-  const refs: ReportRef[] = [];
-  const seen = new Set<string>();
-
-  try {
-    let day = '';
-    for (const line of readText(FILES.REPORTS_INDEX).split('\n')) {
-      const heading = line.match(/^## (\d{4}-\d{2}-\d{2})/);
-      if (heading) {
-        day = heading[1];
-        continue;
-      }
-      // A title's own brackets are written escaped (`\[draft\]`), so the link text runs to the first bare `]`.
-      const entry = line.match(
-        /^- (\d{2}:\d{2}) · \[((?:\\.|[^\]\\])+)\](?:\(([^)]+)\))?(?: · `([^`]+)`)?(?: · (\S+))?/
-      );
-      if (!entry) continue;
-      // Index links are relative to reports/; the dashboard sits at <HOME>.
-      const href = entry[3] ? `reports/${entry[3]}` : '';
-      if (href) seen.add(href);
-      refs.push({
-        date: day,
-        time: entry[1],
-        title: entry[2].replace(/\\([[\]])/g, '$1'),
-        href,
-        skill: entry[4] ?? '',
-        status: entry[5] ?? '',
-        category: categoryFromHref(href)
-      });
-    }
-  } catch {
-    // No index yet — the disk sweep below still surfaces any orphan files.
-  }
-
-  for (const category of REPORT_CATEGORIES) {
-    const dir = resolve(FOLDERS.REPORTS, category);
-    for (const fileName of listMarkdown(dir)) {
-      const href = `reports/${category}/${fileName}`;
-      if (seen.has(href)) continue;
-      seen.add(href);
-      const full = resolve(dir, fileName);
-      let body = '';
-      try {
-        body = readText(full);
-      } catch {
-        continue;
-      }
-      const stamp = fileName.match(/^(\d{4}-\d{2}-\d{2})-(\d{2})(\d{2})/);
-      const mtime = stamp ? null : safeMtime(full);
-      refs.push({
-        date: stamp?.[1] ?? todayDate(mtime ?? new Date(0)),
-        time: stamp ? `${stamp[2]}:${stamp[3]}` : nowTime(mtime ?? new Date(0)),
-        title: orphanReportTitle(body, fileName),
-        href,
-        skill: '',
-        status: '',
-        category
-      });
-    }
-  }
-
-  return refs.sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
-};
-
-const safeMtime = (path: string): Date => {
-  try {
-    return statSync(path).mtime;
-  } catch {
-    return new Date(0);
-  }
-};
-
 // ── radar: per-session related tasks + plans ──────────────────────────
 //
 // The Recent tab links each session card to the tasks it worked on and the
@@ -1709,9 +1609,18 @@ const collectSurfaces = (): SurfaceLink[] =>
     surfaceAt(path, kind === 'roadmap' ? { title, icon: '🗺️', appTab: true } : { title, icon: '📊', appTab: false })
   );
 
-/** The pins in reports/pinned.md whose file is there; a broken one is the brain audit's to flag. */
-const collectPinned = (): SurfaceLink[] =>
-  livePins().map((pin) => surfaceAt(pin.path, { title: pin.title, icon: pin.icon ?? '📌', appTab: true }));
+const collectPinned = (work: Work): SurfaceLink[] =>
+  work.pins.map((pin) => surfaceAt(resolve(FOLDERS.HOME, pin.path), { title: pin.title, icon: pin.icon, appTab: true }));
+
+const toReportRef = ({ date, time, title, path, skill, status, category }: WorkReport): ReportRef => ({
+  date,
+  time,
+  title,
+  href: path,
+  skill,
+  status,
+  category
+});
 
 const MAX_REPORTS = 60;
 
@@ -1720,7 +1629,7 @@ const MAX_REPORTS = 60;
  * model passes it in rather than reading the files again.
  */
 export const collectStatus = async (work: Work = buildWork()): Promise<StatusSnapshot> => {
-  const allReports = collectReports();
+  const allReports = work.reports.map(toReportRef);
   const knowledge = collectKnowledge();
   const base = {
     runtime: collectRuntime(),
@@ -1729,7 +1638,7 @@ export const collectStatus = async (work: Work = buildWork()): Promise<StatusSna
     markdownUrl: collectMarkdownUrl(),
     projectHues: projectHues(),
     surfaces: collectSurfaces(),
-    pinned: collectPinned(),
+    pinned: collectPinned(work),
     skills: collectSkills(),
     mcp: await collectMcp(),
     goals: collectGoals(),

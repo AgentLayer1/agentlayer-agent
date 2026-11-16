@@ -75,6 +75,8 @@ export const NOVA: Work = {
     ...closed('garden-shop', 4),
     ...closed('blog', 2)
   ],
+  reports: [],
+  pins: [],
   malformed: []
 };
 
@@ -87,6 +89,8 @@ export const SCOUT: Work = {
   roadmap: '',
   projects: [],
   tasks: [],
+  reports: [],
+  pins: [],
   malformed: []
 };
 

@@ -56,8 +56,31 @@ const TaskSchema = z.object({
   path: z.string()
 });
 
+const ReportSchema = z.object({
+  /**
+   * The day and time it was filed under in reports/index.md, or taken from its filename or mtime.
+   */
+  date: z.string(),
+  time: z.string(),
+  title: z.string(),
+  /**
+   * HOME-relative; '' for an index line without a link.
+   */
+  path: z.string(),
+  skill: z.string(),
+  /**
+   * The status emoji from its index line (🟢 🟠 🔴 ⏳), '' when none.
+   */
+  status: z.string(),
+  /**
+   * Its folder under reports/: briefings, plans, radar, api, reviews, helpdesk or slack.
+   */
+  category: z.string()
+});
+
 /**
- * The home's work as the files state it: its projects and every task file, live, closed and archived. It holds no
+ * The home's work as the files state it: its projects, every task file (live, closed and archived), its reports and
+ * its pins. It holds no
  * counts, dates of its own or judgements like "overdue"; those are views over it (views.ts), so it changes only
  * when the work does.
  */
@@ -71,6 +94,14 @@ export const WorkSchema = z.object({
   projects: z.array(ProjectSchema),
   tasks: z.array(TaskSchema),
   /**
+   * Every report, newest first.
+   */
+  reports: z.array(ReportSchema),
+  /**
+   * The live pins in reports/pinned.md, HOME-relative.
+   */
+  pins: z.array(PinSchema),
+  /**
    * HOME-relative paths of task files that don't parse, so a broken task shows as broken rather than missing.
    */
   malformed: z.array(z.string())
@@ -79,3 +110,4 @@ export const WorkSchema = z.object({
 export type Work = z.infer<typeof WorkSchema>;
 export type WorkProject = Work['projects'][number];
 export type WorkTask = Work['tasks'][number];
+export type WorkReport = Work['reports'][number];
