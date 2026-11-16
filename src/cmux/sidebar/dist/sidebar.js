@@ -134,6 +134,7 @@ var badge = (item) => HStack({ spacing: 3 }, [
   Image(() => item().icon).font(8).color(() => item().fg),
   Text(() => item().text).font(10).weight("medium").color(() => item().fg).lineLimit(1).truncation("tail")
 ]).paddingHorizontal(6).paddingVertical(2).background(() => item().bg).cornerRadius(5).fixedSize(() => item().flexible ? null : "horizontal");
+var chip = (label, active, onTap) => Text(label).font(11).weight("semibold").paddingHorizontal(8).paddingVertical(3).cornerRadius(6).color(() => active() ? "primary" : "tertiary").background(() => active() ? "#7f7f7f3d" : null).hoverBackground("#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(onTap);
 var cardRow = (card) => VStack({ spacing: 4 }, [
   HStack({ spacing: 7 }, [
     Circle({ size: 7 }).fill(() => dotColor(card())),
@@ -144,9 +145,6 @@ var cardRow = (card) => VStack({ spacing: 4 }, [
   HStack({ spacing: 4 }, [ForEach({ items: () => badgesOf(card()), key: (item) => item.key }, badge)]).paddingLeading(14).frame({ maxWidth: "infinity" }),
   ForEach({ items: () => card().summary ? [card().summary] : [], key: () => "summary" }, (summary) => Text(() => summary()).font(11).color("tertiary").lineLimit(2).truncation("tail").paddingLeading(14))
 ]).paddingHorizontal(10).paddingVertical(8).cornerRadius(10).background(() => card().agent.status === "needs_input" ? "#FF9F0A1f" : "#7f7f7f0d").hoverBackground("#7f7f7f26").cursor("pointer").frame({ maxWidth: "infinity" }).onTap(() => jump(card().workspaceId, card().focusId));
-
-// src/cmux/sidebar/data.ts
-var SCHEMA = 1;
 
 // src/cmux/sidebar/scope.ts
 var homeOf = (homes, path) => path ? homes.filter((home) => path === home || path.startsWith(`${home}/`)).toSorted((a, b) => b.length - a.length)[0] : undefined;
@@ -184,6 +182,31 @@ var row = (icon, title, trailing, onTap) => HStack({ spacing: 8 }, [
 ]).paddingHorizontal(10).paddingVertical(5).cornerRadius(8).hoverBackground("#7f7f7f26").cursor("pointer").frame({ maxWidth: "infinity" }).onTap(onTap);
 var symbol = (name) => Image(name).font(11).color("secondary").frame({ width: 16 });
 var open = (link) => link.kind === "md" ? cmux("markdown.open", { path: link.target }) : cmux("browser.open_split", { url: link.target });
+
+// src/cmux/sidebar/pages/agents.ts
+var byUrgency = (first, second) => ORDER.indexOf(first.section) - ORDER.indexOf(second.section) || (second.agent.lastActivityAt ?? 0) - (first.agent.lastActivityAt ?? 0);
+var agentsPage = (homes) => {
+  const groups = computed(() => {
+    const cards = agentCards();
+    const titled = homes.map((home) => ({
+      key: home,
+      title: `${DATA.homes[home]?.emoji ?? ""} ${DATA.homes[home]?.name ?? home}`.trim(),
+      cards: cards.filter((card) => homeOf(homes, card.agent.directory) === home)
+    }));
+    const other = { key: "other", title: "Other", cards: cards.filter((card) => !homeOf(homes, card.agent.directory)) };
+    return [...titled, other].filter((group) => group.cards.length).map((group) => ({ ...group, cards: group.cards.toSorted(byUrgency) }));
+  });
+  return VStack({ spacing: 4 }, [
+    ForEach({ items: groups, key: (group) => group.key }, (group) => VStack({ spacing: 4 }, [
+      label(group().title, () => group().cards.length),
+      ForEach({ items: () => group().cards, key: (card) => card.key }, cardRow)
+    ])),
+    ForEach({ items: () => groups().length ? [] : ["empty"], key: (item) => item }, () => note("No agent sessions in cmux right now."))
+  ]);
+};
+
+// src/cmux/sidebar/data.ts
+var SCHEMA = 1;
 
 // src/cmux/sidebar/pages/home.ts
 var newestFirst = (first, second) => (second.agent.lastActivityAt ?? 0) - (first.agent.lastActivityAt ?? 0);
@@ -232,8 +255,10 @@ var homePage = (home, homes) => {
 };
 
 // src/cmux/sidebar/main.ts
+var PAGES = ["Home", "Agents"];
 var app = () => {
   const homes = Object.keys(DATA.homes);
+  const [page, setPage] = signal("Home");
   const [pin, setPin] = signal(null);
   const workspaces = () => data.workspaces() ?? [];
   const selectedId = computed(() => workspaces().find((workspace) => workspace.selected)?.id ?? "");
@@ -245,6 +270,10 @@ var app = () => {
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
   const needsIn = (home) => agentCards().filter((card) => card.section === "needs" && homeOf(homes, card.agent.directory) === home).length;
+  const views = {
+    Home: () => homePage(current, homes),
+    Agents: () => agentsPage(homes)
+  };
   const agentChip = (home) => {
     const entry = DATA.homes[home()];
     const active = () => current() === home();
@@ -260,8 +289,12 @@ var app = () => {
       Spacer()
     ]).paddingHorizontal(10),
     HStack({ spacing: 4 }, [ForEach({ items: homes, key: (home) => home }, agentChip), Spacer()]).paddingHorizontal(6),
+    HStack({ spacing: 4 }, [
+      ...PAGES.map((name) => chip(name, () => page() === name, () => setPage(name))),
+      Spacer()
+    ]).paddingHorizontal(6),
     Divider(),
-    homePage(current, homes),
+    ForEach({ items: () => [page()], key: (name) => name }, (name) => views[name()]()),
     Spacer()
   ]).paddingHorizontal(6);
 };

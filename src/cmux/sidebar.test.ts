@@ -93,6 +93,38 @@ run('an entry from an older plugin asks for its agent to be updated', () => {
   expect(texts).not.toContain('PROJECTS');
 });
 
+run('Agents lists every session under its agent, most urgent first, with the rest under Other', () => {
+  const sidebar = mount(installed(), CMUX_DATA);
+  sidebar.tap('Agents');
+  const texts = sidebar.visibleTexts();
+  const cards = ['Support sweep', 'Morning brief', 'Fix the checkout total', 'Rename the photos'];
+  const outline = texts
+    .slice(texts.indexOf('Agents') + 1)
+    .filter((text) => ['🦉 Nova', '🐢 Scout', 'Other', ...cards].includes(text));
+  expect(outline).toEqual([
+    '🦉 Nova',
+    'Support sweep',
+    'Morning brief',
+    '🐢 Scout',
+    'Fix the checkout total',
+    'Other',
+    'Rename the photos'
+  ]);
+  expect(sidebar.tap('Fix the checkout total')?.params).toEqual({
+    surface_id: 'w-code-s3-surface',
+    workspace_id: 'w-code'
+  });
+});
+
+run('switching pages rebuilds the page you come back to', () => {
+  const sidebar = mount(installed(), CMUX_DATA);
+  sidebar.tap('Agents');
+  expect(sidebar.visibleTexts()).not.toContain('PROJECTS');
+  sidebar.tap('Home');
+  expect(sidebar.visibleTexts()).toContain('PROJECTS');
+  expect(sidebar.visibleTexts()).not.toContain('Other');
+});
+
 run('the preview draws invented homes and sessions on its own, and its taps go nowhere', () => {
   const preview = mount(previewText({ version: '1.1.0', bundle: readFileSync(DIST, 'utf8') }));
   expect(preview.visibleTexts()).toEqual(expect.arrayContaining(['🦉 Nova', 'Support sweep', 'acme-app']));

@@ -9,13 +9,19 @@
  * Built from src/cmux/sidebar/ in the agentlayer plugin, where the comments explaining the code live.
  */
 
+import { chip } from 'cmux-custom-dashboard/components';
 import { agentCards } from 'cmux-custom-dashboard/model';
+import { agentsPage } from './pages/agents';
 import { homePage } from './pages/home';
 import { homeOf, scopedHome, type Pin } from './scope';
 import { NEEDS_COLOR } from './style';
 
+const PAGES = ['Home', 'Agents'] as const;
+type Page = (typeof PAGES)[number];
+
 const app = () => {
   const homes = Object.keys(DATA.homes);
+  const [page, setPage] = signal<Page>('Home');
   const [pin, setPin] = signal<Pin | null>(null);
   const workspaces = () => data.workspaces() ?? [];
   const selectedId = computed(() => workspaces().find((workspace) => workspace.selected)?.id ?? '');
@@ -29,6 +35,11 @@ const app = () => {
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
   const needsIn = (home: string) =>
     agentCards().filter((card) => card.section === 'needs' && homeOf(homes, card.agent.directory) === home).length;
+
+  const views: Record<Page, () => View> = {
+    Home: () => homePage(current, homes),
+    Agents: () => agentsPage(homes)
+  };
 
   const agentChip = (home: () => string) => {
     const entry = DATA.homes[home()];
@@ -63,8 +74,19 @@ const app = () => {
       Spacer()
     ]).paddingHorizontal(10),
     HStack({ spacing: 4 }, [ForEach({ items: homes, key: (home) => home }, agentChip), Spacer()]).paddingHorizontal(6),
+    HStack({ spacing: 4 }, [
+      ...PAGES.map((name) =>
+        chip(
+          name,
+          () => page() === name,
+          () => setPage(name)
+        )
+      ),
+      Spacer()
+    ]).paddingHorizontal(6),
     Divider(),
-    homePage(current, homes),
+    // Keyed by page, so leaving a page disposes it and coming back builds it fresh.
+    ForEach({ items: () => [page()], key: (name) => name }, (name) => views[name()]()),
     Spacer()
   ]).paddingHorizontal(6);
 };
