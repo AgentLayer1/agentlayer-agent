@@ -38,9 +38,6 @@ export const defaultTarget = (): SidebarTarget => ({
   own: () => ({ version: pluginVersion(), bundle: readFileSync(DIST, 'utf8') })
 });
 
-/**
- * This home's settings for its entry, read live from the config.
- */
 export const entrySettings = (): EntrySettings => ({ launcher: LAUNCHER, projectsDir: FOLDERS.PROJECTS });
 
 const readText = (path: string): string => (existsSync(path) ? readFileSync(path, 'utf8') : '');

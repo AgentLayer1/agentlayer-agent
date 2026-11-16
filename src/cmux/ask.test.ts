@@ -21,9 +21,6 @@ type Workspace = Data['workspaces'][number];
 
 const NEW_TAB = { id: 'w-nova-new-panel', surfaceId: 'w-nova-new-surface' };
 
-/**
- * cmux's data with Nova's workspace changed.
- */
 const withNova = (change: (workspace: Workspace) => Workspace): Data => ({
   ...CMUX_DATA,
   workspaces: CMUX_DATA.workspaces.map((item) => (item.id === 'w-nova' ? change(item) : item))

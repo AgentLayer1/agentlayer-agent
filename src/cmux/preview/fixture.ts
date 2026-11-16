@@ -38,9 +38,6 @@ export const SCOUT: EntrySource = {
 export const fixtureEntry = (source: EntrySource, launcher = 'claude'): HomeEntry =>
   homeEntry(source, { launcher, projectsDir: join(source.runtime.home, 'projects') });
 
-/**
- * The frozen "now" every age below is measured from.
- */
 export const NOW = 1_794_218_400;
 
 const session = (
@@ -118,9 +115,6 @@ export const CMUX_DATA = {
   clock: { hour: 10, minute: 0, second: 0, weekday: 1, epoch: NOW }
 };
 
-/**
- * The same data with another workspace selected.
- */
 export const selecting = (id: string) => ({
   ...CMUX_DATA,
   workspaces: CMUX_DATA.workspaces.map((item) => ({ ...item, selected: item.id === id }))
