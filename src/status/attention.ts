@@ -14,6 +14,7 @@ import type { TaskFile } from '@/tasks/types';
 import { writeFileAtomic } from '@/shared/utils';
 import { HORIZON_BUCKETS, horizonBucket, horizonWithin, isoWeekOf, type HorizonBucket } from '@/tasks/horizon';
 import { PROJECT_SLUG, discoverProjects, isProject, scanAllTasks, scanArchivedTasks } from '@/tasks/scan';
+import { byPriorityThenDue } from '@/work/views';
 import { existsSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { z } from 'zod';
@@ -63,12 +64,8 @@ export interface AttentionInputs {
 }
 
 const OPEN = new Set(['open', 'active', 'blocked']);
-const PRIORITY_ORDER: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
-
 const byUrgency = (a: AttentionTask, b: AttentionTask): number =>
-  (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9) ||
-  (a.due || '9999').localeCompare(b.due || '9999') ||
-  a.horizon.localeCompare(b.horizon);
+  byPriorityThenDue(a, b) || a.horizon.localeCompare(b.horizon);
 
 const toAttentionTask =
   (home: string) =>

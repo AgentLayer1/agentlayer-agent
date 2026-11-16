@@ -12,7 +12,7 @@ import { shiftDate, todayDate } from '@/shared/date';
 import { readText } from '@/shared/text';
 import { buildWork } from '@/work/build';
 import type { Work, WorkTask } from '@/work/model';
-import { closedSince, overdue, stale, withStatus } from '@/work/views';
+import { closedSince, overdue, priorityRank, stale, withStatus } from '@/work/views';
 import { writeFileSync } from 'fs';
 import { basename, join } from 'path';
 import { issueLabel } from './issue';
@@ -26,10 +26,6 @@ export interface DashboardSections {
   stale: WorkTask[];
   closedRecent: WorkTask[];
 }
-
-const PRIORITY_ORDER: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
-
-const priorityRank = (priority: string): number => PRIORITY_ORDER[priority] ?? 9;
 
 const byPriorityThenProject = (a: WorkTask, b: WorkTask): number =>
   priorityRank(a.priority) - priorityRank(b.priority) || a.project.localeCompare(b.project);

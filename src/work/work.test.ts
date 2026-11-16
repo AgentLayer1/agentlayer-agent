@@ -9,7 +9,17 @@ import type { TaskFrontmatter } from '@/tasks/types';
 import { buildWork } from './build';
 import { WORK_SCHEMA, type Work, type WorkTask } from './model';
 import { readWork, writeWork } from './store';
-import { closedSince, isDueSoon, isOverdue, isStale, projectLoads, queue, touchedRecently, withStatus } from './views';
+import {
+  byPriorityThenDue,
+  closedSince,
+  isDueSoon,
+  isOverdue,
+  isStale,
+  projectLoads,
+  queue,
+  touchedRecently,
+  withStatus
+} from './views';
 
 const previousHome = process.env.AGENT_HOME;
 let home = '';
@@ -174,6 +184,15 @@ describe('views', () => {
     expect(ids(closedSince(work, '2026-10-01'))).toEqual(['ac-003']);
     expect(ids(touchedRecently(work, '2026-11-10'))).toEqual(['ac-002']);
     expect(ids(withStatus(work, 'active', 'done'))).toEqual(['ac-002', 'ac-003']);
+  });
+
+  test('a priority outside P0–P3 sorts after P3 everywhere', () => {
+    const odd = { priority: 'urgent', due: '2026-11-01' };
+    expect([odd, { priority: 'P3', due: '' }, { priority: 'P0', due: '' }].toSorted(byPriorityThenDue)).toEqual([
+      { priority: 'P0', due: '' },
+      { priority: 'P3', due: '' },
+      odd
+    ]);
   });
 
   test('the queue is the live tasks by priority, then due date', () => {

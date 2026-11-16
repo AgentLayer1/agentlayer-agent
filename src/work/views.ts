@@ -63,11 +63,18 @@ export const closedSince = (work: Work, since: string): WorkTask[] =>
 export const touchedRecently = (work: Work, today: string): WorkTask[] =>
   inPlace(work).filter((task) => task.updated >= shiftDate(today, -1) && task.updated <= today);
 
+const PRIORITY_ORDER: Readonly<Record<string, number>> = { P0: 0, P1: 1, P2: 2, P3: 3 };
+
+/**
+ * P0 first; a priority outside P0–P3 (a hand edit) sorts after P3.
+ */
+export const priorityRank = (priority: string): number => PRIORITY_ORDER[priority] ?? 9;
+
 /**
  * Highest priority first, then earliest due; undated last.
  */
 export const byPriorityThenDue = (a: Pick<WorkTask, 'priority' | 'due'>, b: Pick<WorkTask, 'priority' | 'due'>) =>
-  a.priority.localeCompare(b.priority) || (a.due || '9999').localeCompare(b.due || '9999');
+  priorityRank(a.priority) - priorityRank(b.priority) || (a.due || '9999').localeCompare(b.due || '9999');
 
 export const queue = (work: Work): WorkTask[] => live(work).toSorted(byPriorityThenDue);
 
