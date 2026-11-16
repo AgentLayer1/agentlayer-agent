@@ -1,6 +1,6 @@
 ---
 name: configure-skills
-description: Configure the agent's optional skill packs (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, Slack) or author a brand-new custom skill. The pack skills ship with the plugin and auto-load — this skill just wires up API keys, MCP server registrations, database connections, coding rules, and tool permissions. Custom-authored skills land in `<HOME>/.claude/skills/<name>/`. Invoked at the end of /agentlayer:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
+description: Configure the agent's optional skill packs (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, Slack, cmux) or author a brand-new custom skill. The pack skills ship with the plugin and auto-load — this skill just wires up API keys, MCP server registrations, database connections, coding rules, and tool permissions. Custom-authored skills land in `<HOME>/.claude/skills/<name>/`. Invoked at the end of /agentlayer:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
 allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), Bash(cp *), Bash(ls *), Bash(rm *), Bash(rmdir *), Bash(bunx skills *), Bash(test *), Bash(head *), Bash(command -v *), Bash(bun -e *), Bash(sw_vers *), Bash(xcode-select -p), Bash(xcodebuild -version), Bash(xcrun -f *), Bash(xcrun mcp-server status)
 ---
 
@@ -9,7 +9,7 @@ allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), B
 > **Plugin root.** Claude Code fills in `CLAUDE_PLUGIN_ROOT`; Codex leaves it unset. Under Codex, read every `CLAUDE_PLUGIN_ROOT` path in this skill and its playbooks as this skill's base directory two levels up (the `<skill>` block's `<path>`).
 
 This skill manages the agent's optional capabilities. Use it to:
-1. **Configure a pack** (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, or Slack) — writes API keys, registers MCP servers, sets up database connections, seeds coding rules, grants tool permissions
+1. **Configure a pack** (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, Slack, or cmux) — writes API keys, registers MCP servers, sets up database connections, seeds coding rules, grants tool permissions
 2. **Deconfigure a pack** — revokes keys/MCP/permissions (the pack's SKILL.md files stay; they ship with the plugin)
 3. **Author a brand-new custom skill** — writes a new SKILL.md to your `<HOME>/.claude/skills/`
 
@@ -54,7 +54,7 @@ The data dir is the marker; it is the same one the resolver and every runtime gu
 `AskUserQuestion`:
 
 > **What would you like to do?**
-> - Configure a skill pack (SEO / Browser / Database / GitHub / API / Xcode / Helpdesk / App Store / Slack — Xcode on macOS only)
+> - Configure a skill pack (SEO / Browser / Database / GitHub / API / Xcode / Helpdesk / App Store / Slack / cmux — Xcode and cmux on macOS only)
 > - Register an external remote MCP server (hardened wrapper → `<HOME>/.mcp.json`)
 > - Install third-party skill libraries (via skills.sh)
 > - Deconfigure a skill pack
@@ -80,12 +80,13 @@ Branch into the matching section below. For authoring brand-new custom skills (n
 > - ☐ Xcode — build, test, run and debug Apple apps and Swift packages through Apple's Xcode MCP server, plus the sandbox and permission posture that makes the toolchain reachable. **macOS with Xcode 27 or later** (the headless server ships there). No API key.
 > - ☐ Helpdesk — read support tickets and leave private draft notes in SupportCandy or Pylon (`helpdesk_*`); a person sends every reply
 > - ☐ App Store — read any app's App Store reviews (`appstore_reviews`); no key, read-only, never replies
+> - ☐ cmux — the AgentLayer sidebar in cmux's right panel: every agent on the Mac, who needs you, the dashboard's pages, projects and pins, and requests typed into a new chat (never sent). **macOS with cmux 0.65.2 or later.** No key.
 > - ☐ Slack — read-only Slack through your own account (`slack_*`): pulses, the replies you owe and the external threads waiting; never posts or reads DMs. Needs a Slack app in your workspace (the walk creates one if there isn't)
 > - ☐ Third-party libraries — clone separately-authored skill libraries (e.g. SEO/GEO from `aaron-he-zhu`, marketing playbooks from `coreyhaines31`) into `<HOME>/.claude/skills/`. Apache-2.0 licensed.
 
 **Never offer the Xcode tick on Windows, WSL2 or Linux.** Render it only when `$AGENT_PLATFORM` = `macos` (or `[ "$(uname -s)" = "Darwin" ]`); on every other host drop the row entirely rather than showing a pack that can only fail. The A.2f preflight is a second wall, but a Windows operator should never see the option in the first place.
 
-If nothing is ticked, cancel and return to Step 1. Otherwise run the matching sub-section(s) below in order: SEO (A.2a) → Browser (A.2b) → Database (A.2c) → GitHub (A.2d) → API (A.2e) → Xcode (A.2f) → Helpdesk (A.2g) → App Store (A.2h) → Slack (A.2i) → Third-party (Section F).
+If nothing is ticked, cancel and return to Step 1. Otherwise run the matching sub-section(s) below in order: SEO (A.2a) → Browser (A.2b) → Database (A.2c) → GitHub (A.2d) → API (A.2e) → Xcode (A.2f) → Helpdesk (A.2g) → App Store (A.2h) → Slack (A.2i) → cmux (A.2j) → Third-party (Section F).
 
 ### A.2a — SEO pack walk
 
@@ -747,6 +748,36 @@ Refresh tokens expire after 30 days unused; re-run `bun <AGENT_CLI> slack auth` 
 
 ---
 
+### A.2j — cmux pack walk
+
+Gives a cmux user the AgentLayer sidebar: one native panel in cmux's right sidebar for every agent home on the Mac that joins it. The workspace you're in picks the agent (its folder, else the folder its newest session runs in), and chips on top pick another. **Home** shows who needs you, links to the dashboard's Today and Tasks pages and the roadmap, and the home's projects and pins, all opening rendered beside the chat; **Agents** lists every session, grouped by agent; **Ask** offers plain-word requests that open a new chat and type the request in, and the operator presses Enter. There are no MCP tools, keys or permissions: the plugin's CLI writes `~/.config/cmux/sidebars/agentlayer.js`, and every dashboard refresh keeps this home's part of it current (projects, pins, name), writing only when something changed. **macOS with cmux 0.65.2 or later.**
+
+**(1) Check cmux:** `test -d /Applications/cmux.app && echo CMUX || echo NO_CMUX`. On `NO_CMUX`, stop: the sidebar needs the cmux app, from https://cmux.com.
+
+**(2) Launcher.** `AskUserQuestion`: "How do you start this agent in a terminal?" — `claude` (Recommended) / another command (Other, for a shell function or alias that starts this agent its own way). The Ask page types `cd '<HOME_DIR>' && <launcher>` into the new tab. For anything but `claude`, set `AGENT_LAUNCHER` to it in `$SETTINGS_FILE` `env` (§D.2).
+
+**(3) Install.** The sandbox can't write `~/.config/cmux/`, and cmux's CLI only answers from a terminal inside cmux, so hand the operator this line to run in a cmux terminal:
+
+```
+bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar install --home="<HOME_DIR>"
+```
+
+It checks the cmux version, adds this home to the sidebar (starting the file if this is the first home), has cmux validate it under a staging name so a rejected file never replaces the installed one, and selects it in the right sidebar. It ends with "<name> is in the AgentLayer sidebar." "cmux didn't accept the sidebar" almost always means it ran in a terminal outside cmux. Every other agent home on the Mac joins with the same line, run with its own `--home`.
+
+**(4) Summary:**
+
+```
+✅ cmux pack activated.
+
+Sidebar:           ~/.config/cmux/sidebars/agentlayer.js (this home joined)
+Launcher:          <launcher>
+Tool permissions:  none
+Keys:              none
+
+Show it:           cmux right-sidebar set custom agentlayer
+Refresh by hand:   bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar refresh --home="<HOME_DIR>"
+```
+
 ## Section B — Register an external remote MCP server
 
 For third-party **remote** MCP servers (an `https://…` endpoint authenticated by a bearer token) that aren't part of a first-party pack — e.g. a log platform's hosted MCP. The entry lands in `$MCP_FILE`, the token in `$SECRETS_ENV`, always via the hardened wrapper below. Never register a remote server bare or hand-roll a wrapper.
@@ -889,6 +920,7 @@ Print per library: install status + symlink path + upstream LICENSE first-line. 
 > - App Store (revokes `appstore_reviews`; the learned storefront files in `.state/appstore/` can stay)
 > - Slack (revokes the `slack_*` tools and the slack skill grant; optionally deletes your local Slack token)
 > - Xcode (unregisters the `xcode` MCP server, revokes its tool + Bash permissions; optionally removes the seeded rules)
+> - cmux (takes this home out of the AgentLayer sidebar; the last home out deletes it)
 
 ### C.2 Deconfigure actions
 
@@ -928,6 +960,10 @@ Print per library: install status + symlink path + upstream LICENSE first-line. 
 - Revoke the seven `slack_*` tool grants (`slack_whoami`, `slack_channels`, `slack_history`, `slack_batch_history`, `slack_thread`, `slack_search`, `slack_waiting`), `WebFetch(domain:slack.com)` and `Skill(agentlayer:slack)` from `permissions.allow` (§E remove helper).
 - `AskUserQuestion`: "Delete your local Slack token at `<HOME>/.state/secrets/slack/slack-tokens.json`?" (Yes/No). The file is deny-gated, so on yes hand the operator `rm -f <HOME_DIR>/.state/secrets/slack/slack-tokens.json` to run themselves. Tokens are per account, so teammates are unaffected. To revoke on Slack's side too: the workspace's **Authorized apps** settings → the app → **Revoke**.
 - `AGENT_SLACK_CLIENT_ID` and `knowledge/concepts/slack-channels.md` stay: the first is public and shared by the workspace, the second is the operator's.
+
+**cmux deconfigure:**
+- Hand the operator `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar remove --home="<HOME_DIR>"` to run in their own terminal (the sandbox can't write `~/.config/cmux/`). Other homes stay in the sidebar; when this was the last one the file is deleted, and `cmux right-sidebar set files` picks another right sidebar.
+- `AskUserQuestion`: "Also remove `AGENT_LAUNCHER`?" (Yes/No), only when `$SETTINGS_FILE` sets it. If yes, delete it from `env` (§D.2).
 
 **Xcode deconfigure:**
 - Remove the `xcode` entry from `$MCP_FILE` `mcpServers` (leave every other server alone), then parse-check the result. If `<HOME>/.codex/hooks.json` exists, run the `codex_setup` MCP tool afterwards: it regenerates `[mcp_servers.xcode]` from `$MCP_FILE`, so with the entry gone the table goes with it. Never hand-edit that table.

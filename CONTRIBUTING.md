@@ -91,6 +91,27 @@ bun skills/dashboard/scripts/demo-home.ts --out <site-repo>/public/demo/dashboar
 
 It renders in isolation (its own `HOME`, environment, and working directory), rewrites every temp and machine path to `/home/alex`, and refuses to write if any real path survives. The docs screenshots are taken from that file with `browser_screenshot` on `file://…/dashboard.html#<page>/<subtab>`.
 
+## The cmux sidebar
+
+The optional cmux pack lives in `src/cmux/`. The Bun side (`entry.ts`, `file.ts`, `lifecycle.ts`, `command.ts`) builds this home's entry from the dashboard snapshot and writes it into `~/.config/cmux/sidebars/agentlayer.js`, the one sidebar every home on the Mac joins. The sidebar's own code in `src/cmux/sidebar/` runs inside cmux, not Bun: its `tsconfig.json` has no Bun or Node types, so a call to either fails the typecheck, and it never builds a path (every path and URL arrives ready-made in its data).
+
+| Command | Does |
+| --- | --- |
+| `bun run cmux:build` | Bundle `src/cmux/sidebar/main.ts` into the committed `src/cmux/sidebar/dist/sidebar.js`. Run it after every sidebar change; a test fails while the file is stale |
+| `bun run cmux:check` | Typecheck, rebuild, and run the pack's tests |
+| `bun run cmux:preview --text` | Print what each page draws for the invented homes in `src/cmux/preview/fixture.ts` |
+| `bun run cmux:preview` | Write `agentlayer-preview`, the sidebar drawing those homes with a frozen clock, for a screenshot |
+
+The tests mount the built sidebar on cmux's own `SidebarRuntime.js`, read from the installed app and never copied into the repo (it is GPL-licensed), and assert what each page draws and which cmux call each tap makes. Without cmux installed they skip.
+
+To retake the screenshot, from a terminal inside cmux (its CLI answers nowhere else):
+
+```bash
+bun run cmux:preview && cmux right-sidebar set custom agentlayer-preview
+cmux shot --out assets/cmux-sidebar-full.png   # then crop the panel into assets/cmux-sidebar.png
+rm ~/.config/cmux/sidebars/agentlayer-preview.js && cmux right-sidebar set custom agentlayer
+```
+
 ## PR conventions
 
 - Keep changes focused. One concept per PR.
