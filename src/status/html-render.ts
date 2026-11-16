@@ -38,7 +38,8 @@ import { THEME_BLOCK } from '@/shared/theme';
 import { issueLabel } from '@/tasks/issue';
 import { daysUntil, dueBucket, toneOf, type DueBucket, type DueTone } from '@/work/due';
 import { REPORT_CATEGORIES, reportKind } from '@/reports/kinds';
-import type { ProjectLoad } from '@/work/views';
+import { goalPeriodHolds, shortDate } from '@/work/due';
+import type { GoalsView, GoalView, ProjectLoad } from '@/work/views';
 import type {
   ContextGroup,
   ProfileSection,
@@ -469,6 +470,56 @@ const attentionStats = (snap: StatusSnapshot): string => {
   ]);
 };
 
+const GOAL_SHELVES = [
+  { horizon: 'day', icon: '☀️', title: 'Today' },
+  { horizon: 'week', icon: '🗓', title: 'This week' },
+  { horizon: 'month', icon: '🎯', title: 'This month' },
+  { horizon: 'year', icon: '🧭', title: 'This year' }
+] as const;
+
+// A scored goal belongs to a quarter that's over, so it steps back.
+const goalItem = (goal: GoalView, hues: Readonly<Record<string, number>>): string => {
+  const lead = goal.label ? `<span class="chip">${esc(goal.label)}</span>` : `<span class="gnum">${goal.number}</span>`;
+  const mark = goal.mark ? `<span>${esc(goal.mark)}</span>` : '';
+  const project = goal.project ? projChip(goal.project, hues) : '';
+  const check = goal.check ? `<div class="gcheck"><span class="glabel">Done when</span>${esc(goal.check)}</div>` : '';
+  const detail = goal.detail ? `<div class="gdetail">${esc(goal.detail)}</div>` : '';
+  return `<div class="goal${goal.mark ? ' past' : ''}"><div class="gmeta">${lead}${mark}${project}</div><div class="gtitle">${esc(goal.title)}</div>${check}${detail}</div>`;
+};
+
+/**
+ * The year's theme, then a card per horizon: each goal with what counts as done, and the block's notes at its foot.
+ * An earlier week's goals still show, marked; an earlier day's don't.
+ */
+const goalsSection = (goals: GoalsView, today: string, hues: Readonly<Record<string, number>>): string => {
+  const theme = goals.theme
+    ? `<div class="goaltheme"><span class="glabel">${esc(goals.theme.label)}</span><span class="gtheme">${esc(goals.theme.text)}</span></div>`
+    : '';
+  const cards = GOAL_SHELVES.map(({ horizon, icon, title }) => {
+    const block = goals.blocks.find((item) => item.horizon === horizon);
+    const holds = block !== undefined && goalPeriodHolds(horizon, block.date, today);
+    const shown = block && (horizon !== 'day' || holds) ? block.goals : [];
+    const week = block?.date ? (shortDate(block.date) ?? block.date) : '';
+    const caption =
+      horizon === 'week' && week
+        ? holds
+          ? `Week of ${week}`
+          : `Set for the week of ${week} · run goals week`
+        : (block?.caption ?? '');
+    const notes =
+      shown.length && block?.notes.length
+        ? `<div class="gnotes">${block.notes.map((note) => `<p>${esc(note)}</p>`).join('')}</div>`
+        : '';
+    const body = shown.length
+      ? shown.map((goal) => goalItem(goal, hues)).join('') + notes
+      : hint(`No goals set for ${title.toLowerCase()}, run goals ${horizon}.`);
+    return `<div class="goalcard"><h3 class="group"><span class="gicon">${icon}</span>${esc(title)} <span class="dim">${shown.length}</span></h3>${
+      caption ? `<p class="gcap${holds ? '' : ' warn'}">${esc(caption)}</p>` : ''
+    }${body}</div>`;
+  }).join('');
+  return theme + cards;
+};
+
 const pageToday = (snap: StatusSnapshot): string => {
   const { tasks, runtime, goals } = snap;
   const today = runtime.isoDate;
@@ -476,15 +527,7 @@ const pageToday = (snap: StatusSnapshot): string => {
   const part = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
   const name = snap.operator.name ? `, ${esc(snap.operator.name)}` : '';
 
-  const goalCard = (icon: string, label: string, empty: string, lines: string[]): string =>
-    `<div class="goalcard"><h3 class="group"><span class="gicon">${icon}</span>${esc(label)}</h3>${
-      lines.length ? `<ul class="plain">${lines.map((line) => `<li>${esc(line)}</li>`).join('')}</ul>` : hint(empty)
-    }</div>`;
-  const goalsBody =
-    goalCard('☀️', 'Today', 'No goals set for today, run goals day.', goals.daily) +
-    goalCard('🗓', 'Weekly', 'No weekly goals set yet, run goals week.', goals.weekly) +
-    goalCard('🎯', 'Monthly', 'No monthly goals set yet, run goals month.', goals.monthly) +
-    goalCard('🧭', 'Yearly', 'No yearly goals set yet, run goals year.', goals.yearly);
+  const goalsBody = goalsSection(goals, today, snap.projectHues);
 
   // The grounding feed covers the last ~24h so it survives midnight: sessions
   // and tasks carry date-only stamps (today + yesterday); reports have times

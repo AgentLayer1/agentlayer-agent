@@ -18,7 +18,8 @@ const ITALIC = /^_(.+)_$/;
 const PLACEHOLDER = /^_No .+_$/;
 const CHECK = /\s*_\((?:success|check):\s*([\s\S]+?)\)_/;
 const LABEL = /^\*\*(Q\d(?:\s+\d{4})?)\*\*\s*(✅|❌|🟡|↪)?️?\s*[—–-]\s*/;
-const BOLD = /^\*\*(.+?)\*\*/;
+// Bold is the headline only when it is the whole headline: what follows is nothing or a separator.
+const BOLD = /^\*\*(.+?)\*\*(?=\s*(?:$|[·—–:]))/;
 const LEADING_SEPARATOR = /^\s*[·—–:]\s*/;
 const DASH = ' — ';
 const ISO_DATE = /\d{4}-\d{2}-\d{2}/;

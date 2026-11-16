@@ -1,5 +1,5 @@
 import { shiftDate } from '@/shared/date';
-import type { Work, WorkProject, WorkTask } from './model';
+import type { Work, WorkGoal, WorkGoalBlock, WorkProject, WorkTask } from './model';
 import { taskOrder } from './order';
 
 // What the task rules read; TASKS.md hands them tasks alone, without the rest of the model.
@@ -68,6 +68,50 @@ export const touchedRecently = (work: Tasks, today: string): WorkTask[] =>
   inPlace(work).filter((task) => task.updated >= shiftDate(today, -1) && task.updated <= today);
 
 export const queue = (work: Tasks): WorkTask[] => live(work).toSorted(taskOrder);
+
+export interface GoalView extends WorkGoal {
+  /**
+   * Its place in its block, from 1.
+   */
+  number: number;
+  /**
+   * The slug of the project its title opened with (`acme-app: …`), which the title then drops; '' when none.
+   */
+  project: string;
+}
+
+export interface GoalsView {
+  theme: WorkGoalBlock['theme'];
+  blocks: (Pick<WorkGoalBlock, 'horizon' | 'date' | 'caption' | 'notes'> & { goals: GoalView[] })[];
+}
+
+/**
+ * The goals as every screen shows them: the year's theme, then each block with its goals numbered and tagged with
+ * their project.
+ */
+export const goalsView = (work: Pick<Work, 'goals' | 'projects'>): GoalsView => {
+  const slugs = new Set(work.projects.map((project) => project.slug));
+  const goalView = (goal: WorkGoal, index: number): GoalView => {
+    const base = { ...goal, number: index + 1, project: '' };
+    const at = goal.title.indexOf(': ');
+    const slug = at === -1 ? '' : goal.title.slice(0, at);
+    if (!slugs.has(slug)) {
+      return base;
+    }
+    const rest = goal.title.slice(at + 2);
+    return { ...base, title: rest.charAt(0).toUpperCase() + rest.slice(1), project: slug };
+  };
+  return {
+    theme: work.goals.find((block) => block.theme)?.theme ?? null,
+    blocks: work.goals.map(({ horizon, date, caption, notes, goals }) => ({
+      horizon,
+      date,
+      caption,
+      notes,
+      goals: goals.map(goalView)
+    }))
+  };
+};
 
 /**
  * Each project's hue by its slug.

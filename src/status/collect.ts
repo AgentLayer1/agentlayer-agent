@@ -48,7 +48,17 @@ import { buildWork } from '@/work/build';
 import type { Work, WorkReport, WorkTask } from '@/work/model';
 import { taskOrder } from '@/work/order';
 import { stripFrontmatter } from '@/knowledge/utils';
-import { overdue, projectLoads, queue, stale, touchedRecently, withStatus, type ProjectLoad } from '@/work/views';
+import {
+  goalsView,
+  overdue,
+  projectLoads,
+  queue,
+  stale,
+  touchedRecently,
+  withStatus,
+  type GoalsView,
+  type ProjectLoad
+} from '@/work/views';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
@@ -378,8 +388,8 @@ export interface StatusSnapshot {
   pinned: SurfaceLink[];
   skills: { count: number; details: SkillInfo[] };
   mcp: { toolCount: number; toolDetails: ToolInfo[] };
-  /** Goals blocks from projects/TASKS.md (lines, markdown stripped). */
-  goals: { daily: string[]; weekly: string[]; monthly: string[]; yearly: string[] };
+  /** The goal blocks in projects/TASKS.md, as the work model reads them. */
+  goals: GoalsView;
   /** `## Active Threads` bullets from memory/index.md, markdown stripped. */
   memoryThreads: string[];
   /** `## Recent Decisions` bullets from memory/index.md, markdown stripped. */
@@ -1521,21 +1531,6 @@ const parseRadarSessions = (raw: string): RadarSession[] => {
   return sessions;
 };
 
-/** Goal lines under a TASKS.md heading, without their list markers. The scaffold's
- *  italic `_No … yet_` placeholders are dropped so unset goals render the dashboard's own hint. */
-const goalLines = (heading: string | RegExp): string[] =>
-  sectionLines(resolve(FOLDERS.PROJECTS, 'TASKS.md'), heading)
-    .filter((line) => !/^_No .+_$/.test(line))
-    .map((line) => stripMarkdown(line.replace(/^(?:[-*+]|\d+[.)])\s+/, '')));
-
-export const collectGoals = (): StatusSnapshot['goals'] => ({
-  // Only a block headed with today's date counts; yesterday's goals are not today's. Any dash separates them.
-  daily: goalLines(new RegExp(`^## Daily Goals\\s*[—–-]\\s*${todayDate()}\\b`)),
-  weekly: goalLines('Weekly Goals'),
-  monthly: goalLines('Monthly Goals'),
-  yearly: goalLines('Yearly Goals')
-});
-
 const MAX_THREADS = 12;
 
 const collectMemoryThreads = (): string[] =>
@@ -1632,7 +1627,7 @@ export const collectStatus = async (work: Work = buildWork()): Promise<StatusSna
     pinned: collectPinned(work),
     skills: collectSkills(),
     mcp: await collectMcp(),
-    goals: collectGoals(),
+    goals: goalsView(work),
     memoryThreads: collectMemoryThreads(),
     memoryDecisions: collectMemoryDecisions(),
     memoryLearnings: collectMemoryLearnings(),

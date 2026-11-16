@@ -15,11 +15,12 @@ import { HORIZON_BUCKETS, horizonBucket, horizonWithin, isoWeekOf, type HorizonB
 import { PROJECT_SLUG, isProject } from '@/tasks/scan';
 import type { Work, WorkTask } from '@/work/model';
 import { taskOrder } from '@/work/order';
-import { hueBySlug, isClosed } from '@/work/views';
+import { goalPeriodHolds } from '@/work/due';
+import { goalsView, hueBySlug, isClosed, type GoalsView } from '@/work/views';
 import { existsSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { z } from 'zod';
-import { boldField, collectGoals, operatorGithubLogin } from './collect';
+import { boldField, operatorGithubLogin } from './collect';
 import {
   AttentionSnapshotSchema,
   type AttentionGroup,
@@ -289,20 +290,33 @@ const roadmapSources = (project: string): AttentionRoadmapSource[] =>
     return read ? [{ source: relative(FOLDERS.HOME, path), read, linkedOnly }] : [];
   });
 
-/** The live view of one page: tasks and roadmaps from the work model, goals read now, the queue from its last pull. */
+// A block's goal headlines, the project leading as it was written; a daily block counts only on its day.
+const headlines = (view: GoalsView, horizon: 'day' | 'week' | 'month', today: string): string[] => {
+  const block = view.blocks.find((item) => item.horizon === horizon);
+  return block && (horizon !== 'day' || goalPeriodHolds(horizon, block.date, today))
+    ? block.goals.map(({ project, title }) => (project ? `${project}: ${title}` : title))
+    : [];
+};
+
+/** The live view of one page: tasks, goals and roadmaps from the work model, the queue from its last pull. */
 export const collectAttentionView = (project: string, work: Work): AttentionView => {
   const operator = boldField(FILES.USER, 'Name');
-  const goals = collectGoals();
+  const view = goalsView(work);
+  const today = todayDate();
   return buildAttentionView({
     project: checkedProject(project),
     tasks: work.tasks,
-    goals: { daily: goals.daily, weekly: goals.weekly, monthly: goals.monthly },
+    goals: {
+      daily: headlines(view, 'day', today),
+      weekly: headlines(view, 'week', today),
+      monthly: headlines(view, 'month', today)
+    },
     roadmaps: roadmapSources(project),
     pins: work.projects.find((item) => item.slug === project)?.pins ?? [],
     snapshot: readAttentionQueue(project),
     self: selfNames(operator, operatorGithubLogin()),
     operator,
-    today: todayDate(),
+    today,
     generatedAt: nowTime(),
     home: FOLDERS.HOME,
     markdownUrl: MARKDOWN_URL,

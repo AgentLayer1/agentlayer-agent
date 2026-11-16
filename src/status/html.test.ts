@@ -115,10 +115,36 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
     ]
   },
   goals: {
-    daily: [],
-    weekly: [],
-    monthly: ['Ship the partner onboarding flow'],
-    yearly: ['Q3: launch the beta; Q4: first customer']
+    theme: { label: '2026 theme', text: 'Partners first' },
+    blocks: [
+      {
+        horizon: 'month',
+        date: '',
+        caption: 'June 2026',
+        notes: ['Not doing in June: the redesign.'],
+        goals: [
+          {
+            number: 1,
+            label: '',
+            mark: '',
+            title: 'Ship the partner onboarding flow',
+            check: 'two partners onboard without help',
+            detail: '',
+            project: ''
+          }
+        ]
+      },
+      {
+        horizon: 'year',
+        date: '',
+        caption: '',
+        notes: [],
+        goals: [
+          { number: 1, label: 'Q3', mark: '✅', title: 'Launch the beta', check: '', detail: '', project: '' },
+          { number: 2, label: 'Q4', mark: '', title: 'First customer', check: '', detail: '', project: '' }
+        ]
+      }
+    ]
   },
   memoryThreads: ['ab-005 vendor portal blocked on a signing rule', 'Acme Corp = primary client'],
   memoryDecisions: ['Spec v2.4→v2.5: vendor list trimmed'],
@@ -782,7 +808,7 @@ describe('renderDashboardHtml', () => {
 
   test('today carries goals, news, and the commands feed', () => {
     const html = renderDashboardHtml(makeSnapshot());
-    expect(html).toContain('Q3: launch the beta; Q4: first customer');
+    expect(html).toContain('<div class="gtitle">First customer</div>');
     expect(html).toContain('href="https://example.com/fable"');
     // Link-less headlines render as plain text, never as empty anchors.
     expect(html).toContain('NEEP Category-I EP salary RM20K/mo confirmed');
@@ -793,15 +819,53 @@ describe('renderDashboardHtml', () => {
   test('unset goals show the playbook that sets them', () => {
     const html = renderDashboardHtml(makeSnapshot());
     expect(html).toContain('No goals set for today, run goals day.');
-    expect(html).toContain('No weekly goals set yet, run goals week.');
+    expect(html).toContain('No goals set for this week, run goals week.');
   });
 
-  test("today's goals fill the Today card", () => {
-    const html = renderDashboardHtml(
-      makeSnapshot({ goals: { daily: ['Reconciliation signed off'], weekly: [], monthly: [], yearly: [] } })
-    );
-    expect(html).toContain('Today</h3><ul class="plain"><li>Reconciliation signed off</li></ul>');
+  test("today's goals fill the Today card; another day's leave it empty", () => {
+    const base = makeSnapshot();
+    const day = (date: string) =>
+      renderDashboardHtml(
+        makeSnapshot({
+          goals: {
+            theme: null,
+            blocks: [
+              {
+                horizon: 'day',
+                date,
+                caption: '',
+                notes: [],
+                goals: [
+                  {
+                    number: 1,
+                    label: '',
+                    mark: '',
+                    title: 'Reconciliation signed off',
+                    check: '',
+                    detail: '',
+                    project: 'acme'
+                  }
+                ]
+              }
+            ]
+          }
+        })
+      );
+    const html = day(base.runtime.isoDate);
+    expect(html).toContain('<div class="gtitle">Reconciliation signed off</div>');
+    expect(html).toContain('<span class="chip proj">');
     expect(html).not.toContain('No goals set for today');
+    expect(day('2020-01-01')).toContain('No goals set for today, run goals day.');
+  });
+
+  test('a goal reads as its headline, what counts as done, and its block’s notes; a scored quarter steps back', () => {
+    const html = renderDashboardHtml(makeSnapshot());
+    expect(html).toContain('<span class="gtheme">Partners first</span>');
+    expect(html).toContain(
+      '<div class="gtitle">Ship the partner onboarding flow</div><div class="gcheck"><span class="glabel">Done when</span>two partners onboard without help</div>'
+    );
+    expect(html).toContain('<p>Not doing in June: the redesign.</p>');
+    expect(html).toContain('<div class="goal past">');
   });
 
   test('a router skill lists its playbooks under its tile', () => {

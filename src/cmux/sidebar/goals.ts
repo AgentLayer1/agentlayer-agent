@@ -1,4 +1,4 @@
-import { daysUntil, mondayIndex, shortDate } from '../../work/due';
+import { goalPeriodHolds, shortDate } from '../../work/due';
 import type { GoalBlockItem, GoalItem, GoalsItem, HomeEntry } from './data';
 import {
   ACCENT,
@@ -6,7 +6,6 @@ import {
   foldCard,
   GREEN,
   GREY,
-  hueColor,
   ORANGE,
   pill,
   PURPLE,
@@ -14,6 +13,7 @@ import {
   when
 } from './style';
 import { today } from './tasks';
+import { projectColors } from './view';
 
 interface Shelf {
   horizon: GoalBlockItem['horizon'];
@@ -31,15 +31,6 @@ const SHELVES: readonly Shelf[] = [
   { horizon: 'year', title: 'This year', icon: 'flag.fill', color: PURPLE, open: false }
 ];
 
-// Whether a block still speaks for the sidebar's day: a daily block only on its day, a weekly one through its week.
-const current = ({ horizon, date }: GoalBlockItem, day: string): boolean => {
-  const days = daysUntil(date, day);
-  if (horizon === 'day') {
-    return days === 0;
-  }
-  return horizon !== 'week' || days === null || days >= -(mondayIndex(day) ?? 0);
-};
-
 const themeBanner = ({ label, text }: NonNullable<GoalsItem['theme']>) =>
   HStack({ spacing: 10 }, [
     Image('sparkles').font(13).color(PURPLE),
@@ -55,14 +46,14 @@ const themeBanner = ({ label, text }: NonNullable<GoalsItem['theme']>) =>
     .cornerRadius(10);
 
 // A scored goal belongs to a quarter that's over, so it steps back.
-const goalRow = (goal: GoalItem) =>
+const goalRow = (colorOf: (slug: string) => string) => (goal: GoalItem) =>
   VStack({ spacing: 4, alignment: 'leading' }, [
     HStack({ spacing: 6 }, [
       goal.label
         ? pill(goal.label, GREY)
         : Text(String(goal.number)).font(10).weight('semibold').monospaced().color('tertiary'),
       ...(goal.mark ? [Text(goal.mark).font(10)] : []),
-      ...(goal.project ? [pill(goal.project.slug, hueColor(goal.project.hue))] : []),
+      ...(goal.project ? [pill(goal.project, colorOf(goal.project))] : []),
       Spacer({ minLength: 0 })
     ]),
     Text(goal.title).font(12).weight('medium').opacity(TITLE_OPACITY),
@@ -81,10 +72,15 @@ const goalRow = (goal: GoalItem) =>
     .frame({ maxWidth: 'infinity', alignment: 'leading' })
     .opacity(goal.mark ? 0.55 : 1);
 
-const shelfCard = (shelf: Shelf, block: GoalBlockItem | undefined, agent: string) => {
+const shelfCard = (
+  shelf: Shelf,
+  block: GoalBlockItem | undefined,
+  agent: string,
+  colorOf: (slug: string) => string
+) => {
   const [open, setOpen] = signal(shelf.open);
   const command = `goals ${shelf.horizon}`;
-  const live = () => block !== undefined && current(block, today());
+  const live = () => block !== undefined && goalPeriodHolds(block.horizon, block.date, today());
   // An earlier day's goals aren't today's; an earlier week's still show, marked as such.
   const shown = () => (block && (shelf.horizon !== 'day' || live()) ? block.goals : []);
   const caption = (): string => {
@@ -129,7 +125,7 @@ const shelfCard = (shelf: Shelf, block: GoalBlockItem | undefined, agent: string
               .paddingVertical(4)
               .frame({ maxWidth: 'infinity', alignment: 'leading' })
         ),
-        dividedList(shown, (goal) => String(goal.number), goalRow),
+        dividedList(shown, (goal) => String(goal.number), goalRow(colorOf)),
         when(
           () => shown().length > 0 && (block?.notes.length ?? 0) > 0,
           () =>
@@ -152,6 +148,7 @@ const shelfCard = (shelf: Shelf, block: GoalBlockItem | undefined, agent: string
  */
 export const goalsBody = (entry: HomeEntry) => {
   const { theme, blocks } = entry.goals;
+  const colorOf = projectColors(entry);
   return VStack({ spacing: 10 }, [
     ...(theme ? [themeBanner(theme)] : []),
     VStack(
@@ -160,7 +157,8 @@ export const goalsBody = (entry: HomeEntry) => {
         shelfCard(
           shelf,
           blocks.find((block) => block.horizon === shelf.horizon),
-          entry.name
+          entry.name,
+          colorOf
         )
       )
     )

@@ -7,10 +7,11 @@ import type { WorkTask } from '@/work/model';
 import { roadmapDataBlock } from '@/roadmap/data';
 import { todayDate } from '@/shared/date';
 import { THEME_BLOCK } from '@/shared/theme';
-import { collectGoals, collectStatus } from './collect';
+import { collectStatus } from './collect';
 import {
   buildAttentionView,
   attentionPagePath,
+  collectAttentionView,
   writeAttentionPage,
   writeAttentionPagesSafe,
   type AttentionInputs
@@ -424,23 +425,23 @@ describe('goals from TASKS.md', () => {
     const block = (date: string) =>
       `<!-- GOALS:START -->\n## Daily Goals — ${date}\n\n1. The invoice export is on staging (ac-101)\n\n## Weekly Goals\n\n_No weekly goals set yet — run \`goals week\` to set them._\n<!-- GOALS:END -->\n`;
     withTasksFile(block(todayDate()), () => {
-      expect(collectGoals()).toMatchObject({ daily: ['The invoice export is on staging (ac-101)'], weekly: [] });
+      expect(collectAttentionView('', buildWork())).toMatchObject({
+        dayGoals: ['The invoice export is on staging (ac-101)'],
+        weekGoals: []
+      });
     });
     withTasksFile(block('2020-01-01'), () => {
-      expect(collectGoals().daily).toEqual([]);
+      expect(collectAttentionView('', buildWork()).dayGoals).toEqual([]);
     });
   });
 
-  test('weekly goals read without their list markers, as the week playbook writes them', () => {
+  test('a goal reads as its headline, its check left to the Goals page', () => {
     withTasksFile(
       '<!-- GOALS:START -->\n## Weekly Goals — Week of 2026-09-28\n\n1. acme: Ship the invoice export (ac-101) — live for all tenants\n2. acme: Close the audit gaps (ac-102) — evidence filed\n\n## Monthly Goals\n\n- **Launch** the billing cutover\n<!-- GOALS:END -->\n',
       () => {
-        expect(collectGoals()).toMatchObject({
-          weekly: [
-            'acme: Ship the invoice export (ac-101) — live for all tenants',
-            'acme: Close the audit gaps (ac-102) — evidence filed'
-          ],
-          monthly: ['Launch the billing cutover']
+        expect(collectAttentionView('', buildWork())).toMatchObject({
+          weekGoals: ['acme: Ship the invoice export (ac-101)', 'acme: Close the audit gaps (ac-102)'],
+          monthGoals: ['Launch the billing cutover']
         });
       }
     );

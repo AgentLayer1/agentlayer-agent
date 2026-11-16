@@ -2,14 +2,12 @@ import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { reportKind } from '@/reports/kinds';
 import { nameHue } from '@/status/html-primitives';
-import type { Work, WorkGoal, WorkProject, WorkReport } from '@/work/model';
+import type { Work, WorkProject, WorkReport } from '@/work/model';
 import { taskOrderById } from '@/work/order';
-import { hueBySlug, live, projectLoad } from '@/work/views';
+import { goalsView, live, projectLoad } from '@/work/views';
 import {
   SCHEMA,
   type HomeEntry,
-  type GoalItem,
-  type GoalsItem,
   type PinItem,
   type PinTarget,
   type ProjectCard,
@@ -45,35 +43,6 @@ const reportItem = (home: string, report: WorkReport): ReportItem => {
   const kind = reportKind(report);
   const { title, date, time, status, path } = report;
   return { title, kind, hue: nameHue(kind), date, time, status, target: targetOf(home, path) };
-};
-
-// A goal that opens with a project's slug (`acme-app: …`) wears that project's pill instead.
-const goalItem =
-  (hues: Readonly<Record<string, number>>) =>
-  (goal: WorkGoal, index: number): GoalItem => {
-    const base = { ...goal, number: index + 1, project: null };
-    const at = goal.title.indexOf(': ');
-    const slug = at === -1 ? '' : goal.title.slice(0, at);
-    const hue = hues[slug];
-    if (hue === undefined) {
-      return base;
-    }
-    const rest = goal.title.slice(at + 2);
-    return { ...base, title: rest.charAt(0).toUpperCase() + rest.slice(1), project: { slug, hue } };
-  };
-
-const goalsOf = (work: Work): GoalsItem => {
-  const toGoal = goalItem(hueBySlug(work));
-  return {
-    theme: work.goals.find((block) => block.theme)?.theme ?? null,
-    blocks: work.goals.map(({ horizon, date, caption, goals, notes }) => ({
-      horizon,
-      date,
-      caption,
-      goals: goals.map(toGoal),
-      notes
-    }))
-  };
 };
 
 /**
@@ -121,6 +90,6 @@ export const homeEntry = (home: string, work: Work): HomeEntry => {
     pins: work.pins.map((pin) => pinItem(home, pin)),
     reports: openable.slice(0, REPORT_LIMIT).map((report) => reportItem(home, report)),
     olderReports: Math.max(0, openable.length - REPORT_LIMIT),
-    goals: goalsOf(work)
+    goals: goalsView(work)
   };
 };

@@ -8,7 +8,6 @@ import {
   dividedList,
   foldingCard,
   foldTitle,
-  GREY,
   groupTitle,
   hueColor,
   note,
@@ -19,7 +18,7 @@ import {
   when
 } from './style';
 import { count, taskRow, today } from './tasks';
-import { matchesQuery, openTarget, targetKey } from './view';
+import { matchesQuery, openTarget, projectColors, targetKey } from './view';
 
 const linkRow = ({ icon, title, target }: PinItem) =>
   HStack({ spacing: 6 }, [
@@ -62,11 +61,8 @@ interface AgendaGroup {
 }
 
 const listedTasks = (entry: HomeEntry): Listed[] => {
-  const colors = new Map(entry.projects.map(({ slug, hue }) => [slug, hueColor(hue)]));
-  return entry.tasks.map((task) => ({
-    task,
-    project: { slug: task.project, color: colors.get(task.project) ?? GREY }
-  }));
+  const colorOf = projectColors(entry);
+  return entry.tasks.map((task) => ({ task, project: { slug: task.project, color: colorOf(task.project) } }));
 };
 
 // In flight leads and carries its own due words, so each task shows once, as on the dashboard's Tasks page.

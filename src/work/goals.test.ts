@@ -96,6 +96,13 @@ describe('parseGoals', () => {
   });
 });
 
+test('bold on part of a line is emphasis, not the headline', () => {
+  expect(parseGoal('**Launch** the billing cutover')).toMatchObject({
+    title: 'Launch the billing cutover',
+    detail: ''
+  });
+});
+
 test('a goal line with markdown reads as plain text', () => {
   expect(parseGoal('**Ship [the export](https://example.com)** _(success: `curl` works)_')).toEqual({
     label: '',

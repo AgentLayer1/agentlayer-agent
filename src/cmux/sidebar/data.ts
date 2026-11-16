@@ -96,9 +96,9 @@ export interface GoalItem {
   check: string;
   detail: string;
   /**
-   * The project the goal's title opened with (`acme-app: …`), which the title then drops.
+   * The slug of the project the goal's title opened with (`acme-app: …`), which the title then drops; '' when none.
    */
-  project: { slug: string; hue: number } | null;
+  project: string;
 }
 
 export interface GoalBlockItem {

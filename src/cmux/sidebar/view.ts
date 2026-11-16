@@ -1,11 +1,19 @@
 import { SCHEMA, type HomeEntry, type PinTarget } from './data';
-import { note, when } from './style';
+import { GREY, hueColor, note, when } from './style';
 
 interface Scoped {
   path: string;
   entry: HomeEntry;
   current: boolean;
 }
+
+/**
+ * A project's colour by its slug; grey for a slug no project has.
+ */
+export const projectColors = (entry: HomeEntry) => {
+  const colors = new Map(entry.projects.map(({ slug, hue }) => [slug, hueColor(hue)]));
+  return (slug: string): string => colors.get(slug) ?? GREY;
+};
 
 export const openTarget = (target: PinTarget) =>
   target.kind === 'page' ? cmux('browser.tab.new', { url: target.url }) : cmux('file.open', { path: target.path });

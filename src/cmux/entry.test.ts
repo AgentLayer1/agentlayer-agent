@@ -133,7 +133,7 @@ test('the goals carry the year’s theme, each block’s date or month, and a pr
     title: "The invoice export in customers' hands (ac-101)",
     check: 'exported files open in the accounting tool for two customers',
     detail: '',
-    project: { slug: 'acme-app', hue: 210 }
+    project: 'acme-app'
   });
   expect(goals.blocks[2]?.notes).toEqual(['set 2026-11-01', 'acme first', 'Not doing in November: the blog redesign.']);
   expect(goals.blocks[3]?.notes).toEqual(['planned 2026-01-05', 'Foundations: the books closed every month.']);

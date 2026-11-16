@@ -337,6 +337,10 @@ var note = (text) => Text(text).font(11).color("tertiary").paddingHorizontal(10)
 var tabIcon = (symbol, help, active, onTap) => Image(symbol).font(12).color(() => active() ? "accent" : "secondary").padding(5).background(() => active() ? "#7f7f7f3d" : null).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
 
 // src/cmux/sidebar/view.ts
+var projectColors = (entry) => {
+  const colors = new Map(entry.projects.map(({ slug, hue }) => [slug, hueColor(hue)]));
+  return (slug) => colors.get(slug) ?? GREY;
+};
 var openTarget = (target) => target.kind === "page" ? cmux("browser.tab.new", { url: target.url }) : cmux("file.open", { path: target.path });
 var targetKey = (target) => target.kind === "page" ? target.url : target.path;
 var entryOf = (home) => home ? DATA.homes[home] : undefined;
@@ -399,6 +403,13 @@ var shortDate = (iso, { weekday = false } = {}) => {
 var daysUntil = (due, today) => {
   const days = dayNumber(due) - dayNumber(today);
   return due && !Number.isNaN(days) ? days : null;
+};
+var goalPeriodHolds = (horizon, date, today) => {
+  const days = daysUntil(date, today);
+  if (horizon === "day") {
+    return days === 0;
+  }
+  return horizon !== "week" || days === null || days >= -(mondayIndex(today) ?? 0);
 };
 var BUCKETS = ["overdue", "today", "week", "month", "later", "someday"];
 var bucketOf = (days) => {
@@ -491,13 +502,6 @@ var SHELVES = [
   { horizon: "month", title: "This month", icon: "target", color: GREEN, open: true },
   { horizon: "year", title: "This year", icon: "flag.fill", color: PURPLE, open: false }
 ];
-var current = ({ horizon, date }, day) => {
-  const days = daysUntil(date, day);
-  if (horizon === "day") {
-    return days === 0;
-  }
-  return horizon !== "week" || days === null || days >= -(mondayIndex(day) ?? 0);
-};
 var themeBanner = ({ label, text }) => HStack({ spacing: 10 }, [
   Image("sparkles").font(13).color(PURPLE),
   VStack({ spacing: 2, alignment: "leading" }, [
@@ -505,11 +509,11 @@ var themeBanner = ({ label, text }) => HStack({ spacing: 10 }, [
     Text(text).font(14).weight("semibold").italic().opacity(TITLE_OPACITY)
   ]).frame({ maxWidth: "infinity", alignment: "leading" })
 ]).paddingHorizontal(12).paddingVertical(10).background(`${PURPLE}1f`).cornerRadius(10);
-var goalRow = (goal) => VStack({ spacing: 4, alignment: "leading" }, [
+var goalRow = (colorOf) => (goal) => VStack({ spacing: 4, alignment: "leading" }, [
   HStack({ spacing: 6 }, [
     goal.label ? pill(goal.label, GREY) : Text(String(goal.number)).font(10).weight("semibold").monospaced().color("tertiary"),
     ...goal.mark ? [Text(goal.mark).font(10)] : [],
-    ...goal.project ? [pill(goal.project.slug, hueColor(goal.project.hue))] : [],
+    ...goal.project ? [pill(goal.project, colorOf(goal.project))] : [],
     Spacer({ minLength: 0 })
   ]),
   Text(goal.title).font(12).weight("medium").opacity(TITLE_OPACITY),
@@ -521,10 +525,10 @@ var goalRow = (goal) => VStack({ spacing: 4, alignment: "leading" }, [
   ] : [],
   ...goal.detail ? [Text(goal.detail).font(11).color("tertiary")] : []
 ]).paddingHorizontal(4).paddingVertical(7).frame({ maxWidth: "infinity", alignment: "leading" }).opacity(goal.mark ? 0.55 : 1);
-var shelfCard = (shelf, block, agent) => {
+var shelfCard = (shelf, block, agent, colorOf) => {
   const [open, setOpen] = signal(shelf.open);
   const command = `goals ${shelf.horizon}`;
-  const live = () => block !== undefined && current(block, today());
+  const live = () => block !== undefined && goalPeriodHolds(block.horizon, block.date, today());
   const shown = () => block && (shelf.horizon !== "day" || live()) ? block.goals : [];
   const caption = () => {
     if (!block) {
@@ -548,15 +552,16 @@ var shelfCard = (shelf, block, agent) => {
       Text(`No goals set for ${shelf.title.toLowerCase()}.`).font(11).color("secondary"),
       Text(`Ask ${agent}: ${command}`).font(10).color("tertiary")
     ]).paddingHorizontal(4).paddingVertical(4).frame({ maxWidth: "infinity", alignment: "leading" })),
-    dividedList(shown, (goal) => String(goal.number), goalRow),
+    dividedList(shown, (goal) => String(goal.number), goalRow(colorOf)),
     when(() => shown().length > 0 && (block?.notes.length ?? 0) > 0, () => VStack({ spacing: 4, alignment: "leading" }, (block?.notes ?? []).map((note) => Text(note).font(10).italic().color("tertiary").frame({ maxWidth: "infinity", alignment: "leading" }))).paddingHorizontal(4).paddingTop(4))
   ]));
 };
 var goalsBody = (entry) => {
   const { theme, blocks } = entry.goals;
+  const colorOf = projectColors(entry);
   return VStack({ spacing: 10 }, [
     ...theme ? [themeBanner(theme)] : [],
-    VStack({ spacing: 6 }, SHELVES.map((shelf) => shelfCard(shelf, blocks.find((block) => block.horizon === shelf.horizon), entry.name)))
+    VStack({ spacing: 6 }, SHELVES.map((shelf) => shelfCard(shelf, blocks.find((block) => block.horizon === shelf.horizon), entry.name, colorOf)))
   ]);
 };
 
@@ -575,11 +580,8 @@ var AGENDA = {
   later: "Later"
 };
 var listedTasks = (entry) => {
-  const colors = new Map(entry.projects.map(({ slug, hue }) => [slug, hueColor(hue)]));
-  return entry.tasks.map((task) => ({
-    task,
-    project: { slug: task.project, color: colors.get(task.project) ?? GREY }
-  }));
+  const colorOf = projectColors(entry);
+  return entry.tasks.map((task) => ({ task, project: { slug: task.project, color: colorOf(task.project) } }));
 };
 var agenda = (listed, day) => {
   const waiting = listed.filter(({ task }) => task.status !== "active");

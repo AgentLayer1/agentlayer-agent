@@ -44,6 +44,18 @@ export const daysUntil = (due: string, today: string): number | null => {
   return due && !Number.isNaN(days) ? days : null;
 };
 
+/**
+ * Whether a goal block dated `date` still speaks for `today`: a day's only on that day, a week's through that week,
+ * a month's or a year's always.
+ */
+export const goalPeriodHolds = (horizon: string, date: string, today: string): boolean => {
+  const days = daysUntil(date, today);
+  if (horizon === 'day') {
+    return days === 0;
+  }
+  return horizon !== 'week' || days === null || days >= -(mondayIndex(today) ?? 0);
+};
+
 export const BUCKETS = ['overdue', 'today', 'week', 'month', 'later', 'someday'] as const;
 export type DueBucket = (typeof BUCKETS)[number];
 

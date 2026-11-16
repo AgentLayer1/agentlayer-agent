@@ -308,6 +308,25 @@ h3.group.date { color: var(--accent); }
 .goalcard .gicon { margin-right: 8px; }
 .goalcard ul.plain { margin-top: 2px; }
 .goalcard .hint { padding: 2px 0; }
+.goaltheme {
+  display: flex; flex-direction: column; gap: 3px; margin: 12px 0; padding: 14px 18px; border-radius: 12px;
+  background: color-mix(in srgb, var(--magenta) 10%, transparent);
+}
+.goaltheme .gtheme { font-size: 18px; font-weight: 600; font-style: italic; color: var(--text); }
+.glabel { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); }
+.gcap { margin: 0 0 4px; font-size: 12px; color: var(--dim); }
+.gcap.warn { color: var(--amber); }
+.goal { padding: 10px 0; border-bottom: 1px solid var(--hairline); }
+.goal:last-of-type { border-bottom: none; }
+.goal.past { opacity: 0.55; }
+.gmeta { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.gnum { font-size: 11px; font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; }
+.gtitle { font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--text); }
+.gcheck { margin-top: 5px; font-size: 12.5px; line-height: 1.45; }
+.gcheck .glabel { display: block; margin-bottom: 1px; }
+.gdetail { margin-top: 4px; font-size: 12px; line-height: 1.45; color: var(--dim); }
+.gnotes { margin-top: 6px; }
+.gnotes p { margin: 4px 0 0; font-size: 12px; line-height: 1.45; font-style: italic; color: var(--dim); }
 
 /* ── project cards ─────────────────────────────────────────────────── */
 details.projcard {
