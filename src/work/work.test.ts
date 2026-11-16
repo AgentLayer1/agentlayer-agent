@@ -160,7 +160,7 @@ describe('buildWork', () => {
           'Morning brief [draft]',
           join('reports', 'briefings', '2026-11-09-0830-morning.md'),
           'briefing',
-          '🟠'
+          'findings'
         ],
         ['2026-11-08', 'Launch plan', join('reports', 'plans', '2026-11-08-0900-launch.md'), '', ''],
         ['2026-11-01', 'Loose notes', join('reports', 'plans', 'loose-notes.md'), '', '']

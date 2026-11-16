@@ -44,9 +44,9 @@ const pinItem = (home: string, { title, icon, path }: WorkProject['pins'][number
   target: targetOf(home, path)
 });
 
-const reportItem = (home: string, { title, skill, category, date, time, path }: WorkReport): ReportItem => {
+const reportItem = (home: string, { title, skill, category, date, time, status, path }: WorkReport): ReportItem => {
   const kind = skill || category;
-  return { title, kind, hue: nameHue(kind), date, time, target: targetOf(home, path) };
+  return { title, kind, hue: nameHue(kind), date, time, status, target: targetOf(home, path) };
 };
 
 /**

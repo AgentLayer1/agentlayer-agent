@@ -317,7 +317,7 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
       title: 'Morning brief',
       href: 'reports/briefings/2026-06-11-0904-morning.md',
       skill: 'briefing',
-      status: '🟠',
+      status: 'findings',
       category: 'briefings'
     }
   ],
@@ -340,6 +340,12 @@ const expectTilesLand = (html: string): void => {
 };
 
 describe('renderDashboardHtml', () => {
+  test('a report row names its status in a coloured badge', () => {
+    const html = renderDashboardHtml(makeSnapshot());
+    expect(html).toContain('<span class="chip status findings">findings</span>');
+    expect(html).not.toContain('🟠');
+  });
+
   test('renders every page, nav items for visible ones, and one document shell', () => {
     const html = renderDashboardHtml(makeSnapshot());
     for (const item of PAGES) {

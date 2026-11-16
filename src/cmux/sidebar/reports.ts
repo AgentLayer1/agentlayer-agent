@@ -64,6 +64,24 @@ const badge = (label: string, color: string) =>
     Text(label).font(10).color('secondary').lineLimit(1).truncation('tail')
   ]).fixedSize('horizontal');
 
+const STATUS_COLOR: Readonly<Record<string, string>> = {
+  clean: '#34C759',
+  findings: '#FF9F0A',
+  critical: '#FF453A',
+  draft: '#8E8E93'
+};
+
+const statusBadge = (status: string) =>
+  Text(status)
+    .font(9)
+    .weight('semibold')
+    .color(STATUS_COLOR[status] ?? 'secondary')
+    .paddingHorizontal(5)
+    .paddingVertical(1)
+    .background(`${STATUS_COLOR[status] ?? '#8E8E93'}26`)
+    .cornerRadius(4)
+    .fixedSize('horizontal');
+
 const reportCard = (item: ReportItem) =>
   tile(
     VStack({ spacing: 3, alignment: 'leading' }, [
@@ -71,6 +89,7 @@ const reportCard = (item: ReportItem) =>
       HStack({ spacing: 6 }, [
         badge(item.kind, hueColor(item.hue)),
         Text(clock(item.time)).font(10).monospaced().color('tertiary'),
+        ...(item.status ? [statusBadge(item.status)] : []),
         Spacer({ minLength: 0 })
       ])
     ]),
@@ -137,9 +156,9 @@ export const reportsBody = (entry: HomeEntry) => {
         )
       ])
     ),
-    // Today opens; earlier days start folded.
+    // Today and yesterday open; earlier days start folded.
     ForEach({ items: days, key: (group) => group.date }, (group) => {
-      const [open, setOpen] = signal(daysUntil(group().date, today()) === 0);
+      const [open, setOpen] = signal((daysUntil(group().date, today()) ?? -2) >= -1);
       return VStack({ spacing: 4 }, [
         foldTitle(
           () => dayTitle(group().date, today()),

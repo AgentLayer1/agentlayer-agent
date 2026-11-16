@@ -11,7 +11,7 @@ const agentButton = (label: string, active: () => boolean, onTap: () => void) =>
     .font(11)
     .weight('semibold')
     .paddingHorizontal(9)
-    .paddingVertical(7)
+    .paddingVertical(6)
     .cornerRadius(8)
     .color(() => (active() ? 'primary' : 'secondary'))
     .background(() => (active() ? '#7f7f7f3d' : '#7f7f7f1f'))

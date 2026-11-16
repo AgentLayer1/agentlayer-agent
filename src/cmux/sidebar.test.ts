@@ -214,19 +214,20 @@ run('Reports lists the pins, then the newest reports by day, worded against the 
   const texts = onReports().visibleTexts();
   const headings = texts.filter((text) => /^[A-Z0-9 ]+$/.test(text) && !/^[0-9]+$/.test(text));
   expect(headings).toEqual(['PINNED', 'TODAY', 'YESTERDAY', 'MON 2 NOV']);
-  const titles = ['Support playbook', 'Morning brief — Mon 9 Nov', 'Checkpoints — 4 sessions'];
+  const titles = [
+    'Support playbook',
+    'Morning brief — Mon 9 Nov',
+    'Checkpoints — 4 sessions',
+    'Evening wrap — Sun 8 Nov'
+  ];
   expect(
     texts.filter((text) => titles.includes(text)),
-    'pins first, then today, newest first'
+    'pins first, then today and yesterday, newest first'
   ).toEqual(titles);
-  expect(texts, 'earlier days start folded').not.toContain('Evening wrap — Sun 8 Nov');
+  expect(texts, 'earlier days start folded').not.toContain('Pricing page plan');
   expect(texts).toEqual(
-    expect.arrayContaining(['Launch checklist', 'Pricing page', 'acme-app', 'briefing', '8:30 AM'])
+    expect.arrayContaining(['Launch checklist', 'Pricing page', 'acme-app', 'briefing', '8:30 AM', 'findings', 'clean'])
   );
-  expect(
-    texts.some((text) => ['🟢', '🟠', '🔴', '⏳'].includes(text)),
-    'no status marks'
-  ).toBe(false);
   expect(texts).not.toContain('AT WORK');
 });
 
@@ -272,7 +273,6 @@ run('a dozen agents all get a chip', () => {
 
 run('every report group folds and opens on its own, and times read in twelve hours', () => {
   const sidebar = onReports();
-  sidebar.tap('YESTERDAY');
   sidebar.tap('MON 2 NOV');
   expect(sidebar.visibleTexts()).toEqual(expect.arrayContaining(['8:30 AM', '7:10 AM', '9:00 PM', '2:20 PM']));
   sidebar.tap('TODAY');

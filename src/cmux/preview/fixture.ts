@@ -93,10 +93,10 @@ export const NOVA: Work = {
     ...closed('blog', 2)
   ],
   reports: [
-    report('2026-11-09', '08:30', 'Morning brief — Mon 9 Nov', 'briefings', 'briefing', '🟠'),
+    report('2026-11-09', '08:30', 'Morning brief — Mon 9 Nov', 'briefings', 'briefing', 'findings'),
     report('2026-11-09', '07:10', 'Checkpoints — 4 sessions', 'radar', 'attention', ''),
-    report('2026-11-08', '21:00', 'Evening wrap — Sun 8 Nov', 'briefings', 'briefing', '🟢'),
-    report('2026-11-02', '14:20', 'Pricing page plan', 'plans', '', '⏳'),
+    report('2026-11-08', '21:00', 'Evening wrap — Sun 8 Nov', 'briefings', 'briefing', 'clean'),
+    report('2026-11-02', '14:20', 'Pricing page plan', 'plans', '', 'draft'),
     { date: '2026-11-01', time: '09:00', title: 'A line with no link', path: '', skill: '', status: '', category: '' }
   ],
   pins: [{ title: 'Support playbook', icon: '🛟', path: join('reports', 'plans', 'support-playbook.md') }],

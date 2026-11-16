@@ -339,9 +339,8 @@ const reportRow = (report: ReportRef, snap: StatusSnapshot): string => {
   // Skill chip when there is one (briefings, radar); fall back to the category
   // so chip-less rows (plan-mode exports have no skill) still carry a tag.
   const chip = report.skill ? projChip(report.skill) : report.category ? projChip(report.category) : '';
-  return `<div class="row" data-row data-cat="${esc(report.category)}"><span class="dim" style="flex:none">${esc(report.time)}</span><span style="flex:none">${esc(
-    report.status
-  )}</span><span class="grow">${title}</span>${chip}</div>`;
+  const status = report.status ? `<span class="chip status ${esc(report.status)}">${esc(report.status)}</span>` : '';
+  return `<div class="row" data-row data-cat="${esc(report.category)}"><span class="dim" style="flex:none">${esc(report.time)}</span><span class="grow">${title}</span>${status}${chip}</div>`;
 };
 
 /** Category filter chips for the Reports page — All + one per category that

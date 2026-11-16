@@ -72,6 +72,10 @@ export interface ReportItem {
    */
   date: string;
   time: string;
+  /**
+   * clean, findings, critical or draft; '' when the report has none.
+   */
+  status: string;
   target: PinTarget;
 }
 

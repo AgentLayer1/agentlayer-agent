@@ -91,7 +91,7 @@ export interface ReportRef {
   /** Path relative to <HOME> (e.g. `reports/briefings/...md`); '' if unparsed. */
   href: string;
   skill: string;
-  /** Status emoji from the index line (🟢/🟠/🔴/⏳); '' if absent. */
+  /** clean, findings, critical or draft; '' if absent. */
   status: string;
   /** Category derived from the href path: `briefings` | `plans` | `radar` | `api` | ''. */
   category: string;

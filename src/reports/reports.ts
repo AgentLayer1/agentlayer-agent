@@ -55,7 +55,7 @@ export interface WriteReportResult {
   indexUpdated: boolean;
 }
 
-const STATUS_ICON: Record<ReportStatus, string> = {
+export const STATUS_ICON: Record<ReportStatus, string> = {
   clean: '🟢',
   findings: '🟠',
   critical: '🔴',

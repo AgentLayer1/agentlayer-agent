@@ -4,12 +4,18 @@ import { FILES, FOLDERS } from '@/config';
 import { nowTime, todayDate } from '@/shared/date';
 import { readText } from '@/shared/text';
 import type { WorkReport } from '@/work/model';
+import { STATUS_ICON } from './reports';
 
 const REPORT_CATEGORIES = ['briefings', 'plans', 'radar', 'api', 'reviews', 'helpdesk', 'slack'] as const;
 
 export const REPORT_FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n?/;
 
 const MARKDOWN_RE = /\.md$/;
+
+// The index writes a report's status as an emoji; readers get the word.
+const STATUS_WORD: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries(STATUS_ICON).map(([word, icon]) => [icon, word])
+);
 
 // A title's own brackets are written escaped (`\[draft\]`), so the link text runs to the first bare `]`.
 const INDEX_LINE = /^- (\d{2}:\d{2}) · \[((?:\\.|[^\]\\])+)\](?:\(([^)]+)\))?(?: · `([^`]+)`)?(?: · (\S+))?/;
@@ -81,7 +87,7 @@ export const readReports = (): WorkReport[] => {
         title: entry[2].replace(/\\([[\]])/g, '$1'),
         path,
         skill: entry[4] ?? '',
-        status: entry[5] ?? '',
+        status: STATUS_WORD[entry[5] ?? ''] ?? '',
         category: categoryOf(path)
       });
     }

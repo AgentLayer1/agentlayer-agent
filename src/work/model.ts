@@ -69,7 +69,7 @@ const ReportSchema = z.object({
   path: z.string(),
   skill: z.string(),
   /**
-   * The status emoji from its index line (🟢 🟠 🔴 ⏳), '' when none.
+   * clean, findings, critical or draft, from the emoji on its index line; '' when none.
    */
   status: z.string(),
   /**

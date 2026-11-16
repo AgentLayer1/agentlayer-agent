@@ -298,7 +298,7 @@ var groupTitle = (title, count, icon) => HStack({ spacing: 4 }, [
 ]).paddingHorizontal(4);
 var chevron = (expanded) => Image(() => expanded() ? "chevron.down" : "chevron.right").font(9).weight("semibold").color("tertiary");
 var foldTitle = (title, count, expanded, setExpanded, icon) => HStack({ spacing: 4 }, [groupTitle(title, count, icon), chevron(expanded)]).paddingTrailing(4).cursor("pointer").onTap(() => setExpanded(!expanded()));
-var TITLE_OPACITY = 0.78;
+var TITLE_OPACITY = 0.83;
 var toolIcon = (symbol, help, onTap) => Image(symbol).font(11).color("secondary").padding(5).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
 var CARD = "#7f7f7f12";
 var card = (view) => view.paddingHorizontal(10).paddingVertical(8).background(CARD).cornerRadius(10);
@@ -330,7 +330,7 @@ var scopedPage = (home, ready) => {
 // src/cmux/sidebar/agents.ts
 var FIRST_LINE = 190;
 var LINE = 260;
-var agentButton = (label, active, onTap) => Text(label).font(11).weight("semibold").paddingHorizontal(9).paddingVertical(7).cornerRadius(8).color(() => active() ? "primary" : "secondary").background(() => active() ? "#7f7f7f3d" : "#7f7f7f1f").hoverBackground("#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(onTap);
+var agentButton = (label, active, onTap) => Text(label).font(11).weight("semibold").paddingHorizontal(9).paddingVertical(6).cornerRadius(8).color(() => active() ? "primary" : "secondary").background(() => active() ? "#7f7f7f3d" : "#7f7f7f1f").hoverBackground("#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(onTap);
 var agentHeader = ({ pill, homes, home, pick }) => {
   const agentChip = (path) => agentButton(homeLabel(path), () => home() === path, () => pick(path));
   const [first = [], ...rest] = packLines(homes, homeLabel, FIRST_LINE, LINE);
@@ -596,11 +596,19 @@ var badge2 = (label, color) => HStack({ spacing: 4 }, [
   Circle({ size: 6 }).fill(color),
   Text(label).font(10).color("secondary").lineLimit(1).truncation("tail")
 ]).fixedSize("horizontal");
+var STATUS_COLOR = {
+  clean: "#34C759",
+  findings: "#FF9F0A",
+  critical: "#FF453A",
+  draft: "#8E8E93"
+};
+var statusBadge = (status) => Text(status).font(9).weight("semibold").color(STATUS_COLOR[status] ?? "secondary").paddingHorizontal(5).paddingVertical(1).background(`${STATUS_COLOR[status] ?? "#8E8E93"}26`).cornerRadius(4).fixedSize("horizontal");
 var reportCard = (item) => tile(VStack({ spacing: 3, alignment: "leading" }, [
   Text(item.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail"),
   HStack({ spacing: 6 }, [
     badge2(item.kind, hueColor(item.hue)),
     Text(clock(item.time)).font(10).monospaced().color("tertiary"),
+    ...item.status ? [statusBadge(item.status)] : [],
     Spacer({ minLength: 0 })
   ])
 ]), () => openTarget(item.target));
@@ -637,7 +645,7 @@ var reportsBody = (entry) => {
       ForEach({ items: () => showing(pinsOpen)() ? shownPins() : [], key: (item) => targetKey(item.pin.target) }, (item) => pinCard(item()))
     ])),
     ForEach({ items: days, key: (group) => group.date }, (group) => {
-      const [open, setOpen] = signal(daysUntil(group().date, today()) === 0);
+      const [open, setOpen] = signal((daysUntil(group().date, today()) ?? -2) >= -1);
       return VStack({ spacing: 4 }, [
         foldTitle(() => dayTitle(group().date, today()), () => group().reports.length, showing(open), setOpen),
         ForEach({ items: () => showing(open)() ? group().reports : [], key: (report) => targetKey(report.target) }, (report) => reportCard(report()))

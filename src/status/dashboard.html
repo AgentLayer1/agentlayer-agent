@@ -172,6 +172,10 @@ main { flex: 1; min-width: 0; padding: 30px 38px 70px; }
   padding: 2px 8px; font-size: 11px; color: var(--dim); white-space: nowrap; flex: none;
 }
 a.chip:hover { color: var(--cyan); text-decoration: none; }
+.chip.status { font-weight: 600; }
+.chip.status.clean { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
+.chip.status.findings { color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, transparent); }
+.chip.status.critical { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
 .chip.proj i, .chip.lvl i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; }
 .chip.glob { background: transparent; border: 1px solid var(--border); padding: 1px 6px; }
 .chip.glob code { color: var(--green); font-size: 10.5px; }
