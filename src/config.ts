@@ -90,6 +90,10 @@ export const SUBSCRIPTION_MARKER = 'AGENT_SUBSCRIPTION';
  *  defaults to Obsidian. */
 export const MARKDOWN_URL = env('MARKDOWN_URL') || 'obsidian://open?path={path}&paneType=tab';
 
+/** The command that starts a session in this home, which the cmux sidebar types into a new tab.
+ *  Set via `AGENT_LAUNCHER` when the home starts its agent another way; defaults to `claude`. */
+export const LAUNCHER = env('AGENT_LAUNCHER')?.trim() || 'claude';
+
 /** This plugin's name, from its manifest. */
 export const PLUGIN_NAME = pluginName();
 
