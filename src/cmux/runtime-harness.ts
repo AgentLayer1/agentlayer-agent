@@ -1,11 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createContext, runInContext } from 'node:vm';
+import { CMUX_APP } from './app';
 
 // cmux's runtime is GPL-licensed, so it is loaded from the installed app rather than vendored.
 export const RUNTIME = join(
-  '/Applications',
-  'cmux.app',
+  CMUX_APP,
   'Contents',
   'Resources',
   'CmuxSwiftRenderUI_CmuxSwiftRenderUI.bundle',

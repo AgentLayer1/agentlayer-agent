@@ -1,3 +1,6 @@
+/**
+ * The entry format's version. A sidebar shows an entry with another schema as "update this agent".
+ */
 export const SCHEMA = 1;
 
 export interface ProjectLink {
@@ -15,6 +18,7 @@ export interface PinnedLink {
  * What the sidebar knows about one home: only what changes when a project, pin or setting does.
  */
 export interface HomeEntry {
+  schema: number;
   name: string;
   emoji: string;
   launcher: string;
@@ -23,8 +27,7 @@ export interface HomeEntry {
   pinned: PinnedLink[];
 }
 
-export interface SidebarFile {
-  schema: number;
+export interface SidebarData {
   /**
    * Keyed by the home's absolute path.
    */

@@ -92,6 +92,7 @@ Groups:
   worktree                          Create a sibling git worktree of <repoPath> and bootstrap it (copy locals → install → build); \`worktree remove\` tears one down safely
   seed                              One-shot agent handoff: scan what this home could seed a teammate with, export a reviewed selection as a zip bundle, import a bundle into a fresh home
   database                          Query/inspect/fork local Postgres via AGENT_DB_<NAME> connections (real terminal — outside the Bash sandbox)
+  cmux                              The optional cmux pack: the AgentLayer sidebar, one per Mac, that every home on it joins
 
 Task commands:
   task query [--status=X] [--priority=P0-P3] [--project=NAME]
@@ -173,6 +174,12 @@ Worktree commands:
                                     commits; runs the repo's \`clean\` script first.
                                     Keeps the branch unless --delete-branch. --dry-run reports the status without
                                     touching anything. Same sandbox note — use remove_worktree there.
+
+cmux commands (run from a terminal inside cmux; the cmux CLI only answers there):
+  cmux sidebar install              Add this home to the AgentLayer sidebar (starting it if it's the first), have cmux check it, and show it
+  cmux sidebar refresh              Put this home's latest projects and pins into the sidebar (the dashboard refresh also does this)
+  cmux sidebar remove               Take this home out of the sidebar; the last home out deletes it
+  cmux sidebar preview [path]       Write agentlayer-preview, the sidebar drawing two invented homes, for screenshots
 
 Database commands:
   database list                     List configured AGENT_DB_<NAME> connections (name + host/db, never credentials)
@@ -584,6 +591,11 @@ async function run(): Promise<void> {
     const { rebuildDashboards } = await import('@/status/html');
     console.log(JSON.stringify(await rebuildDashboards(), null, 2));
     return;
+  }
+
+  if (group === 'cmux') {
+    const { runCmuxCommand } = await import('@/cmux/command');
+    process.exit(await runCmuxCommand(command, args));
   }
 
   if (group === 'worktree') {

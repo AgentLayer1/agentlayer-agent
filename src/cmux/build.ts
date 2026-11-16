@@ -14,7 +14,13 @@ export const bundleSidebar = async (): Promise<string> => {
   if (!header) {
     throw new Error(`${ENTRY} must open with a /* … */ header comment`);
   }
-  const { outputs } = await Bun.build({ entrypoints: [ENTRY], root: ROOT, format: 'esm', target: 'browser', banner: header });
+  const { outputs } = await Bun.build({
+    entrypoints: [ENTRY],
+    root: ROOT,
+    format: 'esm',
+    target: 'browser',
+    banner: header
+  });
   const [output] = outputs;
   if (!output) {
     throw new Error(`bundling ${ENTRY} produced no output`);

@@ -1,7 +1,7 @@
 import { extname, join, resolve } from 'node:path';
 import type { Persona, ProjectLoad, StatusSnapshot, SurfaceLink } from '@/status/collect';
 import { projectHue } from '@/status/html-primitives';
-import type { HomeEntry, PinnedLink } from './sidebar/data';
+import { SCHEMA, type HomeEntry, type PinnedLink } from './sidebar/data';
 
 /**
  * The slice of a dashboard snapshot the sidebar reads. Narrow on purpose: nothing that changes per session fits.
@@ -18,6 +18,7 @@ export interface EntrySource {
 const PIN_KINDS: Readonly<Record<string, PinnedLink['kind']>> = { '.md': 'md', '.html': 'html' };
 
 export const homeEntry = (source: EntrySource, launcher: string): HomeEntry => ({
+  schema: SCHEMA,
   name: source.persona.name,
   emoji: source.persona.emoji,
   launcher,

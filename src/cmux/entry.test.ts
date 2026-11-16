@@ -2,11 +2,13 @@ import { expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { homeEntry } from './entry';
 import { NOVA, SCOUT } from './preview/fixture';
+import { SCHEMA } from './sidebar/data';
 
 const NOVA_HOME = NOVA.runtime.home;
 
 test('a home with projects, pins and a roadmap', () => {
   expect(homeEntry(NOVA, 'claude')).toEqual({
+    schema: SCHEMA,
     name: 'Nova',
     emoji: '🦉',
     launcher: 'claude',
@@ -25,6 +27,7 @@ test('a home with projects, pins and a roadmap', () => {
 
 test('a home with no projects, pins or roadmap', () => {
   expect(homeEntry(SCOUT, 'agent')).toEqual({
+    schema: SCHEMA,
     name: 'Scout',
     emoji: '🐢',
     launcher: 'agent',
@@ -57,7 +60,13 @@ test('a project page in the surfaces is not the home roadmap', () => {
 });
 
 test('a pin given relative to the home becomes absolute, and a pin that is neither markdown nor HTML is left out', () => {
-  const pins = { ...NOVA, pinned: [{ title: 'Notes', href: 'reports/notes.md' }, { title: 'Scan', href: 'reports/scan.pdf' }] };
+  const pins = {
+    ...NOVA,
+    pinned: [
+      { title: 'Notes', href: 'reports/notes.md' },
+      { title: 'Scan', href: 'reports/scan.pdf' }
+    ]
+  };
   expect(homeEntry(pins, 'claude').pinned).toEqual([
     { title: 'Notes', path: join(NOVA_HOME, 'reports', 'notes.md'), kind: 'md' }
   ]);
