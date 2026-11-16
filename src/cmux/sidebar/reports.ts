@@ -1,7 +1,6 @@
 import { searchField } from 'cmux-custom-manager/components';
-import { daysUntil } from '../../work/due';
+import { daysUntil, shortDate } from '../../work/due';
 import type { HomeEntry, PinItem, ReportItem } from './data';
-import { dateParts, WEEKDAYS } from './due';
 import {
   ACCENT,
   dividedList,
@@ -39,8 +38,7 @@ const dayTitle = (date: string, day: string): string => {
   if (days === -1) {
     return 'Yesterday';
   }
-  const parts = dateParts(date);
-  return parts ? `${WEEKDAYS[parts.weekday] ?? ''} ${parts.day} ${parts.month}` : date || 'Undated';
+  return shortDate(date, { weekday: true }) ?? (date || 'Undated');
 };
 
 interface Pinned {

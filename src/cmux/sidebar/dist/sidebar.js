@@ -377,9 +377,24 @@ var agentHeader = ({ pill, homes, home, pick }) => {
 
 // src/work/due.ts
 var DAY_MS = 86400000;
-var dayNumber = (iso) => {
+var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+var utcOf = (iso) => {
   const [year, month, day] = iso.split("-").map(Number);
-  return year && month && day ? Date.UTC(year, month - 1, day) / DAY_MS : Number.NaN;
+  return year && month && day ? new Date(Date.UTC(year, month - 1, day)) : null;
+};
+var dayNumber = (iso) => (utcOf(iso)?.getTime() ?? Number.NaN) / DAY_MS;
+var mondayIndex = (iso) => {
+  const date = utcOf(iso);
+  return date ? (date.getUTCDay() + 6) % 7 : null;
+};
+var shortDate = (iso, { weekday = false } = {}) => {
+  const date = utcOf(iso);
+  if (!date) {
+    return null;
+  }
+  const dayMonth = `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()] ?? ""}`;
+  return weekday ? `${WEEKDAYS[date.getUTCDay()] ?? ""} ${dayMonth}` : dayMonth;
 };
 var daysUntil = (due, today) => {
   const days = dayNumber(due) - dayNumber(today);
@@ -422,15 +437,6 @@ var wordsFor = (days) => {
 var dueLabel = (due, today) => {
   const days = daysUntil(due, today);
   return days === null ? null : { text: wordsFor(days), tone: toneOf(days) };
-};
-var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-var dateParts = (date) => {
-  const [year, month, day] = date.split("-").map(Number);
-  if (!year || !month || !day) {
-    return null;
-  }
-  return { weekday: new Date(Date.UTC(year, month - 1, day)).getUTCDay(), day, month: MONTHS[month - 1] ?? "" };
 };
 var isoDay = (epochSeconds) => {
   const date = new Date(epochSeconds * 1000);
@@ -485,17 +491,12 @@ var SHELVES = [
   { horizon: "month", title: "This month", icon: "target", color: GREEN, open: true },
   { horizon: "year", title: "This year", icon: "flag.fill", color: PURPLE, open: false }
 ];
-var daysSinceMonday = (day) => ((dateParts(day)?.weekday ?? 1) + 6) % 7;
-var shortDate = (date) => {
-  const parts = dateParts(date);
-  return parts ? `${parts.day} ${parts.month}` : date;
-};
 var current = ({ horizon, date }, day) => {
   const days = daysUntil(date, day);
   if (horizon === "day") {
     return days === 0;
   }
-  return horizon !== "week" || days === null || days >= -daysSinceMonday(day);
+  return horizon !== "week" || days === null || days >= -(mondayIndex(day) ?? 0);
 };
 var themeBanner = ({ label, text }) => HStack({ spacing: 10 }, [
   Image("sparkles").font(13).color(PURPLE),
@@ -530,7 +531,7 @@ var shelfCard = (shelf, block, agent) => {
       return "";
     }
     if (shelf.horizon === "week" && block.date) {
-      return live() ? `Week of ${shortDate(block.date)}` : `Set for the week of ${shortDate(block.date)} · ask ${agent}: ${command}`;
+      return live() ? `Week of ${shortDate(block.date) ?? block.date}` : `Set for the week of ${shortDate(block.date) ?? block.date} · ask ${agent}: ${command}`;
     }
     return block.caption;
   };
@@ -699,8 +700,7 @@ var dayTitle = (date, day) => {
   if (days === -1) {
     return "Yesterday";
   }
-  const parts = dateParts(date);
-  return parts ? `${WEEKDAYS[parts.weekday] ?? ""} ${parts.day} ${parts.month}` : date || "Undated";
+  return shortDate(date, { weekday: true }) ?? (date || "Undated");
 };
 var badge2 = (label, color) => HStack({ spacing: 4 }, [
   Circle({ size: 6 }).fill(color),

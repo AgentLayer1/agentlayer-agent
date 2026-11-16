@@ -1,6 +1,5 @@
-import { daysUntil } from '../../work/due';
+import { daysUntil, mondayIndex, shortDate } from '../../work/due';
 import type { GoalBlockItem, GoalItem, GoalsItem, HomeEntry } from './data';
-import { dateParts } from './due';
 import {
   ACCENT,
   dividedList,
@@ -32,21 +31,13 @@ const SHELVES: readonly Shelf[] = [
   { horizon: 'year', title: 'This year', icon: 'flag.fill', color: PURPLE, open: false }
 ];
 
-// A week starts on Monday, as the goals skill sets one.
-const daysSinceMonday = (day: string): number => ((dateParts(day)?.weekday ?? 1) + 6) % 7;
-
-const shortDate = (date: string): string => {
-  const parts = dateParts(date);
-  return parts ? `${parts.day} ${parts.month}` : date;
-};
-
 // Whether a block still speaks for the sidebar's day: a daily block only on its day, a weekly one through its week.
 const current = ({ horizon, date }: GoalBlockItem, day: string): boolean => {
   const days = daysUntil(date, day);
   if (horizon === 'day') {
     return days === 0;
   }
-  return horizon !== 'week' || days === null || days >= -daysSinceMonday(day);
+  return horizon !== 'week' || days === null || days >= -(mondayIndex(day) ?? 0);
 };
 
 const themeBanner = ({ label, text }: NonNullable<GoalsItem['theme']>) =>
@@ -102,8 +93,8 @@ const shelfCard = (shelf: Shelf, block: GoalBlockItem | undefined, agent: string
     }
     if (shelf.horizon === 'week' && block.date) {
       return live()
-        ? `Week of ${shortDate(block.date)}`
-        : `Set for the week of ${shortDate(block.date)} · ask ${agent}: ${command}`;
+        ? `Week of ${shortDate(block.date) ?? block.date}`
+        : `Set for the week of ${shortDate(block.date) ?? block.date} · ask ${agent}: ${command}`;
     }
     return block.caption;
   };

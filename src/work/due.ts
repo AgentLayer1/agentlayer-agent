@@ -1,13 +1,39 @@
 /*
- * How a due date reads against a day: the dashboard and the cmux sidebar both class dates through this file. It
+ * How a date reads against a day: the dashboard and the cmux sidebar both class and word dates through this file. It
  * imports nothing, because the sidebar bundles it into cmux's runtime, where its typecheck has no Node or Bun.
  */
 
 const DAY_MS = 86_400_000;
 
-const dayNumber = (iso: string): number => {
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// The one reading of a `YYYY-MM-DD` date, as a UTC moment so no time zone shifts its day.
+const utcOf = (iso: string): Date | null => {
   const [year, month, day] = iso.split('-').map(Number);
-  return year && month && day ? Date.UTC(year, month - 1, day) / DAY_MS : Number.NaN;
+  return year && month && day ? new Date(Date.UTC(year, month - 1, day)) : null;
+};
+
+const dayNumber = (iso: string): number => (utcOf(iso)?.getTime() ?? Number.NaN) / DAY_MS;
+
+/**
+ * The date's day of the week from Monday (0) to Sunday (6); null when it doesn't parse.
+ */
+export const mondayIndex = (iso: string): number | null => {
+  const date = utcOf(iso);
+  return date ? (date.getUTCDay() + 6) % 7 : null;
+};
+
+/**
+ * The date as `9 Nov`, or `Mon 9 Nov` with `weekday`; null when it doesn't parse.
+ */
+export const shortDate = (iso: string, { weekday = false } = {}): string | null => {
+  const date = utcOf(iso);
+  if (!date) {
+    return null;
+  }
+  const dayMonth = `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()] ?? ''}`;
+  return weekday ? `${WEEKDAYS[date.getUTCDay()] ?? ''} ${dayMonth}` : dayMonth;
 };
 
 /**
