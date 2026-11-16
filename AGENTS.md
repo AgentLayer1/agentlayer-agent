@@ -11,7 +11,7 @@ The `agentlayer` plugin: an MCP server, hook handlers, a CLI, skills and mods th
 | `src/tools.ts` | The tool registry: one import per domain's `tool.ts` |
 | `src/config.ts` | Home paths (resolved live, never frozen), plugin identity, timezone |
 | `src/bootstrap.ts`, `src/test.ts` | The server's first import (settings env), and the test preload that pins a throwaway home |
-| `src/<domain>/` | One folder per domain or pack: `api`, `appstore`, `browser`, `cmux`, `database`, `github`, `helpdesk`, `home`, `knowledge`, `media`, `reports`, `seed`, `seo`, `slack`, `status`, `tasks`, `upgrade`, `worktree` |
+| `src/<domain>/` | One folder per domain or pack: `api`, `appstore`, `browser`, `cmux`, `database`, `github`, `helpdesk`, `home`, `knowledge`, `media`, `reports`, `seed`, `seo`, `slack`, `status`, `tasks`, `upgrade`, `work`, `worktree` |
 | `src/cmux/sidebar/` | The cmux sidebar's own code, run by cmux and not by Bun: its own `tsconfig.json` (no Bun or Node types), bundled into the committed `dist/sidebar.js` by `bun run cmux:build` |
 | `src/hooks/` | Session start (context, banner), the shell guard, and `handlers.ts`, which speaks each host's hook protocol |
 | `src/notices/`, `src/statusline/`, `src/roadmap/` | Banner and prompt-row notices, the status line, roadmap data |
@@ -27,6 +27,10 @@ The `agentlayer` plugin: an MCP server, hook handlers, a CLI, skills and mods th
 Each domain exports one `tools: ToolDef[]` from `src/<domain>/tool.ts`, built with `defineTool` from `@/shared/tool-def`. A small domain declares its tools there; a domain whose tools sit beside their logic (`github`, `database`, `browser`, `seo`) keeps those files and its `tool.ts` concatenates their arrays. A new `tool.ts` gets one import line in `src/tools.ts`. `src/contracts/tools.test.ts` fails on a module exporting `tools` that never reaches the registry (a sibling file a domain's `tool.ts` forgot included), a duplicate name, or an `askOnly` tool missing from init's baseline `permissions.ask`.
 
 `src/status/collect.ts` imports the registry lazily, because the registry reaches it back through the status tools. Keep that import inside the function.
+
+## The work model
+
+`src/work/` is the one read of a home's projects and tasks: `buildWork()` scans the task files once, and a rebuild writes the result to `.state/work.json` (only when it changed). It holds facts only (no counts, no "overdue"); `work/views.ts` owns every rule derived from it (overdue, due soon, stale, the queue, project loads), each taking the day it reads against. The dashboard, TASKS.md, `task_scan` and the cmux sidebar all go through it. Code that needs tasks or projects takes the model it's handed in a rebuild, or `readWork()` (or `buildWork()` when it must be current) elsewhere, and derives through `views.ts`, never scanning task files or copying a rule. Changing the model's shape bumps `WORK_SCHEMA`; a reader of another version sees no model and the next rebuild rewrites it.
 
 ## Paths that never move
 
