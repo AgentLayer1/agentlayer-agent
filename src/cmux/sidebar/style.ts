@@ -1,5 +1,3 @@
-import { SIDEBAR_NAME } from './data';
-
 /**
  * A project's colour: the dashboard's `hsl(hue, 55%, 62%)`, as hex for the native renderer.
  */
@@ -54,9 +52,6 @@ export const toolIcon = (symbol: string, help: string, onTap: () => void) =>
     .cursor('pointer')
     .help(help)
     .onTap(onTap);
-
-export const reloadButton = () =>
-  toolIcon('arrow.clockwise', 'Reload the sidebar', () => cmux('sidebar.custom.reload', { name: SIDEBAR_NAME }));
 
 export const note = (text: string) => Text(text).font(11).color('tertiary').paddingHorizontal(10);
 

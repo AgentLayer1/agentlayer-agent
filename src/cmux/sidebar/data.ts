@@ -3,11 +3,6 @@
  */
 export const SCHEMA = 3;
 
-/**
- * The installed file's name under cmux's sidebars folder, and what the sidebar reloads itself by.
- */
-export const SIDEBAR_NAME = 'agentlayer';
-
 export interface TaskItem {
   id: string;
   title: string;

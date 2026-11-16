@@ -16,7 +16,7 @@
 import { manager } from 'cmux-custom-manager/manager';
 import { workPage } from './pages/work';
 import { scopedHome, type Pin } from './scope';
-import { reloadButton, tabIcon } from './style';
+import { tabIcon } from './style';
 
 type Tab = 'manager' | 'work';
 
@@ -59,7 +59,7 @@ const app = () => {
   return VStack({ spacing: 8 }, [
     ForEach({ items: () => [tab()], key: (name) => name }, (name) =>
       name() === 'manager'
-        ? manager({ header: tabs(), trailing: reloadButton() })
+        ? manager({ header: tabs() })
         : workPage({
             tabs: tabs(),
             home: current,

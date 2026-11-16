@@ -43,12 +43,6 @@ run('Work opens the dashboard and the roadmap as full tabs', () => {
   expect(sidebar.tap('Roadmap')?.params).toEqual({ url: NOVA_ENTRY.roadmap ?? '' });
 });
 
-run('both tabs end their top row with a button that reloads the sidebar’s file', () => {
-  const reload = { kind: 'cmux', method: 'sidebar.custom.reload', params: { name: 'agentlayer' } };
-  expect(mount(installed(), CMUX_DATA).tap('Reload the sidebar')).toEqual(reload);
-  expect(onWork().tap('Reload the sidebar')).toEqual(reload);
-});
-
 const between = (texts: string[], from: string, to: string) => texts.slice(texts.indexOf(from), texts.indexOf(to));
 
 run('the Tasks card leads with every live task counted, what is overdue or due this week, folded', () => {

@@ -3,10 +3,9 @@
  * `bun run cmux:preview --text` prints what each page draws instead, from cmux's own runtime.
  */
 import { writeFileAtomic } from '@/shared/utils';
-import { sidebarFile, sidebarsDir } from '../file';
+import { SIDEBAR_NAME, sidebarFile, sidebarsDir } from '../file';
 import { defaultTarget } from '../lifecycle';
 import { hasRuntime, mount, RUNTIME } from '../runtime-harness';
-import { SIDEBAR_NAME } from '../sidebar/data';
 import { previewText } from './preview';
 
 const args = process.argv.slice(2);

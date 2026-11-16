@@ -145,8 +145,8 @@ var searchField = (placeholder, onEdit) => HStack([
   HStack({ spacing: 6 }, [
     Image("magnifyingglass").font(12).color("secondary"),
     TextField("", { placeholder, autofocus: false, onEdit: (text) => onEdit(text ?? "") })
-  ]).paddingHorizontal(9).paddingVertical(6).background("#7f7f7f24").cornerRadius(8)
-]).paddingHorizontal(4);
+  ]).paddingHorizontal(9).paddingVertical(6).background("#7f7f7f24").cornerRadius(8).frame({ maxWidth: "infinity" })
+]);
 var sectionHeader = (section, count, folded, onTap) => HStack({ spacing: 6 }, [
   Text(SECTIONS[section].label).font(10).weight("bold").color(SECTIONS[section].color),
   Text(() => String(count())).font(10).monospaced().color("tertiary"),
@@ -242,12 +242,12 @@ var manager = ({ header, trailing } = {}) => {
       Spacer({ minLength: 0 }),
       ...ORDER.filter((section) => section !== "ended").map((section) => tally(section, () => sections()[section].length)),
       ...trailing ? [trailing] : []
-    ]).paddingHorizontal(4),
+    ]),
     ForEach({ items: () => groupChips().length ? ["chips"] : [], key: (item) => item }, () => HStack({ spacing: 4 }, [
       chip("All", () => !effectiveGroupFilter(), () => setGroupFilter("")),
       ForEach({ items: groupChips, key: (group) => group.id }, (group) => chip(() => group().name, () => effectiveGroupFilter() === group().id, () => setGroupFilter(effectiveGroupFilter() === group().id ? "" : group().id))),
       Spacer()
-    ]).paddingHorizontal(4)),
+    ])),
     searchField("Search sessions…", setQuery),
     Divider(),
     VStack({ spacing: 4 }, [ForEach({ items: entries, key: (entry) => entry.key }, row)]),
@@ -295,10 +295,6 @@ var isoDay = (epochSeconds) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 };
 
-// src/cmux/sidebar/data.ts
-var SCHEMA = 3;
-var SIDEBAR_NAME = "agentlayer";
-
 // src/cmux/sidebar/style.ts
 var hueColor = (hue) => {
   const saturation = 0.55;
@@ -322,7 +318,6 @@ var groupTitle = (title, count) => HStack({ spacing: 4 }, [
   Spacer({ minLength: 0 })
 ]).paddingHorizontal(4);
 var toolIcon = (symbol, help, onTap) => Image(symbol).font(11).color("secondary").padding(5).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
-var reloadButton = () => toolIcon("arrow.clockwise", "Reload the sidebar", () => cmux("sidebar.custom.reload", { name: SIDEBAR_NAME }));
 var note = (text) => Text(text).font(11).color("tertiary").paddingHorizontal(10);
 var tabIcon = (symbol, help, active, onTap) => Image(symbol).font(12).color(() => active() ? "accent" : "secondary").padding(5).background(() => active() ? "#7f7f7f3d" : null).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
 
@@ -360,6 +355,9 @@ var taskRow = (task, projectColor) => VStack({ spacing: 2, alignment: "leading" 
   Text(task.title).font(12).lineLimit(3).truncation("tail"),
   taskMeta(task, projectColor)
 ]).paddingHorizontal(4).paddingVertical(5).cornerRadius(8).hoverBackground("#7f7f7f26").cursor("pointer").frame({ maxWidth: "infinity", alignment: "leading" }).onTap(() => cmux("file.open", { path: task.path }));
+
+// src/cmux/sidebar/data.ts
+var SCHEMA = 3;
 
 // src/cmux/sidebar/view.ts
 var homeLabel = (home) => {
@@ -461,18 +459,20 @@ var projectCard = (item) => {
         chevron(expanded)
       ]),
       progressBar(fraction(project.done, project.active + project.blocked + project.open), color),
-      ForEach({ items: () => next && !expanded() ? [next] : [], key: (task) => task.id }, (task) => HStack({ spacing: 6 }, [
-        statusIcon(task().status),
+      ForEach({ items: () => next && !expanded() ? [next] : [], key: (task) => task.id }, (task) => HStack({ spacing: 5 }, [
+        Image("arrow.turn.down.right").font(8).color("quaternary"),
         Text(task().title).font(11).color("secondary").lineLimit(1).truncation("tail"),
         Spacer({ minLength: 0 })
       ]))
     ]).cursor("pointer").onTap(() => setExpanded(!expanded())),
-    VStack({ spacing: 0 }, [
-      ForEach({ items: () => expanded() ? links : [], key: (link) => link.title }, (link) => linkRow(link()))
-    ]),
-    VStack({ spacing: 1 }, [
-      ForEach({ items: () => expanded() ? project.tasks : [], key: (task) => task.id }, (task) => taskRow(task()))
-    ])
+    ForEach({ items: () => expanded() ? [project.slug] : [], key: (slug) => slug }, () => VStack({ spacing: 6 }, [
+      ...links.length ? [
+        VStack({ spacing: 0 }, [
+          ForEach({ items: links, key: (link) => link.title }, (link) => linkRow(link()))
+        ])
+      ] : [],
+      VStack({ spacing: 1 }, [ForEach({ items: project.tasks, key: (task) => task.id }, (task) => taskRow(task()))])
+    ]))
   ])).frame({ maxWidth: "infinity" });
 };
 var STATES = [
@@ -535,8 +535,7 @@ var workPage = ({ tabs, home, homes, pick }) => {
       }),
       ...homes.length > 1 ? [
         Menu(() => homeLabel(home() ?? ""), homes.map((path) => Button(homeLabel(path), () => pick(path))))
-      ] : [],
-      reloadButton()
+      ] : []
     ]),
     scopedPage(home, (_path, current) => workBody(current))
   ]).paddingHorizontal(6);
@@ -570,7 +569,7 @@ var app = () => {
     tabIcon("square.stack.3d.up.fill", "Work", () => tab() === "work", () => setTab("work"))
   ]).padding(2).background("#7f7f7f1f").cornerRadius(8).fixedSize();
   return VStack({ spacing: 8 }, [
-    ForEach({ items: () => [tab()], key: (name) => name }, (name) => name() === "manager" ? manager({ header: tabs(), trailing: reloadButton() }) : workPage({
+    ForEach({ items: () => [tab()], key: (name) => name }, (name) => name() === "manager" ? manager({ header: tabs() }) : workPage({
       tabs: tabs(),
       home: current,
       homes,

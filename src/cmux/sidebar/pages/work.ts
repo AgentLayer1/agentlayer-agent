@@ -1,8 +1,8 @@
 import { searchField } from 'cmux-custom-manager/components';
 import type { HomeEntry, PinItem, PinTarget, ProjectCard, TaskItem } from '../data';
 import { BUCKETS, dueBucket, dueLabel, type DueBucket } from '../due';
-import { groupTitle, hueColor, note, progressBar, reloadButton, toolIcon } from '../style';
-import { count, statusIcon, taskRow, today } from '../tasks';
+import { groupTitle, hueColor, note, progressBar, toolIcon } from '../style';
+import { count, taskRow, today } from '../tasks';
 import { homeLabel, scopedPage } from '../view';
 
 const ACCENT = '#0A84FF';
@@ -140,8 +140,8 @@ const projectCard = (item: () => ProjectCard) => {
         ]),
         progressBar(fraction(project.done, project.active + project.blocked + project.open), color),
         ForEach({ items: () => (next && !expanded() ? [next] : []), key: (task) => task.id }, (task) =>
-          HStack({ spacing: 6 }, [
-            statusIcon(task().status),
+          HStack({ spacing: 5 }, [
+            Image('arrow.turn.down.right').font(8).color('quaternary'),
             Text(task().title).font(11).color('secondary').lineLimit(1).truncation('tail'),
             Spacer({ minLength: 0 })
           ])
@@ -149,12 +149,19 @@ const projectCard = (item: () => ProjectCard) => {
       ])
         .cursor('pointer')
         .onTap(() => setExpanded(!expanded())),
-      VStack({ spacing: 0 }, [
-        ForEach({ items: () => (expanded() ? links : []), key: (link) => link.title }, (link) => linkRow(link()))
-      ]),
-      VStack({ spacing: 1 }, [
-        ForEach({ items: () => (expanded() ? project.tasks : []), key: (task) => task.id }, (task) => taskRow(task()))
-      ])
+      // One item while open: an empty stack would still take the card's spacing and pad a folded card's foot.
+      ForEach({ items: () => (expanded() ? [project.slug] : []), key: (slug) => slug }, () =>
+        VStack({ spacing: 6 }, [
+          ...(links.length
+            ? [
+                VStack({ spacing: 0 }, [
+                  ForEach({ items: links, key: (link) => link.title }, (link) => linkRow(link()))
+                ])
+              ]
+            : []),
+          VStack({ spacing: 1 }, [ForEach({ items: project.tasks, key: (task) => task.id }, (task) => taskRow(task()))])
+        ])
+      )
     ])
   ).frame({ maxWidth: 'infinity' });
 };
@@ -255,8 +262,7 @@ export const workPage = ({ tabs, home, homes, pick }: WorkOptions) => {
               homes.map((path) => Button(homeLabel(path), () => pick(path)))
             )
           ]
-        : []),
-      reloadButton()
+        : [])
     ]),
     scopedPage(home, (_path, current) => workBody(current))
   ]).paddingHorizontal(6);
