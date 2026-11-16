@@ -1,6 +1,7 @@
 import { FOLDERS } from '@/config';
 import { CLI_COMMAND } from '@/shared/naming';
-import { collectStatus } from '@/status/collect';
+import { buildWork } from '@/work/build';
+import { writeWork } from '@/work/store';
 import { cmuxVersion, runCmux } from './app';
 import { homeEntry } from './entry';
 import { defaultTarget, installSidebar, refreshSidebar, removeSidebar } from './lifecycle';
@@ -33,13 +34,14 @@ export const runCmuxCommand = async (command: string | undefined, args: string[]
     return 1;
   }
   if (verb === 'install' || verb === 'refresh') {
-    const snapshot = await collectStatus();
-    const entry = homeEntry(snapshot);
+    const work = buildWork();
+    writeWork(work);
+    const entry = homeEntry(FOLDERS.HOME, work);
     if (verb === 'refresh') {
-      console.log(REFRESHED[refreshSidebar(snapshot.runtime.home, entry, target)]);
+      console.log(REFRESHED[refreshSidebar(FOLDERS.HOME, entry, target)]);
       return 0;
     }
-    const result = installSidebar(snapshot.runtime.home, entry, target, { version: cmuxVersion(), run: runCmux });
+    const result = installSidebar(FOLDERS.HOME, entry, target, { version: cmuxVersion(), run: runCmux });
     (result.ok ? console.log : console.error)(result.message);
     return result.ok ? 0 : 1;
   }

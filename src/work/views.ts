@@ -87,7 +87,11 @@ export interface ProjectLoad {
   pins: WorkProject['pins'];
 }
 
-const loadOf = (project: WorkProject, tasks: readonly WorkTask[]): ProjectLoad => {
+/**
+ * One project's counts and pages.
+ */
+export const projectLoad = (work: Work, project: WorkProject): ProjectLoad => {
+  const tasks = work.tasks.filter((task) => task.project === project.slug);
   const placed = tasks.filter((task) => !task.archived);
   const withStatus = (status: string) => placed.filter((task) => task.status === status).length;
   const [open, active, blocked] = [withStatus('open'), withStatus('active'), withStatus('blocked')];
@@ -112,12 +116,7 @@ const loadOf = (project: WorkProject, tasks: readonly WorkTask[]): ProjectLoad =
  */
 export const projectLoads = (work: Work): ProjectLoad[] =>
   work.projects
-    .map((project) =>
-      loadOf(
-        project,
-        work.tasks.filter((task) => task.project === project.slug)
-      )
-    )
+    .map((project) => projectLoad(work, project))
     .toSorted(
       (a, b) =>
         (b.updatedAt || '').localeCompare(a.updatedAt || '') || b.total - a.total || a.project.localeCompare(b.project)

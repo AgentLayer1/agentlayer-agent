@@ -12,7 +12,7 @@ import {
   type CmuxHost,
   type SidebarTarget
 } from './lifecycle';
-import { NOVA, SCOUT } from './preview/fixture';
+import { NOVA, NOVA_HOME, SCOUT, SCOUT_HOME } from './preview/fixture';
 
 const dirs: string[] = [];
 afterEach(() => dirs.splice(0).forEach((dir) => rmSync(dir, { recursive: true, force: true })));
@@ -35,10 +35,8 @@ const fakeCmux = (accepts = true): CmuxHost & { calls: string[][] } => {
   };
 };
 
-const NOVA_HOME = NOVA.runtime.home;
-const SCOUT_HOME = SCOUT.runtime.home;
-const nova = homeEntry(NOVA);
-const scout = homeEntry(SCOUT);
+const nova = homeEntry(NOVA_HOME, NOVA);
+const scout = homeEntry(SCOUT_HOME, SCOUT);
 const installed = (where: SidebarTarget) => parseSidebar(readFileSync(sidebarFile(where.dir), 'utf8'));
 
 test('install starts the file, has cmux check it under a staging name, then selects it', () => {
@@ -147,5 +145,7 @@ test('the dashboard’s refresh never throws, even when the write fails', () => 
       throw new Error('dist missing');
     }
   };
-  expect(() => refreshSidebarQuietly({ ...NOVA, persona: { name: 'Changed', emoji: '🦉' } }, broken)).not.toThrow();
+  expect(() =>
+    refreshSidebarQuietly(NOVA_HOME, { ...NOVA, agent: { name: 'Changed', emoji: '🦉' } }, broken)
+  ).not.toThrow();
 });

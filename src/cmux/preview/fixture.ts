@@ -1,8 +1,8 @@
 import { join } from 'node:path';
-import type { EntrySource } from '../entry';
+import { WORK_SCHEMA, type Work, type WorkTask } from '@/work/model';
 
-const NOVA_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Nova');
-const SCOUT_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Scout');
+export const NOVA_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Nova');
+export const SCOUT_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Scout');
 
 const task = (
   project: string,
@@ -12,62 +12,79 @@ const task = (
   priority: string,
   due = '',
   comments = 0
-) => ({
+): WorkTask => ({
   id,
   title,
+  project,
   status,
   priority,
   due,
+  updated: '2026-11-08',
+  closed: status === 'done' ? '2026-11-01' : '',
+  assignee: [],
+  dependsOn: [],
+  blockedBy: '',
+  issue: '',
   comments,
-  project,
+  archived: false,
   path: join('projects', project, 'tasks', `${id}.md`)
 });
 
+const closed = (project: string, count: number): WorkTask[] =>
+  Array.from({ length: count }, (_unused, index) =>
+    task(project, `${project}-done-${index}`, 'Done work', 'done', 'P3')
+  );
+
+const project = (slug: string, hue: number, pages: Partial<Work['projects'][number]> = {}) => ({
+  slug,
+  hue,
+  description: '',
+  roadmap: '',
+  attention: '',
+  pins: [],
+  ...pages
+});
+
 /**
- * An invented home with a roadmap and three projects: one at work (with its own roadmap and pins), one blocked, one quiet. The fixture's clock
- * reads 9 Nov 2026, so the due dates cover overdue, tomorrow and later.
+ * An invented home with a roadmap and three projects: one at work (with its own roadmap and pins), one blocked, one
+ * quiet. The fixture's clock reads 9 Nov 2026, so the due dates cover overdue, tomorrow and later.
  */
-export const NOVA: EntrySource = {
-  runtime: { home: NOVA_HOME },
-  persona: { name: 'Nova', emoji: '🦉' },
-  projectHues: { 'acme-app': 210 },
-  surfaces: [{ href: join(NOVA_HOME, 'roadmap.html') }, { href: 'projects/acme-app/dashboard.html' }],
-  tasks: {
-    byProject: [
-      { project: 'garden-shop', active: 0, open: 1, blocked: 1, done: 4, roadmap: '', pins: [] },
-      {
-        project: 'acme-app',
-        active: 1,
-        open: 2,
-        blocked: 0,
-        done: 5,
-        roadmap: join('projects', 'acme-app', 'roadmap.html'),
-        pins: [
-          { title: 'Launch checklist', icon: '✅', path: join('projects', 'acme-app', 'launch-checklist.md') },
-          { title: 'Pricing page', icon: '📊', path: join('reports', 'plans', 'pricing.html') }
-        ]
-      },
-      { project: 'blog', active: 0, open: 0, blocked: 0, done: 2, roadmap: '', pins: [] }
-    ],
-    queue: [
-      task('acme-app', 'ac-103', 'Write the release notes', 'open', 'P2', '2026-12-01'),
-      task('garden-shop', 'gs-201', 'Wait on the supplier price list', 'blocked', 'P2'),
-      task('acme-app', 'ac-101', 'Ship the invoice export', 'active', 'P1', '2026-11-07', 3),
-      task('garden-shop', 'gs-202', 'Photograph the spring range', 'open', 'P3'),
-      task('acme-app', 'ac-102', 'Fix the checkout total', 'open', 'P0', '2026-11-10')
-    ]
-  }
+export const NOVA: Work = {
+  schema: WORK_SCHEMA,
+  agent: { name: 'Nova', emoji: '🦉' },
+  roadmap: 'roadmap.html',
+  projects: [
+    project('acme-app', 210, {
+      roadmap: join('projects', 'acme-app', 'roadmap.html'),
+      pins: [
+        { title: 'Launch checklist', icon: '✅', path: join('projects', 'acme-app', 'launch-checklist.md') },
+        { title: 'Pricing page', icon: '📊', path: join('reports', 'plans', 'pricing.html') }
+      ]
+    }),
+    project('blog', 40),
+    project('garden-shop', 120)
+  ],
+  tasks: [
+    task('acme-app', 'ac-103', 'Write the release notes', 'open', 'P2', '2026-12-01'),
+    task('garden-shop', 'gs-201', 'Wait on the supplier price list', 'blocked', 'P2'),
+    task('acme-app', 'ac-101', 'Ship the invoice export', 'active', 'P1', '2026-11-07', 3),
+    task('garden-shop', 'gs-202', 'Photograph the spring range', 'open', 'P3'),
+    task('acme-app', 'ac-102', 'Fix the checkout total', 'open', 'P0', '2026-11-10'),
+    ...closed('acme-app', 5),
+    ...closed('garden-shop', 4),
+    ...closed('blog', 2)
+  ]
 };
 
 /**
  * An invented home with no projects or roadmap.
  */
-export const SCOUT: EntrySource = {
-  runtime: { home: SCOUT_HOME },
-  persona: { name: 'Scout', emoji: '🐢' },
-  projectHues: {},
-  surfaces: [],
-  tasks: { byProject: [], queue: [] }
+export const SCOUT: Work = {
+  schema: WORK_SCHEMA,
+  agent: { name: 'Scout', emoji: '🐢' },
+  roadmap: '',
+  projects: [],
+  tasks: []
 };
 
 const NOW = 1_794_218_400;

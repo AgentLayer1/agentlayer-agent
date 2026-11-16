@@ -2,15 +2,14 @@ import { expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { homeEntry } from './entry';
-import { NOVA, SCOUT } from './preview/fixture';
+import { NOVA, NOVA_HOME, SCOUT, SCOUT_HOME } from './preview/fixture';
 import { SCHEMA } from './sidebar/data';
 
-const NOVA_HOME = NOVA.runtime.home;
 const url = (...parts: string[]) => pathToFileURL(join(...parts)).href;
 const taskPath = (project: string, id: string) => join(NOVA_HOME, 'projects', project, 'tasks', `${id}.md`);
 
 test('a home’s projects, at work first, each with its live tasks in the order they need you', () => {
-  const entry = homeEntry(NOVA);
+  const entry = homeEntry(NOVA_HOME, NOVA);
   expect(entry).toMatchObject({
     schema: SCHEMA,
     name: 'Nova',
@@ -73,33 +72,27 @@ test('a home’s projects, at work first, each with its live tasks in the order 
     entry.projects[1]?.tasks.map((task) => task.id),
     'blocked before open'
   ).toEqual(['gs-201', 'gs-202']);
-  expect(entry.projects[2]).toMatchObject({ roadmap: null, pins: [], tasks: [] });
+  expect(entry.projects[2]).toMatchObject({ done: 2, roadmap: null, pins: [], tasks: [] });
 });
 
 test('a home with no projects or roadmap', () => {
-  expect(homeEntry(SCOUT)).toMatchObject({ name: 'Scout', roadmap: null, projects: [] });
+  expect(homeEntry(SCOUT_HOME, SCOUT)).toMatchObject({ name: 'Scout', roadmap: null, projects: [] });
 });
 
-test('the same projects and tasks in another order, with per-session fields beside them, give the same entry', () => {
-  const shuffled = {
-    ...NOVA,
-    runtime: { ...NOVA.runtime, time: '16:42', generatedAt: '2026-01-05T16:42:00+08:00' },
-    sessions: [{ id: 'later-session' }],
-    tasks: {
-      byProject: [...NOVA.tasks.byProject].reverse().map((load) => ({ ...load, updatedAt: '2026-01-05' })),
-      queue: [...NOVA.tasks.queue].reverse(),
-      touchedToday: [{ id: 'ac-101' }]
-    }
-  };
-  expect(homeEntry(shuffled)).toEqual(homeEntry(NOVA));
+test('the same projects and tasks in another order give the same entry', () => {
+  const shuffled = { ...NOVA, projects: NOVA.projects.toReversed(), tasks: NOVA.tasks.toReversed() };
+  expect(homeEntry(NOVA_HOME, shuffled)).toEqual(homeEntry(NOVA_HOME, NOVA));
 });
 
-test('a project page in the surfaces is not the home roadmap', () => {
-  const projectPageOnly = { ...NOVA, surfaces: [{ href: join(NOVA_HOME, 'projects', 'acme-app', 'roadmap.html') }] };
-  expect(homeEntry(projectPageOnly).roadmap).toBeNull();
+test('closed and archived tasks count as done and never show as rows', () => {
+  const archived = { ...NOVA.tasks[0], id: 'ac-099', status: 'done', archived: true };
+  const card = homeEntry(NOVA_HOME, { ...NOVA, tasks: [...NOVA.tasks, archived] }).projects[0];
+  expect(card?.done).toBe(6);
+  expect(card?.tasks.map((task) => task.id)).not.toContain('ac-099');
 });
 
 test('a path with a space becomes a URL a browser can open', () => {
-  const spaced = { ...NOVA, runtime: { home: join('/Users', 'ada', 'My Agents', 'Nova') } };
-  expect(homeEntry(spaced).dashboard).toBe('file:///Users/ada/My%20Agents/Nova/dashboard.html');
+  expect(homeEntry(join('/Users', 'ada', 'My Agents', 'Nova'), NOVA).dashboard).toBe(
+    'file:///Users/ada/My%20Agents/Nova/dashboard.html'
+  );
 });

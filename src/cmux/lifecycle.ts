@@ -4,7 +4,8 @@ import { pluginVersion } from '@/shared/naming';
 import { writeFileAtomic } from '@/shared/utils';
 import { cmuxTooOld, MIN_CMUX } from './app';
 import { DIST } from './build';
-import { homeEntry, type EntrySource } from './entry';
+import type { Work } from '@/work/model';
+import { homeEntry } from './entry';
 import {
   mergeHomes,
   newerCode,
@@ -66,9 +67,9 @@ export const refreshSidebar = (home: string, entry: HomeEntry, target: SidebarTa
 /**
  * The dashboard's hook: refreshes this home's entry, and never fails the dashboard over it.
  */
-export const refreshSidebarQuietly = (source: EntrySource, target: SidebarTarget = defaultTarget()): void => {
+export const refreshSidebarQuietly = (home: string, work: Work, target: SidebarTarget = defaultTarget()): void => {
   try {
-    refreshSidebar(source.runtime.home, homeEntry(source), target);
+    refreshSidebar(home, homeEntry(home, work), target);
   } catch (error) {
     log.with('cmux').warn(`sidebar refresh skipped: ${error instanceof Error ? error.message : String(error)}`);
   }

@@ -54,6 +54,10 @@ const TaskSchema = z.object({
 export const WorkSchema = z.object({
   schema: z.literal(WORK_SCHEMA),
   agent: z.object({ name: z.string(), emoji: z.string() }),
+  /**
+   * HOME-relative path of the home's roadmap.html, '' when it has none.
+   */
+  roadmap: z.string(),
   projects: z.array(ProjectSchema),
   tasks: z.array(TaskSchema)
 });

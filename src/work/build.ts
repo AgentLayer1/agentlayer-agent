@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
-import { FOLDERS } from '@/config';
+import { FILES, FOLDERS } from '@/config';
 import { agentDisplayName, agentEmoji } from '@/shared/agent-name';
 import { firstParagraph } from '@/shared/text';
 import { projectHue } from '@/status/html-primitives';
@@ -60,6 +60,7 @@ export const buildWork = (): Work => {
   return {
     schema: WORK_SCHEMA,
     agent: { name: agentDisplayName(), emoji: agentEmoji() },
+    roadmap: existsSync(FILES.ROADMAP) ? relative(FOLDERS.HOME, FILES.ROADMAP) : '',
     projects: slugs.map(toProject(projectHues())),
     tasks
   };

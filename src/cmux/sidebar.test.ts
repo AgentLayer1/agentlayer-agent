@@ -5,14 +5,13 @@ import { pathToFileURL } from 'node:url';
 import { bundleSidebar, DIST } from './build';
 import { homeEntry } from './entry';
 import { renderSidebar } from './file';
-import { CMUX_DATA, NOVA, SCOUT } from './preview/fixture';
+import { CMUX_DATA, NOVA, NOVA_HOME, SCOUT, SCOUT_HOME } from './preview/fixture';
 import { previewText } from './preview/preview';
 import { hasRuntime, mount } from './runtime-harness';
 import type { HomeEntry } from './sidebar/data';
 
 const run = test.skipIf(!hasRuntime);
-const NOVA_HOME = NOVA.runtime.home;
-const NOVA_ENTRY = homeEntry(NOVA);
+const NOVA_ENTRY = homeEntry(NOVA_HOME, NOVA);
 
 const installed = (homes: Record<string, HomeEntry> = { [NOVA_HOME]: NOVA_ENTRY }) =>
   renderSidebar({ version: '1.1.0', homes, bundle: readFileSync(DIST, 'utf8') });
@@ -162,7 +161,7 @@ run('a card opens into its roadmap, its pins, then its tasks with id, priority, 
 });
 
 run('with two agents joined, a chip per agent picks the other one', () => {
-  const sidebar = onProjects({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT.runtime.home]: homeEntry(SCOUT) });
+  const sidebar = onProjects({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: homeEntry(SCOUT_HOME, SCOUT) });
   expect(sidebar.visibleTexts()).toEqual(expect.arrayContaining(['🦉 Nova', '🐢 Scout']));
   sidebar.tap('🐢 Scout');
   expect(sidebar.visibleTexts()).toContain('No projects yet.');

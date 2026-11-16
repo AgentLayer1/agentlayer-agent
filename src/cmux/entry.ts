@@ -1,23 +1,8 @@
 import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { Persona, StatusSnapshot, SurfaceLink, TaskRef } from '@/status/collect';
-import type { ProjectLoad } from '@/work/views';
-import { projectHue } from '@/status/html-primitives';
+import type { Work, WorkProject } from '@/work/model';
+import { live, projectLoad } from '@/work/views';
 import { SCHEMA, type HomeEntry, type PinItem, type ProjectCard, type TaskItem } from './sidebar/data';
-
-/**
- * The slice of a dashboard snapshot the sidebar reads. Nothing that changes without a task or project changing fits.
- */
-export interface EntrySource {
-  runtime: Pick<StatusSnapshot['runtime'], 'home'>;
-  persona: Pick<Persona, 'name' | 'emoji'>;
-  projectHues: Readonly<Record<string, number>>;
-  surfaces: readonly Pick<SurfaceLink, 'href'>[];
-  tasks: {
-    byProject: readonly Pick<ProjectLoad, 'project' | 'active' | 'open' | 'blocked' | 'done' | 'roadmap' | 'pins'>[];
-    queue: readonly Pick<TaskRef, 'id' | 'title' | 'status' | 'priority' | 'due' | 'comments' | 'project' | 'path'>[];
-  };
-}
 
 const STATUS_ORDER: Readonly<Record<string, number>> = { active: 0, blocked: 1, open: 2 };
 
@@ -37,7 +22,7 @@ const byWork = (a: ProjectCard, b: ProjectCard): number =>
 
 const fileUrl = (path: string): string => pathToFileURL(path).href;
 
-const pinItem = (home: string, { title, icon, path }: ProjectLoad['pins'][number]): PinItem => {
+const pinItem = (home: string, { title, icon, path }: WorkProject['pins'][number]): PinItem => {
   const absolute = join(home, path);
   return {
     title,
@@ -46,11 +31,13 @@ const pinItem = (home: string, { title, icon, path }: ProjectLoad['pins'][number
   };
 };
 
-export const homeEntry = (source: EntrySource): HomeEntry => {
-  const home = source.runtime.home;
-  const roadmap = join(home, 'roadmap.html');
+/**
+ * What the sidebar shows of the home at `home`: its agent, pages, and each project's counts and live tasks.
+ */
+export const homeEntry = (home: string, work: Work): HomeEntry => {
+  const liveTasks = live(work);
   const tasksOf = (project: string): TaskItem[] =>
-    source.tasks.queue
+    liveTasks
       .filter((task) => task.project === project)
       .map(({ id, title, status, priority, due, comments, path }) => ({
         id,
@@ -61,25 +48,27 @@ export const homeEntry = (source: EntrySource): HomeEntry => {
         comments,
         path: join(home, path)
       }))
-      .sort(byUrgency);
+      .toSorted(byUrgency);
+  const card = (project: WorkProject): ProjectCard => {
+    const { active, open, blocked, done } = projectLoad(work, project);
+    return {
+      slug: project.slug,
+      hue: project.hue,
+      active,
+      open,
+      blocked,
+      done,
+      roadmap: project.roadmap ? fileUrl(join(home, project.roadmap)) : null,
+      pins: project.pins.map((pin) => pinItem(home, pin)),
+      tasks: tasksOf(project.slug)
+    };
+  };
   return {
     schema: SCHEMA,
-    name: source.persona.name,
-    emoji: source.persona.emoji,
+    name: work.agent.name,
+    emoji: work.agent.emoji,
     dashboard: fileUrl(join(home, 'dashboard.html')),
-    roadmap: source.surfaces.some((link) => link.href === roadmap) ? fileUrl(roadmap) : null,
-    projects: source.tasks.byProject
-      .map(({ project, active, open, blocked, done, roadmap: page, pins }) => ({
-        slug: project,
-        hue: projectHue(project, source.projectHues),
-        active,
-        open,
-        blocked,
-        done,
-        roadmap: page ? fileUrl(join(home, page)) : null,
-        pins: pins.map((pin) => pinItem(home, pin)),
-        tasks: tasksOf(project)
-      }))
-      .sort(byWork)
+    roadmap: work.roadmap ? fileUrl(join(home, work.roadmap)) : null,
+    projects: work.projects.map(card).toSorted(byWork)
   };
 };

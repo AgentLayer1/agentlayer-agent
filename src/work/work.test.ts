@@ -109,6 +109,7 @@ describe('buildWork', () => {
     const work = buildWork();
     expect(work.schema).toBe(WORK_SCHEMA);
     expect(work.agent).toEqual({ name: 'Nova', emoji: '🦉' });
+    expect(work.roadmap).toBe('');
     expect(work.tasks.map((task) => [task.id, task.archived])).toEqual([
       ['ac-001', false],
       ['ac-002', false],
@@ -183,7 +184,13 @@ describe('views', () => {
 });
 
 test('a model that holds nothing for a home with no projects', () => {
-  const empty: Work = { schema: WORK_SCHEMA, agent: { name: 'Scout', emoji: '' }, projects: [], tasks: [] };
+  const empty: Work = {
+    schema: WORK_SCHEMA,
+    agent: { name: 'Scout', emoji: '' },
+    roadmap: '',
+    projects: [],
+    tasks: []
+  };
   expect(projectLoads(empty)).toEqual([]);
   expect(queue(empty)).toEqual([]);
 });

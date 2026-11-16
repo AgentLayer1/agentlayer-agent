@@ -23,7 +23,7 @@ export const writeDashboardHtml = async (work: Work = buildWork()): Promise<{ pa
   writeFileAtomic(FILES.DASHBOARD, html);
   // The cmux pack is optional, so the dashboard loads it only here.
   const { refreshSidebarQuietly } = await import('@/cmux/lifecycle');
-  refreshSidebarQuietly(snapshot);
+  refreshSidebarQuietly(snapshot.runtime.home, work);
   return { path: FILES.DASHBOARD, bytes: Buffer.byteLength(html) };
 };
 
