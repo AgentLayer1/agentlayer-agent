@@ -519,8 +519,9 @@ set `lastUpgrade` to now (ISO-8601 with tz offset), and append a history entry
 date +%Y-%m-%dT%H:%M:%S%z   # use for lastUpgrade / history.at
 ```
 
-(Write the JSON with the Write tool, preserving any existing `plugin`, `initializedAt`
-and prior `history` entries.)
+(Write the JSON with the Write tool, keeping every key this step doesn't set: `plugin`,
+`initializedAt`, prior `history` entries, and a moved home's `migratedFrom`, which its
+welcome reads until the move is finished.)
 
 Then snapshot the templates this home now tracks, so the next upgrade has its base:
 

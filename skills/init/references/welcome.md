@@ -6,27 +6,27 @@ Init can't ask what to do first: the operator has to exit and relaunch before th
 
 ## A moved home
 
-When `<HOME>/.state/version.json` has `migratedFrom`, this home was copied here from another folder by the previous plugin's move, and the session context says so. Follow this section instead of sections 1, 2 and 4; section 3 still clears the flag.
+When `<HOME>/.state/version.json` has `migratedFrom`, this home was copied here from another folder by the previous plugin's move, and the session context says so. Follow this section instead of sections 2 and 4 (step 5 can fall back to section 2's options, which need section 1's reads); section 3 still clears the flag. A session that comes back after a restart (the `Moved` line from step 2 is already in `knowledge/memory/index.md`) goes straight to step 4.
 
 1. **Greet as the agent.** One or two lines in IDENTITY's voice: the name, `Formerly:` when IDENTITY has it, that the home moved here from `migratedFrom.home` on `migratedFrom.at`, and that you'll finish the move first.
 2. **Remember where it came from.** Add one line under `## Key Context` in `knowledge/memory/index.md`, unless one is already there:
    `- **Moved** — this home was copied from \`<migratedFrom.home>\` on <migratedFrom.at>, where the agent was <migratedFrom.name> on the <migratedFrom.plugin> plugin; session logs, reports and archives from before then use those names.`
    The dated records keep the old names for good, so this line stays as long as they do.
-3. **Finish the move: upgrade, then sync.** Run this plugin's `upgrade` skill and follow it to the end: it writes the status line, the Codex wiring and the new template lines the copy doesn't have yet. Then make sure a sync has run, since it compiles the sessions the move captured, rebuilds the task dashboard and `dashboard.html` with this folder's paths, and makes the first commit in this home's own history, the line from step 2 included:
-   - The upgrade ended with its own sync: done.
-   - The upgrade asked for a restart first (it installed dependencies or picked up new server code): **stop here and leave the flag pending**. Tell the operator to exit and reopen; the next session's welcome comes back to this step, the upgrade reports it's current, and you run the `sync` skill.
-   - Otherwise: run the `sync` skill now.
-4. **Check the move.** The move saved its full change list in the copy; read it once, with the operator, before anything else changes:
+3. **Check the move, before the upgrade and the sync rewrite its lines.** The move saved its full change list in the copy, and `--restore` only puts back a line that still reads as the move left it, so read the list first, with the operator:
    ```bash
    bun "<PLUGIN_ROOT>/skills/init/scripts/move-check.ts" --home "<HOME>"
    ```
    - `log: null`: the home was moved by a release that kept no list. Say so in one line and go on.
    - Read every line under `renames` for meaning, as the move's keep review did. A rename is wrong where the old name meant someone or something else: another person or another team's agent, an account or a role, a document as sent or signed, a dated record, or a fact only true of the old plugin. Add those to the script's `flagged` list.
    - Show one table: each flagged line, what it says now, what it said before the move, and why. Below it, any `stale` file still naming the old home. With nothing to show, say the move checked out in one line.
-   - Ask once which lines to put back (`AskUserQuestion` with multiSelect under Claude Code; a numbered list under Codex): all, a pick, or none. Run the script again with one `--restore <path:line>` per pick, and report each result. A `stale` file is fixed by hand with the operator. The next sync commits the restored lines.
+   - Ask once which lines to put back (`AskUserQuestion` with multiSelect under Claude Code; a numbered list under Codex): all, a pick, or none. Run the script again with one `--restore <path:line>` per pick, and report each result. A `stale` file is fixed by hand with the operator.
+4. **Finish the move: upgrade, then sync.** Run this plugin's `upgrade` skill and follow it to the end: it writes the status line, the Codex wiring and the new template lines the copy doesn't have yet. Then make sure a sync has run, since it compiles the sessions the move captured, rebuilds the task dashboard and `dashboard.html` with this folder's paths, and commits the restored lines and the line from step 2 to this home's history:
+   - The upgrade ended with its own sync: done.
+   - The upgrade asked for a restart first (it installed dependencies or picked up new server code): **stop here and leave the flag pending**. Tell the operator to exit and reopen; the next session comes back to this step, the upgrade reports it's current, and you run the `sync` skill.
+   - Otherwise: run the `sync` skill now.
 5. **Ask where to start.** Read the move note at `migratedFrom.note` when there is one. Offer up to three of its sessions to continue as `Pick up: <what it was doing>`, then **Morning brief**. Without a note, or without sessions in it, offer the options in section 2 instead.
 6. **Clear the flag** (section 3).
-7. **Run the pick.** A session to continue runs the `find-session` skill with its id: it loads that session's notes from the brain. Then start on the next step the note gives. Close with one line naming the other sessions in the note, and saying that any past session, noted or not, can be picked up by asking for it by id or by what it worked on.
+7. **Run the pick.** A session to continue runs the `find-session` skill with its id: it loads that session's notes from the brain. Then start on the next step the note gives. Close with one line naming the other sessions in the note, and saying that any past session, noted or not, can be picked up by asking for it by id or by what it worked on. A section 2 option runs as section 4 says.
 
 ## 1. Read the home (no writes)
 
