@@ -10,6 +10,7 @@ import { renderStatusLine, type StatusLinePayload } from '@/statusline/render';
 import { statusLineSetting } from '@/statusline/setting';
 import { renderSubagentRows, type SubagentPayload } from '@/statusline/subagent';
 import { terminalTheme } from '@/statusline/theme';
+import { emojiIn } from '@/shared/persona';
 import { readText } from '@/shared/text';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
@@ -35,8 +36,7 @@ const currentBranch = (dir: string): string => {
 const identityEmoji = (dir: string | undefined): string | undefined => {
   if (!dir) return undefined;
   try {
-    const emoji = readText(resolve(dir, 'IDENTITY.md')).match(/\*\*Emoji:\*\*[ \t]*(\S+)/)?.[1];
-    return emoji && !emoji.includes('{{') ? emoji : undefined;
+    return emojiIn(readText(resolve(dir, 'IDENTITY.md'))) || undefined;
   } catch {
     return undefined;
   }

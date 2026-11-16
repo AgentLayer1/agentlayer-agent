@@ -1,7 +1,7 @@
 import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Work, WorkProject } from '@/work/model';
-import { live, projectLoad } from '@/work/views';
+import { byPriorityThenDue, live, projectLoad } from '@/work/views';
 import { SCHEMA, type HomeEntry, type PinItem, type ProjectCard, type TaskItem } from './sidebar/data';
 
 const STATUS_ORDER: Readonly<Record<string, number>> = { active: 0, blocked: 1, open: 2 };
@@ -9,10 +9,7 @@ const STATUS_ORDER: Readonly<Record<string, number>> = { active: 0, blocked: 1, 
 const statusRank = (status: string): number => STATUS_ORDER[status] ?? Object.keys(STATUS_ORDER).length;
 
 const byUrgency = (a: TaskItem, b: TaskItem): number =>
-  statusRank(a.status) - statusRank(b.status) ||
-  a.priority.localeCompare(b.priority) ||
-  (a.due || '9999').localeCompare(b.due || '9999') ||
-  a.id.localeCompare(b.id);
+  statusRank(a.status) - statusRank(b.status) || byPriorityThenDue(a, b) || a.id.localeCompare(b.id);
 
 // Projects at work first, then the busiest, then by name, so the same tasks always render the same bytes.
 const byWork = (a: ProjectCard, b: ProjectCard): number =>
@@ -21,6 +18,8 @@ const byWork = (a: ProjectCard, b: ProjectCard): number =>
   a.slug.localeCompare(b.slug);
 
 const fileUrl = (path: string): string => pathToFileURL(path).href;
+
+const pageUrl = (home: string, page: string): string | null => (page ? fileUrl(join(home, page)) : null);
 
 const pinItem = (home: string, { title, icon, path }: WorkProject['pins'][number]): PinItem => {
   const absolute = join(home, path);
@@ -58,7 +57,7 @@ export const homeEntry = (home: string, work: Work): HomeEntry => {
       open,
       blocked,
       done,
-      roadmap: project.roadmap ? fileUrl(join(home, project.roadmap)) : null,
+      roadmap: pageUrl(home, project.roadmap),
       pins: project.pins.map((pin) => pinItem(home, pin)),
       tasks: tasksOf(project.slug)
     };
@@ -68,7 +67,7 @@ export const homeEntry = (home: string, work: Work): HomeEntry => {
     name: work.agent.name,
     emoji: work.agent.emoji,
     dashboard: fileUrl(join(home, 'dashboard.html')),
-    roadmap: work.roadmap ? fileUrl(join(home, work.roadmap)) : null,
+    roadmap: pageUrl(home, work.roadmap),
     projects: work.projects.map(card).toSorted(byWork)
   };
 };

@@ -7,6 +7,8 @@ interface Scoped {
   current: boolean;
 }
 
+export const entryOf = (home: string | undefined): HomeEntry | undefined => (home ? DATA.homes[home] : undefined);
+
 /**
  * A joined home as its chips and headers name it.
  */
@@ -16,18 +18,18 @@ export const homeLabel = (home: string): string => {
 };
 
 /**
- * A page about the scoped agent: `ready` draws it, an entry from an older plugin asks for an update instead,
+ * A page about the scoped agent: `ready` draws its entry, an entry from an older plugin asks for an update instead,
  * and a sidebar no agent has joined says how to join.
  */
-export const scopedPage = (home: () => string | undefined, ready: (path: string, entry: HomeEntry) => View) => {
+export const scopedPage = (home: () => string | undefined, ready: (entry: HomeEntry) => View) => {
   const view = computed((): Scoped | null => {
     const path = home();
-    const entry = path ? DATA.homes[path] : undefined;
+    const entry = entryOf(path);
     return path && entry ? { path, entry, current: entry.schema === SCHEMA } : null;
   });
   const showing = (current: boolean) => () => [view()].filter((item): item is Scoped => item?.current === current);
   return VStack({ spacing: 0 }, [
-    ForEach({ items: showing(true), key: (item) => item.path }, (item) => ready(item().path, item().entry)),
+    ForEach({ items: showing(true), key: (item) => item.path }, (item) => ready(item().entry)),
     ForEach({ items: showing(false), key: (item) => item.path }, (item) =>
       note(`${homeLabel(item().path)} needs its agent updated to show here.`)
     ),

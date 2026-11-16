@@ -93,7 +93,7 @@ It renders in isolation (its own `HOME`, environment, and working directory), re
 
 ## The cmux sidebar
 
-The optional cmux pack lives in `src/cmux/`. The Bun side (`entry.ts`, `file.ts`, `lifecycle.ts`, `command.ts`) builds this home's entry from the work model (`src/work/`) and writes it into `~/.config/cmux/sidebars/agentlayer.js`, the one sidebar every home on the Mac joins. The sidebar's own code in `src/cmux/sidebar/` runs inside cmux, not Bun: its `tsconfig.json` has no Bun or Node types, so a call to either fails the typecheck, and it never builds a path (every path and URL arrives ready-made in its data). Its Manager tab is [cmux Manager](https://github.com/AgentLayer1/cmux-custom-manager) (`cmux-custom-manager`, a devDependency bundled into `dist/`); the Projects tab is `sidebar/pages/projects.ts`.
+The optional cmux pack lives in `src/cmux/`. The Bun side (`entry.ts`, `file.ts`, `lifecycle.ts`, `command.ts`) builds this home's entry from the work model (`src/work/`) and writes it into `~/.config/cmux/sidebars/agentlayer.js`, the one sidebar every home on the Mac joins. The sidebar's own code in `src/cmux/sidebar/` runs inside cmux, not Bun: its `tsconfig.json` has no Bun or Node types, so a call to either fails the typecheck, and it never builds a path (every path and URL arrives ready-made in its data). Its Manager tab is [cmux Manager](https://github.com/AgentLayer1/cmux-custom-manager) (`cmux-custom-manager`, a devDependency bundled into `dist/`); the Projects tab is `sidebar/projects.ts`.
 
 | Command | Does |
 | --- | --- |

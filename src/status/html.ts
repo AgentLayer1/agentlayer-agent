@@ -4,7 +4,7 @@
  * Kept separate from the renderer so the rendering stays pure and testable without
  * touching the filesystem.
  */
-import { FILES } from '@/config';
+import { FILES, FOLDERS } from '@/config';
 import { writeFileAtomic } from '@/shared/utils';
 import { writeDashboard, type DashboardCounts } from '@/tasks/dashboard';
 import { buildWork } from '@/work/build';
@@ -23,7 +23,7 @@ export const writeDashboardHtml = async (work: Work = buildWork()): Promise<{ pa
   writeFileAtomic(FILES.DASHBOARD, html);
   // The cmux pack is optional, so the dashboard loads it only here.
   const { refreshSidebarQuietly } = await import('@/cmux/lifecycle');
-  refreshSidebarQuietly(snapshot.runtime.home, work);
+  refreshSidebarQuietly(FOLDERS.HOME, work);
   return { path: FILES.DASHBOARD, bytes: Buffer.byteLength(html) };
 };
 

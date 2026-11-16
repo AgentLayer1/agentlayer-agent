@@ -9,7 +9,7 @@ import type { TaskFrontmatter } from '@/tasks/types';
 import { buildWork } from './build';
 import { WORK_SCHEMA, type Work, type WorkTask } from './model';
 import { readWork, writeWork } from './store';
-import { closedSince, isDueSoon, isOverdue, isStale, projectLoads, queue, updatedBetween } from './views';
+import { closedSince, isDueSoon, isOverdue, isStale, projectLoads, queue, touchedRecently, withStatus } from './views';
 
 const previousHome = process.env.AGENT_HOME;
 let home = '';
@@ -94,6 +94,7 @@ beforeAll(() => {
     closed: '2026-10-01'
   });
   mkdirSync(join(FOLDERS.PROJECTS, 'quiet', 'tasks'), { recursive: true });
+  writeFileSync(join(FOLDERS.PROJECTS, 'quiet', 'tasks', 'qu-001-broken.md'), '  ---\nid: qu-001\n');
   writeFileSync(join(FOLDERS.PROJECTS, 'quiet', 'roadmap.html'), '<html></html>');
 });
 
@@ -118,6 +119,9 @@ describe('buildWork', () => {
       ['ac-000', true]
     ]);
     expect(work.tasks[1]).toMatchObject({ comments: 2, path: join('projects', 'acme', 'tasks', 'ac-002-ship.md') });
+    expect(work.malformed, 'a file that does not parse is named, not dropped').toEqual([
+      join('projects', 'quiet', 'tasks', 'qu-001-broken.md')
+    ]);
   });
 
   test('a project per folder plus any a task names, each with its README line, hue and pages', () => {
@@ -168,7 +172,8 @@ describe('views', () => {
   test('closed and recently updated tasks come from those in place only', () => {
     const work = buildWork();
     expect(ids(closedSince(work, '2026-10-01'))).toEqual(['ac-003']);
-    expect(ids(updatedBetween(work, '2026-11-08', '2026-11-09'))).toEqual(['ac-002']);
+    expect(ids(touchedRecently(work, '2026-11-10'))).toEqual(['ac-002']);
+    expect(ids(withStatus(work, 'active', 'done'))).toEqual(['ac-002', 'ac-003']);
   });
 
   test('the queue is the live tasks by priority, then due date', () => {
@@ -189,7 +194,8 @@ test('a model that holds nothing for a home with no projects', () => {
     agent: { name: 'Scout', emoji: '' },
     roadmap: '',
     projects: [],
-    tasks: []
+    tasks: [],
+    malformed: []
   };
   expect(projectLoads(empty)).toEqual([]);
   expect(queue(empty)).toEqual([]);

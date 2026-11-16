@@ -73,7 +73,8 @@ export const NOVA: Work = {
     ...closed('acme-app', 5),
     ...closed('garden-shop', 4),
     ...closed('blog', 2)
-  ]
+  ],
+  malformed: []
 };
 
 /**
@@ -84,7 +85,8 @@ export const SCOUT: Work = {
   agent: { name: 'Scout', emoji: '🐢' },
   roadmap: '',
   projects: [],
-  tasks: []
+  tasks: [],
+  malformed: []
 };
 
 const NOW = 1_794_218_400;

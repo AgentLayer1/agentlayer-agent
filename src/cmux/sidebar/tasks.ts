@@ -1,12 +1,13 @@
 import type { TaskItem } from './data';
 import { dueLabel, isoDay, type DueLabel } from './due';
 
+const OPEN = { symbol: 'circle', color: '#8E8E93' };
 const STATUS: Readonly<Record<string, { symbol: string; color: string }>> = {
   active: { symbol: 'circle.fill', color: '#34C759' },
   blocked: { symbol: 'exclamationmark.circle.fill', color: '#FF453A' },
-  open: { symbol: 'circle', color: '#8E8E93' }
+  open: OPEN
 };
-export const statusOf = (status: string) => STATUS[status] ?? { symbol: 'circle', color: '#8E8E93' };
+const statusOf = (status: string) => STATUS[status] ?? OPEN;
 
 const TONE: Readonly<Record<DueLabel['tone'], string>> = { overdue: '#FF453A', soon: '#FF9F0A', later: 'tertiary' };
 const URGENT = new Set(['P0', 'P1']);
@@ -14,8 +15,10 @@ const URGENT = new Set(['P0', 'P1']);
 // The due words only change at midnight, so the label follows a day, not the per-second clock.
 export const today = computed(() => isoDay(data.clock()?.epoch ?? Date.now() / 1000));
 
-export const statusIcon = (status: string, size = 7) =>
-  Image(statusOf(status).symbol).font(size).color(statusOf(status).color);
+const statusIcon = (status: string, size = 7) => {
+  const { symbol, color } = statusOf(status);
+  return Image(symbol).font(size).color(color);
+};
 
 /**
  * A status count: its icon and number, or nothing at zero.

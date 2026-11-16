@@ -15,7 +15,7 @@ export const hueColor = (hue: number): string => {
   return `#${channel(0)}${channel(8)}${channel(4)}`;
 };
 
-const SEGMENTS = 40;
+const SEGMENTS = 20;
 
 /**
  * A thin progress bar in `color`. Drawn from shapes because cmux's ProgressView ignores its colour.

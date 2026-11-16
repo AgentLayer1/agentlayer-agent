@@ -1,9 +1,9 @@
 import { chip, searchField } from 'cmux-custom-manager/components';
-import type { HomeEntry, PinItem, PinTarget, ProjectCard, TaskItem } from '../data';
-import { BUCKETS, dueBucket, dueLabel, type DueBucket } from '../due';
-import { groupTitle, hueColor, note, progressBar, toolIcon } from '../style';
-import { count, taskRow, today } from '../tasks';
-import { homeLabel, scopedPage } from '../view';
+import type { HomeEntry, PinItem, PinTarget, ProjectCard, TaskItem } from './data';
+import { BUCKETS, dueBucket, dueLabel, type DueBucket } from './due';
+import { groupTitle, hueColor, note, progressBar, toolIcon } from './style';
+import { count, taskRow, today } from './tasks';
+import { entryOf, homeLabel, scopedPage } from './view';
 
 const ACCENT = '#0A84FF';
 const CARD = '#7f7f7f12';
@@ -76,9 +76,8 @@ const dueTally = (amount: () => number, label: string, color: string) =>
     .weight('semibold')
     .color(color);
 
-const tasksCard = (entry: HomeEntry) => {
+const tasksCard = (entry: HomeEntry, listed: readonly Listed[]) => {
   const [expanded, setExpanded] = signal(false);
-  const listed = listedTasks(entry);
   const total = (field: 'active' | 'blocked' | 'open' | 'done') =>
     entry.projects.reduce((sum, project) => sum + project[field], 0);
   const tone = (wanted: string) => () =>
@@ -191,7 +190,7 @@ const matches = (listed: readonly Listed[], query: string) => {
   });
 };
 
-const workBody = (entry: HomeEntry) => {
+const projectsBody = (entry: HomeEntry) => {
   const [query, setQuery] = signal('');
   const listed = listedTasks(entry);
   const found = computed(() => matches(listed, query()));
@@ -209,7 +208,7 @@ const workBody = (entry: HomeEntry) => {
     ),
     ForEach({ items: () => (searching() ? [] : ['browse']), key: (name) => name }, () =>
       VStack({ spacing: 10 }, [
-        tasksCard(entry),
+        tasksCard(entry, listed),
         ...STATES.flatMap(({ title, holds }) => {
           const projects = entry.projects.filter(holds);
           return projects.length ? [stateGroup(title, projects)] : [];
@@ -232,29 +231,20 @@ export interface ProjectsOptions {
  * row's icons open its dashboard and roadmap as full tabs.
  */
 export const projectsPage = ({ tabs, home, homes, pick }: ProjectsOptions) => {
-  const entry = () => {
-    const path = home();
-    return path ? DATA.homes[path] : undefined;
-  };
   return VStack({ spacing: 8 }, [
     HStack({ spacing: 2 }, [
       tabs,
       Spacer({ minLength: 4 }),
-      ForEach({ items: () => (entry() ? [home() ?? ''] : []), key: (path) => path }, (path) => {
-        const current = DATA.homes[path()];
-        return HStack({ spacing: 2 }, [
-          ...(current
-            ? [
-                toolIcon('square.grid.3x3', 'Dashboard', () =>
-                  cmux('browser.tab.new', { url: `${current.dashboard}#today` })
-                )
-              ]
-            : []),
-          ...(current?.roadmap
-            ? [toolIcon('map', 'Roadmap', () => cmux('browser.tab.new', { url: current.roadmap ?? '' }))]
-            : [])
-        ]);
-      })
+      ForEach(
+        { items: () => [entryOf(home())].filter((item) => item !== undefined), key: (item) => item.dashboard },
+        (item) => {
+          const { dashboard, roadmap } = item();
+          return HStack({ spacing: 2 }, [
+            toolIcon('square.grid.3x3', 'Dashboard', () => cmux('browser.tab.new', { url: `${dashboard}#today` })),
+            ...(roadmap ? [toolIcon('map', 'Roadmap', () => cmux('browser.tab.new', { url: roadmap }))] : [])
+          ]);
+        }
+      )
     ]),
     // With more than one agent joined, a chip per agent, lit for the one the workspace picked.
     ...(homes.length > 1
@@ -271,6 +261,6 @@ export const projectsPage = ({ tabs, home, homes, pick }: ProjectsOptions) => {
           ])
         ]
       : []),
-    scopedPage(home, (_path, current) => workBody(current))
+    scopedPage(home, projectsBody)
   ]).paddingHorizontal(6);
 };

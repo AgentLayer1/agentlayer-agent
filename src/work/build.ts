@@ -5,9 +5,11 @@ import { agentDisplayName, agentEmoji } from '@/shared/agent-name';
 import { firstParagraph } from '@/shared/text';
 import { projectHue } from '@/status/html-primitives';
 import { projectHues, projectPinLinks } from '@/status/surfaces';
-import { discoverProjects, scanAllTasks, scanArchivedTasks } from '@/tasks/scan';
+import { discoverProjects, scanTasks } from '@/tasks/scan';
 import type { TaskFile } from '@/tasks/types';
 import { WORK_SCHEMA, type Work, type WorkProject, type WorkTask } from './model';
+
+const fromHome = (path: string): string => relative(FOLDERS.HOME, path);
 
 const toTask =
   (archived: boolean) =>
@@ -26,14 +28,14 @@ const toTask =
     issue: task.frontmatter.issue,
     comments: task.thread.length,
     archived,
-    path: relative(FOLDERS.HOME, task.filePath)
+    path: fromHome(task.filePath)
   });
 
+const pageAt = (path: string): string => (existsSync(path) ? fromHome(path) : '');
+
 // A project's own roadmap.html or attention.html sits at its root, as the home's do one level up.
-const projectPage = (slug: string, file: 'roadmap.html' | 'attention.html'): string => {
-  const path = resolve(FOLDERS.PROJECTS, slug, file);
-  return existsSync(path) ? relative(FOLDERS.HOME, path) : '';
-};
+const projectPage = (slug: string, file: 'roadmap.html' | 'attention.html'): string =>
+  pageAt(resolve(FOLDERS.PROJECTS, slug, file));
 
 const toProject =
   (hues: Readonly<Record<string, number>>) =>
@@ -49,19 +51,21 @@ const toProject =
 const byPath = (a: WorkTask, b: WorkTask): number => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
 /**
- * Reads the home's work from its files: one scan of every task, live and archived, plus each project's README,
+ * Reads the home's work from its files: one scan of every task file, live, archived and unparseable, plus each project's README,
  * pages and pins. Tasks are ordered by path and projects by slug, so the same files always give the same model.
  */
 export const buildWork = (): Work => {
-  const tasks = [...scanAllTasks().map(toTask(false)), ...scanArchivedTasks().map(toTask(true))].toSorted(byPath);
+  const scan = scanTasks();
+  const tasks = [...scan.tasks.map(toTask(false)), ...scan.archived.map(toTask(true))].toSorted(byPath);
   // A task can name a project that has no folder of its own; it still gets a card.
   const named = tasks.filter((task) => !task.archived).map((task) => task.project);
   const slugs = [...new Set([...discoverProjects(), ...named])].toSorted();
   return {
     schema: WORK_SCHEMA,
     agent: { name: agentDisplayName(), emoji: agentEmoji() },
-    roadmap: existsSync(FILES.ROADMAP) ? relative(FOLDERS.HOME, FILES.ROADMAP) : '',
+    roadmap: pageAt(FILES.ROADMAP),
     projects: slugs.map(toProject(projectHues())),
-    tasks
+    tasks,
+    malformed: scan.malformed.map(fromHome)
   };
 };

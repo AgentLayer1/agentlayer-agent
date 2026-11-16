@@ -6,7 +6,7 @@ const STALE_DAYS = 7;
 
 const CLOSED = new Set(['done', 'cancelled']);
 
-export const isClosed = (status: string): boolean => CLOSED.has(status);
+const isClosed = (status: string): boolean => CLOSED.has(status);
 
 /**
  * The fields the date rules read, so a parsed task file and a model task share them.
@@ -39,6 +39,12 @@ export const inPlace = (work: Work): WorkTask[] => work.tasks.filter((task) => !
 
 export const live = (work: Work): WorkTask[] => inPlace(work).filter((task) => !isClosed(task.status));
 
+/**
+ * Tasks in place with any of `statuses`.
+ */
+export const withStatus = (work: Work, ...statuses: string[]): WorkTask[] =>
+  inPlace(work).filter((task) => statuses.includes(task.status));
+
 export const overdue = (work: Work, today: string): WorkTask[] =>
   inPlace(work).filter((task) => isOverdue(task, today));
 
@@ -51,20 +57,21 @@ export const closedSince = (work: Work, since: string): WorkTask[] =>
   inPlace(work).filter((task) => isClosed(task.status) && task.closed !== '' && task.closed >= since);
 
 /**
- * Tasks in place updated between `since` and `today`, inclusive.
+ * Tasks in place updated today or yesterday: dates carry no time, so yesterday keeps the list from emptying at
+ * midnight.
  */
-export const updatedBetween = (work: Work, since: string, today: string): WorkTask[] =>
-  inPlace(work).filter((task) => task.updated >= since && task.updated <= today);
+export const touchedRecently = (work: Work, today: string): WorkTask[] =>
+  inPlace(work).filter((task) => task.updated >= shiftDate(today, -1) && task.updated <= today);
 
 /**
- * The live tasks, highest priority first, then earliest due.
+ * Highest priority first, then earliest due; undated last.
  */
-export const queue = (work: Work): WorkTask[] =>
-  live(work).toSorted(
-    (a, b) => a.priority.localeCompare(b.priority) || (a.due || '9999').localeCompare(b.due || '9999')
-  );
+export const byPriorityThenDue = (a: Pick<WorkTask, 'priority' | 'due'>, b: Pick<WorkTask, 'priority' | 'due'>) =>
+  a.priority.localeCompare(b.priority) || (a.due || '9999').localeCompare(b.due || '9999');
 
-export interface ProjectLoad {
+export const queue = (work: Work): WorkTask[] => live(work).toSorted(byPriorityThenDue);
+
+export interface ProjectLoad extends Pick<WorkProject, 'description' | 'roadmap' | 'attention' | 'pins'> {
   project: string;
   open: number;
   active: number;
@@ -81,32 +88,28 @@ export interface ProjectLoad {
    * The latest `updated:` across the project's tasks in place; '' when it has none.
    */
   updatedAt: string;
-  description: string;
-  roadmap: string;
-  attention: string;
-  pins: WorkProject['pins'];
 }
 
 /**
  * One project's counts and pages.
  */
-export const projectLoad = (work: Work, project: WorkProject): ProjectLoad => {
-  const tasks = work.tasks.filter((task) => task.project === project.slug);
+export const projectLoad = (work: Work, { slug, description, roadmap, attention, pins }: WorkProject): ProjectLoad => {
+  const tasks = work.tasks.filter((task) => task.project === slug);
   const placed = tasks.filter((task) => !task.archived);
-  const withStatus = (status: string) => placed.filter((task) => task.status === status).length;
-  const [open, active, blocked] = [withStatus('open'), withStatus('active'), withStatus('blocked')];
+  const counted = (status: string) => placed.filter((task) => task.status === status).length;
+  const [open, active, blocked] = [counted('open'), counted('active'), counted('blocked')];
   return {
-    project: project.slug,
+    project: slug,
     open,
     active,
     blocked,
     total: open + active + blocked,
     done: tasks.length - (open + active + blocked),
     updatedAt: placed.reduce((latest, task) => (task.updated > latest ? task.updated : latest), ''),
-    description: project.description,
-    roadmap: project.roadmap,
-    attention: project.attention,
-    pins: project.pins
+    description,
+    roadmap,
+    attention,
+    pins
   };
 };
 
@@ -118,6 +121,5 @@ export const projectLoads = (work: Work): ProjectLoad[] =>
   work.projects
     .map((project) => projectLoad(work, project))
     .toSorted(
-      (a, b) =>
-        (b.updatedAt || '').localeCompare(a.updatedAt || '') || b.total - a.total || a.project.localeCompare(b.project)
+      (a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.total - a.total || a.project.localeCompare(b.project)
     );

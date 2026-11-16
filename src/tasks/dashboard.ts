@@ -12,11 +12,10 @@ import { shiftDate, todayDate } from '@/shared/date';
 import { readText } from '@/shared/text';
 import { buildWork } from '@/work/build';
 import type { Work, WorkTask } from '@/work/model';
-import { closedSince, inPlace, overdue, stale } from '@/work/views';
+import { closedSince, overdue, stale, withStatus } from '@/work/views';
 import { writeFileSync } from 'fs';
 import { basename, join } from 'path';
 import { issueLabel } from './issue';
-import { scanMalformedTasks } from './scan';
 
 // ── Section building ──────────────────────────────────────────────────
 
@@ -36,18 +35,15 @@ const byPriorityThenProject = (a: WorkTask, b: WorkTask): number =>
   priorityRank(a.priority) - priorityRank(b.priority) || a.project.localeCompare(b.project);
 
 /** Every section of TASKS.md, read from the work model against `today`. Pure — no I/O. */
-export const buildSections = (work: Work, today: string): DashboardSections => {
-  const placed = inPlace(work);
-  return {
-    active: placed.filter((task) => task.status === 'active' || task.status === 'open').toSorted(byPriorityThenProject),
-    blocked: placed.filter((task) => task.status === 'blocked').toSorted(byPriorityThenProject),
-    overdue: overdue(work, today).toSorted((a, b) => a.due.localeCompare(b.due)),
-    stale: stale(work, today).toSorted((a, b) => a.updated.localeCompare(b.updated)),
-    closedRecent: closedSince(work, shiftDate(today, -14))
-      .toSorted((a, b) => b.closed.localeCompare(a.closed))
-      .slice(0, 20)
-  };
-};
+export const buildSections = (work: Work, today: string): DashboardSections => ({
+  active: withStatus(work, 'active', 'open').toSorted(byPriorityThenProject),
+  blocked: withStatus(work, 'blocked').toSorted(byPriorityThenProject),
+  overdue: overdue(work, today).toSorted((a, b) => a.due.localeCompare(b.due)),
+  stale: stale(work, today).toSorted((a, b) => a.updated.localeCompare(b.updated)),
+  closedRecent: closedSince(work, shiftDate(today, -14))
+    .toSorted((a, b) => b.closed.localeCompare(a.closed))
+    .slice(0, 20)
+});
 
 // ── Formatting ────────────────────────────────────────────────────────
 
@@ -203,7 +199,7 @@ export const writeDashboard = (work: Work): DashboardCounts => {
   const goalsBlock = extractGoalsBlock(existing);
 
   const sections = buildSections(work, todayDate());
-  writeFileSync(tasksFile, formatDashboard(sections, goalsBlock, scanMalformedTasks()));
+  writeFileSync(tasksFile, formatDashboard(sections, goalsBlock, work.malformed));
 
   return sectionCounts(sections);
 };
@@ -212,16 +208,15 @@ export const writeDashboard = (work: Work): DashboardCounts => {
  * The two derived views always regenerate together: TASKS.md (this module)
  * and the Agent OS dashboard at <HOME>/dashboard.html (status/html). The HTML
  * rebuild is fire-and-forget and coalesced — requests landing while one is
- * in flight mark it dirty, and a single follow-up rebuild picks up whatever
- * the in-flight snapshot missed.
+ * in flight keep only the latest model, and a single follow-up rebuild writes
+ * it once the in-flight one finishes.
  */
 let htmlInFlight = false;
-let htmlDirty = false;
+let pendingWork: Work | null = null;
 
-// A rebuild that was asked for while another ran reads the files again, since they changed since `work` was built.
-const rebuildHtmlSafe = (work?: Work): void => {
+const rebuildHtmlSafe = (work: Work): void => {
   if (htmlInFlight) {
-    htmlDirty = true;
+    pendingWork = work;
     return;
   }
   htmlInFlight = true;
@@ -233,9 +228,10 @@ const rebuildHtmlSafe = (work?: Work): void => {
     })
     .finally(() => {
       htmlInFlight = false;
-      if (htmlDirty) {
-        htmlDirty = false;
-        rebuildHtmlSafe();
+      const next = pendingWork;
+      pendingWork = null;
+      if (next) {
+        rebuildHtmlSafe(next);
       }
     });
 };

@@ -262,23 +262,13 @@ var dayNumber = (iso) => {
   const [year, month, day] = iso.split("-").map(Number);
   return year && month && day ? Date.UTC(year, month - 1, day) / DAY_MS : Number.NaN;
 };
-var dueLabel = (due, today) => {
+var daysUntil = (due, today) => {
   const days = dayNumber(due) - dayNumber(today);
-  if (!due || Number.isNaN(days)) {
-    return null;
-  }
-  if (days < 0) {
-    return { text: `overdue ${-days}d`, tone: "overdue" };
-  }
-  if (days <= 1) {
-    return { text: days === 0 ? "due today" : "due tomorrow", tone: "soon" };
-  }
-  return { text: `due in ${days}d`, tone: days <= 7 ? "soon" : "later" };
+  return due && !Number.isNaN(days) ? days : null;
 };
 var BUCKETS = ["overdue", "today", "week", "month", "later", "someday"];
-var dueBucket = (due, today) => {
-  const days = dayNumber(due) - dayNumber(today);
-  if (!due || Number.isNaN(days)) {
+var bucketOf = (days) => {
+  if (days === null) {
     return "someday";
   }
   if (days < 0) {
@@ -288,6 +278,28 @@ var dueBucket = (due, today) => {
     return "today";
   }
   return days <= 7 ? "week" : days <= 30 ? "month" : "later";
+};
+var dueBucket = (due, today) => bucketOf(daysUntil(due, today));
+var TONE = {
+  overdue: "overdue",
+  today: "soon",
+  week: "soon",
+  month: "later",
+  later: "later",
+  someday: "later"
+};
+var wordsFor = (days) => {
+  if (days < 0) {
+    return `overdue ${-days}d`;
+  }
+  if (days <= 1) {
+    return days === 0 ? "due today" : "due tomorrow";
+  }
+  return `due in ${days}d`;
+};
+var dueLabel = (due, today) => {
+  const days = daysUntil(due, today);
+  return days === null ? null : { text: wordsFor(days), tone: TONE[bucketOf(days)] };
 };
 var isoDay = (epochSeconds) => {
   const date = new Date(epochSeconds * 1000);
@@ -307,7 +319,7 @@ var hueColor = (hue) => {
   };
   return `#${channel(0)}${channel(8)}${channel(4)}`;
 };
-var SEGMENTS = 40;
+var SEGMENTS = 20;
 var progressBar = (fraction, color) => {
   const filled = Math.round(Math.min(Math.max(fraction, 0), 1) * SEGMENTS);
   return HStack({ spacing: 0 }, Array.from({ length: SEGMENTS }, (_, index) => Rectangle().fill(index < filled ? color : "#7f7f7f33").frame({ maxWidth: "infinity", height: 4 }))).cornerRadius(2);
@@ -322,16 +334,20 @@ var note = (text) => Text(text).font(11).color("tertiary").paddingHorizontal(10)
 var tabIcon = (symbol, help, active, onTap) => Image(symbol).font(12).color(() => active() ? "accent" : "secondary").padding(5).background(() => active() ? "#7f7f7f3d" : null).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
 
 // src/cmux/sidebar/tasks.ts
+var OPEN = { symbol: "circle", color: "#8E8E93" };
 var STATUS = {
   active: { symbol: "circle.fill", color: "#34C759" },
   blocked: { symbol: "exclamationmark.circle.fill", color: "#FF453A" },
-  open: { symbol: "circle", color: "#8E8E93" }
+  open: OPEN
 };
-var statusOf = (status) => STATUS[status] ?? { symbol: "circle", color: "#8E8E93" };
-var TONE = { overdue: "#FF453A", soon: "#FF9F0A", later: "tertiary" };
+var statusOf = (status) => STATUS[status] ?? OPEN;
+var TONE2 = { overdue: "#FF453A", soon: "#FF9F0A", later: "tertiary" };
 var URGENT = new Set(["P0", "P1"]);
 var today = computed(() => isoDay(data.clock()?.epoch ?? Date.now() / 1000));
-var statusIcon = (status, size = 7) => Image(statusOf(status).symbol).font(size).color(statusOf(status).color);
+var statusIcon = (status, size = 7) => {
+  const { symbol, color } = statusOf(status);
+  return Image(symbol).font(size).color(color);
+};
 var count = (amount, status) => amount ? [
   HStack({ spacing: 3 }, [
     statusIcon(status, 6),
@@ -342,7 +358,7 @@ var taskMeta = (task, projectColor) => HStack({ spacing: 6 }, [
   statusIcon(task.status),
   Text(task.id).font(10).monospaced().color(projectColor ?? "tertiary"),
   Text(task.priority).font(10).weight("semibold").monospaced().color(URGENT.has(task.priority) ? "#FF9F0A" : "tertiary"),
-  Text(() => dueLabel(task.due, today())?.text ?? "").font(10).color(() => TONE[dueLabel(task.due, today())?.tone ?? "later"]),
+  Text(() => dueLabel(task.due, today())?.text ?? "").font(10).color(() => TONE2[dueLabel(task.due, today())?.tone ?? "later"]),
   Spacer({ minLength: 0 }),
   ...task.comments ? [
     HStack({ spacing: 2 }, [
@@ -360,6 +376,7 @@ var taskRow = (task, projectColor) => VStack({ spacing: 2, alignment: "leading" 
 var SCHEMA = 3;
 
 // src/cmux/sidebar/view.ts
+var entryOf = (home) => home ? DATA.homes[home] : undefined;
 var homeLabel = (home) => {
   const entry = DATA.homes[home];
   return entry ? `${entry.emoji} ${entry.name}`.trim() : home;
@@ -367,18 +384,18 @@ var homeLabel = (home) => {
 var scopedPage = (home, ready) => {
   const view = computed(() => {
     const path = home();
-    const entry = path ? DATA.homes[path] : undefined;
+    const entry = entryOf(path);
     return path && entry ? { path, entry, current: entry.schema === SCHEMA } : null;
   });
   const showing = (current) => () => [view()].filter((item) => item?.current === current);
   return VStack({ spacing: 0 }, [
-    ForEach({ items: showing(true), key: (item) => item.path }, (item) => ready(item().path, item().entry)),
+    ForEach({ items: showing(true), key: (item) => item.path }, (item) => ready(item().entry)),
     ForEach({ items: showing(false), key: (item) => item.path }, (item) => note(`${homeLabel(item().path)} needs its agent updated to show here.`)),
     ForEach({ items: () => view() ? [] : ["none"], key: (item) => item }, () => note("No agent has joined this sidebar yet. In an agent’s home, run its cmux sidebar install."))
   ]);
 };
 
-// src/cmux/sidebar/pages/projects.ts
+// src/cmux/sidebar/projects.ts
 var ACCENT = "#0A84FF";
 var CARD = "#7f7f7f12";
 var open = (target) => target.kind === "page" ? cmux("browser.tab.new", { url: target.url }) : cmux("file.open", { path: target.path });
@@ -410,9 +427,8 @@ var agenda = (listed, day) => {
   ].filter((group) => group.tasks.length);
 };
 var dueTally = (amount, label, color) => Text(() => amount() ? `${amount()} ${label}` : "").font(10).weight("semibold").color(color);
-var tasksCard = (entry) => {
+var tasksCard = (entry, listed) => {
   const [expanded, setExpanded] = signal(false);
-  const listed = listedTasks(entry);
   const total = (field) => entry.projects.reduce((sum, project) => sum + project[field], 0);
   const tone = (wanted) => () => listed.filter(({ task }) => dueLabel(task.due, today())?.tone === wanted).length;
   const groups = computed(() => agenda(listed, today()));
@@ -494,7 +510,7 @@ var matches = (listed, query) => {
     return words.every((word) => haystack.includes(word));
   });
 };
-var workBody = (entry) => {
+var projectsBody = (entry) => {
   const [query, setQuery] = signal("");
   const listed = listedTasks(entry);
   const found = computed(() => matches(listed, query()));
@@ -506,7 +522,7 @@ var workBody = (entry) => {
       Text(() => found().length ? "" : "No matching tasks.").font(11).color("tertiary").paddingHorizontal(4)
     ])),
     ForEach({ items: () => searching() ? [] : ["browse"], key: (name) => name }, () => VStack({ spacing: 10 }, [
-      tasksCard(entry),
+      tasksCard(entry, listed),
       ...STATES.flatMap(({ title, holds }) => {
         const projects = entry.projects.filter(holds);
         return projects.length ? [stateGroup(title, projects)] : [];
@@ -516,21 +532,15 @@ var workBody = (entry) => {
   ]);
 };
 var projectsPage = ({ tabs, home, homes, pick }) => {
-  const entry = () => {
-    const path = home();
-    return path ? DATA.homes[path] : undefined;
-  };
   return VStack({ spacing: 8 }, [
     HStack({ spacing: 2 }, [
       tabs,
       Spacer({ minLength: 4 }),
-      ForEach({ items: () => entry() ? [home() ?? ""] : [], key: (path) => path }, (path) => {
-        const current = DATA.homes[path()];
+      ForEach({ items: () => [entryOf(home())].filter((item) => item !== undefined), key: (item) => item.dashboard }, (item) => {
+        const { dashboard, roadmap } = item();
         return HStack({ spacing: 2 }, [
-          ...current ? [
-            toolIcon("square.grid.3x3", "Dashboard", () => cmux("browser.tab.new", { url: `${current.dashboard}#today` }))
-          ] : [],
-          ...current?.roadmap ? [toolIcon("map", "Roadmap", () => cmux("browser.tab.new", { url: current.roadmap ?? "" }))] : []
+          toolIcon("square.grid.3x3", "Dashboard", () => cmux("browser.tab.new", { url: `${dashboard}#today` })),
+          ...roadmap ? [toolIcon("map", "Roadmap", () => cmux("browser.tab.new", { url: roadmap }))] : []
         ]);
       })
     ]),
@@ -540,7 +550,7 @@ var projectsPage = ({ tabs, home, homes, pick }) => {
         Spacer({ minLength: 0 })
       ])
     ] : [],
-    scopedPage(home, (_path, current) => workBody(current))
+    scopedPage(home, projectsBody)
   ]).paddingHorizontal(6);
 };
 

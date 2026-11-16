@@ -14,7 +14,7 @@
  */
 
 import { manager } from 'cmux-custom-manager/manager';
-import { projectsPage } from './pages/projects';
+import { projectsPage } from './projects';
 import { scopedHome, type Pin } from './scope';
 import { tabIcon } from './style';
 

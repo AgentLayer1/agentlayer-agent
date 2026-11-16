@@ -30,7 +30,7 @@ import { pathToFileURL } from 'node:url';
 import type { ManifestEntry } from '@/hooks/context';
 import type { HistoryState } from '@/home/history';
 import { BANNER_LINES, bannerTag } from '@/hooks/banner';
-import { daysBetween } from '@/shared/date';
+import { daysBetween, shiftDate } from '@/shared/date';
 import { jsonBlock } from '@/shared/json-block';
 import { RUNTIME_DIR } from '@/shared/naming';
 import { DEFAULT_AGENT_EMOJI } from '@/shared/persona';
@@ -1124,15 +1124,12 @@ interface ScheduledJob {
   nextDate: (todayIso: string) => string;
 }
 
-const addDays = (iso: string, days: number): string =>
-  new Date(Date.parse(`${iso}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
-
 const ymd = (year: number, month: number, day: number): string =>
   `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
 /** Next occurrence of weekday `target` (0=Sun..6=Sat), today inclusive. */
 const nextWeekday = (iso: string, target: number): string =>
-  addDays(iso, (target - new Date(`${iso}T00:00:00Z`).getUTCDay() + 7) % 7);
+  shiftDate(iso, (target - new Date(`${iso}T00:00:00Z`).getUTCDay() + 7) % 7);
 
 /** Next month-day `target` (e.g. 1 or 15), today inclusive. */
 const nextMonthlyDay = (iso: string, target: number): string => {
@@ -1185,7 +1182,7 @@ const SCHEDULE: ScheduledJob[] = [
 /** Roll the next date forward a period when today is the target but its time slot already passed. */
 const resolveNextRun = (job: ScheduledJob, todayIso: string, nowHHMM: string): string => {
   const candidate = job.nextDate(todayIso);
-  return candidate === todayIso && nowHHMM >= job.anchor ? job.nextDate(addDays(todayIso, 1)) : candidate;
+  return candidate === todayIso && nowHHMM >= job.anchor ? job.nextDate(shiftDate(todayIso, 1)) : candidate;
 };
 
 const prettyDate = (iso: string): string =>

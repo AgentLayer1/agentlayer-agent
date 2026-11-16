@@ -41,21 +41,36 @@ export const defaultTarget = (): SidebarTarget => ({
 const nextText = (current: SidebarParts | null, home: string, entry: HomeEntry, target: SidebarTarget): string =>
   renderSidebar({ ...newerCode(current, target.own()), homes: mergeHomes(current, home, entry, target.homeExists) });
 
-type RefreshResult = 'not-installed' | 'not-joined' | 'unchanged' | 'written';
+type Absent = 'not-installed' | 'not-joined';
 
-/**
- * Puts this home's latest entry into the installed sidebar, but only when the file exists and the home joined it.
- */
-export const refreshSidebar = (home: string, entry: HomeEntry, target: SidebarTarget): RefreshResult => {
+interface Joined {
+  path: string;
+  text: string;
+  current: SidebarParts;
+}
+
+// The installed sidebar when this home has joined it; why not, otherwise.
+const readJoined = (home: string, target: SidebarTarget): Joined | Absent => {
   const path = sidebarFile(target.dir);
   if (!existsSync(path)) {
     return 'not-installed';
   }
   const text = readFileSync(path, 'utf8');
   const current = parseSidebar(text);
-  if (!current?.homes[home]) {
-    return 'not-joined';
+  return current?.homes[home] ? { path, text, current } : 'not-joined';
+};
+
+type RefreshResult = Absent | 'unchanged' | 'written';
+
+/**
+ * Puts this home's latest entry into the installed sidebar, but only when the file exists and the home joined it.
+ */
+export const refreshSidebar = (home: string, entry: HomeEntry, target: SidebarTarget): RefreshResult => {
+  const joined = readJoined(home, target);
+  if (typeof joined === 'string') {
+    return joined;
   }
+  const { path, text, current } = joined;
   const next = nextText(current, home, entry, target);
   if (next === text) {
     return 'unchanged';
@@ -125,20 +140,17 @@ export const installSidebar = (
   return { ok: true, message: `${entry.name} is in the AgentLayer sidebar.${hint}` };
 };
 
-type RemoveResult = 'not-installed' | 'not-joined' | 'removed' | 'removed-file';
+type RemoveResult = Absent | 'removed' | 'removed-file';
 
 /**
  * Takes this home out of the sidebar; when it was the last home, the file goes too.
  */
 export const removeSidebar = (home: string, target: SidebarTarget): RemoveResult => {
-  const path = sidebarFile(target.dir);
-  if (!existsSync(path)) {
-    return 'not-installed';
+  const joined = readJoined(home, target);
+  if (typeof joined === 'string') {
+    return joined;
   }
-  const current = parseSidebar(readFileSync(path, 'utf8'));
-  if (!current?.homes[home]) {
-    return 'not-joined';
-  }
+  const { path, current } = joined;
   const homes = mergeHomes(current, home, null, target.homeExists);
   if (!Object.keys(homes).length) {
     rmSync(path, { force: true });

@@ -1,7 +1,6 @@
 import { FOLDERS } from '@/config';
 import { CLI_COMMAND } from '@/shared/naming';
 import { buildWork } from '@/work/build';
-import { writeWork } from '@/work/store';
 import { cmuxVersion, runCmux } from './app';
 import { homeEntry } from './entry';
 import { defaultTarget, installSidebar, refreshSidebar, removeSidebar } from './lifecycle';
@@ -34,9 +33,7 @@ export const runCmuxCommand = async (command: string | undefined, args: string[]
     return 1;
   }
   if (verb === 'install' || verb === 'refresh') {
-    const work = buildWork();
-    writeWork(work);
-    const entry = homeEntry(FOLDERS.HOME, work);
+    const entry = homeEntry(FOLDERS.HOME, buildWork());
     if (verb === 'refresh') {
       console.log(REFRESHED[refreshSidebar(FOLDERS.HOME, entry, target)]);
       return 0;

@@ -34,7 +34,13 @@ const TaskSchema = z.object({
   assignee: z.array(z.string()),
   dependsOn: z.array(z.string()),
   blockedBy: z.string(),
+  /**
+   * URL of the GitHub issue the task was handed off to, '' when none.
+   */
   issue: z.string(),
+  /**
+   * Thread entries, automated status changes included.
+   */
   comments: z.number(),
   /**
    * In the project's `tasks/archive/` folder.
@@ -59,7 +65,11 @@ export const WorkSchema = z.object({
    */
   roadmap: z.string(),
   projects: z.array(ProjectSchema),
-  tasks: z.array(TaskSchema)
+  tasks: z.array(TaskSchema),
+  /**
+   * HOME-relative paths of task files that don't parse, so a broken task shows as broken rather than missing.
+   */
+  malformed: z.array(z.string())
 });
 
 export type Work = z.infer<typeof WorkSchema>;

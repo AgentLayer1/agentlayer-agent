@@ -9,7 +9,7 @@ export interface ScopeWorkspace {
 }
 
 /**
- * An agent picked on the agent bar, held only while the workspace it was picked in stays selected.
+ * An agent picked by its chip on Projects, held only while the workspace it was picked in stays selected.
  */
 export interface Pin {
   home: string;

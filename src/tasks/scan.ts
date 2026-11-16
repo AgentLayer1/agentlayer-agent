@@ -71,21 +71,27 @@ export const getProjectPrefix = (project: string): string => {
  *  markdown (archive/ dirs carry a README) so they don't log parse warnings. */
 const isTaskFile = (name: string): boolean => name.endsWith('.md') && !name.startsWith('.') && TASK_FILE.test(name);
 
+interface DirRead {
+  tasks: TaskFile[];
+  /** Absolute paths of the task files that didn't parse. */
+  malformed: string[];
+}
+
 /** Parse every task markdown file directly inside `dir` (non-recursive — the
  *  `archive/` subdir is skipped here because it isn't a `.md` file). */
-const readTaskDir = (dir: string): TaskFile[] => {
-  if (!existsSync(dir)) return [];
-
-  return readdirSync(dir)
-    .filter(isTaskFile)
-    .flatMap<TaskFile>((file) => {
-      const filePath = join(dir, file);
-      const task = parseTaskFile(filePath);
-      if (task) return [task];
-      log.warn(`Failed to parse task file: ${filePath}`);
-      return [];
-    });
+const readTaskFiles = (dir: string): DirRead => {
+  const paths = existsSync(dir)
+    ? readdirSync(dir)
+        .filter(isTaskFile)
+        .map((file) => join(dir, file))
+    : [];
+  const parsed = paths.map((filePath) => ({ filePath, task: parseTaskFile(filePath) }));
+  const malformed = parsed.flatMap(({ filePath, task }) => (task ? [] : [filePath]));
+  malformed.forEach((filePath) => log.warn(`Failed to parse task file: ${filePath}`));
+  return { tasks: parsed.flatMap(({ task }) => (task ? [task] : [])), malformed };
 };
+
+const readTaskDir = (dir: string): TaskFile[] => readTaskFiles(dir).tasks;
 
 /** Scan a single project's tasks/ folder (active tasks; excludes archive/). */
 const scanProject = (project: string): TaskFile[] => readTaskDir(join(FOLDERS.PROJECTS, project, 'tasks'));
@@ -103,24 +109,28 @@ const scanProjectArchive = (project: string): TaskFile[] =>
  *  falsely auto-blocked. Not part of the active working set — status only. */
 export const scanArchivedTasks = (): TaskFile[] => discoverProjects().flatMap(scanProjectArchive);
 
-/**
- * Task files that exist on disk but can't be parsed — malformed frontmatter
- * (a stray indent before `---`, a truncated block) drops them from every scan.
- * Without this they vanish from TASKS.md and the dashboard with only a log
- * line, which reads as "task deleted" rather than "task broken".
- */
-export const scanMalformedTasks = (): string[] =>
-  discoverProjects().flatMap((project) =>
-    ['tasks', join('tasks', 'archive')]
-      .map((sub) => join(FOLDERS.PROJECTS, project, sub))
-      .filter(existsSync)
-      .flatMap((dir) =>
-        readdirSync(dir)
-          .filter(isTaskFile)
-          .map((file) => join(dir, file))
-          .filter((filePath) => parseTaskFile(filePath) === null)
-      )
-  );
+export interface TaskScan {
+  tasks: TaskFile[];
+  archived: TaskFile[];
+  /**
+   * Task files on disk that can't be parsed: malformed frontmatter (a stray indent before `---`, a truncated
+   * block) drops them from every scan, and without this list they'd read as deleted rather than broken.
+   */
+  malformed: string[];
+}
+
+/** One pass over every project's `tasks/` and `tasks/archive/` folders. */
+export const scanTasks = (): TaskScan => {
+  const reads = discoverProjects().map((project) => ({
+    live: readTaskFiles(join(FOLDERS.PROJECTS, project, 'tasks')),
+    archive: readTaskFiles(join(FOLDERS.PROJECTS, project, 'tasks', 'archive'))
+  }));
+  return {
+    tasks: reads.flatMap(({ live }) => live.tasks),
+    archived: reads.flatMap(({ archive }) => archive.tasks),
+    malformed: reads.flatMap(({ live, archive }) => [...live.malformed, ...archive.malformed])
+  };
+};
 
 /** Get the next available task ID for a project. Scans both active and archive dirs. */
 export const getNextId = (project: string): string => {

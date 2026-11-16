@@ -28,7 +28,7 @@ import { listInboxFiles } from '@/knowledge/utils';
 import { readLedger } from '@/notices/ledger';
 import { type ChangelogEntry, getUpgradeStatus, parseChangelog, type UpgradeState } from '@/upgrade/version';
 import { readCadence } from '@/shared/cadence';
-import { nowISO, nowTime, shiftDate, todayDate } from '@/shared/date';
+import { nowISO, nowTime, todayDate } from '@/shared/date';
 import { agentDisplayName, agentEmoji } from '@/shared/agent-name';
 import { CLI_PATH } from '@/shared/naming';
 import { routerPlaybooks } from '@/status/playbooks';
@@ -44,10 +44,9 @@ import {
 } from './radar-refs';
 import { sanitizeHtml } from '@/status/sanitize-html';
 import { firstParagraph, readText, stripMarkdown } from '@/shared/text';
-import { scanMalformedTasks } from '@/tasks/scan';
 import { buildWork } from '@/work/build';
 import type { Work, WorkTask } from '@/work/model';
-import { inPlace, overdue, projectLoads, queue, stale, updatedBetween, type ProjectLoad } from '@/work/views';
+import { overdue, projectLoads, queue, stale, touchedRecently, withStatus, type ProjectLoad } from '@/work/views';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
@@ -297,26 +296,21 @@ export interface RuleEntry {
   path: string;
 }
 
-export interface TaskRef {
-  id: string;
-  title: string;
-  priority: string;
-  project: string;
-  status: string;
-  due: string;
-  updated: string;
-  dependsOn: string[];
-  blockedBy: string;
-  /**
-   * URL of the GitHub issue the task was handed off to, '' when none.
-   */
-  issue: string;
-  /** Thread entry count — the comment counter (all entries, including
-   *  automated status-change markers). */
-  comments: number;
-  /** Task file path relative to <HOME>, for clickable links. */
-  path: string;
-}
+export type TaskRef = Pick<
+  WorkTask,
+  | 'id'
+  | 'title'
+  | 'priority'
+  | 'project'
+  | 'status'
+  | 'due'
+  | 'updated'
+  | 'dependsOn'
+  | 'blockedBy'
+  | 'issue'
+  | 'comments'
+  | 'path'
+>;
 
 export interface HookEntry {
   event: string;
@@ -758,42 +752,25 @@ const collectCompile = (): StatusSnapshot['compile'] => {
   };
 };
 
-const toRef = (task: WorkTask): TaskRef => ({
-  id: task.id,
-  title: task.title,
-  priority: task.priority,
-  project: task.project,
-  status: task.status,
-  due: task.due,
-  updated: task.updated,
-  dependsOn: task.dependsOn,
-  blockedBy: task.blockedBy,
-  issue: task.issue,
-  comments: task.comments,
-  path: task.path
-});
-
 const collectTasks = (work: Work): StatusSnapshot['tasks'] => {
   const today = todayDate();
-  const placed = inPlace(work);
+  const active = withStatus(work, 'active');
   const late = overdue(work, today);
   const idle = stale(work, today);
   return {
-    active: placed.filter((task) => task.status === 'active').length,
-    blocked: placed.filter((task) => task.status === 'blocked').length,
+    active: active.length,
+    blocked: withStatus(work, 'blocked').length,
     stale: idle.length,
     overdue: late.length,
     projects: work.projects.length,
     byProject: projectLoads(work),
-    overdueList: late.map(toRef),
-    staleList: idle.map(toRef),
-    activeList: placed.filter((task) => task.status === 'active').map(toRef),
-    queue: queue(work).map(toRef),
-    // "Today" with date-only granularity: include yesterday too so the feed
-    // survives the stroke of midnight (the renderer labels it last-24h).
-    touchedToday: updatedBetween(work, shiftDate(today, -1), today).map(toRef),
+    overdueList: late,
+    staleList: idle,
+    activeList: active,
+    queue: queue(work),
+    touchedToday: touchedRecently(work, today),
     pathById: Object.fromEntries(work.tasks.map((task) => [task.id, task.path])),
-    malformed: scanMalformedTasks().map((path) => relative(FOLDERS.HOME, path))
+    malformed: work.malformed
   };
 };
 
