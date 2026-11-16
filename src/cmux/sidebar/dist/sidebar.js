@@ -477,9 +477,9 @@ var count = (amount, status) => amount ? [
 ] : [];
 var taskMeta = (task, project) => HStack({ spacing: 6 }, [
   statusIcon(task.status),
-  Text(task.id).font(10).monospaced().color("tertiary"),
-  Text(task.priority).font(10).weight("semibold").monospaced().color(URGENT.has(task.priority) ? ORANGE : "tertiary"),
-  Text(() => dueLabel(task.due, today())?.text ?? "").font(10).color(() => TONE2[dueLabel(task.due, today())?.tone ?? "later"]),
+  Text(task.id).font(10).monospaced().color("tertiary").fixedSize("horizontal"),
+  Text(task.priority).font(10).weight("semibold").monospaced().color(URGENT.has(task.priority) ? ORANGE : "tertiary").fixedSize("horizontal"),
+  Text(() => dueLabel(task.due, today())?.text ?? "").font(10).color(() => TONE2[dueLabel(task.due, today())?.tone ?? "later"]).fixedSize("horizontal"),
   Spacer({ minLength: 0 }),
   ...project ? [pill(project.slug, project.color)] : [],
   ...task.comments ? [
@@ -592,7 +592,7 @@ var agenda = (listed, day) => {
     })
   ].filter((group) => group.tasks.length);
 };
-var dueTally = (amount, label, color) => Text(() => amount() ? `${amount()} ${label}` : "").font(10).weight("semibold").color(color);
+var dueTally = (amount, label, color) => Text(() => amount() ? `${amount()} ${label}` : "").font(10).weight("semibold").color(color).fixedSize("horizontal");
 var tasksCard = (entry, listed) => {
   const [expanded, setExpanded] = signal(false);
   const total = (field) => entry.projects.reduce((sum, project) => sum + project[field], 0);
@@ -714,7 +714,7 @@ var reportRow = (item) => listRow(VStack({ spacing: 3, alignment: "leading" }, [
     badge2(item.kind, hueColor(item.hue)),
     ...item.status ? [statusBadge(item.status)] : [],
     Spacer({ minLength: 0 }),
-    Text(clock(item.time)).font(10).monospaced().color("tertiary")
+    Text(clock(item.time)).font(10).monospaced().color("tertiary").fixedSize("horizontal")
   ])
 ])).onTap(() => openTarget(item.target));
 var pinRow = ({ pin, project }) => listRow(HStack({ spacing: 6 }, [

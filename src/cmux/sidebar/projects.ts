@@ -81,7 +81,8 @@ const dueTally = (amount: () => number, label: string, color: string) =>
   Text(() => (amount() ? `${amount()} ${label}` : ''))
     .font(10)
     .weight('semibold')
-    .color(color);
+    .color(color)
+    .fixedSize('horizontal');
 
 const tasksCard = (entry: HomeEntry, listed: readonly Listed[]) => {
   const [expanded, setExpanded] = signal(false);

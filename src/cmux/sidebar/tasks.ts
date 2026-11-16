@@ -34,18 +34,21 @@ export const count = (amount: number, status: string) =>
       ]
     : [];
 
+// Each word keeps its own width: beside a Spacer, a text is offered part of the row and wraps.
 const taskMeta = (task: TaskItem, project?: ProjectTag) =>
   HStack({ spacing: 6 }, [
     statusIcon(task.status),
-    Text(task.id).font(10).monospaced().color('tertiary'),
+    Text(task.id).font(10).monospaced().color('tertiary').fixedSize('horizontal'),
     Text(task.priority)
       .font(10)
       .weight('semibold')
       .monospaced()
-      .color(URGENT.has(task.priority) ? ORANGE : 'tertiary'),
+      .color(URGENT.has(task.priority) ? ORANGE : 'tertiary')
+      .fixedSize('horizontal'),
     Text(() => dueLabel(task.due, today())?.text ?? '')
       .font(10)
-      .color(() => TONE[dueLabel(task.due, today())?.tone ?? 'later']),
+      .color(() => TONE[dueLabel(task.due, today())?.tone ?? 'later'])
+      .fixedSize('horizontal'),
     Spacer({ minLength: 0 }),
     ...(project ? [pill(project.slug, project.color)] : []),
     ...(task.comments
