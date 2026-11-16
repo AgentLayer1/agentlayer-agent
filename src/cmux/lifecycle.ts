@@ -1,11 +1,11 @@
 import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
-import { LAUNCHER } from '@/config';
+import { FOLDERS, LAUNCHER } from '@/config';
 import { log } from '@/shared/log';
 import { pluginVersion } from '@/shared/naming';
 import { writeFileAtomic } from '@/shared/utils';
 import { cmuxTooOld, MIN_CMUX } from './app';
 import { DIST } from './build';
-import { homeEntry, type EntrySource } from './entry';
+import { homeEntry, type EntrySettings, type EntrySource } from './entry';
 import {
   mergeHomes,
   newerCode,
@@ -16,7 +16,7 @@ import {
   sidebarsDir,
   type SidebarCode
 } from './file';
-import { NOVA, SCOUT } from './preview/fixture';
+import { CMUX_DATA, fixtureEntry, NOVA, SCOUT } from './preview/fixture';
 import type { HomeEntry } from './sidebar/data';
 
 /**
@@ -37,6 +37,11 @@ export const defaultTarget = (): SidebarTarget => ({
   dir: sidebarsDir(),
   own: () => ({ version: pluginVersion(), bundle: readFileSync(DIST, 'utf8') })
 });
+
+/**
+ * This home's settings for its entry, read live from the config.
+ */
+export const entrySettings = (): EntrySettings => ({ launcher: LAUNCHER, projectsDir: FOLDERS.PROJECTS });
 
 const readText = (path: string): string => (existsSync(path) ? readFileSync(path, 'utf8') : '');
 
@@ -71,7 +76,7 @@ export const refreshSidebar = (home: string, entry: HomeEntry, target: SidebarTa
  */
 export const refreshSidebarQuietly = (source: EntrySource, target: SidebarTarget = defaultTarget()): void => {
   try {
-    refreshSidebar(source.runtime.home, homeEntry(source, LAUNCHER), target);
+    refreshSidebar(source.runtime.home, homeEntry(source, entrySettings()), target);
   } catch (error) {
     log.with('cmux').warn(`sidebar refresh skipped: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -157,13 +162,20 @@ export const removeSidebar = (home: string, target: SidebarTarget): RemoveResult
 };
 
 /**
- * Writes the sidebar drawing the two invented homes, for screenshots.
+ * The sidebar drawing the two invented homes and their invented sessions with a frozen clock, for screenshots.
+ * Parameters shadow cmux's `data` and `cmux` globals, so it never shows real sessions and its taps go nowhere.
  */
-export const previewSidebar = (path: string, own: SidebarCode): void =>
-  writeFileAtomic(
-    path,
-    renderSidebar({
-      ...own,
-      homes: Object.fromEntries([NOVA, SCOUT].map((source) => [source.runtime.home, homeEntry(source, 'claude')]))
-    })
-  );
+export const previewText = (own: SidebarCode): string =>
+  renderSidebar({
+    version: own.version,
+    homes: Object.fromEntries([NOVA, SCOUT].map((source) => [source.runtime.home, fixtureEntry(source)])),
+    bundle: [
+      `const MOCK = ${JSON.stringify(CMUX_DATA)};`,
+      '((data, cmux) => {',
+      own.bundle,
+      '})({ workspaces: () => MOCK.workspaces, groups: () => undefined, clock: () => MOCK.clock }, () => {});',
+      ''
+    ].join('\n')
+  });
+
+export const previewSidebar = (path: string, own: SidebarCode): void => writeFileAtomic(path, previewText(own));

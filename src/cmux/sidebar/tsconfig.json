@@ -17,5 +17,5 @@
     "strict": true,
     "verbatimModuleSyntax": true
   },
-  "files": ["main.ts", "../../../node_modules/cmux-custom-dashboard/src/runtime.d.ts"]
+  "files": ["main.ts", "globals.d.ts", "../../../node_modules/cmux-custom-dashboard/src/runtime.d.ts"]
 }

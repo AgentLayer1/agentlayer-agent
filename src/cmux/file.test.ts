@@ -1,10 +1,9 @@
 import { expect, test } from 'bun:test';
-import { homeEntry } from './entry';
 import { mergeHomes, newerCode, parseSidebar, renderSidebar } from './file';
-import { NOVA, SCOUT } from './preview/fixture';
+import { fixtureEntry, NOVA, SCOUT } from './preview/fixture';
 
-const NOVA_ENTRY = homeEntry(NOVA, 'claude');
-const SCOUT_ENTRY = homeEntry(SCOUT, 'agent');
+const NOVA_ENTRY = fixtureEntry(NOVA);
+const SCOUT_ENTRY = fixtureEntry(SCOUT, 'agent');
 const anyHome = () => true;
 const BUNDLE = '/*\n * AgentLayer · cmux sidebar\n */\nsidebar(() => Text("x"));\n';
 

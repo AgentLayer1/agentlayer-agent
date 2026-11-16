@@ -3,15 +3,22 @@
  */
 export const SCHEMA = 1;
 
+/**
+ * Something the sidebar opens: a note by its absolute path, or an HTML page by its `file://` URL.
+ */
+export interface Link {
+  title: string;
+  kind: 'md' | 'html';
+  target: string;
+}
+
 export interface ProjectLink {
   slug: string;
   hue: number;
-}
-
-export interface PinnedLink {
-  title: string;
-  path: string;
-  kind: 'md' | 'html';
+  /**
+   * Absolute path of the project's README.
+   */
+  readme: string;
 }
 
 /**
@@ -22,9 +29,16 @@ export interface HomeEntry {
   name: string;
   emoji: string;
   launcher: string;
-  roadmap: boolean;
+  /**
+   * `file://` URL of the home's dashboard.html, which deep-links a page by its hash.
+   */
+  dashboard: string;
+  /**
+   * `file://` URL of the home's roadmap.html, or `null` when it has none.
+   */
+  roadmap: string | null;
   projects: ProjectLink[];
-  pinned: PinnedLink[];
+  pinned: Link[];
 }
 
 export interface SidebarData {

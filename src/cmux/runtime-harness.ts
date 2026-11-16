@@ -23,6 +23,15 @@ type Op =
   | { op: 'remove'; id: string }
   | { op: 'root'; id: string };
 
+/**
+ * A call the sidebar made to cmux, as the runtime hands it to the host.
+ */
+export interface HostAction {
+  kind: string;
+  method?: string;
+  params?: Record<string, string>;
+}
+
 interface SceneNode {
   type: string;
   props: Record<string, unknown>;
@@ -35,6 +44,7 @@ interface SceneNode {
 export const mount = (script: string, data: Record<string, unknown> = {}) => {
   const nodes = new Map<string, SceneNode>();
   const scene = { root: '' };
+  const actions: HostAction[] = [];
   const apply = (op: Op) => {
     const node = nodes.get(op.id);
     switch (op.op) {
@@ -64,12 +74,14 @@ export const mount = (script: string, data: Record<string, unknown> = {}) => {
   };
   const context = createContext({
     __host_applyOps: (json: string) => (JSON.parse(json) as Op[]).forEach(apply),
-    __host_action: () => {},
+    __host_action: (json: string) => actions.push(JSON.parse(json) as HostAction),
     __host_log: () => {},
     __host_clipboardWrite: () => false
   });
   runInContext(readFileSync(RUNTIME, 'utf8'), context);
-  Object.entries(data).forEach(([key, value]) => context.__setData(key, JSON.stringify(value)));
+  const setData = (next: Record<string, unknown>) =>
+    Object.entries(next).forEach(([key, value]) => context.__setData(key, JSON.stringify(value)));
+  setData(data);
   runInContext(script, context);
 
   const walk = (id: string): string[] => [id, ...(nodes.get(id)?.children ?? []).flatMap(walk)];
@@ -79,5 +91,18 @@ export const mount = (script: string, data: Record<string, unknown> = {}) => {
       .filter((node) => node?.type === 'text')
       .map((node) => String(node?.props.text ?? ''))
       .filter(Boolean);
-  return { visibleTexts };
+  const tappableHolding = (text: string) =>
+    walk(scene.root)
+      .filter((id) => nodes.get(id)?.props.tappable)
+      .findLast((id) => walk(id).some((inner) => nodes.get(inner)?.props.text === text));
+  const tap = (text: string): HostAction | undefined => {
+    const id = tappableHolding(text);
+    if (!id) {
+      throw new Error(`nothing tappable shows "${text}"`);
+    }
+    const before = actions.length;
+    context.__dispatch(id, 'tap', '');
+    return actions.length > before ? actions.at(-1) : undefined;
+  };
+  return { visibleTexts, tap, setData, actions };
 };

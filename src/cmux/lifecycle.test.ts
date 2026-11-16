@@ -2,7 +2,6 @@ import { afterEach, expect, test } from 'bun:test';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { homeEntry } from './entry';
 import { parseSidebar, sidebarFile } from './file';
 import {
   installSidebar,
@@ -12,7 +11,7 @@ import {
   type CmuxHost,
   type SidebarTarget
 } from './lifecycle';
-import { NOVA, SCOUT } from './preview/fixture';
+import { fixtureEntry, NOVA, SCOUT } from './preview/fixture';
 
 const dirs: string[] = [];
 afterEach(() => dirs.splice(0).forEach((dir) => rmSync(dir, { recursive: true, force: true })));
@@ -37,8 +36,8 @@ const fakeCmux = (accepts = true): CmuxHost & { calls: string[][] } => {
 
 const NOVA_HOME = NOVA.runtime.home;
 const SCOUT_HOME = SCOUT.runtime.home;
-const nova = homeEntry(NOVA, 'claude');
-const scout = homeEntry(SCOUT, 'agent');
+const nova = fixtureEntry(NOVA);
+const scout = fixtureEntry(SCOUT, 'agent');
 const installed = (where: SidebarTarget) => parseSidebar(readFileSync(sidebarFile(where.dir), 'utf8'));
 
 test('install starts the file, has cmux check it under a staging name, then selects it', () => {
@@ -102,11 +101,11 @@ test('an update lost to another home’s write at the same moment comes back at 
   installSidebar(NOVA_HOME, nova, where, fakeCmux());
   installSidebar(SCOUT_HOME, scout, where, fakeCmux());
   const snapshotBeforeScoutsUpdate = readFileSync(sidebarFile(where.dir), 'utf8');
-  refreshSidebar(SCOUT_HOME, { ...scout, roadmap: true }, where);
+  refreshSidebar(SCOUT_HOME, { ...scout, roadmap: 'file:///roadmap.html' }, where);
   writeFileSync(sidebarFile(where.dir), snapshotBeforeScoutsUpdate);
-  expect(installed(where)?.homes[SCOUT_HOME]?.roadmap).toBe(false);
-  expect(refreshSidebar(SCOUT_HOME, { ...scout, roadmap: true }, where)).toBe('written');
-  expect(installed(where)?.homes[SCOUT_HOME]?.roadmap).toBe(true);
+  expect(installed(where)?.homes[SCOUT_HOME]?.roadmap).toBeNull();
+  expect(refreshSidebar(SCOUT_HOME, { ...scout, roadmap: 'file:///roadmap.html' }, where)).toBe('written');
+  expect(installed(where)?.homes[SCOUT_HOME]?.roadmap).toBe('file:///roadmap.html');
 });
 
 test('a refresh from an older plugin keeps the newer code', () => {

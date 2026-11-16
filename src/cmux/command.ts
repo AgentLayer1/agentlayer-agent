@@ -1,10 +1,17 @@
-import { FOLDERS, LAUNCHER } from '@/config';
+import { FOLDERS } from '@/config';
 import { CLI_COMMAND } from '@/shared/naming';
 import { collectStatus } from '@/status/collect';
 import { cmuxVersion, runCmux } from './app';
 import { homeEntry } from './entry';
 import { SIDEBAR_NAME, sidebarFile } from './file';
-import { defaultTarget, installSidebar, previewSidebar, refreshSidebar, removeSidebar } from './lifecycle';
+import {
+  defaultTarget,
+  entrySettings,
+  installSidebar,
+  previewSidebar,
+  refreshSidebar,
+  removeSidebar
+} from './lifecycle';
 
 const USAGE = `Usage: ${CLI_COMMAND} cmux sidebar <install|refresh|remove|preview [path]>`;
 const INSTALL = `${CLI_COMMAND} cmux sidebar install`;
@@ -35,7 +42,7 @@ export const runCmuxCommand = async (command: string | undefined, args: string[]
   }
   if (verb === 'install' || verb === 'refresh') {
     const snapshot = await collectStatus();
-    const entry = homeEntry(snapshot, LAUNCHER);
+    const entry = homeEntry(snapshot, entrySettings());
     if (verb === 'refresh') {
       console.log(REFRESHED[refreshSidebar(snapshot.runtime.home, entry, target)]);
       return 0;
