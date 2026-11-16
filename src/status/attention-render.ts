@@ -41,7 +41,8 @@ interface RowOptions {
 const taskRow = (view: AttentionView, task: AttentionTask, options: RowOptions): string => {
   const meta = [
     taskLink(view, task),
-    !view.project && `<span class="proj" style="--h:${projectHue(task.project, view.projectHues)}">${esc(task.project)}</span>`,
+    !view.project &&
+      `<span class="proj" style="--h:${projectHue(task.project, view.projectHues)}">${esc(task.project)}</span>`,
     `<span class="pri ${esc(task.priority.toLowerCase())}">${esc(task.priority)}</span>`,
     options.from && `<span class="from">from ${esc(horizonLabel(task.horizon))}</span>`,
     task.due &&

@@ -152,7 +152,8 @@ describe('composeMetaBox', () => {
 
 describe('radarSummary', () => {
   test("uses the checklist's ▶ step", () => {
-    const body = '\n\n✓ Exporter bug filed (ab-001)\n\n▶ Waiting on the exporter fix\n▷ next: rerun the comparison\n\n↳ `claude --resume abc-123`\n';
+    const body =
+      '\n\n✓ Exporter bug filed (ab-001)\n\n▶ Waiting on the exporter fix\n▷ next: rerun the comparison\n\n↳ `claude --resume abc-123`\n';
     expect(radarSummary(body)).toBe('Waiting on the exporter fix');
   });
 

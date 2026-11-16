@@ -28,7 +28,11 @@ const PIN_LINE = /^\s*[-*] +(?:([^\p{L}\p{N}\s*_[\]]\S*) +)?\[((?:[^[\]]|\[[^\]]
 
 /** The file a link target names: `<…>` unwrapped, a `"title"`, `#anchor` and `?query` dropped, `%20` decoded. */
 const targetPath = (href: string): string => {
-  const bare = href.trim().replace(/^<(.*)>$/, '$1').replace(/\s+"[^"]*"$/, '').replace(/[#?].*$/, '');
+  const bare = href
+    .trim()
+    .replace(/^<(.*)>$/, '$1')
+    .replace(/\s+"[^"]*"$/, '')
+    .replace(/[#?].*$/, '');
   try {
     return decodeURIComponent(bare);
   } catch {

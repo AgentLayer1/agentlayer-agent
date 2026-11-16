@@ -1599,7 +1599,9 @@ const collectSurfaces = (): SurfaceLink[] =>
   );
 
 const collectPinned = (work: Work): SurfaceLink[] =>
-  work.pins.map((pin) => surfaceAt(resolve(FOLDERS.HOME, pin.path), { title: pin.title, icon: pin.icon, appTab: true }));
+  work.pins.map((pin) =>
+    surfaceAt(resolve(FOLDERS.HOME, pin.path), { title: pin.title, icon: pin.icon, appTab: true })
+  );
 
 const toReportRef = ({ date, time, title, path, skill, status, category }: WorkReport): ReportRef => ({
   date,

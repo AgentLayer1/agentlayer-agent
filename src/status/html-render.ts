@@ -235,7 +235,8 @@ const dueLabel = (due: string, todayIso: string): { text: string; cls: string } 
   const days = daysUntil(due, todayIso);
   if (days === null) return { text: '', cls: '' };
   const tone = toneOf(days);
-  const text = days < 0 ? `${-days}d overdue` : days === 0 ? 'due today' : tone === 'soon' ? `due in ${days}d` : `due ${due}`;
+  const text =
+    days < 0 ? `${-days}d overdue` : days === 0 ? 'due today' : tone === 'soon' ? `due in ${days}d` : `due ${due}`;
   return { text, cls: TONE_CLASS[tone] };
 };
 
@@ -376,7 +377,6 @@ const reportChips = (reports: ReportRef[], pinned: number): string => {
     .join('')}</div>`;
 };
 
-
 /** Dot hue per category — keyed to a representative row chip so the filter and
  *  the list share colors. Briefings uses the briefing skill's hue. */
 const CATEGORY_DOT: Record<string, string> = {
@@ -461,7 +461,9 @@ const attentionStats = (snap: StatusSnapshot): string => {
       num: attention.snapshot ? waiting : '—',
       label: 'waiting on you',
       tone: waiting ? 'warn' : '',
-      caption: attention.queuePulled ? `pulled ${attention.queuePulled.day || attention.queuePulled.time}` : 'not pulled yet',
+      caption: attention.queuePulled
+        ? `pulled ${attention.queuePulled.day || attention.queuePulled.time}`
+        : 'not pulled yet',
       nav: nav('queue')
     }
   ]);
@@ -625,13 +627,7 @@ const pageTasks = (snap: StatusSnapshot): string => {
     groups.set(key, [...(groups.get(key) ?? []), ref]);
   }
   const agenda = `<div data-filterbox>${filterInput('filter tasks…')}${projectFilterChips(tasks.queue, snap.projectHues)}${[
-    taskGroup(
-      '▶ In flight',
-      tasks.activeList,
-      snap,
-      {},
-      'agenda-active'
-    ),
+    taskGroup('▶ In flight', tasks.activeList, snap, {}, 'agenda-active'),
     taskGroup('⏰ Overdue', groups.get('overdue') ?? [], snap, {}, 'agenda-overdue'),
     taskGroup('📅 Due today', groups.get('today') ?? [], snap, {}, 'agenda-today'),
     taskGroup('🗓 Due this week', groups.get('week') ?? [], snap, {}, 'agenda-week'),
@@ -894,7 +890,9 @@ const radarTab = (snap: StatusSnapshot): string => {
   const latest: RadarLatest | null = snap.radarLatest;
   const plugin = snap.runtime.pluginName;
   if (!latest) {
-    return hint(`No radar captured yet — run /${plugin}:attention checkpoint all (or a sync) to snapshot your sessions.`);
+    return hint(
+      `No radar captured yet — run /${plugin}:attention checkpoint all (or a sync) to snapshot your sessions.`
+    );
   }
   const radarCount = snap.reports.filter((report) => report.category === 'radar').length;
   // Footer below the divider: the digest's stats line, then the radar-count note.
@@ -1083,7 +1081,9 @@ const pageReports = (snap: StatusSnapshot): string => {
   const pinRows = [
     ...snap.pinned.map((pin) => pinRow(pin.icon, mdLinkAbs(snap, pin.href, pin.title))),
     ...snap.tasks.byProject.flatMap((load) =>
-      load.pins.map((pin) => pinRow(pin.icon, mdLink(snap, pin.path, pin.title), projChip(load.project, snap.projectHues)))
+      load.pins.map((pin) =>
+        pinRow(pin.icon, mdLink(snap, pin.path, pin.title), projChip(load.project, snap.projectHues))
+      )
     )
   ];
   const pinned = pinRows.length ? `<h3 class="group">📌 Pinned</h3>${pinRows.join('')}` : '';
@@ -1330,9 +1330,7 @@ const reflexTips = (agent: string): Record<string, string> => ({
 /** A router skill's playbooks as chips under its tile. */
 const playbookChips = (skill: SkillInfo): string =>
   skill.playbooks.length
-    ? `<div class="tplays">${skill.playbooks
-        .map((name) => `<span class="chip">${esc(name)}</span>`)
-        .join('')}</div>`
+    ? `<div class="tplays">${skill.playbooks.map((name) => `<span class="chip">${esc(name)}</span>`).join('')}</div>`
     : '';
 
 /** Whether the mods module is known to load here, from the stamp the notices row leaves at session start. */
@@ -1350,12 +1348,15 @@ const modTiles = (snap: StatusSnapshot): string => {
   const tiles = mods.features
     .map((feature) => {
       const chips = [
-        ...feature.commands.map((command) =>
-          `<span class="chip" title="${esc(command.description)}">/${esc(command.name)}${
-            command.argumentHint ? ` ${esc(command.argumentHint)}` : ''
-          }</span>`
+        ...feature.commands.map(
+          (command) =>
+            `<span class="chip" title="${esc(command.description)}">/${esc(command.name)}${
+              command.argumentHint ? ` ${esc(command.argumentHint)}` : ''
+            }</span>`
         ),
-        ...feature.tools.map((tool) => `<span class="chip" title="a tool the mod gives the session">${esc(tool)}</span>`)
+        ...feature.tools.map(
+          (tool) => `<span class="chip" title="a tool the mod gives the session">${esc(tool)}</span>`
+        )
       ];
       return `<div class="tile" data-row><div class="tname"><span class="good">${esc(feature.title)}</span></div><div class="tdesc">${esc(
         feature.summary
@@ -1675,7 +1676,11 @@ const buildContextBody = (snap: StatusSnapshot): string => {
   });
 
   // The date leads every injection but isn't a manifest entry, which the terminal banner also prints.
-  const dateRow = ['<span class="good">✓</span>', `today's date <span class="dim">${esc(context.dynamic.date)}</span>`, ''];
+  const dateRow = [
+    '<span class="good">✓</span>',
+    `today's date <span class="dim">${esc(context.dynamic.date)}</span>`,
+    ''
+  ];
   const manifestRows = [
     dateRow,
     ...context.dynamic.entries.map((entry) => {
@@ -1790,7 +1795,6 @@ const ENV_KEY_TIPS: Record<string, string> = {
   AGENT_KNOWLEDGE: 'Override for where the `knowledge/` tree lives, if you keep it outside the home directory.',
   AGENT_PROJECTS: 'Override for where the `projects/` tree lives, if you keep it outside the home directory.'
 };
-
 
 const pageSystem = (snap: StatusSnapshot): string => {
   const { settings, logs } = snap;

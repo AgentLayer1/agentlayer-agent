@@ -18,7 +18,9 @@ const call = async (args: Record<string, unknown>): Promise<Record<string, unkno
   return z.record(z.string(), z.unknown()).parse(result);
 };
 
-const prs = (url: string) => [{ label: 'My pull requests', empty: 'None open.', items: [{ title: '#7 Key rotation', url }] }];
+const prs = (url: string) => [
+  { label: 'My pull requests', empty: 'None open.', items: [{ title: '#7 Key rotation', url }] }
+];
 
 describe('attention_write', () => {
   test('writes a project page, keeps its queue across re-renders, and links it from the project card', async () => {

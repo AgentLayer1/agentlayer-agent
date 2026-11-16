@@ -64,8 +64,7 @@ export interface AttentionInputs {
   timeZone: string;
 }
 
-const byUrgency = (a: AttentionTask, b: AttentionTask): number =>
-  taskOrder(a, b) || a.horizon.localeCompare(b.horizon);
+const byUrgency = (a: AttentionTask, b: AttentionTask): number => taskOrder(a, b) || a.horizon.localeCompare(b.horizon);
 
 const toAttentionTask = (task: WorkTask): AttentionTask => {
   const { id, title, priority, project, status, due, updated, horizon, blockedBy, path } = task;
@@ -265,7 +264,8 @@ export const attentionPagePath = (project: string): string => {
 const queuePath = (project: string): string =>
   resolve(FOLDERS.ATTENTION_QUEUES, project ? `queue.${checkedProject(project)}.json` : 'queue.json');
 
-export const readAttentionQueue = (project = ''): AttentionSnapshot | null => readJson(queuePath(project), AttentionSnapshotSchema);
+export const readAttentionQueue = (project = ''): AttentionSnapshot | null =>
+  readJson(queuePath(project), AttentionSnapshotSchema);
 
 export const saveAttentionQueue = (project: string, groups: AttentionGroup[]): AttentionSnapshot => {
   const snapshot = { fetchedAt: new Date().toISOString(), groups };
@@ -312,7 +312,10 @@ export const collectAttentionView = (project: string, work: Work): AttentionView
 };
 
 /** Render a project's attention page, creating it on first call. */
-export const writeAttentionPage = (project: string, work: Work): { path: string; bytes: number; view: AttentionView } => {
+export const writeAttentionPage = (
+  project: string,
+  work: Work
+): { path: string; bytes: number; view: AttentionView } => {
   const view = collectAttentionView(project, work);
   const html = renderAttentionHtml(view);
   const path = attentionPagePath(project);

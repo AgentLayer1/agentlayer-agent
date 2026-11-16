@@ -8,7 +8,13 @@ import { roadmapDataBlock } from '@/roadmap/data';
 import { todayDate } from '@/shared/date';
 import { THEME_BLOCK } from '@/shared/theme';
 import { collectGoals, collectStatus } from './collect';
-import { buildAttentionView, attentionPagePath, writeAttentionPage, writeAttentionPagesSafe, type AttentionInputs } from './attention';
+import {
+  buildAttentionView,
+  attentionPagePath,
+  writeAttentionPage,
+  writeAttentionPagesSafe,
+  type AttentionInputs
+} from './attention';
 import { attentionData, readAttentionData } from './attention-data';
 import { renderAttentionHtml } from './attention-render';
 
@@ -139,7 +145,9 @@ describe('renderAttentionHtml', () => {
     const home = renderAttentionHtml(buildAttentionView(inputs([task('ac-001', { horizon: TODAY })], { goals })));
     const today = home.slice(home.indexOf('id="attention-today"'), home.indexOf('id="attention-roadmap"'));
     expect(today).toContain('<ul class="goals"><li>The invoice export is on staging</li></ul>');
-    const project = renderAttentionHtml(buildAttentionView(inputs([task('ac-001', { horizon: TODAY })], { goals, project: 'acme' })));
+    const project = renderAttentionHtml(
+      buildAttentionView(inputs([task('ac-001', { horizon: TODAY })], { goals, project: 'acme' }))
+    );
     expect(project).not.toContain('The invoice export is on staging');
   });
 
@@ -150,7 +158,9 @@ describe('renderAttentionHtml', () => {
       `<span class="mark">📐</span><span class="title"><a href="obsidian://open?path=${encodeURIComponent('/home/alex/reports/plans/migration.md')}">Migration plan</a></span>`
     );
     expect(readAttentionData(project)?.pins).toEqual(pins);
-    expect(renderAttentionHtml(buildAttentionView(inputs([], { project: 'acme' })))).not.toContain('id="attention-pins"');
+    expect(renderAttentionHtml(buildAttentionView(inputs([], { project: 'acme' })))).not.toContain(
+      'id="attention-pins"'
+    );
   });
 
   test('today reads as a numbered list with the date as the headline', () => {
@@ -462,7 +472,11 @@ describe('attention pages on disk', () => {
     rmSync(join(archived, 'ac-901-shipped.md'), { force: true });
 
     const { surfaces, tasks, attention, skills } = await collectStatus();
-    expect(skills.details.find((skill) => skill.name === 'briefing')?.playbooks).toEqual(['morning', 'evening', 'pulse']);
+    expect(skills.details.find((skill) => skill.name === 'briefing')?.playbooks).toEqual([
+      'morning',
+      'evening',
+      'pulse'
+    ]);
     expect(surfaces.map((surface) => surface.title)).not.toContain('Attention');
     expect(attention.project).toBe('');
     expect(surfaces).toContainEqual({ title: 'Acme', icon: '📊', appTab: false, href: 'projects/acme/dashboard.html' });

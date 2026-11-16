@@ -39,7 +39,10 @@ export const tools: ToolDef[] = [
       'are always read live. Returns where to look (`path`) and the attention data: lanes, planned progress, roadmap milestones ' +
       'and queue.',
     inputSchema: {
-      project: z.string().optional().describe('Project slug for a project page; omit for the home view in the dashboard.'),
+      project: z
+        .string()
+        .optional()
+        .describe('Project slug for a project page; omit for the home view in the dashboard.'),
       queue: z
         .array(AttentionGroupSchema)
         .optional()

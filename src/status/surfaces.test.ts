@@ -83,7 +83,9 @@ describe('projectPins', () => {
     expect(projectPins('acme').map((pin) => pin.title)).toEqual(['Notes']);
     rmSync(project, { recursive: true, force: true });
 
-    expect(withoutPins(readme)).toBe('# Acme\n\n- [Not a pin](notes.md)\n\n## Code\n\n- [After the section](notes.md#code)\n');
+    expect(withoutPins(readme)).toBe(
+      '# Acme\n\n- [Not a pin](notes.md)\n\n## Code\n\n- [After the section](notes.md#code)\n'
+    );
   });
 });
 
@@ -99,7 +101,9 @@ describe('projectHues', () => {
     expect(projectHues()).toMatchObject({ alpha: 121 });
     expect(Object.keys(projectHues())).not.toContain('beta');
     expect(Object.keys(projectHues())).not.toContain('gamma');
-    ['alpha', 'beta', 'gamma'].forEach((name) => rmSync(join(FOLDERS.PROJECTS, name), { recursive: true, force: true }));
+    ['alpha', 'beta', 'gamma'].forEach((name) =>
+      rmSync(join(FOLDERS.PROJECTS, name), { recursive: true, force: true })
+    );
   });
 
   test('reads the hue from a README saved with CRLF line endings', () => {

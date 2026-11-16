@@ -449,7 +449,9 @@ describe('renderDashboardHtml', () => {
     );
     expect(today).not.toContain('data-nav="today/attention/attention-roadmap"');
     expectTilesLand(html);
-    expect(today).toContain('<div class="attentionview"><div class="lanes"><section id="attention-today" class="now today');
+    expect(today).toContain(
+      '<div class="attentionview"><div class="lanes"><section id="attention-today" class="now today'
+    );
     expect(today).toContain('<li class="row" data-row data-cat="life-os"><span class="mark">1</span>');
     expect(today).toContain('Attention task lo-101');
     expect(today).toContain('from Fri 12');
@@ -656,14 +658,19 @@ describe('renderDashboardHtml', () => {
     expect(html).toContain(
       `<a href="obsidian://open?path=${encodeURIComponent('/tmp/home/projects/life-os/roadmap.html')}">Roadmap</a>`
     );
-    expect(html).toMatch(/<summary>[\s\S]*?<span class="proj-link">🗺️ <a [^>]+>Roadmap<\/a><\/span>[\s\S]*?<\/summary>/);
+    expect(html).toMatch(
+      /<summary>[\s\S]*?<span class="proj-link">🗺️ <a [^>]+>Roadmap<\/a><\/span>[\s\S]*?<\/summary>/
+    );
   });
 
   test('a project card links its own attention page when it has one', () => {
     const base = makeSnapshot();
     const html = renderDashboardHtml(
       makeSnapshot({
-        tasks: { ...base.tasks, byProject: [{ ...base.tasks.byProject[0], attention: 'projects/life-os/attention.html' }] }
+        tasks: {
+          ...base.tasks,
+          byProject: [{ ...base.tasks.byProject[0], attention: 'projects/life-os/attention.html' }]
+        }
       })
     );
     expect(html).toContain(
@@ -671,7 +678,7 @@ describe('renderDashboardHtml', () => {
     );
   });
 
-  test("a project card counts its pins when collapsed and lists them above its tasks when open", () => {
+  test('a project card counts its pins when collapsed and lists them above its tasks when open', () => {
     const base = makeSnapshot();
     const pin = { title: 'Migration plan', icon: '📐', path: 'reports/plans/migration.md' };
     const html = renderDashboardHtml(
@@ -685,7 +692,9 @@ describe('renderDashboardHtml', () => {
 
   test("a project's README hue colors its card and chips instead of its name's hash", () => {
     const html = renderDashboardHtml(makeSnapshot({ projectHues: { 'life-os': 121 } }));
-    expect(html).toContain('<span class="proj-dot" style="background:hsl(121, 55%, 62%)"></span><span class="proj-name">life-os</span>');
+    expect(html).toContain(
+      '<span class="proj-dot" style="background:hsl(121, 55%, 62%)"></span><span class="proj-name">life-os</span>'
+    );
   });
 
   test('a project card without a roadmap renders no roadmap link', () => {
@@ -798,7 +807,9 @@ describe('renderDashboardHtml', () => {
   test('a router skill lists its playbooks under its tile', () => {
     const html = renderDashboardHtml(makeSnapshot());
     expect(html).toContain('Skills · 2 · 2 playbooks');
-    expect(html).toContain('<div class="tplays"><span class="chip">morning</span><span class="chip">evening</span></div>');
+    expect(html).toContain(
+      '<div class="tplays"><span class="chip">morning</span><span class="chip">evening</span></div>'
+    );
   });
 
   test('today feed spans the last 24h: yesterday in, two days ago out', () => {
@@ -1010,9 +1021,7 @@ describe('surfaces', () => {
     expect(html.indexOf('<div class="nav-group">Pinned</div>')).toBeGreaterThan(
       html.indexOf('<div class="nav-group">Surfaces</div>')
     );
-    expect(html).toContain(
-      `href="obsidian://open?path=${encodeURIComponent('/home/ada/reports/security/plan.html')}"`
-    );
+    expect(html).toContain(`href="obsidian://open?path=${encodeURIComponent('/home/ada/reports/security/plan.html')}"`);
   });
 
   test("the Brain page's SessionStart list leads with the date and shows each entry's note", () => {
@@ -1021,11 +1030,15 @@ describe('surfaces', () => {
       makeSnapshot({
         context: {
           ...base.context,
-          dynamic: { date: 'Monday, October 12, 2026', bytes: 500, entries: [{ label: 'pinned reports', status: 'off', bytes: 0, note: 'none pinned' }] }
+          dynamic: {
+            date: 'Monday, October 12, 2026',
+            bytes: 500,
+            entries: [{ label: 'pinned reports', status: 'off', bytes: 0, note: 'none pinned' }]
+          }
         }
       })
     );
-    expect(html).toContain("today's date <span class=\"dim\">Monday, October 12, 2026</span>");
+    expect(html).toContain('today\'s date <span class="dim">Monday, October 12, 2026</span>');
     expect(html).toContain('pinned reports <span class="dim">none pinned</span>');
   });
 
