@@ -1,28 +1,38 @@
 /**
  * The entry format's version. A sidebar shows an entry with another schema as "update this agent".
  */
-export const SCHEMA = 1;
+export const SCHEMA = 2;
 
-/**
- * Something the sidebar opens: a note by its absolute path, or an HTML page by its `file://` URL.
- */
-export interface Link {
+export interface TaskItem {
+  id: string;
   title: string;
-  kind: 'md' | 'html';
-  target: string;
+  status: string;
+  priority: string;
+  /**
+   * `YYYY-MM-DD`, or `''` when the task has no due date. The sidebar words it against today's date.
+   */
+  due: string;
+  /**
+   * Absolute path of the task file.
+   */
+  path: string;
 }
 
-interface ProjectLink {
+export interface ProjectCard {
   slug: string;
   hue: number;
+  active: number;
+  open: number;
+  blocked: number;
+  done: number;
   /**
-   * Absolute path of the project's README.
+   * The project's live tasks: active, then blocked, then open; by priority, then due date.
    */
-  readme: string;
+  tasks: TaskItem[];
 }
 
 /**
- * What the sidebar knows about one home: only what changes when a project, pin or setting does.
+ * What the sidebar knows about one home, rewritten whenever a project or one of its live tasks changes.
  */
 export interface HomeEntry {
   schema: number;
@@ -36,8 +46,7 @@ export interface HomeEntry {
    * `file://` URL of the home's roadmap.html, or `null` when it has none.
    */
   roadmap: string | null;
-  projects: ProjectLink[];
-  pinned: Link[];
+  projects: ProjectCard[];
 }
 
 export interface SidebarData {

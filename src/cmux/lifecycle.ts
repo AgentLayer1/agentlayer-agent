@@ -1,11 +1,10 @@
 import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
-import { FOLDERS } from '@/config';
 import { log } from '@/shared/log';
 import { pluginVersion } from '@/shared/naming';
 import { writeFileAtomic } from '@/shared/utils';
 import { cmuxTooOld, MIN_CMUX } from './app';
 import { DIST } from './build';
-import { homeEntry, type EntrySettings, type EntrySource } from './entry';
+import { homeEntry, type EntrySource } from './entry';
 import {
   mergeHomes,
   newerCode,
@@ -36,10 +35,6 @@ export interface CmuxHost {
 export const defaultTarget = (): SidebarTarget => ({
   dir: sidebarsDir(),
   own: () => ({ version: pluginVersion(), bundle: readFileSync(DIST, 'utf8') })
-});
-
-export const entrySettings = (): EntrySettings => ({
-  projectsDir: FOLDERS.PROJECTS
 });
 
 const nextText = (current: SidebarParts | null, home: string, entry: HomeEntry, target: SidebarTarget): string =>
@@ -73,7 +68,7 @@ export const refreshSidebar = (home: string, entry: HomeEntry, target: SidebarTa
  */
 export const refreshSidebarQuietly = (source: EntrySource, target: SidebarTarget = defaultTarget()): void => {
   try {
-    refreshSidebar(source.runtime.home, homeEntry(source, entrySettings()), target);
+    refreshSidebar(source.runtime.home, homeEntry(source), target);
   } catch (error) {
     log.with('cmux').warn(`sidebar refresh skipped: ${error instanceof Error ? error.message : String(error)}`);
   }

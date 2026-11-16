@@ -1,5 +1,6 @@
+import { homeEntry } from '../entry';
 import { renderSidebar, type SidebarCode } from '../file';
-import { CMUX_DATA, fixtureEntry, NOVA, SCOUT } from './fixture';
+import { CMUX_DATA, NOVA, SCOUT } from './fixture';
 
 /**
  * The sidebar drawing the two invented homes and their invented sessions with a frozen clock, for screenshots.
@@ -8,7 +9,7 @@ import { CMUX_DATA, fixtureEntry, NOVA, SCOUT } from './fixture';
 export const previewText = (own: SidebarCode): string =>
   renderSidebar({
     version: own.version,
-    homes: Object.fromEntries([NOVA, SCOUT].map((source) => [source.runtime.home, fixtureEntry(source)])),
+    homes: Object.fromEntries([NOVA, SCOUT].map((source) => [source.runtime.home, homeEntry(source)])),
     bundle: [
       `const MOCK = ${JSON.stringify(CMUX_DATA)};`,
       '((data, cmux) => {',

@@ -1,7 +1,5 @@
-import type { Link } from './data';
-
 /**
- * A project's dot colour: the dashboard's `hsl(hue, 55%, 62%)`, as hex for the native renderer.
+ * A project's colour: the dashboard's `hsl(hue, 55%, 62%)`, as hex for the native renderer.
  */
 export const hueColor = (hue: number): string => {
   const saturation = 0.55;
@@ -17,40 +15,19 @@ export const hueColor = (hue: number): string => {
   return `#${channel(0)}${channel(8)}${channel(4)}`;
 };
 
-export const label = (text: string, count?: () => number) =>
-  HStack({ spacing: 6 }, [
-    Text(text).font(10).weight('bold').color('secondary'),
-    Text(() => (count ? String(count()) : ''))
-      .font(10)
-      .monospaced()
-      .color('tertiary'),
-    Spacer()
-  ])
-    .paddingHorizontal(10)
-    .paddingTop(8)
-    .frame({ maxWidth: 'infinity' });
-
 export const note = (text: string) => Text(text).font(11).color('tertiary').paddingHorizontal(10);
 
-export const row = (icon: View, title: string, trailing: string, onTap: () => void) =>
-  HStack({ spacing: 8 }, [
-    icon,
-    Text(title).font(12).lineLimit(1).truncation('tail'),
-    Spacer({ minLength: 4 }),
-    Image(trailing).font(9).color('tertiary')
-  ])
-    .paddingHorizontal(10)
-    .paddingVertical(5)
-    .cornerRadius(8)
-    .hoverBackground('#7f7f7f26')
-    .cursor('pointer')
-    .frame({ maxWidth: 'infinity' })
-    .onTap(onTap);
-
-export const symbol = (name: string) => Image(name).font(11).color('secondary').frame({ width: 16 });
-
 /**
- * Opens a note rendered beside the chat, or an HTML page in cmux's browser beside it.
+ * An icon-only tab; `help` names it on hover.
  */
-export const open = (link: Pick<Link, 'kind' | 'target'>) =>
-  link.kind === 'md' ? cmux('markdown.open', { path: link.target }) : cmux('browser.open_split', { url: link.target });
+export const tabIcon = (symbol: string, help: string, active: () => boolean, onTap: () => void) =>
+  Image(symbol)
+    .font(12)
+    .color(() => (active() ? 'accent' : 'secondary'))
+    .padding(5)
+    .background(() => (active() ? '#7f7f7f3d' : null))
+    .cornerRadius(6)
+    .hoverBackground('#7f7f7f3d')
+    .cursor('pointer')
+    .help(help)
+    .onTap(onTap);

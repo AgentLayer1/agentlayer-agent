@@ -2,6 +2,7 @@ import { afterEach, expect, test } from 'bun:test';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { homeEntry } from './entry';
 import { parseSidebar, sidebarFile } from './file';
 import {
   installSidebar,
@@ -11,7 +12,7 @@ import {
   type CmuxHost,
   type SidebarTarget
 } from './lifecycle';
-import { fixtureEntry, NOVA, SCOUT } from './preview/fixture';
+import { NOVA, SCOUT } from './preview/fixture';
 
 const dirs: string[] = [];
 afterEach(() => dirs.splice(0).forEach((dir) => rmSync(dir, { recursive: true, force: true })));
@@ -36,8 +37,8 @@ const fakeCmux = (accepts = true): CmuxHost & { calls: string[][] } => {
 
 const NOVA_HOME = NOVA.runtime.home;
 const SCOUT_HOME = SCOUT.runtime.home;
-const nova = fixtureEntry(NOVA);
-const scout = fixtureEntry(SCOUT);
+const nova = homeEntry(NOVA);
+const scout = homeEntry(SCOUT);
 const installed = (where: SidebarTarget) => parseSidebar(readFileSync(sidebarFile(where.dir), 'utf8'));
 
 test('install starts the file, has cmux check it under a staging name, then selects it', () => {

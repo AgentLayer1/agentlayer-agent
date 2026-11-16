@@ -91,12 +91,17 @@ export const mount = (script: string, data: Record<string, unknown> = {}) => {
       .filter((node) => node?.type === 'text')
       .map((node) => String(node?.props.text ?? ''))
       .filter(Boolean);
-  const tappableHolding = (text: string) =>
-    walk(scene.root)
-      .filter((id) => nodes.get(id)?.props.tappable)
-      .findLast((id) => walk(id).some((inner) => nodes.get(inner)?.props.text === text));
+  // A Button carries its own tap handler; every other view is tappable once it has onTap.
+  const tappable = (id: string) => Boolean(nodes.get(id)?.props.tappable) || nodes.get(id)?.type === 'button';
+  // An icon-only control is found by its help text.
+  const names = (id: string, text: string) => nodes.get(id)?.props.text === text || nodes.get(id)?.props.help === text;
+  /**
+   * Taps the innermost tappable view showing `text`, or named `text` by its help; returns the cmux call it made.
+   */
   const tap = (text: string): HostAction | undefined => {
-    const id = tappableHolding(text);
+    const id = walk(scene.root)
+      .filter(tappable)
+      .findLast((candidate) => walk(candidate).some((inner) => names(inner, text)));
     if (!id) {
       throw new Error(`nothing tappable shows "${text}"`);
     }
@@ -104,12 +109,9 @@ export const mount = (script: string, data: Record<string, unknown> = {}) => {
     context.__dispatch(id, 'tap', '');
     return actions.length > before ? actions.at(-1) : undefined;
   };
-  const type = (text: string) => {
-    const field = walk(scene.root).find((id) => nodes.get(id)?.type === 'textfield');
-    if (!field) {
-      throw new Error('no text field is showing');
-    }
-    context.__dispatch(field, 'edit', JSON.stringify({ text }));
-  };
-  return { visibleTexts, tap, type, setData, actions };
+  const menuItems = () =>
+    walk(scene.root)
+      .filter((id) => nodes.get(id)?.type === 'button')
+      .map((id) => String(nodes.get(id)?.props.text ?? ''));
+  return { visibleTexts, tap, menuItems, setData, actions };
 };

@@ -2,83 +2,88 @@ import { expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { homeEntry } from './entry';
-import { fixtureEntry, NOVA, SCOUT } from './preview/fixture';
+import { NOVA, SCOUT } from './preview/fixture';
 import { SCHEMA } from './sidebar/data';
 
 const NOVA_HOME = NOVA.runtime.home;
 const url = (...parts: string[]) => pathToFileURL(join(...parts)).href;
+const taskPath = (project: string, id: string) => join(NOVA_HOME, 'projects', project, 'tasks', `${id}.md`);
 
-test('a home with projects, pins and a roadmap', () => {
-  expect(fixtureEntry(NOVA)).toEqual({
+test('a home’s projects, at work first, each with its live tasks in the order they need you', () => {
+  const entry = homeEntry(NOVA);
+  expect(entry).toMatchObject({
     schema: SCHEMA,
     name: 'Nova',
     emoji: '🦉',
     dashboard: url(NOVA_HOME, 'dashboard.html'),
-    roadmap: url(NOVA_HOME, 'roadmap.html'),
-    projects: [
-      { slug: 'acme-app', hue: 210, readme: join(NOVA_HOME, 'projects', 'acme-app', 'README.md') },
-      { slug: 'blog', hue: expect.any(Number), readme: join(NOVA_HOME, 'projects', 'blog', 'README.md') },
-      { slug: 'garden-shop', hue: expect.any(Number), readme: join(NOVA_HOME, 'projects', 'garden-shop', 'README.md') }
-    ],
-    pinned: [
-      { title: 'Support playbook', kind: 'md', target: join(NOVA_HOME, 'reports', 'plans', 'support-playbook.md') },
-      { title: 'Q4 review', kind: 'html', target: url(NOVA_HOME, 'reports', 'briefings', 'q4-review.html') }
+    roadmap: url(NOVA_HOME, 'roadmap.html')
+  });
+  expect(entry.projects.map((project) => project.slug)).toEqual(['acme-app', 'garden-shop', 'blog']);
+  expect(entry.projects[0]).toEqual({
+    slug: 'acme-app',
+    hue: 210,
+    active: 1,
+    open: 2,
+    blocked: 0,
+    done: 5,
+    tasks: [
+      {
+        id: 'ac-101',
+        title: 'Ship the invoice export',
+        status: 'active',
+        priority: 'P1',
+        due: '2026-11-07',
+        path: taskPath('acme-app', 'ac-101')
+      },
+      {
+        id: 'ac-102',
+        title: 'Fix the checkout total',
+        status: 'open',
+        priority: 'P0',
+        due: '2026-11-10',
+        path: taskPath('acme-app', 'ac-102')
+      },
+      {
+        id: 'ac-103',
+        title: 'Write the release notes',
+        status: 'open',
+        priority: 'P2',
+        due: '2026-12-01',
+        path: taskPath('acme-app', 'ac-103')
+      }
     ]
   });
+  expect(
+    entry.projects[1]?.tasks.map((task) => task.id),
+    'blocked before open'
+  ).toEqual(['gs-201', 'gs-202']);
+  expect(entry.projects[2]?.tasks).toEqual([]);
 });
 
-test('a home with no projects, pins or roadmap', () => {
-  expect(fixtureEntry(SCOUT)).toMatchObject({
-    name: 'Scout',
-    roadmap: null,
-    projects: [],
-    pinned: []
-  });
+test('a home with no projects or roadmap', () => {
+  expect(homeEntry(SCOUT)).toMatchObject({ name: 'Scout', roadmap: null, projects: [] });
 });
 
-test('a projects folder moved out of the home is where the READMEs are read from', () => {
-  const elsewhere = join('/Volumes', 'shared', 'projects');
-  expect(homeEntry(NOVA, { projectsDir: elsewhere }).projects[0]?.readme).toBe(
-    join(elsewhere, 'acme-app', 'README.md')
-  );
-});
-
-test('what changes through a session leaves the entry as it was', () => {
-  const later = {
+test('the same projects and tasks in another order, with per-session fields beside them, give the same entry', () => {
+  const shuffled = {
     ...NOVA,
     runtime: { ...NOVA.runtime, time: '16:42', generatedAt: '2026-01-05T16:42:00+08:00' },
     sessions: [{ id: 'later-session' }],
     tasks: {
-      byProject: [
-        { project: 'blog', open: 4, updatedAt: '2026-01-05' },
-        { project: 'garden-shop', open: 1, updatedAt: '2026-01-04' },
-        { project: 'acme-app', open: 9, updatedAt: '2026-01-03' }
-      ],
-      queue: [{ id: 'ac-101' }]
+      byProject: [...NOVA.tasks.byProject].reverse().map((load) => ({ ...load, updatedAt: '2026-01-05' })),
+      queue: [...NOVA.tasks.queue].reverse(),
+      touchedToday: [{ id: 'ac-101' }]
     }
   };
-  expect(fixtureEntry(later)).toEqual(fixtureEntry(NOVA));
+  expect(homeEntry(shuffled)).toEqual(homeEntry(NOVA));
 });
 
 test('a project page in the surfaces is not the home roadmap', () => {
   const projectPageOnly = { ...NOVA, surfaces: [{ href: join(NOVA_HOME, 'projects', 'acme-app', 'roadmap.html') }] };
-  expect(fixtureEntry(projectPageOnly).roadmap).toBeNull();
+  expect(homeEntry(projectPageOnly).roadmap).toBeNull();
 });
 
 test('a path with a space becomes a URL a browser can open', () => {
   const spaced = { ...NOVA, runtime: { home: join('/Users', 'ada', 'My Agents', 'Nova') } };
-  expect(fixtureEntry(spaced).dashboard).toBe('file:///Users/ada/My%20Agents/Nova/dashboard.html');
-});
-
-test('a pin given relative to the home becomes absolute, and a pin that is neither markdown nor HTML is left out', () => {
-  const pins = {
-    ...NOVA,
-    pinned: [
-      { title: 'Notes', href: 'reports/notes.md' },
-      { title: 'Scan', href: 'reports/scan.pdf' }
-    ]
-  };
-  expect(fixtureEntry(pins).pinned).toEqual([
-    { title: 'Notes', kind: 'md', target: join(NOVA_HOME, 'reports', 'notes.md') }
-  ]);
+  expect(homeEntry(spaced).dashboard).toBe('file:///Users/ada/My%20Agents/Nova/dashboard.html');
 });

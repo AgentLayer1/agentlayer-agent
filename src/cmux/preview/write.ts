@@ -16,7 +16,11 @@ if (args.includes('--text')) {
     console.error(`cmux's sidebar runtime isn't at ${RUNTIME}: install cmux to preview the sidebar.`);
     process.exit(1);
   }
-  console.log(mount(previewText(own)).visibleTexts().join('\n'));
+  const sidebar = mount(previewText(own));
+  ['Manager', 'Work'].forEach((tab) => {
+    sidebar.tap(tab);
+    console.log(`── ${tab}\n${sidebar.visibleTexts().join('\n')}\n`);
+  });
 } else {
   const out = args[0] ?? sidebarFile(sidebarsDir(), `${SIDEBAR_NAME}-preview`);
   writeFileAtomic(out, previewText(own));
