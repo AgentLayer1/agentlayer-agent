@@ -3,9 +3,9 @@
  * Every agent on this Mac, and the work each one keeps.
  *
  *   Manager   every session, sorted by what needs you (cmux Manager)
- *   Work      a search over the agent's tasks, every task at a glance, and its projects by state
+ *   Projects  a search over the agent's tasks, every task at a glance, and its projects by state
  *
- * The workspace you're in picks the agent; the menu on Work picks another.
+ * The workspace you're in picks the agent; a chip on Projects picks another.
  *
  * Open      cmux right-sidebar set custom agentlayer
  * Check     cmux sidebar validate agentlayer
@@ -378,7 +378,7 @@ var scopedPage = (home, ready) => {
   ]);
 };
 
-// src/cmux/sidebar/pages/work.ts
+// src/cmux/sidebar/pages/projects.ts
 var ACCENT = "#0A84FF";
 var CARD = "#7f7f7f12";
 var open = (target) => target.kind === "page" ? cmux("browser.tab.new", { url: target.url }) : cmux("file.open", { path: target.path });
@@ -515,7 +515,7 @@ var workBody = (entry) => {
     ]))
   ]);
 };
-var workPage = ({ tabs, home, homes, pick }) => {
+var projectsPage = ({ tabs, home, homes, pick }) => {
   const entry = () => {
     const path = home();
     return path ? DATA.homes[path] : undefined;
@@ -532,11 +532,14 @@ var workPage = ({ tabs, home, homes, pick }) => {
           ] : [],
           ...current?.roadmap ? [toolIcon("map", "Roadmap", () => cmux("browser.tab.new", { url: current.roadmap ?? "" }))] : []
         ]);
-      }),
-      ...homes.length > 1 ? [
-        Menu(() => homeLabel(home() ?? ""), homes.map((path) => Button(homeLabel(path), () => pick(path))))
-      ] : []
+      })
     ]),
+    ...homes.length > 1 ? [
+      HStack({ spacing: 4 }, [
+        ...homes.map((path) => chip(homeLabel(path), () => home() === path, () => pick(path))),
+        Spacer({ minLength: 0 })
+      ])
+    ] : [],
     scopedPage(home, (_path, current) => workBody(current))
   ]).paddingHorizontal(6);
 };
@@ -564,13 +567,16 @@ var app = () => {
     }
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
-  const tabs = () => HStack({ spacing: 2 }, [
-    tabIcon("square.grid.2x2", "Manager", () => tab() === "manager", () => setTab("manager")),
-    tabIcon("square.stack.3d.up.fill", "Work", () => tab() === "work", () => setTab("work"))
-  ]).padding(2).background("#7f7f7f1f").cornerRadius(8).fixedSize();
+  const tabs = (title) => HStack({ spacing: 8 }, [
+    HStack({ spacing: 2 }, [
+      tabIcon("square.grid.2x2", "Manager", () => tab() === "manager", () => setTab("manager")),
+      tabIcon("square.stack.3d.up.fill", "Projects", () => tab() === "projects", () => setTab("projects"))
+    ]).padding(2).background("#7f7f7f1f").cornerRadius(8),
+    Text(title).font(13).weight("semibold")
+  ]).fixedSize();
   return VStack({ spacing: 8 }, [
-    ForEach({ items: () => [tab()], key: (name) => name }, (name) => name() === "manager" ? manager({ header: tabs() }) : workPage({
-      tabs: tabs(),
+    ForEach({ items: () => [tab()], key: (name) => name }, (name) => name() === "manager" ? manager({ header: tabs("Manager") }) : projectsPage({
+      tabs: tabs("Projects"),
       home: current,
       homes,
       pick: (home) => setPin({ home, workspaceId: selectedId() })

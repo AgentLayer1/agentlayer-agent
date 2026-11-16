@@ -17,7 +17,7 @@ if (args.includes('--text')) {
     process.exit(1);
   }
   const sidebar = mount(previewText(own));
-  ['Manager', 'Work'].forEach((tab) => {
+  ['Manager', 'Projects'].forEach((tab) => {
     sidebar.tap(tab);
     console.log(`── ${tab}\n${sidebar.visibleTexts().join('\n')}\n`);
   });

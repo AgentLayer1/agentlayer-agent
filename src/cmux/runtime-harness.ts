@@ -109,10 +109,6 @@ export const mount = (script: string, data: Record<string, unknown> = {}) => {
     context.__dispatch(id, 'tap', '');
     return actions.length > before ? actions.at(-1) : undefined;
   };
-  const menuItems = () =>
-    walk(scene.root)
-      .filter((id) => nodes.get(id)?.type === 'button')
-      .map((id) => String(nodes.get(id)?.props.text ?? ''));
   const type = (text: string) => {
     const field = walk(scene.root).find((id) => nodes.get(id)?.type === 'textfield');
     if (!field) {
@@ -120,5 +116,5 @@ export const mount = (script: string, data: Record<string, unknown> = {}) => {
     }
     context.__dispatch(field, 'edit', JSON.stringify({ text }));
   };
-  return { visibleTexts, tap, type, menuItems, setData, actions };
+  return { visibleTexts, tap, type, setData, actions };
 };

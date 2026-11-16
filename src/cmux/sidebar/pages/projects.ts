@@ -1,4 +1,4 @@
-import { searchField } from 'cmux-custom-manager/components';
+import { chip, searchField } from 'cmux-custom-manager/components';
 import type { HomeEntry, PinItem, PinTarget, ProjectCard, TaskItem } from '../data';
 import { BUCKETS, dueBucket, dueLabel, type DueBucket } from '../due';
 import { groupTitle, hueColor, note, progressBar, toolIcon } from '../style';
@@ -220,7 +220,7 @@ const workBody = (entry: HomeEntry) => {
   ]);
 };
 
-export interface WorkOptions {
+export interface ProjectsOptions {
   tabs: View;
   home: () => string | undefined;
   homes: readonly string[];
@@ -231,7 +231,7 @@ export interface WorkOptions {
  * The scoped agent's work: a search over its tasks, every task at a glance, then its projects by state. The top
  * row's icons open its dashboard and roadmap as full tabs.
  */
-export const workPage = ({ tabs, home, homes, pick }: WorkOptions) => {
+export const projectsPage = ({ tabs, home, homes, pick }: ProjectsOptions) => {
   const entry = () => {
     const path = home();
     return path ? DATA.homes[path] : undefined;
@@ -254,16 +254,23 @@ export const workPage = ({ tabs, home, homes, pick }: WorkOptions) => {
             ? [toolIcon('map', 'Roadmap', () => cmux('browser.tab.new', { url: current.roadmap ?? '' }))]
             : [])
         ]);
-      }),
-      ...(homes.length > 1
-        ? [
-            Menu(
-              () => homeLabel(home() ?? ''),
-              homes.map((path) => Button(homeLabel(path), () => pick(path)))
-            )
-          ]
-        : [])
+      })
     ]),
+    // With more than one agent joined, a chip per agent, lit for the one the workspace picked.
+    ...(homes.length > 1
+      ? [
+          HStack({ spacing: 4 }, [
+            ...homes.map((path) =>
+              chip(
+                homeLabel(path),
+                () => home() === path,
+                () => pick(path)
+              )
+            ),
+            Spacer({ minLength: 0 })
+          ])
+        ]
+      : []),
     scopedPage(home, (_path, current) => workBody(current))
   ]).paddingHorizontal(6);
 };
