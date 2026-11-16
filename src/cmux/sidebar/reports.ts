@@ -71,7 +71,6 @@ const reportCard = (item: ReportItem) =>
       HStack({ spacing: 6 }, [
         badge(item.kind, hueColor(item.hue)),
         Text(clock(item.time)).font(10).monospaced().color('tertiary'),
-        ...(item.status ? [Text(item.status).font(9)] : []),
         Spacer({ minLength: 0 })
       ])
     ]),
@@ -123,28 +122,34 @@ export const reportsBody = (entry: HomeEntry) => {
   );
   const days = computed(() => byDay(entry.reports.filter((report) => matches(query(), report.title, report.kind))));
   const empty = computed(() => !shownPins().length && !days().length);
+  // A search shows every match, folded groups included.
+  const searching = () => query().trim() !== '';
+  const showing = (open: () => boolean) => () => open() || searching();
   const [pinsOpen, setPinsOpen] = signal(true);
   return VStack({ spacing: 10 }, [
     searchField('Search reports…', setQuery),
     ForEach({ items: () => (shownPins().length ? ['pinned'] : []), key: (name) => name }, () =>
       VStack({ spacing: 4 }, [
-        foldTitle('Pinned', () => shownPins().length, pinsOpen, setPinsOpen, 'pin.fill'),
-        ForEach({ items: () => (pinsOpen() ? shownPins() : []), key: (item) => targetKey(item.pin.target) }, (item) =>
-          pinCard(item())
+        foldTitle('Pinned', () => shownPins().length, showing(pinsOpen), setPinsOpen, 'pin.fill'),
+        ForEach(
+          { items: () => (showing(pinsOpen)() ? shownPins() : []), key: (item) => targetKey(item.pin.target) },
+          (item) => pinCard(item())
         )
       ])
     ),
+    // Today opens; earlier days start folded.
     ForEach({ items: days, key: (group) => group.date }, (group) => {
-      const [open, setOpen] = signal(true);
+      const [open, setOpen] = signal(daysUntil(group().date, today()) === 0);
       return VStack({ spacing: 4 }, [
         foldTitle(
           () => dayTitle(group().date, today()),
           () => group().reports.length,
-          open,
+          showing(open),
           setOpen
         ),
-        ForEach({ items: () => (open() ? group().reports : []), key: (report) => targetKey(report.target) }, (report) =>
-          reportCard(report())
+        ForEach(
+          { items: () => (showing(open)() ? group().reports : []), key: (report) => targetKey(report.target) },
+          (report) => reportCard(report())
         )
       ]);
     }),

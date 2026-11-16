@@ -74,7 +74,7 @@ export const foldTitle = (
     .onTap(() => setExpanded(!expanded()));
 
 // Titles sit a step below full white (or black) so a list of them reads softer.
-export const TITLE_OPACITY = 0.88;
+export const TITLE_OPACITY = 0.78;
 
 /**
  * A plain icon button for the top row; `help` names it on hover.

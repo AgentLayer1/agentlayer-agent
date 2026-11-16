@@ -72,10 +72,6 @@ export interface ReportItem {
    */
   date: string;
   time: string;
-  /**
-   * The status emoji from the report's index line, '' when none.
-   */
-  status: string;
   target: PinTarget;
 }
 

@@ -214,20 +214,19 @@ run('Reports lists the pins, then the newest reports by day, worded against the 
   const texts = onReports().visibleTexts();
   const headings = texts.filter((text) => /^[A-Z0-9 ]+$/.test(text) && !/^[0-9]+$/.test(text));
   expect(headings).toEqual(['PINNED', 'TODAY', 'YESTERDAY', 'MON 2 NOV']);
-  const titles = [
-    'Support playbook',
-    'Morning brief — Mon 9 Nov',
-    'Checkpoints — 4 sessions',
-    'Evening wrap — Sun 8 Nov',
-    'Pricing page plan'
-  ];
+  const titles = ['Support playbook', 'Morning brief — Mon 9 Nov', 'Checkpoints — 4 sessions'];
   expect(
     texts.filter((text) => titles.includes(text)),
-    'pins first, then newest first'
+    'pins first, then today, newest first'
   ).toEqual(titles);
+  expect(texts, 'earlier days start folded').not.toContain('Evening wrap — Sun 8 Nov');
   expect(texts).toEqual(
-    expect.arrayContaining(['Launch checklist', 'Pricing page', 'acme-app', 'briefing', '8:30 AM', '🟠'])
+    expect.arrayContaining(['Launch checklist', 'Pricing page', 'acme-app', 'briefing', '8:30 AM'])
   );
+  expect(
+    texts.some((text) => ['🟢', '🟠', '🔴', '⏳'].includes(text)),
+    'no status marks'
+  ).toBe(false);
   expect(texts).not.toContain('AT WORK');
 });
 
@@ -243,7 +242,7 @@ run('a report opens as a full tab, and Dashboard opens the dashboard’s Reports
   expect(sidebar.tap('Dashboard')?.params).toEqual({ url: `${NOVA_ENTRY.dashboard}#today` });
 });
 
-run('the report search matches titles and kinds, pins included', () => {
+run('the report search matches titles and kinds, folded days included', () => {
   const sidebar = onReports();
   sidebar.type('briefing');
   expect(sidebar.visibleTexts().filter((text) => text.includes('—'))).toEqual([
@@ -271,8 +270,10 @@ run('a dozen agents all get a chip', () => {
   expect(names.every((name) => texts.includes(`🤖 ${name}`))).toBe(true);
 });
 
-run('every report group folds away and back on its own, and times read in twelve hours', () => {
+run('every report group folds and opens on its own, and times read in twelve hours', () => {
   const sidebar = onReports();
+  sidebar.tap('YESTERDAY');
+  sidebar.tap('MON 2 NOV');
   expect(sidebar.visibleTexts()).toEqual(expect.arrayContaining(['8:30 AM', '7:10 AM', '9:00 PM', '2:20 PM']));
   sidebar.tap('TODAY');
   expect(sidebar.visibleTexts()).not.toContain('Morning brief — Mon 9 Nov');

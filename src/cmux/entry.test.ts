@@ -100,11 +100,11 @@ test('a path with a space becomes a URL a browser can open', () => {
 
 test('the newest reports, each with the kind and hue the dashboard gives it, and the home pins', () => {
   const entry = homeEntry(NOVA_HOME, NOVA);
-  expect(entry.reports.map((item) => [item.date, item.time, item.kind, item.status])).toEqual([
-    ['2026-11-09', '08:30', 'briefing', '🟠'],
-    ['2026-11-09', '07:10', 'attention', ''],
-    ['2026-11-08', '21:00', 'briefing', '🟢'],
-    ['2026-11-02', '14:20', 'plans', '⏳']
+  expect(entry.reports.map((item) => [item.date, item.time, item.kind])).toEqual([
+    ['2026-11-09', '08:30', 'briefing'],
+    ['2026-11-09', '07:10', 'attention'],
+    ['2026-11-08', '21:00', 'briefing'],
+    ['2026-11-02', '14:20', 'plans']
   ]);
   expect(entry.reports[0]).toMatchObject({
     hue: nameHue('briefing'),
