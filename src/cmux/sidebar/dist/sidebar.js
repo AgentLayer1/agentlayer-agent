@@ -3,9 +3,10 @@
  * Every agent on this Mac, and the work each one keeps.
  *
  *   Manager   every session, sorted by what needs you (cmux Manager)
- *   Projects  a search over the agent's tasks, every task at a glance, and its projects by state
+ *   Agents    a chip per agent, then the chosen agent's Projects (its tasks and projects by state) and Reports
+ *             (its pins and newest reports by day), with its dashboard and roadmap a tap away
  *
- * The workspace you're in picks the agent; a chip on Projects picks another.
+ * The workspace you're in picks the agent; a chip picks another.
  *
  * Open      cmux right-sidebar set custom agentlayer
  * Check     cmux sidebar validate agentlayer
@@ -256,6 +257,82 @@ var manager = ({ header, trailing } = {}) => {
   ]).paddingHorizontal(6);
 };
 
+// src/cmux/sidebar/lines.ts
+var CHAR_WIDTH = 7;
+var CHIP_EXTRA = 22;
+var widthOf = (label) => [...label].length * CHAR_WIDTH + CHIP_EXTRA;
+var packLines = (items, label, firstWidth, width) => items.reduce(({ lines, used }, item) => {
+  const cost = widthOf(label(item));
+  const budget = lines.length === 1 ? firstWidth : width;
+  const current = lines.at(-1) ?? [];
+  return current.length && used + cost > budget ? { lines: [...lines, [item]], used: cost } : { lines: [...lines.slice(0, -1), [...current, item]], used: used + cost };
+}, { lines: [[]], used: 0 }).lines;
+
+// src/cmux/sidebar/data.ts
+var SCHEMA = 4;
+
+// src/cmux/sidebar/style.ts
+var hueColor = (hue) => {
+  const saturation = 0.55;
+  const lightness = 0.62;
+  const chroma = saturation * Math.min(lightness, 1 - lightness);
+  const channel = (offset) => {
+    const sector = (offset + hue / 30) % 12;
+    const level = lightness - chroma * Math.max(-1, Math.min(sector - 3, 9 - sector, 1));
+    return Math.round(level * 255).toString(16).padStart(2, "0");
+  };
+  return `#${channel(0)}${channel(8)}${channel(4)}`;
+};
+var SEGMENTS = 20;
+var progressBar = (fraction, color) => {
+  const filled = Math.round(Math.min(Math.max(fraction, 0), 1) * SEGMENTS);
+  return HStack({ spacing: 0 }, Array.from({ length: SEGMENTS }, (_, index) => Rectangle().fill(index < filled ? color : "#7f7f7f33").frame({ maxWidth: "infinity", height: 4 }))).cornerRadius(2);
+};
+var groupTitle = (title, count) => HStack({ spacing: 4 }, [
+  Text(title.toUpperCase()).font(10).weight("semibold").color("tertiary"),
+  Text(String(count)).font(10).monospaced().color("quaternary"),
+  Spacer({ minLength: 0 })
+]).paddingHorizontal(4);
+var toolIcon = (symbol, help, onTap) => Image(symbol).font(11).color("secondary").padding(5).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
+var CARD = "#7f7f7f12";
+var card = (view) => view.paddingHorizontal(10).paddingVertical(8).background(CARD).cornerRadius(10);
+var note = (text) => Text(text).font(11).color("tertiary").paddingHorizontal(10);
+var tabIcon = (symbol, help, active, onTap) => Image(symbol).font(12).color(() => active() ? "accent" : "secondary").padding(5).background(() => active() ? "#7f7f7f3d" : null).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
+
+// src/cmux/sidebar/view.ts
+var openTarget = (target) => target.kind === "page" ? cmux("browser.tab.new", { url: target.url }) : cmux("file.open", { path: target.path });
+var targetKey = (target) => target.kind === "page" ? target.url : target.path;
+var entryOf = (home) => home ? DATA.homes[home] : undefined;
+var homeLabel = (home) => {
+  const entry = DATA.homes[home];
+  return entry ? `${entry.emoji} ${entry.name}`.trim() : home;
+};
+var scopedPage = (home, ready) => {
+  const view = computed(() => {
+    const path = home();
+    const entry = entryOf(path);
+    return path && entry ? { path, entry, current: entry.schema === SCHEMA } : null;
+  });
+  const showing = (current) => () => [view()].filter((item) => item?.current === current);
+  return VStack({ spacing: 0 }, [
+    ForEach({ items: showing(true), key: (item) => item.path }, (item) => ready(item().entry)),
+    ForEach({ items: showing(false), key: (item) => item.path }, (item) => note(`${homeLabel(item().path)} needs its agent updated to show here.`)),
+    ForEach({ items: () => view() ? [] : ["none"], key: (item) => item }, () => note("No agent has joined this sidebar yet. Ask an agent to set up its cmux pack."))
+  ]);
+};
+
+// src/cmux/sidebar/agents.ts
+var FIRST_LINE = 190;
+var LINE = 260;
+var agentHeader = ({ pill, homes, home, pick }) => {
+  const agentChip = (path) => chip(homeLabel(path), () => home() === path, () => pick(path));
+  const [first = [], ...rest] = packLines(homes, homeLabel, FIRST_LINE, LINE);
+  return VStack({ spacing: 4, alignment: "leading" }, [
+    HStack({ spacing: 8 }, [pill, HStack({ spacing: 4 }, first.map(agentChip)), Spacer({ minLength: 0 })]),
+    ...rest.map((line) => HStack({ spacing: 4 }, [...line.map(agentChip), Spacer({ minLength: 0 })]))
+  ]);
+};
+
 // src/work/due.ts
 var DAY_MS = 86400000;
 var dayNumber = (iso) => {
@@ -310,32 +387,6 @@ var isoDay = (epochSeconds) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 };
 
-// src/cmux/sidebar/style.ts
-var hueColor = (hue) => {
-  const saturation = 0.55;
-  const lightness = 0.62;
-  const chroma = saturation * Math.min(lightness, 1 - lightness);
-  const channel = (offset) => {
-    const sector = (offset + hue / 30) % 12;
-    const level = lightness - chroma * Math.max(-1, Math.min(sector - 3, 9 - sector, 1));
-    return Math.round(level * 255).toString(16).padStart(2, "0");
-  };
-  return `#${channel(0)}${channel(8)}${channel(4)}`;
-};
-var SEGMENTS = 20;
-var progressBar = (fraction, color) => {
-  const filled = Math.round(Math.min(Math.max(fraction, 0), 1) * SEGMENTS);
-  return HStack({ spacing: 0 }, Array.from({ length: SEGMENTS }, (_, index) => Rectangle().fill(index < filled ? color : "#7f7f7f33").frame({ maxWidth: "infinity", height: 4 }))).cornerRadius(2);
-};
-var groupTitle = (title, count) => HStack({ spacing: 4 }, [
-  Text(title.toUpperCase()).font(10).weight("semibold").color("tertiary"),
-  Text(String(count)).font(10).monospaced().color("quaternary"),
-  Spacer({ minLength: 0 })
-]).paddingHorizontal(4);
-var toolIcon = (symbol, help, onTap) => Image(symbol).font(11).color("secondary").padding(5).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
-var note = (text) => Text(text).font(11).color("tertiary").paddingHorizontal(10);
-var tabIcon = (symbol, help, active, onTap) => Image(symbol).font(12).color(() => active() ? "accent" : "secondary").padding(5).background(() => active() ? "#7f7f7f3d" : null).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
-
 // src/cmux/sidebar/tasks.ts
 var OPEN = { symbol: "circle", color: "#8E8E93" };
 var STATUS = {
@@ -375,42 +426,15 @@ var taskRow = (task, projectColor) => VStack({ spacing: 2, alignment: "leading" 
   taskMeta(task, projectColor)
 ]).paddingHorizontal(4).paddingVertical(5).cornerRadius(8).hoverBackground("#7f7f7f26").cursor("pointer").frame({ maxWidth: "infinity", alignment: "leading" }).onTap(() => cmux("file.open", { path: task.path }));
 
-// src/cmux/sidebar/data.ts
-var SCHEMA = 4;
-
-// src/cmux/sidebar/view.ts
-var entryOf = (home) => home ? DATA.homes[home] : undefined;
-var homeLabel = (home) => {
-  const entry = DATA.homes[home];
-  return entry ? `${entry.emoji} ${entry.name}`.trim() : home;
-};
-var scopedPage = (home, ready) => {
-  const view = computed(() => {
-    const path = home();
-    const entry = entryOf(path);
-    return path && entry ? { path, entry, current: entry.schema === SCHEMA } : null;
-  });
-  const showing = (current) => () => [view()].filter((item) => item?.current === current);
-  return VStack({ spacing: 0 }, [
-    ForEach({ items: showing(true), key: (item) => item.path }, (item) => ready(item().entry)),
-    ForEach({ items: showing(false), key: (item) => item.path }, (item) => note(`${homeLabel(item().path)} needs its agent updated to show here.`)),
-    ForEach({ items: () => view() ? [] : ["none"], key: (item) => item }, () => note("No agent has joined this sidebar yet. Ask an agent to set up its cmux pack."))
-  ]);
-};
-
 // src/cmux/sidebar/projects.ts
 var ACCENT = "#0A84FF";
-var CARD = "#7f7f7f12";
-var open = (target) => target.kind === "page" ? cmux("browser.tab.new", { url: target.url }) : cmux("file.open", { path: target.path });
 var linkRow = ({ icon, title, target }) => HStack({ spacing: 6 }, [
   Text(icon).font(11).frame({ width: 14 }),
   Text(title).font(11).color("secondary").lineLimit(1).truncation("tail"),
   Spacer({ minLength: 0 })
-]).paddingHorizontal(4).paddingVertical(2).cornerRadius(6).hoverBackground("#7f7f7f26").cursor("pointer").onTap(() => open(target));
-var targetOf = (target) => target.kind === "page" ? target.url : target.path;
+]).paddingHorizontal(4).paddingVertical(2).cornerRadius(6).hoverBackground("#7f7f7f26").cursor("pointer").onTap(() => openTarget(target));
 var roadmapLink = (url) => ({ title: "Roadmap", icon: "\uD83D\uDDFA️", target: { kind: "page", url } });
 var chevron = (expanded) => Image(() => expanded() ? "chevron.down" : "chevron.right").font(9).weight("semibold").color("tertiary");
-var card = (view) => view.paddingHorizontal(10).paddingVertical(8).background(CARD).cornerRadius(10);
 var fraction = (done, live) => done + live ? done / (done + live) : 0;
 var AGENDA = {
   overdue: "Overdue",
@@ -488,7 +512,7 @@ var projectCard = (item) => {
     ForEach({ items: () => expanded() ? [project.slug] : [], key: (slug) => slug }, () => VStack({ spacing: 6 }, [
       ...links.length ? [
         VStack({ spacing: 0 }, [
-          ForEach({ items: links, key: (link) => targetOf(link.target) }, (link) => linkRow(link()))
+          ForEach({ items: links, key: (link) => targetKey(link.target) }, (link) => linkRow(link()))
         ])
       ] : [],
       VStack({ spacing: 1 }, [ForEach({ items: project.tasks, key: (task) => task.id }, (task) => taskRow(task()))])
@@ -535,26 +559,101 @@ var projectsBody = (entry) => {
     ]))
   ]);
 };
-var projectsPage = ({ tabs, home, homes, pick }) => {
-  return VStack({ spacing: 8 }, [
-    HStack({ spacing: 2 }, [
-      tabs,
-      Spacer({ minLength: 4 }),
-      ForEach({ items: () => [entryOf(home())].filter((item) => item !== undefined), key: (item) => item.dashboard }, (item) => {
-        const { dashboard, roadmap } = item();
-        return HStack({ spacing: 2 }, [
-          toolIcon("square.grid.3x3", "Dashboard", () => cmux("browser.tab.new", { url: `${dashboard}#today` })),
-          ...roadmap ? [toolIcon("map", "Roadmap", () => cmux("browser.tab.new", { url: roadmap }))] : []
-        ]);
-      })
-    ]),
-    ...homes.length > 1 ? [
+
+// src/cmux/sidebar/reports.ts
+var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+var dayTitle = (date, day) => {
+  const days = daysUntil(date, day);
+  if (days === 0) {
+    return "Today";
+  }
+  if (days === -1) {
+    return "Yesterday";
+  }
+  const [year, month, dayOfMonth] = date.split("-").map(Number);
+  if (!year || !month || !dayOfMonth) {
+    return date || "Undated";
+  }
+  const weekday = new Date(Date.UTC(year, month - 1, dayOfMonth)).getUTCDay();
+  return `${WEEKDAYS[weekday] ?? ""} ${dayOfMonth} ${MONTHS[month - 1] ?? ""}`;
+};
+var tile = (view, onTap) => view.paddingHorizontal(8).paddingVertical(6).background(CARD).cornerRadius(8).hoverBackground("#7f7f7f26").cursor("pointer").frame({ maxWidth: "infinity", alignment: "leading" }).onTap(onTap);
+var badge2 = (label, color) => HStack({ spacing: 4 }, [
+  Circle({ size: 6 }).fill(color),
+  Text(label).font(10).color("secondary").lineLimit(1).truncation("tail")
+]).fixedSize("horizontal");
+var reportCard = (item) => tile(VStack({ spacing: 3, alignment: "leading" }, [
+  Text(item.title).font(12).lineLimit(2).truncation("tail"),
+  HStack({ spacing: 6 }, [
+    badge2(item.kind, hueColor(item.hue)),
+    Text(item.time).font(10).monospaced().color("tertiary"),
+    ...item.status ? [Text(item.status).font(9)] : [],
+    Spacer({ minLength: 0 })
+  ])
+]), () => openTarget(item.target));
+var pinCard = ({ pin, project }) => tile(HStack({ spacing: 6 }, [
+  Text(pin.icon).font(11).frame({ width: 14 }),
+  Text(pin.title).font(12).lineLimit(2).truncation("tail"),
+  Spacer({ minLength: 4 }),
+  ...project ? [badge2(project.slug, project.color)] : []
+]), () => openTarget(pin.target));
+var matches2 = (query, ...texts) => {
+  const haystack = texts.join(" ").toLowerCase();
+  return query.toLowerCase().split(/\s+/).filter(Boolean).every((word) => haystack.includes(word));
+};
+var byDay = (reports) => reports.reduce((groups, report) => {
+  const last = groups.at(-1);
+  return last && last.date === report.date ? [...groups.slice(0, -1), { date: last.date, reports: [...last.reports, report] }] : [...groups, { date: report.date, reports: [report] }];
+}, []);
+var reportsBody = (entry) => {
+  const [query, setQuery] = signal("");
+  const pinned = [
+    ...entry.pins.map((pin) => ({ pin })),
+    ...entry.projects.flatMap((project) => project.pins.map((pin) => ({ pin, project: { slug: project.slug, color: hueColor(project.hue) } })))
+  ];
+  const shownPins = computed(() => pinned.filter(({ pin, project }) => matches2(query(), pin.title, project?.slug ?? "")));
+  const days = computed(() => byDay(entry.reports.filter((report) => matches2(query(), report.title, report.kind))));
+  const empty = computed(() => !shownPins().length && !days().length);
+  return VStack({ spacing: 10 }, [
+    searchField("Search reports…", setQuery),
+    ForEach({ items: () => shownPins().length ? ["pinned"] : [], key: (name) => name }, () => VStack({ spacing: 4 }, [
+      groupTitle("Pinned", shownPins().length),
+      ForEach({ items: shownPins, key: (item) => targetKey(item.pin.target) }, (item) => pinCard(item()))
+    ])),
+    ForEach({ items: days, key: (group) => group.date }, (group) => VStack({ spacing: 4 }, [
       HStack({ spacing: 4 }, [
-        ...homes.map((path) => chip(homeLabel(path), () => home() === path, () => pick(path))),
+        Text(() => dayTitle(group().date, today()).toUpperCase()).font(10).weight("semibold").color("tertiary"),
+        Text(() => String(group().reports.length)).font(10).monospaced().color("quaternary"),
         Spacer({ minLength: 0 })
-      ])
-    ] : [],
-    scopedPage(home, projectsBody)
+      ]).paddingHorizontal(4),
+      ForEach({ items: () => group().reports, key: (report) => targetKey(report.target) }, (report) => reportCard(report()))
+    ])),
+    Text(() => empty() ? query().trim() ? "No matching reports." : "No reports yet." : "").font(11).color("tertiary").paddingHorizontal(4),
+    ...entry.olderReports ? [
+      note(`${entry.olderReports} older reports are on the dashboard.`).cursor("pointer").onTap(() => cmux("browser.tab.new", { url: `${entry.dashboard}#reports` }))
+    ] : []
+  ]);
+};
+
+// src/cmux/sidebar/agent.ts
+var agentPage = ({ pill, home, homes, pick }) => {
+  const [section, setSection] = signal("projects");
+  return VStack({ spacing: 8 }, [
+    agentHeader({ pill, homes, home, pick }),
+    scopedPage(home, (entry) => {
+      const { dashboard, roadmap } = entry;
+      return VStack({ spacing: 8 }, [
+        HStack({ spacing: 4 }, [
+          chip("Projects", () => section() === "projects", () => setSection("projects")),
+          chip("Reports", () => section() === "reports", () => setSection("reports")),
+          Spacer({ minLength: 4 }),
+          toolIcon("square.grid.3x3", "Dashboard", () => cmux("browser.tab.new", { url: `${dashboard}#${section() === "reports" ? "reports" : "today"}` })),
+          ...roadmap ? [toolIcon("map", "Roadmap", () => cmux("browser.tab.new", { url: roadmap }))] : []
+        ]),
+        ForEach({ items: () => [section()], key: (name) => name }, (name) => name() === "projects" ? projectsBody(entry) : reportsBody(entry))
+      ]);
+    })
   ]).paddingHorizontal(6);
 };
 
@@ -581,16 +680,13 @@ var app = () => {
     }
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
-  const tabs = (title) => HStack({ spacing: 8 }, [
-    HStack({ spacing: 2 }, [
-      tabIcon("square.grid.2x2", "Manager", () => tab() === "manager", () => setTab("manager")),
-      tabIcon("square.stack.3d.up.fill", "Projects", () => tab() === "projects", () => setTab("projects"))
-    ]).padding(2).background("#7f7f7f1f").cornerRadius(8),
-    Text(title).font(13).weight("semibold")
-  ]).fixedSize();
+  const pill = () => HStack({ spacing: 2 }, [
+    tabIcon("square.grid.2x2", "Manager", () => tab() === "manager", () => setTab("manager")),
+    tabIcon("square.stack.3d.up.fill", "Agents", () => tab() === "agents", () => setTab("agents"))
+  ]).padding(2).background("#7f7f7f1f").cornerRadius(8).fixedSize();
   return VStack({ spacing: 8 }, [
-    ForEach({ items: () => [tab()], key: (name) => name }, (name) => name() === "manager" ? manager({ header: tabs("Manager") }) : projectsPage({
-      tabs: tabs("Projects"),
+    ForEach({ items: () => [tab()], key: (name) => name }, (name) => name() === "manager" ? manager({ header: HStack({ spacing: 8 }, [pill(), Text("Manager").font(13).weight("semibold")]).fixedSize() }) : agentPage({
+      pill: pill(),
       home: current,
       homes,
       pick: (home) => setPin({ home, workspaceId: selectedId() })

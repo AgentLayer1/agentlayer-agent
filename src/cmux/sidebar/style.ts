@@ -53,6 +53,10 @@ export const toolIcon = (symbol: string, help: string, onTap: () => void) =>
     .help(help)
     .onTap(onTap);
 
+export const CARD = '#7f7f7f12';
+
+export const card = (view: View) => view.paddingHorizontal(10).paddingVertical(8).background(CARD).cornerRadius(10);
+
 export const note = (text: string) => Text(text).font(11).color('tertiary').paddingHorizontal(10);
 
 /**

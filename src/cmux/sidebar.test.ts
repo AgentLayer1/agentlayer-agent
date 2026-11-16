@@ -18,7 +18,7 @@ const installed = (homes: Record<string, HomeEntry> = { [NOVA_HOME]: NOVA_ENTRY 
 
 const onProjects = (homes?: Record<string, HomeEntry>) => {
   const sidebar = mount(installed(homes), CMUX_DATA);
-  sidebar.tap('Projects');
+  sidebar.tap('Agents');
   return sidebar;
 };
 
@@ -168,8 +168,9 @@ run('with two agents joined, a chip per agent picks the other one', () => {
   expect(sidebar.visibleTexts()).not.toContain('acme-app');
 });
 
-run('with one agent joined there are no agent chips', () => {
-  expect(onProjects().visibleTexts()).not.toContain('🦉 Nova');
+run('with one agent joined, its chip stands beside the tabs where the title was', () => {
+  const texts = onProjects().visibleTexts();
+  expect(texts[0]).toBe('🦉 Nova');
 });
 
 run('an entry from an older plugin asks for its agent to be updated', () => {
@@ -181,7 +182,7 @@ run('an entry from an older plugin asks for its agent to be updated', () => {
 run('the preview draws invented homes and sessions on its own, and its taps go nowhere', () => {
   const preview = mount(previewText({ version: '1.1.0', bundle: readFileSync(DIST, 'utf8') }));
   expect(preview.visibleTexts()).toContain('Support sweep');
-  preview.tap('Projects');
+  preview.tap('Agents');
   expect(preview.visibleTexts()).toContain('acme-app');
   expect(preview.tap('Dashboard')).toBeUndefined();
 });
@@ -201,4 +202,71 @@ run('two pins with the same title both show, each opening its own file', () => {
   const sidebar = onProjects({ [NOVA_HOME]: { ...NOVA_ENTRY, projects: [twins, ...rest] } });
   sidebar.tap(first.slug);
   expect(sidebar.visibleTexts().filter((text) => text === 'Notes')).toHaveLength(2);
+});
+
+const onReports = (homes?: Record<string, HomeEntry>) => {
+  const sidebar = onProjects(homes);
+  sidebar.tap('Reports');
+  return sidebar;
+};
+
+run('Reports lists the pins, then the newest reports by day, worded against the sidebar’s day', () => {
+  const texts = onReports().visibleTexts();
+  const headings = texts.filter((text) => /^[A-Z0-9 ]+$/.test(text) && !/^[0-9]+$/.test(text));
+  expect(headings).toEqual(['PINNED', 'TODAY', 'YESTERDAY', 'MON 2 NOV']);
+  const titles = [
+    'Support playbook',
+    'Morning brief — Mon 9 Nov',
+    'Checkpoints — 4 sessions',
+    'Evening wrap — Sun 8 Nov',
+    'Pricing page plan'
+  ];
+  expect(
+    texts.filter((text) => titles.includes(text)),
+    'pins first, then newest first'
+  ).toEqual(titles);
+  expect(texts).toEqual(
+    expect.arrayContaining(['Launch checklist', 'Pricing page', 'acme-app', 'briefing', '08:30', '🟠'])
+  );
+  expect(texts).not.toContain('AT WORK');
+});
+
+run('a report opens as a full tab, and Dashboard opens the dashboard’s Reports page', () => {
+  const sidebar = onReports();
+  expect(sidebar.tap('Morning brief — Mon 9 Nov')).toEqual({
+    kind: 'cmux',
+    method: 'file.open',
+    params: { path: join(NOVA_HOME, 'reports', 'briefings', '2026-11-09-0830-morning.md') }
+  });
+  expect(sidebar.tap('Dashboard')?.params).toEqual({ url: `${NOVA_ENTRY.dashboard}#reports` });
+  sidebar.tap('Projects');
+  expect(sidebar.tap('Dashboard')?.params).toEqual({ url: `${NOVA_ENTRY.dashboard}#today` });
+});
+
+run('the report search matches titles and kinds, pins included', () => {
+  const sidebar = onReports();
+  sidebar.type('briefing');
+  expect(sidebar.visibleTexts().filter((text) => text.includes('—'))).toEqual([
+    'Morning brief — Mon 9 Nov',
+    'Evening wrap — Sun 8 Nov'
+  ]);
+  expect(sidebar.visibleTexts()).not.toContain('PINNED');
+  sidebar.type('nothing like this');
+  expect(sidebar.visibleTexts()).toContain('No matching reports.');
+});
+
+run('reports past the entry’s limit point to the dashboard', () => {
+  const sidebar = onReports({ [NOVA_HOME]: { ...NOVA_ENTRY, olderReports: 3 } });
+  expect(sidebar.tap('3 older reports are on the dashboard.')?.params).toEqual({
+    url: `${NOVA_ENTRY.dashboard}#reports`
+  });
+});
+
+run('a dozen agents all get a chip', () => {
+  const names = Array.from({ length: 12 }, (_unused, index) => `Agent${index}`);
+  const homes = Object.fromEntries(
+    names.map((name) => [join('/Users', 'ada', 'Documents', 'Agents', name), { ...NOVA_ENTRY, name, emoji: '🤖' }])
+  );
+  const texts = onProjects(homes).visibleTexts();
+  expect(names.every((name) => texts.includes(`🤖 ${name}`))).toBe(true);
 });

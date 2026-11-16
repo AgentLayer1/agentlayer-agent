@@ -1,4 +1,4 @@
-import { SCHEMA, type HomeEntry } from './data';
+import { SCHEMA, type HomeEntry, type PinTarget } from './data';
 import { note } from './style';
 
 interface Scoped {
@@ -6,6 +6,12 @@ interface Scoped {
   entry: HomeEntry;
   current: boolean;
 }
+
+export const openTarget = (target: PinTarget) =>
+  target.kind === 'page' ? cmux('browser.tab.new', { url: target.url }) : cmux('file.open', { path: target.path });
+
+// A link's identity is where it goes: two pins may share a title, and cmux drops a repeated list key.
+export const targetKey = (target: PinTarget): string => (target.kind === 'page' ? target.url : target.path);
 
 export const entryOf = (home: string | undefined): HomeEntry | undefined => (home ? DATA.homes[home] : undefined);
 

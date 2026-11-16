@@ -1,16 +1,12 @@
-import { chip, searchField } from 'cmux-custom-manager/components';
-import type { HomeEntry, PinItem, PinTarget, ProjectCard, TaskItem } from './data';
+import { searchField } from 'cmux-custom-manager/components';
+import type { HomeEntry, PinItem, ProjectCard, TaskItem } from './data';
 import { BUCKETS, dueBucket, type DueBucket } from '../../work/due';
 import { dueLabel } from './due';
-import { groupTitle, hueColor, note, progressBar, toolIcon } from './style';
+import { card, groupTitle, hueColor, note, progressBar } from './style';
 import { count, taskRow, today } from './tasks';
-import { entryOf, homeLabel, scopedPage } from './view';
+import { openTarget, targetKey } from './view';
 
 const ACCENT = '#0A84FF';
-const CARD = '#7f7f7f12';
-
-const open = (target: PinTarget) =>
-  target.kind === 'page' ? cmux('browser.tab.new', { url: target.url }) : cmux('file.open', { path: target.path });
 
 const linkRow = ({ icon, title, target }: PinItem) =>
   HStack({ spacing: 6 }, [
@@ -23,10 +19,7 @@ const linkRow = ({ icon, title, target }: PinItem) =>
     .cornerRadius(6)
     .hoverBackground('#7f7f7f26')
     .cursor('pointer')
-    .onTap(() => open(target));
-
-// A link's identity is where it goes: two pins may share a title, and cmux drops a repeated list key.
-const targetOf = (target: PinTarget): string => (target.kind === 'page' ? target.url : target.path);
+    .onTap(() => openTarget(target));
 
 const roadmapLink = (url: string): PinItem => ({ title: 'Roadmap', icon: '🗺️', target: { kind: 'page', url } });
 
@@ -35,8 +28,6 @@ const chevron = (expanded: () => boolean) =>
     .font(9)
     .weight('semibold')
     .color('tertiary');
-
-const card = (view: View) => view.paddingHorizontal(10).paddingVertical(8).background(CARD).cornerRadius(10);
 
 const fraction = (done: number, live: number) => (done + live ? done / (done + live) : 0);
 
@@ -158,7 +149,7 @@ const projectCard = (item: () => ProjectCard) => {
           ...(links.length
             ? [
                 VStack({ spacing: 0 }, [
-                  ForEach({ items: links, key: (link) => targetOf(link.target) }, (link) => linkRow(link()))
+                  ForEach({ items: links, key: (link) => targetKey(link.target) }, (link) => linkRow(link()))
                 ])
               ]
             : []),
@@ -194,7 +185,10 @@ const matches = (listed: readonly Listed[], query: string) => {
   });
 };
 
-const projectsBody = (entry: HomeEntry) => {
+/**
+ * The scoped agent's work: a search over its tasks, every task at a glance, then its projects by state.
+ */
+export const projectsBody = (entry: HomeEntry) => {
   const [query, setQuery] = signal('');
   const listed = listedTasks(entry);
   const found = computed(() => matches(listed, query()));
@@ -221,50 +215,4 @@ const projectsBody = (entry: HomeEntry) => {
       ])
     )
   ]);
-};
-
-export interface ProjectsOptions {
-  tabs: View;
-  home: () => string | undefined;
-  homes: readonly string[];
-  pick: (home: string) => void;
-}
-
-/**
- * The scoped agent's work: a search over its tasks, every task at a glance, then its projects by state. The top
- * row's icons open its dashboard and roadmap as full tabs.
- */
-export const projectsPage = ({ tabs, home, homes, pick }: ProjectsOptions) => {
-  return VStack({ spacing: 8 }, [
-    HStack({ spacing: 2 }, [
-      tabs,
-      Spacer({ minLength: 4 }),
-      ForEach(
-        { items: () => [entryOf(home())].filter((item) => item !== undefined), key: (item) => item.dashboard },
-        (item) => {
-          const { dashboard, roadmap } = item();
-          return HStack({ spacing: 2 }, [
-            toolIcon('square.grid.3x3', 'Dashboard', () => cmux('browser.tab.new', { url: `${dashboard}#today` })),
-            ...(roadmap ? [toolIcon('map', 'Roadmap', () => cmux('browser.tab.new', { url: roadmap }))] : [])
-          ]);
-        }
-      )
-    ]),
-    // With more than one agent joined, a chip per agent, lit for the one the workspace picked.
-    ...(homes.length > 1
-      ? [
-          HStack({ spacing: 4 }, [
-            ...homes.map((path) =>
-              chip(
-                homeLabel(path),
-                () => home() === path,
-                () => pick(path)
-              )
-            ),
-            Spacer({ minLength: 0 })
-          ])
-        ]
-      : []),
-    scopedPage(home, projectsBody)
-  ]).paddingHorizontal(6);
 };
