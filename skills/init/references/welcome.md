@@ -24,7 +24,7 @@ When `<HOME>/.state/version.json` has `migratedFrom`, this home was copied here 
    - The upgrade ended with its own sync: done.
    - The upgrade asked for a restart first (it installed dependencies or picked up new server code): **stop here and leave the flag pending**. Tell the operator to exit and reopen; the next session comes back to this step, the upgrade reports it's current, and you run the `sync` skill.
    - Otherwise: run the `sync` skill now.
-5. **Ask where to start.** Read the move note at `migratedFrom.note` when there is one. Offer up to three of its sessions to continue as `Pick up: <what it was doing>`, then **Morning brief**. Without a note, or without sessions in it, offer the options in section 2 instead.
+5. **Ask where to start.** Read the move note at `migratedFrom.note` when there is one. When it has an `## After the command` checklist, first show the items this session hasn't done (auto mode, repointing the vault and workspaces, retiring the old home, each with its command from the note) as one short list the operator can work through later, and leave the note as written. Then offer up to three of its sessions to continue as `Pick up: <what it was doing>`, then **Morning brief**. Without a note, or without sessions in it, offer the options in section 2 instead.
 6. **Clear the flag** (section 3).
 7. **Run the pick.** A session to continue runs the `find-session` skill with its id: it loads that session's notes from the brain. Then start on the next step the note gives. Close with one line naming the other sessions in the note, and saying that any past session, noted or not, can be picked up by asking for it by id or by what it worked on. A section 2 option runs as section 4 says.
 
