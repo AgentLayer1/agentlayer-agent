@@ -12,7 +12,7 @@ const REFRESHED = {
   'not-installed': `The AgentLayer sidebar isn’t installed. Add this home from a terminal inside cmux with: ${INSTALL}`,
   'not-joined': `This home isn’t in the AgentLayer sidebar. Add it from a terminal inside cmux with: ${INSTALL}`,
   unchanged: 'The sidebar is up to date.',
-  written: 'The sidebar now shows this home’s latest projects and pins.'
+  written: 'The sidebar now shows this home’s latest projects and tasks.'
 } as const;
 
 const REMOVED = {

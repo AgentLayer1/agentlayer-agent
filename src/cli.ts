@@ -177,7 +177,7 @@ Worktree commands:
 
 cmux commands (run from a terminal inside cmux; the cmux CLI only answers there):
   cmux sidebar install              Add this home to the AgentLayer sidebar (starting it if it's the first), have cmux check it, and show it
-  cmux sidebar refresh              Put this home's latest projects and pins into the sidebar (the dashboard refresh also does this)
+  cmux sidebar refresh              Put this home's latest projects and tasks into the sidebar (every dashboard refresh also does this)
   cmux sidebar remove               Take this home out of the sidebar; the last home out deletes it
 
 Database commands:
