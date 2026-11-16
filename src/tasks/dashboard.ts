@@ -203,32 +203,14 @@ export const writeDashboard = (work: Work): DashboardCounts => {
 /**
  * The two derived views always regenerate together: TASKS.md (this module)
  * and the Agent OS dashboard at <HOME>/dashboard.html (status/html). The HTML
- * rebuild is fire-and-forget and coalesced — requests landing while one is
- * in flight keep only the latest model, and a single follow-up rebuild writes
- * it once the in-flight one finishes.
+ * rebuild is fire-and-forget; status/html runs them one at a time.
  */
-let htmlInFlight = false;
-let pendingWork: Work | null = null;
-
-const rebuildHtmlSafe = (work: Work): void => {
-  if (htmlInFlight) {
-    pendingWork = work;
-    return;
-  }
-  htmlInFlight = true;
+const rebuildHtmlSafe = (): void => {
   void import('@/status/html')
-    .then(({ writeDashboardHtml }) => writeDashboardHtml(work))
+    .then(({ writeDashboardHtml }) => writeDashboardHtml())
     .catch(() => {
       // best-effort — TASKS.md is already written; the HTML view catches up
       // on the next mutation or explicit dashboard call
-    })
-    .finally(() => {
-      htmlInFlight = false;
-      const next = pendingWork;
-      pendingWork = null;
-      if (next) {
-        rebuildHtmlSafe(next);
-      }
     });
 };
 
@@ -252,9 +234,8 @@ export const writeDashboardSafe = (): DashboardCounts | null => {
     return null;
   }
   try {
-    const work = buildWork();
-    const counts = writeDashboard(work);
-    rebuildHtmlSafe(work);
+    const counts = writeDashboard(buildWork());
+    rebuildHtmlSafe();
     return counts;
   } catch {
     return null;
@@ -271,9 +252,8 @@ export const withDashboardBatch = <T>(fn: () => T): T => {
     if (batchDepth === 0 && pendingWrite) {
       pendingWrite = false;
       try {
-        const work = buildWork();
-        writeDashboard(work);
-        rebuildHtmlSafe(work);
+        writeDashboard(buildWork());
+        rebuildHtmlSafe();
       } catch {
         // best-effort — caller has already succeeded
       }
