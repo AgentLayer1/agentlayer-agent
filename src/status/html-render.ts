@@ -25,6 +25,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { extname, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type { ManifestEntry } from '@/hooks/context';
 import type { HistoryState } from '@/home/history';
 import { BANNER_LINES, bannerTag } from '@/hooks/banner';
@@ -76,11 +78,18 @@ const esc = escapeHtml;
 
 // ── small primitives ──────────────────────────────────────────────────
 
+/** Obsidian opens an HTML page through its own link, like a note; every other viewer gets the page itself in a new
+ *  tab, which a browser (cmux's included) renders. Notes always go through the opener app. */
+const fileHref = (snap: StatusSnapshot, absPath: string): string =>
+  !snap.markdownUrl.startsWith('obsidian://') && extname(absPath) === '.html'
+    ? `href="${esc(pathToFileURL(absPath).href)}" target="_blank"`
+    : `href="${esc(snap.markdownUrl.replace('{path}', encodeURIComponent(absPath)))}"`;
+
 /** Link a markdown file (absolute path) through the configured opener app
  *  (obsidian:// by default; e.g. markedit:// via the MARKDOWN_URL env var).
  *  `cls: 'plink'` keeps the surrounding text color, underlining on hover. */
 const mdLinkAbs = (snap: StatusSnapshot, absPath: string, text: string, cls = ''): string =>
-  `<a${cls ? ` class="${cls}"` : ''} href="${esc(snap.markdownUrl.replace('{path}', encodeURIComponent(absPath)))}">${esc(text)}</a>`;
+  `<a${cls ? ` class="${cls}"` : ''} ${fileHref(snap, absPath)}>${esc(text)}</a>`;
 
 /** Same, for a path relative to <HOME> (`~/...` resolves to the OS home). */
 const mdLink = (snap: StatusSnapshot, rel: string, text: string, cls = ''): string =>
@@ -2091,7 +2100,7 @@ const sidebarNav = (snap: StatusSnapshot): string =>
  *  Obsidian's HTML viewer permits (nav-test 2026-07-26: relative `<a href>`
  *  swallowed, window.open blocked, and window.top.location silently no-ops —
  *  so no fallback chains, a silent no-op first hop short-circuits the working
- *  call). Empty renders nothing. */
+ *  call). Outside Obsidian every row is a plain link, an HTML page opening in a new tab. Empty renders nothing. */
 const sidebarLinks = (snap: StatusSnapshot, label: string, links: SurfaceLink[]): string => {
   if (links.length === 0) {
     return '';
@@ -2099,8 +2108,9 @@ const sidebarLinks = (snap: StatusSnapshot, label: string, links: SurfaceLink[])
   const items = links
     .map((surface) => {
       const inner = `<span class="ico">${esc(surface.icon)}</span>${esc(surface.title)}<span class="out">↗</span>`;
-      return surface.appTab
-        ? `<a class="nav-item" href="${esc(snap.markdownUrl.replace('{path}', encodeURIComponent(surface.href)))}">${inner}</a>`
+      const absPath = resolve(snap.runtime.home, surface.href);
+      return surface.appTab || !snap.markdownUrl.startsWith('obsidian://')
+        ? `<a class="nav-item" ${fileHref(snap, absPath)}>${inner}</a>`
         : `<div class="nav-item" data-href="${esc(surface.href)}">${inner}</div>`;
     })
     .join('\n');

@@ -971,6 +971,45 @@ describe('surfaces', () => {
     expect(html).toContain('Roadmap<span class="out">↗</span>');
   });
 
+  test('outside Obsidian, HTML pages open as files in a new tab and notes keep the opener app', () => {
+    const html = renderDashboardHtml(
+      makeSnapshot({
+        markdownUrl: 'markedit://open?path={path}',
+        surfaces: [
+          { title: 'Roadmap', href: '/tmp/home/roadmap.html', icon: '🗺️', appTab: true },
+          { title: 'Financial Pack', href: 'projects/financial-pack/dashboard.html', icon: '📊', appTab: false }
+        ],
+        pinned: [
+          { title: 'Security plan', href: '/tmp/home/reports/security/plan.html', icon: '🛡️', appTab: true },
+          { title: 'Playbook', href: '/tmp/home/reports/plans/playbook.md', icon: '📌', appTab: true }
+        ]
+      })
+    );
+    expect(html).toContain('<a class="nav-item" href="file:///tmp/home/roadmap.html" target="_blank">');
+    expect(html).toContain(
+      '<a class="nav-item" href="file:///tmp/home/projects/financial-pack/dashboard.html" target="_blank">'
+    );
+    expect(html).toContain('<a class="nav-item" href="file:///tmp/home/reports/security/plan.html" target="_blank">');
+    expect(html).toContain(
+      `<a class="nav-item" href="markedit://open?path=${encodeURIComponent('/tmp/home/reports/plans/playbook.md')}">`
+    );
+    expect(html).not.toContain('data-href="');
+  });
+
+  test('outside Obsidian, a project card opens its own roadmap as a page in a new tab', () => {
+    const base = makeSnapshot();
+    const html = renderDashboardHtml(
+      makeSnapshot({
+        markdownUrl: 'markedit://open?path={path}',
+        tasks: {
+          ...base.tasks,
+          byProject: [{ ...base.tasks.byProject[0], roadmap: 'projects/life-os/roadmap.html' }]
+        }
+      })
+    );
+    expect(html).toContain('<a href="file:///tmp/home/projects/life-os/roadmap.html" target="_blank">Roadmap</a>');
+  });
+
   test('no discovered surfaces renders no Surfaces group', () => {
     const html = renderDashboardHtml(makeSnapshot());
     expect(html).not.toContain('<div class="nav-group">');
