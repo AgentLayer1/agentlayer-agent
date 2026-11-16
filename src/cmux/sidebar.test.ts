@@ -185,3 +185,20 @@ run('the preview draws invented homes and sessions on its own, and its taps go n
   expect(preview.visibleTexts()).toContain('acme-app');
   expect(preview.tap('Dashboard')).toBeUndefined();
 });
+
+run('two pins with the same title both show, each opening its own file', () => {
+  const [first, ...rest] = NOVA_ENTRY.projects;
+  if (!first) {
+    throw new Error('the fixture has projects');
+  }
+  const twins = {
+    ...first,
+    pins: [
+      { title: 'Notes', icon: '📝', target: { kind: 'file' as const, path: join(NOVA_HOME, 'a.md') } },
+      { title: 'Notes', icon: '📝', target: { kind: 'file' as const, path: join(NOVA_HOME, 'b.md') } }
+    ]
+  };
+  const sidebar = onProjects({ [NOVA_HOME]: { ...NOVA_ENTRY, projects: [twins, ...rest] } });
+  sidebar.tap(first.slug);
+  expect(sidebar.visibleTexts().filter((text) => text === 'Notes')).toHaveLength(2);
+});

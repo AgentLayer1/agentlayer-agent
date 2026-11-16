@@ -25,6 +25,9 @@ const linkRow = ({ icon, title, target }: PinItem) =>
     .cursor('pointer')
     .onTap(() => open(target));
 
+// A link's identity is where it goes: two pins may share a title, and cmux drops a repeated list key.
+const targetOf = (target: PinTarget): string => (target.kind === 'page' ? target.url : target.path);
+
 const roadmapLink = (url: string): PinItem => ({ title: 'Roadmap', icon: '🗺️', target: { kind: 'page', url } });
 
 const chevron = (expanded: () => boolean) =>
@@ -155,7 +158,7 @@ const projectCard = (item: () => ProjectCard) => {
           ...(links.length
             ? [
                 VStack({ spacing: 0 }, [
-                  ForEach({ items: links, key: (link) => link.title }, (link) => linkRow(link()))
+                  ForEach({ items: links, key: (link) => targetOf(link.target) }, (link) => linkRow(link()))
                 ])
               ]
             : []),

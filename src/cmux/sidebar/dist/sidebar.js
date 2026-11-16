@@ -407,6 +407,7 @@ var linkRow = ({ icon, title, target }) => HStack({ spacing: 6 }, [
   Text(title).font(11).color("secondary").lineLimit(1).truncation("tail"),
   Spacer({ minLength: 0 })
 ]).paddingHorizontal(4).paddingVertical(2).cornerRadius(6).hoverBackground("#7f7f7f26").cursor("pointer").onTap(() => open(target));
+var targetOf = (target) => target.kind === "page" ? target.url : target.path;
 var roadmapLink = (url) => ({ title: "Roadmap", icon: "\uD83D\uDDFA️", target: { kind: "page", url } });
 var chevron = (expanded) => Image(() => expanded() ? "chevron.down" : "chevron.right").font(9).weight("semibold").color("tertiary");
 var card = (view) => view.paddingHorizontal(10).paddingVertical(8).background(CARD).cornerRadius(10);
@@ -487,7 +488,7 @@ var projectCard = (item) => {
     ForEach({ items: () => expanded() ? [project.slug] : [], key: (slug) => slug }, () => VStack({ spacing: 6 }, [
       ...links.length ? [
         VStack({ spacing: 0 }, [
-          ForEach({ items: links, key: (link) => link.title }, (link) => linkRow(link()))
+          ForEach({ items: links, key: (link) => targetOf(link.target) }, (link) => linkRow(link()))
         ])
       ] : [],
       VStack({ spacing: 1 }, [ForEach({ items: project.tasks, key: (task) => task.id }, (task) => taskRow(task()))])
