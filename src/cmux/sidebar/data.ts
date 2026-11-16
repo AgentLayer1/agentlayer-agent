@@ -28,7 +28,6 @@ export interface HomeEntry {
   schema: number;
   name: string;
   emoji: string;
-  launcher: string;
   /**
    * `file://` URL of the home's dashboard.html, which deep-links a page by its hash.
    */

@@ -8,7 +8,6 @@ import { defaultTarget } from '../lifecycle';
 import { hasRuntime, mount, RUNTIME } from '../runtime-harness';
 import { previewText } from './preview';
 
-const PAGES = ['Home', 'Agents', 'Ask'];
 const args = process.argv.slice(2);
 const own = defaultTarget().own();
 
@@ -17,11 +16,7 @@ if (args.includes('--text')) {
     console.error(`cmux's sidebar runtime isn't at ${RUNTIME}: install cmux to preview the sidebar.`);
     process.exit(1);
   }
-  const sidebar = mount(previewText(own));
-  PAGES.forEach((page) => {
-    sidebar.tap(page);
-    console.log(`── ${page}\n${sidebar.visibleTexts().join('\n')}\n`);
-  });
+  console.log(mount(previewText(own)).visibleTexts().join('\n'));
 } else {
   const out = args[0] ?? sidebarFile(sidebarsDir(), `${SIDEBAR_NAME}-preview`);
   writeFileAtomic(out, previewText(own));

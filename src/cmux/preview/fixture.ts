@@ -35,8 +35,8 @@ export const SCOUT: EntrySource = {
 /**
  * A fixture home's entry, with its projects in the home's own projects folder.
  */
-export const fixtureEntry = (source: EntrySource, launcher = 'claude'): HomeEntry =>
-  homeEntry(source, { launcher, projectsDir: join(source.runtime.home, 'projects') });
+export const fixtureEntry = (source: EntrySource): HomeEntry =>
+  homeEntry(source, { projectsDir: join(source.runtime.home, 'projects') });
 
 const NOW = 1_794_218_400;
 

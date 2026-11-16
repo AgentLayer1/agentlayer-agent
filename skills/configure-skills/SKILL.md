@@ -754,9 +754,7 @@ Gives a cmux user the AgentLayer sidebar: one native panel in cmux's right sideb
 
 **(1) Check cmux:** `test -d /Applications/cmux.app && echo CMUX || echo NO_CMUX`. On `NO_CMUX`, stop: the sidebar needs the cmux app, from https://cmux.com.
 
-**(2) Launcher.** The Ask page types `cd '<HOME_DIR>' && <launcher>` into a new tab. The launcher works itself out: `agent` when the home has its own Claude subscription (`.state/secrets/.env.claude.json`, which the plugin's `agent` launcher loads), otherwise `claude`. Ask only if the operator starts this agent some other way (an alias of their own); then set `AGENT_LAUNCHER` to that command in `$SETTINGS_FILE` `env` (§D.2), which overrides both.
-
-**(3) Install.** The sandbox can't write `~/.config/cmux/`, and cmux's CLI only answers from a terminal inside cmux, so hand the operator this line to run in a cmux terminal:
+**(2) Install.** The sandbox can't write `~/.config/cmux/`, and cmux's CLI only answers from a terminal inside cmux, so hand the operator this line to run in a cmux terminal:
 
 ```
 bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar install --home="<HOME_DIR>"
@@ -764,13 +762,12 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar install --home="<HOME_DIR>"
 
 It checks the cmux version, adds this home to the sidebar (starting the file if this is the first home), has cmux validate it under a staging name so a rejected file never replaces the installed one, and selects it in the right sidebar. It ends with "<name> is in the AgentLayer sidebar." "cmux didn't accept the sidebar" almost always means it ran in a terminal outside cmux. Every other agent home on the Mac joins with the same line, run with its own `--home`.
 
-**(4) Summary:**
+**(3) Summary:**
 
 ```
 ✅ cmux pack activated.
 
 Sidebar:           ~/.config/cmux/sidebars/agentlayer.js (this home joined)
-Launcher:          <agent or claude, or AGENT_LAUNCHER>
 Tool permissions:  none
 Keys:              none
 
@@ -963,7 +960,6 @@ Print per library: install status + symlink path + upstream LICENSE first-line. 
 
 **cmux deconfigure:**
 - Hand the operator `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar remove --home="<HOME_DIR>"` to run in their own terminal (the sandbox can't write `~/.config/cmux/`). Other homes stay in the sidebar; when this was the last one the file is deleted, and `cmux right-sidebar set files` picks another right sidebar.
-- `AskUserQuestion`: "Also remove `AGENT_LAUNCHER`?" (Yes/No), only when `$SETTINGS_FILE` sets it. If yes, delete it from `env` (§D.2).
 
 **Xcode deconfigure:**
 - Remove the `xcode` entry from `$MCP_FILE` `mcpServers` (leave every other server alone), then parse-check the result. If `<HOME>/.codex/hooks.json` exists, run the `codex_setup` MCP tool afterwards: it regenerates `[mcp_servers.xcode]` from `$MCP_FILE`, so with the entry gone the table goes with it. Never hand-edit that table.

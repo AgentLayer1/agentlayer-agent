@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { parseSidebar, sidebarFile } from './file';
 import {
   installSidebar,
-  launcherFor,
   refreshSidebar,
   refreshSidebarQuietly,
   removeSidebar,
@@ -38,7 +37,7 @@ const fakeCmux = (accepts = true): CmuxHost & { calls: string[][] } => {
 const NOVA_HOME = NOVA.runtime.home;
 const SCOUT_HOME = SCOUT.runtime.home;
 const nova = fixtureEntry(NOVA);
-const scout = fixtureEntry(SCOUT, 'agent');
+const scout = fixtureEntry(SCOUT);
 const installed = (where: SidebarTarget) => parseSidebar(readFileSync(sidebarFile(where.dir), 'utf8'));
 
 test('install starts the file, has cmux check it under a staging name, then selects it', () => {
@@ -148,12 +147,4 @@ test('the dashboard’s refresh never throws, even when the write fails', () => 
     }
   };
   expect(() => refreshSidebarQuietly({ ...NOVA, persona: { name: 'Changed', emoji: '🦉' } }, broken)).not.toThrow();
-});
-
-test('Ask starts a home with its own Claude subscription with agent, any other with claude, and AGENT_LAUNCHER wins', () => {
-  expect(launcherFor(undefined, false)).toBe('claude');
-  expect(launcherFor(undefined, true)).toBe('agent');
-  expect(launcherFor('  ', true)).toBe('agent');
-  expect(launcherFor('acme-start', true)).toBe('acme-start');
-  expect(launcherFor('acme-start', false)).toBe('acme-start');
 });

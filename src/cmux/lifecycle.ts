@@ -1,6 +1,5 @@
 import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
-import { FILES, FOLDERS } from '@/config';
-import { env } from '@/shared/env';
+import { FOLDERS } from '@/config';
 import { log } from '@/shared/log';
 import { pluginVersion } from '@/shared/naming';
 import { writeFileAtomic } from '@/shared/utils';
@@ -39,15 +38,7 @@ export const defaultTarget = (): SidebarTarget => ({
   own: () => ({ version: pluginVersion(), bundle: readFileSync(DIST, 'utf8') })
 });
 
-/**
- * The command Ask types to start a session in a home: `AGENT_LAUNCHER` when set, else `agent` for a home with its
- * own Claude subscription (the plugin's `agent` launcher is what loads it), else `claude`.
- */
-export const launcherFor = (override: string | undefined, hasSubscription: boolean): string =>
-  override?.trim() || (hasSubscription ? 'agent' : 'claude');
-
 export const entrySettings = (): EntrySettings => ({
-  launcher: launcherFor(env('AGENT_LAUNCHER'), existsSync(FILES.CLAUDE_SUBSCRIPTION)),
   projectsDir: FOLDERS.PROJECTS
 });
 

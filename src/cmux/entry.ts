@@ -17,7 +17,6 @@ export interface EntrySource {
 }
 
 export interface EntrySettings {
-  launcher: string;
   /**
    * The home's projects folder, which `AGENT_PROJECTS` can move out of the home.
    */
@@ -42,7 +41,6 @@ export const homeEntry = (source: EntrySource, settings: EntrySettings): HomeEnt
     schema: SCHEMA,
     name: source.persona.name,
     emoji: source.persona.emoji,
-    launcher: settings.launcher,
     dashboard: fileUrl(join(home, 'dashboard.html')),
     roadmap: source.surfaces.some((link) => link.href === roadmap) ? fileUrl(roadmap) : null,
     // The dashboard orders projects by recent activity; that order would rewrite the file on every task change.

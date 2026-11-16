@@ -13,7 +13,6 @@ test('a home with projects, pins and a roadmap', () => {
     schema: SCHEMA,
     name: 'Nova',
     emoji: '🦉',
-    launcher: 'claude',
     dashboard: url(NOVA_HOME, 'dashboard.html'),
     roadmap: url(NOVA_HOME, 'roadmap.html'),
     projects: [
@@ -29,9 +28,8 @@ test('a home with projects, pins and a roadmap', () => {
 });
 
 test('a home with no projects, pins or roadmap', () => {
-  expect(fixtureEntry(SCOUT, 'agent')).toMatchObject({
+  expect(fixtureEntry(SCOUT)).toMatchObject({
     name: 'Scout',
-    launcher: 'agent',
     roadmap: null,
     projects: [],
     pinned: []
@@ -40,7 +38,7 @@ test('a home with no projects, pins or roadmap', () => {
 
 test('a projects folder moved out of the home is where the READMEs are read from', () => {
   const elsewhere = join('/Volumes', 'shared', 'projects');
-  expect(homeEntry(NOVA, { launcher: 'claude', projectsDir: elsewhere }).projects[0]?.readme).toBe(
+  expect(homeEntry(NOVA, { projectsDir: elsewhere }).projects[0]?.readme).toBe(
     join(elsewhere, 'acme-app', 'README.md')
   );
 });

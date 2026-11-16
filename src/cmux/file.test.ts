@@ -3,7 +3,7 @@ import { mergeHomes, newerCode, parseSidebar, renderSidebar } from './file';
 import { fixtureEntry, NOVA, SCOUT } from './preview/fixture';
 
 const NOVA_ENTRY = fixtureEntry(NOVA);
-const SCOUT_ENTRY = fixtureEntry(SCOUT, 'agent');
+const SCOUT_ENTRY = fixtureEntry(SCOUT);
 const anyHome = () => true;
 const BUNDLE = '/*\n * AgentLayer · cmux sidebar\n */\nsidebar(() => Text("x"));\n';
 
