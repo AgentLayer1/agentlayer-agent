@@ -20,6 +20,7 @@ const toTask =
     status: task.frontmatter.status,
     priority: task.frontmatter.priority,
     due: task.frontmatter.due,
+    horizon: task.frontmatter.horizon,
     updated: task.frontmatter.updated,
     closed: task.frontmatter.closed,
     assignee: task.frontmatter.assignee,

@@ -17,7 +17,7 @@ import { renderDashboardHtml } from './html-render';
 /** Write the work model, then collect a fresh snapshot of it and write the dashboard to `<HOME>/dashboard.html`. */
 export const writeDashboardHtml = async (work: Work = buildWork()): Promise<{ path: string; bytes: number }> => {
   writeWork(work);
-  writeAttentionPagesSafe();
+  writeAttentionPagesSafe(work);
   const snapshot = await collectStatus(work);
   const html = renderDashboardHtml(snapshot);
   writeFileAtomic(FILES.DASHBOARD, html);

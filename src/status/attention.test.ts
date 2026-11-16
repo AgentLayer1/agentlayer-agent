@@ -2,7 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FOLDERS } from '@/config';
-import type { TaskFile, TaskFrontmatter } from '@/tasks/types';
+import { buildWork } from '@/work/build';
+import type { WorkTask } from '@/work/model';
 import { roadmapDataBlock } from '@/roadmap/data';
 import { todayDate } from '@/shared/date';
 import { THEME_BLOCK } from '@/shared/theme';
@@ -13,35 +14,27 @@ import { renderAttentionHtml } from './attention-render';
 
 const TODAY = '2026-09-28';
 
-const task = (id: string, overrides: Partial<TaskFrontmatter> = {}): TaskFile => ({
-  frontmatter: {
-    schema: 1,
-    id,
-    title: `Task ${id}`,
-    type: 'task',
-    status: 'active',
-    priority: 'P2',
-    project: 'acme',
-    assignee: ['user'],
-    labels: [],
-    created: '2026-09-01',
-    updated: '2026-09-01',
-    due: '',
-    horizon: '',
-    depends_on: [],
-    blocked_by: '',
-    parent: '',
-    issue: '',
-    closed: '',
-    ...overrides
-  },
-  description: '',
-  checklist: [],
-  thread: [],
-  filePath: `/home/alex/projects/acme/tasks/${id}.md`
+const task = (id: string, overrides: Partial<WorkTask> = {}): WorkTask => ({
+  id,
+  title: `Task ${id}`,
+  project: 'acme',
+  status: 'active',
+  priority: 'P2',
+  due: '',
+  horizon: '',
+  updated: '2026-09-01',
+  closed: '',
+  assignee: ['user'],
+  dependsOn: [],
+  blockedBy: '',
+  issue: '',
+  comments: 0,
+  archived: false,
+  path: `projects/acme/tasks/${id}.md`,
+  ...overrides
 });
 
-const inputs = (tasks: TaskFile[], overrides: Partial<AttentionInputs> = {}): AttentionInputs => ({
+const inputs = (tasks: WorkTask[], overrides: Partial<AttentionInputs> = {}): AttentionInputs => ({
   project: '',
   home: '/home/alex',
   tasks,
@@ -451,7 +444,7 @@ describe('attention pages on disk', () => {
     writeFileSync(dashboard, '<p>hand-made</p>');
     const page = attentionPagePath('acme');
     rmSync(page, { force: true });
-    writeAttentionPagesSafe();
+    writeAttentionPagesSafe(buildWork());
     expect(existsSync(page)).toBe(false);
     expect(existsSync(join(FOLDERS.HOME, 'attention.html'))).toBe(false);
 
@@ -462,7 +455,7 @@ describe('attention pages on disk', () => {
       join(archived, 'ac-901-shipped.md'),
       `---\nschema: 1\nid: ac-901\ntitle: Shipped already\ntype: task\nstatus: done\npriority: P2\nproject: acme\nassignee: [user]\nlabels: []\ncreated: ${todayDate()}\nupdated: ${todayDate()}\ndue: ''\nhorizon: ${todayDate()}\ndepends_on: []\nblocked_by: ''\nparent: ''\nclosed: ${todayDate()}\n---\n\n## Description\n\nDone.\n`
     );
-    writeAttentionPagesSafe();
+    writeAttentionPagesSafe(buildWork());
     expect(readFileSync(page, 'utf-8')).toContain('Shipped already');
     expect(existsSync(join(FOLDERS.HOME, 'attention.html'))).toBe(false);
     expect(readFileSync(dashboard, 'utf-8')).toBe('<p>hand-made</p>');

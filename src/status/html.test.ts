@@ -391,30 +391,22 @@ describe('renderDashboardHtml', () => {
 
   test("today opens on Attention, drawn with the attention page's lanes and stylesheet, and the Plan tab is gone", () => {
     const task = (id: string, horizon: string, status: 'active' | 'open' = 'active', due = '') => ({
-      frontmatter: {
-        schema: 1,
-        id,
-        title: `Attention task ${id}`,
-        type: 'task' as const,
-        status,
-        priority: 'P1' as const,
-        project: 'life-os',
-        assignee: ['user'],
-        labels: [],
-        created: '2026-06-01',
-        updated: '2026-06-01',
-        due,
-        horizon,
-        depends_on: [],
-        blocked_by: '',
-        parent: '',
-        issue: '',
-        closed: ''
-      },
-      description: '',
-      checklist: [],
-      thread: [],
-      filePath: `/tmp/home/projects/life-os/tasks/${id}.md`
+      id,
+      title: `Attention task ${id}`,
+      project: 'life-os',
+      status,
+      priority: 'P1',
+      due,
+      horizon,
+      updated: '2026-06-01',
+      closed: '',
+      assignee: ['user'],
+      dependsOn: [],
+      blockedBy: '',
+      issue: '',
+      comments: 0,
+      archived: false,
+      path: `projects/life-os/tasks/${id}.md`
     });
     const attention = buildAttentionView({
       project: '',

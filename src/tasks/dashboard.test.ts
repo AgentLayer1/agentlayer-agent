@@ -9,6 +9,7 @@ const task = (id: string, project: string, updated: string): WorkTask => ({
   status: 'open',
   priority: 'P2',
   due: '',
+  horizon: '',
   updated,
   closed: '',
   assignee: [],

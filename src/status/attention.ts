@@ -10,10 +10,11 @@ import { plainText, readRoadmapFile, roadmapMilestones, type RoadmapMilestone, t
 import { agentDisplayName } from '@/shared/agent-name';
 import { nowTime, todayDate } from '@/shared/date';
 import { createLogger } from '@/shared/log';
-import type { TaskFile } from '@/tasks/types';
 import { writeFileAtomic } from '@/shared/utils';
 import { HORIZON_BUCKETS, horizonBucket, horizonWithin, isoWeekOf, type HorizonBucket } from '@/tasks/horizon';
-import { PROJECT_SLUG, discoverProjects, isProject, scanAllTasks, scanArchivedTasks } from '@/tasks/scan';
+import { PROJECT_SLUG, discoverProjects, isProject } from '@/tasks/scan';
+import { buildWork } from '@/work/build';
+import type { Work, WorkTask } from '@/work/model';
 import { byPriorityThenDue } from '@/work/views';
 import { existsSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
@@ -47,7 +48,7 @@ export interface AttentionInputs {
   project: string;
   home: string;
   /** Active and archived tasks: sync archives done work, which still counts toward its period. */
-  tasks: TaskFile[];
+  tasks: readonly WorkTask[];
   goals: { daily: string[]; weekly: string[]; monthly: string[] };
   roadmaps: AttentionRoadmapSource[];
   /** The project README's live pins; none on the home page, whose pins are the sidebar's. */
@@ -67,22 +68,13 @@ const OPEN = new Set(['open', 'active', 'blocked']);
 const byUrgency = (a: AttentionTask, b: AttentionTask): number =>
   byPriorityThenDue(a, b) || a.horizon.localeCompare(b.horizon);
 
-const toAttentionTask =
-  (home: string) =>
-  (task: TaskFile): AttentionTask => ({
-    id: task.frontmatter.id,
-    title: task.frontmatter.title,
-    priority: task.frontmatter.priority,
-    project: task.frontmatter.project,
-    status: task.frontmatter.status,
-    due: task.frontmatter.due,
-    horizon: task.frontmatter.horizon,
-    blockedBy: task.frontmatter.blocked_by,
-    path: relative(home, task.filePath)
-  });
+const toAttentionTask = (task: WorkTask): AttentionTask => {
+  const { id, title, priority, project, status, due, horizon, blockedBy, path } = task;
+  return { id, title, priority, project, status, due, horizon, blockedBy, path };
+};
 
-const isMine = (task: TaskFile, self: Set<string>): boolean =>
-  task.frontmatter.assignee.length === 0 || task.frontmatter.assignee.some((name) => self.has(name.toLowerCase()));
+const isMine = (task: WorkTask, self: Set<string>): boolean =>
+  task.assignee.length === 0 || task.assignee.some((name) => self.has(name.toLowerCase()));
 
 const emptyLanes = (): Record<HorizonBucket, AttentionTask[]> => ({
   carried: [],
@@ -137,10 +129,8 @@ const pulledAt = (fetchedAt: string, today: string, timeZone: string): Attention
 };
 
 const buildRoadmap = (inputs: AttentionInputs): AttentionView['roadmap'] => {
-  const byId = new Map(inputs.tasks.map((task) => [task.frontmatter.id, toAttentionTask(inputs.home)(task)]));
-  const projectIds = new Set(
-    inputs.tasks.filter((task) => task.frontmatter.project === inputs.project).map((task) => task.frontmatter.id)
-  );
+  const byId = new Map(inputs.tasks.map((task) => [task.id, toAttentionTask(task)]));
+  const projectIds = new Set(inputs.tasks.filter((task) => task.project === inputs.project).map((task) => task.id));
   const walked = inputs.roadmaps.map((roadmap) => ({
     roadmap,
     all: roadmap.read.kind === 'data' ? roadmapMilestones(roadmap.read.data) : []
@@ -187,11 +177,11 @@ const buildRoadmap = (inputs: AttentionInputs): AttentionView['roadmap'] => {
 
 export const buildAttentionView = (inputs: AttentionInputs): AttentionView => {
   const mine = inputs.tasks.filter(
-    (task) => isMine(task, inputs.self) && (!inputs.project || task.frontmatter.project === inputs.project)
+    (task) => isMine(task, inputs.self) && (!inputs.project || task.project === inputs.project)
   );
   const bucketed = mine.map((task) => ({
-    task: toAttentionTask(inputs.home)(task),
-    bucket: horizonBucket(task.frontmatter.horizon, inputs.today)
+    task: toAttentionTask(task),
+    bucket: horizonBucket(task.horizon, inputs.today)
   }));
   const lanes = emptyLanes();
   const done: AttentionView['done'] = { today: [], week: [], month: [] };
@@ -300,13 +290,13 @@ const roadmapSources = (project: string): AttentionRoadmapSource[] =>
     return read ? [{ source: relative(FOLDERS.HOME, path), read, linkedOnly }] : [];
   });
 
-/** The live view of one page: tasks, goals and roadmaps read now, the queue from its last pull. */
-export const collectAttentionView = (project = ''): AttentionView => {
+/** The live view of one page: tasks and roadmaps from the work model, goals read now, the queue from its last pull. */
+export const collectAttentionView = (project = '', work: Work = buildWork()): AttentionView => {
   const operator = boldField(FILES.USER, 'Name');
   const goals = collectGoals();
   return buildAttentionView({
     project: checkedProject(project),
-    tasks: [...scanAllTasks(), ...scanArchivedTasks()],
+    tasks: work.tasks,
     goals: { daily: goals.daily, weekly: goals.weekly, monthly: goals.monthly },
     roadmaps: roadmapSources(project),
     pins: project ? projectPinLinks(project) : [],
@@ -323,8 +313,11 @@ export const collectAttentionView = (project = ''): AttentionView => {
 };
 
 /** Render a project's attention page, creating it on first call. */
-export const writeAttentionPage = (project: string): { path: string; bytes: number; view: AttentionView } => {
-  const view = collectAttentionView(project);
+export const writeAttentionPage = (
+  project: string,
+  work: Work = buildWork()
+): { path: string; bytes: number; view: AttentionView } => {
+  const view = collectAttentionView(project, work);
   const html = renderAttentionHtml(view);
   const path = attentionPagePath(project);
   writeFileAtomic(path, html);
@@ -337,11 +330,11 @@ export const existingAttentionPages = (): string[] =>
     .filter((slug) => PROJECT_SLUG.test(slug))
     .filter((project) => existsSync(attentionPagePath(project)));
 
-/** Rebuild hook: re-render every page the attention skill has created, never throw. */
-export const writeAttentionPagesSafe = (): void => {
+/** Rebuild hook: re-render every page the attention skill has created from the rebuild's model, never throw. */
+export const writeAttentionPagesSafe = (work: Work): void => {
   existingAttentionPages().forEach((project) => {
     try {
-      writeAttentionPage(project);
+      writeAttentionPage(project, work);
     } catch (err) {
       log.warn(`attention page rebuild failed for ${project}`, err);
     }

@@ -29,6 +29,10 @@ const TaskSchema = z.object({
   status: z.string(),
   priority: z.string(),
   due: z.string(),
+  /**
+   * When the operator plans to do it: a day, a week, a month or a quarter (tasks/horizon.ts).
+   */
+  horizon: z.string(),
   updated: z.string(),
   closed: z.string(),
   assignee: z.array(z.string()),

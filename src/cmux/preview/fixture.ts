@@ -19,6 +19,7 @@ const task = (
   status,
   priority,
   due,
+  horizon: '',
   updated: '2026-11-08',
   closed: status === 'done' ? '2026-11-01' : '',
   assignee: [],

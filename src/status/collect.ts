@@ -1753,7 +1753,7 @@ export const collectStatus = async (work: Work = buildWork()): Promise<StatusSna
     reports: allReports.slice(0, MAX_REPORTS),
     reportsTotal: allReports.length,
     radarLatest: await collectRadarLatest(allReports, work),
-    attention: collectAttentionView(''),
+    attention: collectAttentionView('', work),
     changelog: parseChangelog()
   };
   return { ...base, health: computeHealth(base) };
