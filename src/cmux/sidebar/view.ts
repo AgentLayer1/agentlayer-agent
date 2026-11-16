@@ -34,7 +34,7 @@ export const scopedPage = (home: () => string | undefined, ready: (entry: HomeEn
       note(`${homeLabel(item().path)} needs its agent updated to show here.`)
     ),
     ForEach({ items: () => (view() ? [] : ['none']), key: (item) => item }, () =>
-      note('No agent has joined this sidebar yet. In an agent’s home, run its cmux sidebar install.')
+      note('No agent has joined this sidebar yet. Ask an agent to set up its cmux pack.')
     )
   ]);
 };

@@ -24,7 +24,8 @@ export interface SidebarParts extends SidebarCode {
 }
 
 const META = /^\/\* agentlayer sidebar · bundle (\S+) \*\/\n/;
-const DATA = /^const DATA = (.*);\n/;
+// Up to the line feed, not `.`: JSON.stringify keeps U+2028 and U+2029, which `.` won't match.
+const DATA = /^const DATA = ([^\n]*);\n/;
 
 const parseHomes = (json: string): Record<string, HomeEntry> | null => {
   try {

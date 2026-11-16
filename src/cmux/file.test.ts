@@ -50,3 +50,9 @@ test('the newer plugin’s code wins, so an older plugin never downgrades the si
   expect(newerCode(installed, { version: '1.4.0', bundle: 'newest' })).toEqual({ version: '1.4.0', bundle: 'newest' });
   expect(newerCode(null, { version: '1.0.0', bundle: 'first' })).toEqual({ version: '1.0.0', bundle: 'first' });
 });
+
+test('a title holding a Unicode line or paragraph separator still reads back', () => {
+  const pasted = { ...NOVA_ENTRY, name: 'Nova\u2028II\u2029' };
+  const parts = { version: '1.2.0', homes: { [NOVA_HOME]: pasted }, bundle: BUNDLE };
+  expect(parseSidebar(renderSidebar(parts))).toEqual(parts);
+});
