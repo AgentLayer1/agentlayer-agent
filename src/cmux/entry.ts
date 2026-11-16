@@ -1,8 +1,20 @@
 import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { Work, WorkProject } from '@/work/model';
+import { nameHue } from '@/status/html-primitives';
+import type { Work, WorkProject, WorkReport } from '@/work/model';
 import { byPriorityThenDue, live, projectLoad } from '@/work/views';
-import { SCHEMA, type HomeEntry, type PinItem, type ProjectCard, type TaskItem } from './sidebar/data';
+import {
+  SCHEMA,
+  type HomeEntry,
+  type PinItem,
+  type PinTarget,
+  type ProjectCard,
+  type ReportItem,
+  type TaskItem
+} from './sidebar/data';
+
+// Enough for a few weeks of reports while keeping the shared sidebar file small; the dashboard lists them all.
+export const REPORT_LIMIT = 40;
 
 const STATUS_ORDER: Readonly<Record<string, number>> = { active: 0, blocked: 1, open: 2 };
 
@@ -21,20 +33,30 @@ const fileUrl = (path: string): string => pathToFileURL(path).href;
 
 const pageUrl = (home: string, page: string): string | null => (page ? fileUrl(join(home, page)) : null);
 
-const pinItem = (home: string, { title, icon, path }: WorkProject['pins'][number]): PinItem => {
+const targetOf = (home: string, path: string): PinTarget => {
   const absolute = join(home, path);
-  return {
-    title,
-    icon,
-    target: extname(path) === '.html' ? { kind: 'page', url: fileUrl(absolute) } : { kind: 'file', path: absolute }
-  };
+  return extname(path) === '.html' ? { kind: 'page', url: fileUrl(absolute) } : { kind: 'file', path: absolute };
+};
+
+const pinItem = (home: string, { title, icon, path }: WorkProject['pins'][number]): PinItem => ({
+  title,
+  icon,
+  target: targetOf(home, path)
+});
+
+const reportItem = (home: string, { title, skill, category, date, time, status, path }: WorkReport): ReportItem => {
+  const kind = skill || category;
+  return { title, kind, hue: nameHue(kind), date, time, status, target: targetOf(home, path) };
 };
 
 /**
- * What the sidebar shows of the home at `home`: its agent, pages, and each project's counts and live tasks.
+ * What the sidebar shows of the home at `home`: its agent, pages, each project's counts and live tasks, its pins and
+ * its newest reports.
  */
 export const homeEntry = (home: string, work: Work): HomeEntry => {
   const liveTasks = live(work);
+  // An index line without a link names a report nothing can open.
+  const openable = work.reports.filter((report) => report.path !== '');
   const tasksOf = (project: string): TaskItem[] =>
     liveTasks
       .filter((task) => task.project === project)
@@ -68,6 +90,9 @@ export const homeEntry = (home: string, work: Work): HomeEntry => {
     emoji: work.agent.emoji,
     dashboard: fileUrl(join(home, 'dashboard.html')),
     roadmap: pageUrl(home, work.roadmap),
-    projects: work.projects.map(card).toSorted(byWork)
+    projects: work.projects.map(card).toSorted(byWork),
+    pins: work.pins.map((pin) => pinItem(home, pin)),
+    reports: openable.slice(0, REPORT_LIMIT).map((report) => reportItem(home, report)),
+    olderReports: Math.max(0, openable.length - REPORT_LIMIT)
   };
 };

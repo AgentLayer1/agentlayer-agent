@@ -1,7 +1,7 @@
 /**
  * The entry format's version. A sidebar shows an entry with another schema as "update this agent".
  */
-export const SCHEMA = 3;
+export const SCHEMA = 4;
 
 export interface TaskItem {
   id: string;
@@ -57,6 +57,28 @@ export interface ProjectCard {
 /**
  * What the sidebar knows about one home, rewritten whenever a project or one of its live tasks changes.
  */
+export interface ReportItem {
+  title: string;
+  /**
+   * The skill that wrote it, or its folder when no skill is recorded.
+   */
+  kind: string;
+  /**
+   * The hue the dashboard gives `kind`'s chip.
+   */
+  hue: number;
+  /**
+   * `YYYY-MM-DD` and `HH:MM`; the sidebar words the day against today.
+   */
+  date: string;
+  time: string;
+  /**
+   * The status emoji from the report's index line, '' when none.
+   */
+  status: string;
+  target: PinTarget;
+}
+
 export interface HomeEntry {
   schema: number;
   name: string;
@@ -70,6 +92,18 @@ export interface HomeEntry {
    */
   roadmap: string | null;
   projects: ProjectCard[];
+  /**
+   * The home's own pins (reports/pinned.md); each project's ride on its card.
+   */
+  pins: PinItem[];
+  /**
+   * The newest reports, at most REPORT_LIMIT of them.
+   */
+  reports: ReportItem[];
+  /**
+   * How many older reports were left out, which the dashboard still lists.
+   */
+  olderReports: number;
 }
 
 export interface SidebarData {

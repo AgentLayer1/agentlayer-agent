@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { WORK_SCHEMA, type Work, type WorkTask } from '@/work/model';
+import { WORK_SCHEMA, type Work, type WorkReport, type WorkTask } from '@/work/model';
 
 export const NOVA_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Nova');
 export const SCOUT_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Scout');
@@ -29,6 +29,23 @@ const task = (
   comments,
   archived: false,
   path: join('projects', project, 'tasks', `${id}.md`)
+});
+
+const report = (
+  date: string,
+  time: string,
+  title: string,
+  category: string,
+  skill: string,
+  status: string
+): WorkReport => ({
+  date,
+  time,
+  title,
+  path: join('reports', category, `${date}-${time.replace(':', '')}-${title.split(' ')[0]?.toLowerCase()}.md`),
+  skill,
+  status,
+  category
 });
 
 const closed = (project: string, count: number): WorkTask[] =>
@@ -75,8 +92,14 @@ export const NOVA: Work = {
     ...closed('garden-shop', 4),
     ...closed('blog', 2)
   ],
-  reports: [],
-  pins: [],
+  reports: [
+    report('2026-11-09', '08:30', 'Morning brief — Mon 9 Nov', 'briefings', 'briefing', '🟠'),
+    report('2026-11-09', '07:10', 'Checkpoints — 4 sessions', 'radar', 'attention', ''),
+    report('2026-11-08', '21:00', 'Evening wrap — Sun 8 Nov', 'briefings', 'briefing', '🟢'),
+    report('2026-11-02', '14:20', 'Pricing page plan', 'plans', '', '⏳'),
+    { date: '2026-11-01', time: '09:00', title: 'A line with no link', path: '', skill: '', status: '', category: '' }
+  ],
+  pins: [{ title: 'Support playbook', icon: '🛟', path: join('reports', 'plans', 'support-playbook.md') }],
   malformed: []
 };
 

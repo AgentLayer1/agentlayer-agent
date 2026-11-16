@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { homeEntry } from './entry';
+import { nameHue } from '@/status/html-primitives';
+import { homeEntry, REPORT_LIMIT } from './entry';
 import { NOVA, NOVA_HOME, SCOUT, SCOUT_HOME } from './preview/fixture';
 import { SCHEMA } from './sidebar/data';
 
@@ -95,4 +96,42 @@ test('a path with a space becomes a URL a browser can open', () => {
   expect(homeEntry(join('/Users', 'ada', 'My Agents', 'Nova'), NOVA).dashboard).toBe(
     'file:///Users/ada/My%20Agents/Nova/dashboard.html'
   );
+});
+
+test('the newest reports, each with the kind and hue the dashboard gives it, and the home pins', () => {
+  const entry = homeEntry(NOVA_HOME, NOVA);
+  expect(entry.reports.map((item) => [item.date, item.time, item.kind, item.status])).toEqual([
+    ['2026-11-09', '08:30', 'briefing', '🟠'],
+    ['2026-11-09', '07:10', 'attention', ''],
+    ['2026-11-08', '21:00', 'briefing', '🟢'],
+    ['2026-11-02', '14:20', 'plans', '⏳']
+  ]);
+  expect(entry.reports[0]).toMatchObject({
+    hue: nameHue('briefing'),
+    target: { kind: 'file', path: join(NOVA_HOME, 'reports', 'briefings', '2026-11-09-0830-morning.md') }
+  });
+  expect(entry.pins).toEqual([
+    {
+      title: 'Support playbook',
+      icon: '🛟',
+      target: { kind: 'file', path: join(NOVA_HOME, 'reports', 'plans', 'support-playbook.md') }
+    }
+  ]);
+  expect(entry.olderReports).toBe(0);
+});
+
+test('reports past the limit are counted, not carried, and an HTML report opens as a page', () => {
+  const many = Array.from({ length: REPORT_LIMIT + 3 }, (_unused, index) => ({
+    date: '2026-10-01',
+    time: String(index).padStart(2, '0') + ':00',
+    title: `Report ${index}`,
+    path: join('reports', 'plans', `r-${index}.html`),
+    skill: '',
+    status: '',
+    category: 'plans'
+  }));
+  const entry = homeEntry(NOVA_HOME, { ...NOVA, reports: many });
+  expect(entry.reports).toHaveLength(REPORT_LIMIT);
+  expect(entry.olderReports).toBe(3);
+  expect(entry.reports[0]?.target).toEqual({ kind: 'page', url: url(NOVA_HOME, 'reports', 'plans', 'r-0.html') });
 });

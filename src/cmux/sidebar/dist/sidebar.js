@@ -376,7 +376,7 @@ var taskRow = (task, projectColor) => VStack({ spacing: 2, alignment: "leading" 
 ]).paddingHorizontal(4).paddingVertical(5).cornerRadius(8).hoverBackground("#7f7f7f26").cursor("pointer").frame({ maxWidth: "infinity", alignment: "leading" }).onTap(() => cmux("file.open", { path: task.path }));
 
 // src/cmux/sidebar/data.ts
-var SCHEMA = 3;
+var SCHEMA = 4;
 
 // src/cmux/sidebar/view.ts
 var entryOf = (home) => home ? DATA.homes[home] : undefined;
