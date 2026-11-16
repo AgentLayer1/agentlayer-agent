@@ -1,50 +1,9 @@
-const DAY_MS = 86_400_000;
-
-const dayNumber = (iso: string): number => {
-  const [year, month, day] = iso.split('-').map(Number);
-  return year && month && day ? Date.UTC(year, month - 1, day) / DAY_MS : Number.NaN;
-};
-
-// Days from today to the due date; null for no date or one that doesn't parse.
-const daysUntil = (due: string, today: string): number | null => {
-  const days = dayNumber(due) - dayNumber(today);
-  return due && !Number.isNaN(days) ? days : null;
-};
-
-export const BUCKETS = ['overdue', 'today', 'week', 'month', 'later', 'someday'] as const;
-export type DueBucket = (typeof BUCKETS)[number];
-
-const bucketOf = (days: number | null): DueBucket => {
-  if (days === null) {
-    return 'someday';
-  }
-  if (days < 0) {
-    return 'overdue';
-  }
-  if (days === 0) {
-    return 'today';
-  }
-  return days <= 7 ? 'week' : days <= 30 ? 'month' : 'later';
-};
-
-/**
- * Where a due date falls on the agenda, as the dashboard's Tasks page groups it.
- */
-export const dueBucket = (due: string, today: string): DueBucket => bucketOf(daysUntil(due, today));
+import { daysUntil, toneOf, type DueTone } from '../../work/due';
 
 export interface DueLabel {
   text: string;
-  tone: 'overdue' | 'soon' | 'later';
+  tone: DueTone;
 }
-
-const TONE: Readonly<Record<DueBucket, DueLabel['tone']>> = {
-  overdue: 'overdue',
-  today: 'soon',
-  week: 'soon',
-  month: 'later',
-  later: 'later',
-  someday: 'later'
-};
 
 const wordsFor = (days: number): string => {
   if (days < 0) {
@@ -57,12 +16,11 @@ const wordsFor = (days: number): string => {
 };
 
 /**
- * A due date in words against today, both `YYYY-MM-DD`, toned by its agenda bucket; `null` for no date or one that
- * doesn't parse.
+ * A due date in the sidebar's words against today, both `YYYY-MM-DD`; `null` for no date or one that doesn't parse.
  */
 export const dueLabel = (due: string, today: string): DueLabel | null => {
   const days = daysUntil(due, today);
-  return days === null ? null : { text: wordsFor(days), tone: TONE[bucketOf(days)] };
+  return days === null ? null : { text: wordsFor(days), tone: toneOf(days) };
 };
 
 /**

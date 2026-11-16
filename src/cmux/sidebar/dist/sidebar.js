@@ -256,7 +256,7 @@ var manager = ({ header, trailing } = {}) => {
   ]).paddingHorizontal(6);
 };
 
-// src/cmux/sidebar/due.ts
+// src/work/due.ts
 var DAY_MS = 86400000;
 var dayNumber = (iso) => {
   const [year, month, day] = iso.split("-").map(Number);
@@ -288,6 +288,9 @@ var TONE = {
   later: "later",
   someday: "later"
 };
+var toneOf = (days) => TONE[bucketOf(days)];
+
+// src/cmux/sidebar/due.ts
 var wordsFor = (days) => {
   if (days < 0) {
     return `overdue ${-days}d`;
@@ -299,7 +302,7 @@ var wordsFor = (days) => {
 };
 var dueLabel = (due, today) => {
   const days = daysUntil(due, today);
-  return days === null ? null : { text: wordsFor(days), tone: TONE[bucketOf(days)] };
+  return days === null ? null : { text: wordsFor(days), tone: toneOf(days) };
 };
 var isoDay = (epochSeconds) => {
   const date = new Date(epochSeconds * 1000);

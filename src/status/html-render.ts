@@ -36,6 +36,7 @@ import { RUNTIME_DIR } from '@/shared/naming';
 import { DEFAULT_AGENT_EMOJI } from '@/shared/persona';
 import { THEME_BLOCK } from '@/shared/theme';
 import { issueLabel } from '@/tasks/issue';
+import { daysUntil, dueBucket, toneOf, type DueBucket, type DueTone } from '@/work/due';
 import type { ProjectLoad } from '@/work/views';
 import type {
   ContextGroup,
@@ -227,13 +228,13 @@ const plainRows = (items: string[], emptyText: string): string =>
 
 // ── dates ─────────────────────────────────────────────────────────────
 
+const TONE_CLASS: Readonly<Record<DueTone, string>> = { overdue: 'bad', soon: 'warn', later: '' };
+
 const dueLabel = (due: string, todayIso: string): { text: string; cls: string } => {
-  if (!due) return { text: '', cls: '' };
-  const days = daysBetween(todayIso, due);
-  if (days < 0) return { text: `${-days}d overdue`, cls: 'bad' };
-  if (days === 0) return { text: 'due today', cls: 'warn' };
-  if (days <= 7) return { text: `due in ${days}d`, cls: 'warn' };
-  return { text: `due ${due}`, cls: '' };
+  const days = daysUntil(due, todayIso);
+  if (days === null) return { text: '', cls: '' };
+  const text = days < 0 ? `${-days}d overdue` : days === 0 ? 'due today' : days <= 7 ? `due in ${days}d` : `due ${due}`;
+  return { text, cls: TONE_CLASS[toneOf(days)] };
 };
 
 // ── tasks ─────────────────────────────────────────────────────────────
@@ -615,19 +616,11 @@ const pageTasks = (snap: StatusSnapshot): string => {
   const { tasks } = snap;
   const today = snap.runtime.isoDate;
 
-  const dueBucket = (ref: TaskRef): string => {
-    if (!ref.due) return 'someday';
-    const days = daysBetween(today, ref.due);
-    if (days < 0) return 'overdue';
-    if (days === 0) return 'today';
-    if (days <= 7) return 'week';
-    if (days <= 30) return 'month';
-    return 'later';
-  };
+  const bucket = (ref: TaskRef): DueBucket => dueBucket(ref.due, today);
   const groups = new Map<string, TaskRef[]>();
   // In-flight tasks lead the agenda and carry their own due label, so each task appears once.
   for (const ref of tasks.queue.filter((item) => item.status !== 'active')) {
-    const key = dueBucket(ref);
+    const key = bucket(ref);
     groups.set(key, [...(groups.get(key) ?? []), ref]);
   }
   const agenda = `<div data-filterbox>${filterInput('filter tasks…')}${projectFilterChips(tasks.queue, snap.projectHues)}${[
@@ -670,7 +663,7 @@ const pageTasks = (snap: StatusSnapshot): string => {
   // plus the in-flight tasks that share its deadline.
   const due = (key: string) => ({
     listed: groups.get(key)?.length ?? 0,
-    active: tasks.activeList.filter((ref) => dueBucket(ref) === key).length
+    active: tasks.activeList.filter((ref) => bucket(ref) === key).length
   });
   const inFlight = (count: number) => (count ? `${count} in flight` : '');
   // A deadline whose tasks are all in flight has no group of its own; its tile lands on In flight.

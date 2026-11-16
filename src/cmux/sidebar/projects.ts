@@ -1,6 +1,7 @@
 import { chip, searchField } from 'cmux-custom-manager/components';
 import type { HomeEntry, PinItem, PinTarget, ProjectCard, TaskItem } from './data';
-import { BUCKETS, dueBucket, dueLabel, type DueBucket } from './due';
+import { BUCKETS, dueBucket, type DueBucket } from '../../work/due';
+import { dueLabel } from './due';
 import { groupTitle, hueColor, note, progressBar, toolIcon } from './style';
 import { count, taskRow, today } from './tasks';
 import { entryOf, homeLabel, scopedPage } from './view';
