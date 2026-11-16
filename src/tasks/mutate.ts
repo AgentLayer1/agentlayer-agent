@@ -19,7 +19,7 @@ import { normalizeHorizon } from './horizon';
 import { issueLabel } from './issue';
 import { buildTaskMap, rewriteLinks } from './link';
 import type { ScanResult } from './resolve';
-import { findTaskById, getNextId } from './scan';
+import { findTaskById, getNextId, isProject } from './scan';
 import {
   defaultFrontmatter,
   isSectionHeader,
@@ -122,8 +122,6 @@ export const verifyMutation = (
 // ── Create ────────────────────────────────────────────────────────────
 // New files are fully serialized — no round-trip risk.
 
-const PROJECT_SLUG = /^[a-z0-9][a-z0-9_-]*$/i;
-
 /** A section heading inside a description would end the Description section early and swallow what follows. */
 const assertDescription = (description: string | undefined): void => {
   if (description?.split('\n').some(isSectionHeader)) {
@@ -132,8 +130,7 @@ const assertDescription = (description: string | undefined): void => {
 };
 
 export const createTask = (opts: CreateTaskOptions): TaskFile => {
-  const projectDir = join(FOLDERS.PROJECTS, opts.project);
-  if (!PROJECT_SLUG.test(opts.project) || !existsSync(projectDir))
+  if (!isProject(opts.project))
     throw new Error(`Unknown project: ${opts.project} (directory not found under ${FOLDERS.PROJECTS})`);
   assertDescription(opts.description);
 

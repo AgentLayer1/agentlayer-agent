@@ -13,6 +13,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
+import { RUNTIME_DIR } from '../../../src/shared/naming';
 
 interface Rename {
   path: string;
@@ -43,7 +44,7 @@ const readJson = (path: string): Record<string, unknown> | null => {
     return null;
   }
 };
-const moved = readJson(join(homeDir, '.state', 'version.json'))?.migratedFrom as Record<string, unknown> | undefined;
+const moved = readJson(join(homeDir, RUNTIME_DIR, 'version.json'))?.migratedFrom as Record<string, unknown> | undefined;
 const logPath = typeof moved?.log === 'string' ? resolve(homeDir, moved.log) : null;
 const log = logPath ? (readJson(logPath) as MoveLog | null) : null;
 if (!logPath || !log) {

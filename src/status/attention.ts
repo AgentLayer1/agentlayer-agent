@@ -13,7 +13,7 @@ import { createLogger } from '@/shared/log';
 import type { TaskFile } from '@/tasks/types';
 import { writeFileAtomic } from '@/shared/utils';
 import { HORIZON_BUCKETS, horizonBucket, horizonWithin, isoWeekOf, type HorizonBucket } from '@/tasks/horizon';
-import { discoverProjects, scanAllTasks, scanArchivedTasks } from '@/tasks/scan';
+import { PROJECT_SLUG, discoverProjects, isProject, scanAllTasks, scanArchivedTasks } from '@/tasks/scan';
 import { existsSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { z } from 'zod';
@@ -260,11 +260,9 @@ const readJson = <T>(path: string, schema: z.ZodType<T>): T | null => {
   }
 };
 
-const SLUG = /^[a-z0-9][a-z0-9_-]*$/i;
-
 /** A project slug, checked before it becomes a path; '' is the home scope, which lives in the dashboard. */
 const checkedProject = (project: string): string => {
-  if (project && (!SLUG.test(project) || !existsSync(resolve(FOLDERS.PROJECTS, project)))) {
+  if (project && !isProject(project)) {
     throw new Error(`Unknown project: ${project} (directory not found under ${FOLDERS.PROJECTS})`);
   }
   return project;
@@ -339,7 +337,7 @@ export const writeAttentionPage = (project: string): { path: string; bytes: numb
 /** Projects whose attention page already exists. */
 export const existingAttentionPages = (): string[] =>
   discoverProjects()
-    .filter((slug) => SLUG.test(slug))
+    .filter((slug) => PROJECT_SLUG.test(slug))
     .filter((project) => existsSync(attentionPagePath(project)));
 
 /** Rebuild hook: re-render every page the attention skill has created, never throw. */

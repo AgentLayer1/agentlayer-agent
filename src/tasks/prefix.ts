@@ -4,7 +4,7 @@
  */
 
 /** A task prefix as `assignPrefixes` hands it out: letters, then the number a collision adds (`hs`, `hs2`). */
-export const TASK_PREFIX = '[a-z]+\\d*';
+const TASK_PREFIX = '[a-z]+\\d*';
 
 /** A task file's name: its prefix (group 1), then its number. */
 export const TASK_FILE = new RegExp(`^(${TASK_PREFIX})-\\d+`);

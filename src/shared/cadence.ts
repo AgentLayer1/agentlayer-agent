@@ -15,7 +15,7 @@ export interface Cadence {
   sync?: string;
 }
 
-// Whole, not field by field: the goals keys this module doesn't name ride through `stampSync`.
+// Whole, not field by field: the goals keys this module doesn't name ride through `stampCadence`.
 export const readCadence = (): Cadence => {
   try {
     const data: unknown = JSON.parse(readFileSync(FILES.CADENCE, 'utf-8'));
@@ -27,16 +27,21 @@ export const readCadence = (): Cadence => {
 
 /** Set one watermark. A file that won't parse is left for the operator, never replaced, so no watermark is lost. */
 export const stampCadence = (key: string, value: string): void => {
-  if (existsSync(FILES.CADENCE)) {
+  const current = (() => {
+    if (!existsSync(FILES.CADENCE)) {
+      return {};
+    }
     try {
-      if (!isRecord(JSON.parse(readFileSync(FILES.CADENCE, 'utf-8')))) {
-        throw new Error('not an object');
+      const data: unknown = JSON.parse(readFileSync(FILES.CADENCE, 'utf-8'));
+      if (isRecord(data)) {
+        return data;
       }
     } catch {
-      throw new Error(`${FILES.CADENCE} is not valid JSON; fix or remove it, then try again.`);
+      // reported below
     }
-  }
-  writeJsonAtomic(FILES.CADENCE, { ...readCadence(), [key]: value });
+    throw new Error(`${FILES.CADENCE} is not valid JSON; fix or remove it, then try again.`);
+  })();
+  writeJsonAtomic(FILES.CADENCE, { ...current, [key]: value });
 };
 
 export const stampSync = (): void => stampCadence('sync', nowISO());

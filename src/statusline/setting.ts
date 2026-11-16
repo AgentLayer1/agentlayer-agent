@@ -5,9 +5,10 @@
  * plugin cache moves on every release, and a stale path leaves the footer blank with nothing
  * on screen saying why.
  */
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pluginName } from '../shared/naming';
+import { existingTarget } from '../shared/paths';
 
 export interface StatusLineSetting {
   type: 'command';
@@ -33,13 +34,7 @@ export const commandCliPath = (command: string): string | undefined =>
   /^bun "?(.+?[\\/]src[\\/]cli\.ts)"? statusline(?:\s|$)/.exec(command.trim())?.[1];
 
 /** Symlink-free, so a checkout reached through a link never reads as a different plugin. */
-const canonical = (path: string): string => {
-  try {
-    return realpathSync(path);
-  } catch {
-    return resolve(path);
-  }
-};
+const canonical = (path: string): string => existingTarget(resolve(path));
 
 const commandIn = (path: string): unknown => {
   try {

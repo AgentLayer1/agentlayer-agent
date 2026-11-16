@@ -32,7 +32,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
-import { CLI_FILE, PLUGIN_SOURCE_ROOT } from '../../../src/shared/naming';
+import { CLI_FILE, PLUGIN_SOURCE_ROOT, RUNTIME_DIR } from '../../../src/shared/naming';
 import { readTextIfExists } from '../../../src/shared/text';
 
 interface HookItem {
@@ -489,12 +489,12 @@ const agentTables = [
   'extends = ":workspace"',
   '',
   `[permissions.${pluginName}.filesystem]`,
-  `${tomlString(resolve(homeDir, '.state', 'secrets'))} = "deny"`,
+  `${tomlString(resolve(homeDir, RUNTIME_DIR, 'secrets'))} = "deny"`,
   ...absoluteDenies.map((glob) => `${tomlString(glob)} = "deny"`),
   '',
   `[permissions.${pluginName}.filesystem.":workspace_roots"]`,
   '".git" = "write"',
-  '"**/.state/secrets/**" = "deny"',
+  `"**/${RUNTIME_DIR}/secrets/**" = "deny"`,
   ...[...new Set(['**/*.env', '**/.env.*', ...relativeDenies])].map((glob) => `${tomlString(glob)} = "deny"`),
   '',
   `[permissions.${pluginName}.network]`,

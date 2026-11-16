@@ -7,6 +7,12 @@ import { join } from 'path';
 import { assignPrefixes, derivePrefix } from './prefix';
 import { parseTaskFile } from './schema';
 
+/** A project folder's name: checked before it becomes a path, so `../x` never reaches the filesystem. */
+export const PROJECT_SLUG = /^[a-z0-9][a-z0-9_-]*$/i;
+
+/** Whether `project` is a plain slug with a folder under projects/. */
+export const isProject = (project: string): boolean => PROJECT_SLUG.test(project) && existsSync(join(FOLDERS.PROJECTS, project));
+
 const log = createLogger('tasks.scan');
 
 // ── Project discovery ────────────────────────────────────────────────

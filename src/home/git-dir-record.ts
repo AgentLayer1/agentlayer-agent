@@ -9,8 +9,9 @@
  * A leaf on purpose (node builtins only), so skill scripts such as sync's commit-brain can import it.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { existingTarget } from '@/shared/paths';
 
 export const HOME_GIT_DIR_KEY = 'AGENT_HOME_GIT_DIR';
 export const HOME_BINDING_KEY = 'agent.home';
@@ -28,13 +29,7 @@ export const recordedGitDir = (home: string): string | null => {
   }
 };
 
-export const canonicalPath = (path: string): string => {
-  try {
-    return realpathSync(path);
-  } catch {
-    return resolve(path);
-  }
-};
+export const canonicalPath = (path: string): string => existingTarget(resolve(path));
 
 /** The home a history folder was set up for, or null when it isn't a history this feature made. */
 export const boundHome = (gitDir: string): string | null => {
