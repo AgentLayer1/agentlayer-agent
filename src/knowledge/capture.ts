@@ -20,6 +20,7 @@ import { existsSync, statSync } from 'node:fs';
 import { appendFile, mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import { basename, relative, resolve } from 'node:path';
 import { fetchSignal } from '@/shared/call-signal';
+import { yamlScalar } from '@/shared/yaml';
 
 export type CaptureKind = 'inbox' | 'feedback';
 
@@ -99,9 +100,9 @@ function deriveSlug(content: string, title?: string): string {
 }
 
 function buildFrontmatter(opts: CaptureOpts, sourceHint: string): string {
-  const lines = ['---', `captured: ${nowISO()}`, `source: ${sourceHint}`];
-  if (opts.title) lines.push(`title: ${JSON.stringify(opts.title)}`);
-  if (opts.label) lines.push(`label: ${JSON.stringify(opts.label)}`);
+  const lines = ['---', `captured: ${nowISO()}`, `source: ${yamlScalar(sourceHint)}`];
+  if (opts.title) lines.push(`title: ${yamlScalar(opts.title)}`);
+  if (opts.label) lines.push(`label: ${yamlScalar(opts.label)}`);
   lines.push('---', '');
   return lines.join('\n');
 }

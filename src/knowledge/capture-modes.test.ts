@@ -104,3 +104,16 @@ describe('capture modes', () => {
     expect(block).not.toContain('a copy');
   });
 });
+
+describe('capture frontmatter', () => {
+  test("a file name, title or label holding YAML syntax reads back as written", async () => {
+    const { capture } = await import('@/knowledge/capture');
+    const dir = mkdtempSync(resolve(tmpdir(), 'capture-yaml-'));
+    const file = resolve(dir, 'Meeting: Q4 #2.md');
+    writeFileSync(file, '# Notes\n\nThe budget is set.\n');
+    const result = await capture({ file, title: 'Q4: budget', label: '- draft' });
+    const written = readFileSync(resolve(HOME, result.relPath), 'utf-8');
+    const block = written.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '';
+    expect(Bun.YAML.parse(block)).toMatchObject({ source: 'file:Meeting: Q4 #2.md', title: 'Q4: budget', label: '- draft' });
+  });
+});
