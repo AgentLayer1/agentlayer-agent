@@ -29,7 +29,7 @@ import { readLedger } from '@/notices/ledger';
 import { type ChangelogEntry, getUpgradeStatus, parseChangelog, type UpgradeState } from '@/upgrade/version';
 import { readCadence } from '@/shared/cadence';
 import { nowISO, nowTime, todayDate } from '@/shared/date';
-import { agentDisplayName } from '@/shared/agent-name';
+import { agentDisplayName, agentEmoji } from '@/shared/agent-name';
 import { CLI_PATH } from '@/shared/naming';
 import { routerPlaybooks } from '@/status/playbooks';
 import { env } from '@/shared/env';
@@ -43,7 +43,7 @@ import {
   type RadarTaskRef
 } from './radar-refs';
 import { sanitizeHtml } from '@/status/sanitize-html';
-import { readText } from '@/shared/text';
+import { firstParagraph, readText, stripMarkdown } from '@/shared/text';
 import type { TaskFile } from '@/tasks/types';
 import { discoverProjects, scanAllTasks, scanArchivedTasks, scanMalformedTasks } from '@/tasks/scan';
 import { resolveTasks } from '@/tasks/resolve';
@@ -702,16 +702,6 @@ const bulletsUnder = (file: string, heading: string): string[] =>
 /** Count `- ` bullet lines under a `## Heading` in a markdown file. */
 const countBulletsUnder = (file: string, heading: string): number => bulletsUnder(file, heading).length;
 
-/** Flatten inline markdown (wikilinks, links, bold, italics, code) to plain text. */
-const stripMarkdown = (text: string): string =>
-  text
-    .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2')
-    .replace(/\[\[([^\]]+)\]\]/g, '$1')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
-    .replace(/`([^`]+)`/g, '$1');
-
 /** Byte size of each of the last 7 days' session transcripts (oldest first). */
 const collectSessionsWeek = (): SessionDay[] => {
   const now = new Date();
@@ -1210,7 +1200,7 @@ const collectPersona = (): Persona => ({
   kind: stripMarkdown(boldField(FILES.IDENTITY, 'Kind')),
   // Forks word the tagline field differently (Vibe, Register, ...).
   vibe: stripMarkdown(boldField(FILES.IDENTITY, 'Vibe') || boldField(FILES.IDENTITY, 'Register')),
-  emoji: boldField(FILES.IDENTITY, 'Emoji'),
+  emoji: agentEmoji(),
   avatar: firstImage(FILES.IDENTITY),
   bio: sectionText(FILES.IDENTITY, 'Short Bio'),
   identitySections: mdSections(FILES.IDENTITY).filter((section) => !PERSONA_HEAD_SECTIONS.has(section.title)),
@@ -1246,17 +1236,6 @@ const mdSections = (file: string): ProfileSection[] => {
     return sections.filter((section) => section.lines.length && !PROFILE_SKIP_SECTIONS.has(section.title));
   } catch {
     return [];
-  }
-};
-
-/** First plain paragraph of a markdown file (frontmatter + headings skipped). */
-const firstParagraph = (file: string): string => {
-  try {
-    const body = readFileSync(file, 'utf-8').replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
-    const paragraph = body.split('\n').find((line) => line.trim() && !/^[#>\-*!|<\[]/.test(line.trim()));
-    return paragraph ? stripMarkdown(paragraph.trim()) : '';
-  } catch {
-    return '';
   }
 };
 

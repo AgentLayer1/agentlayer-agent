@@ -1,0 +1,189 @@
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { FILES, FOLDERS } from '@/config';
+import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
+import { serializeTask } from '@/tasks/schema';
+import type { TaskFrontmatter } from '@/tasks/types';
+import { buildWork } from './build';
+import { WORK_SCHEMA, type Work, type WorkTask } from './model';
+import { readWork, writeWork } from './store';
+import { closedSince, isDueSoon, isOverdue, isStale, projectLoads, queue, updatedBetween } from './views';
+
+const previousHome = process.env.AGENT_HOME;
+let home = '';
+
+const writeTask = (folder: string, file: string, fields: Partial<TaskFrontmatter>, thread = 0) => {
+  const frontmatter: TaskFrontmatter = {
+    schema: 1,
+    id: '',
+    title: '',
+    type: 'task',
+    status: 'open',
+    priority: 'P2',
+    project: 'acme',
+    assignee: [],
+    labels: [],
+    created: '2026-11-01',
+    updated: '2026-11-01',
+    due: '',
+    horizon: '',
+    depends_on: [],
+    blocked_by: '',
+    parent: '',
+    issue: '',
+    closed: '',
+    ...fields
+  };
+  const entries = Array.from({ length: thread }, (_unused, index) => ({
+    type: 'info' as const,
+    author: 'Ada',
+    timestamp: `2026-11-0${index + 1} 09:00`,
+    message: `Note ${index + 1}`
+  }));
+  mkdirSync(folder, { recursive: true });
+  writeFileSync(
+    join(folder, file),
+    serializeTask({ frontmatter, description: 'Why.', checklist: [], thread: entries, filePath: join(folder, file) })
+  );
+};
+
+beforeAll(() => {
+  home = mkdtempSync(join(tmpdir(), 'work-home-'));
+  mkdirSync(join(home, RUNTIME_DIR), { recursive: true });
+  writeFileSync(join(home, RUNTIME_DIR, HOME_MARKER_FILES[0]), `${JSON.stringify({ plugin: pluginName() })}\n`);
+  process.env.AGENT_HOME = home;
+  writeFileSync(FILES.IDENTITY, '# Identity\n\n- **Name:** Nova\n- **Emoji:** 🦉\n');
+  const acme = join(FOLDERS.PROJECTS, 'acme');
+  mkdirSync(acme, { recursive: true });
+  writeFileSync(
+    join(FOLDERS.PROJECTS, 'acme', 'README.md'),
+    '---\nhue: 210\n---\n# Acme\n\nThe **acme** storefront.\n'
+  );
+  writeTask(
+    join(acme, 'tasks'),
+    'ac-002-ship.md',
+    {
+      id: 'ac-002',
+      title: 'Ship the invoice export',
+      status: 'active',
+      priority: 'P1',
+      due: '2026-11-08',
+      updated: '2026-11-09'
+    },
+    2
+  );
+  writeTask(join(acme, 'tasks'), 'ac-001-fix.md', {
+    id: 'ac-001',
+    title: 'Fix the checkout total',
+    priority: 'P0',
+    due: '2026-11-12'
+  });
+  writeTask(join(acme, 'tasks'), 'ac-003-done.md', {
+    id: 'ac-003',
+    title: 'Pick a font',
+    status: 'done',
+    closed: '2026-11-05'
+  });
+  writeTask(join(acme, 'tasks'), 'ac-004-elsewhere.md', { id: 'ac-004', title: 'Name the shop', project: 'garden' });
+  writeTask(join(acme, 'tasks', 'archive'), 'ac-000-old.md', {
+    id: 'ac-000',
+    title: 'Old work',
+    status: 'done',
+    closed: '2026-10-01'
+  });
+  mkdirSync(join(FOLDERS.PROJECTS, 'quiet', 'tasks'), { recursive: true });
+  writeFileSync(join(FOLDERS.PROJECTS, 'quiet', 'roadmap.html'), '<html></html>');
+});
+
+afterAll(() => {
+  rmSync(home, { recursive: true, force: true });
+  process.env.AGENT_HOME = previousHome;
+});
+
+const ids = (tasks: readonly WorkTask[]) => tasks.map((task) => task.id);
+
+describe('buildWork', () => {
+  test('reads every task file once, archived ones flagged, ordered by path', () => {
+    const work = buildWork();
+    expect(work.schema).toBe(WORK_SCHEMA);
+    expect(work.agent).toEqual({ name: 'Nova', emoji: '🦉' });
+    expect(work.tasks.map((task) => [task.id, task.archived])).toEqual([
+      ['ac-001', false],
+      ['ac-002', false],
+      ['ac-003', false],
+      ['ac-004', false],
+      ['ac-000', true]
+    ]);
+    expect(work.tasks[1]).toMatchObject({ comments: 2, path: join('projects', 'acme', 'tasks', 'ac-002-ship.md') });
+  });
+
+  test('a project per folder plus any a task names, each with its README line, hue and pages', () => {
+    const work = buildWork();
+    expect(work.projects.map((project) => project.slug)).toEqual(['acme', 'garden', 'quiet']);
+    expect(work.projects[0]).toMatchObject({ hue: 210, description: 'The acme storefront.', roadmap: '' });
+    expect(work.projects[2]?.roadmap).toBe(join('projects', 'quiet', 'roadmap.html'));
+  });
+
+  test('the same files give the same model', () => {
+    expect(JSON.stringify(buildWork())).toBe(JSON.stringify(buildWork()));
+  });
+});
+
+describe('the store', () => {
+  test('writes only when the model changed, and reads back what it wrote', () => {
+    const work = buildWork();
+    writeWork(work);
+    const written = statSync(FILES.WORK).mtimeMs;
+    Bun.sleepSync(5);
+    expect(writeWork(work)).toBe(false);
+    expect(statSync(FILES.WORK).mtimeMs).toBe(written);
+    expect(readWork()).toEqual(work);
+    expect(writeWork({ ...work, agent: { name: 'Nova II', emoji: '🦉' } })).toBe(true);
+  });
+
+  test('a file of another version, or one that does not parse, reads as none', () => {
+    writeFileSync(FILES.WORK, JSON.stringify({ ...buildWork(), schema: WORK_SCHEMA + 1 }));
+    expect(readWork()).toBeNull();
+    writeFileSync(FILES.WORK, '{"schema":');
+    expect(readWork()).toBeNull();
+  });
+});
+
+describe('views', () => {
+  const task = { status: 'open', due: '2026-11-08', updated: '2026-11-01' };
+
+  test('overdue, due soon and stale read against the day they are given', () => {
+    expect(isOverdue(task, '2026-11-09')).toBe(true);
+    expect(isOverdue(task, '2026-11-08')).toBe(false);
+    expect(isDueSoon(task, '2026-11-08')).toBe(true);
+    expect(isDueSoon(task, '2026-10-24')).toBe(false);
+    expect(isStale(task, '2026-11-09')).toBe(true);
+    expect(isStale(task, '2026-11-08')).toBe(false);
+    expect(isOverdue({ ...task, status: 'done' }, '2026-11-09')).toBe(false);
+  });
+
+  test('closed and recently updated tasks come from those in place only', () => {
+    const work = buildWork();
+    expect(ids(closedSince(work, '2026-10-01'))).toEqual(['ac-003']);
+    expect(ids(updatedBetween(work, '2026-11-08', '2026-11-09'))).toEqual(['ac-002']);
+  });
+
+  test('the queue is the live tasks by priority, then due date', () => {
+    expect(ids(queue(buildWork()))).toEqual(['ac-001', 'ac-002', 'ac-004']);
+  });
+
+  test('each project is counted from its tasks, archived ones as done, most recently touched first', () => {
+    const loads = projectLoads(buildWork());
+    expect(loads.map((load) => load.project)).toEqual(['acme', 'garden', 'quiet']);
+    expect(loads[0]).toMatchObject({ open: 1, active: 1, blocked: 0, total: 2, done: 2, updatedAt: '2026-11-09' });
+    expect(loads[2]).toMatchObject({ total: 0, done: 0, updatedAt: '' });
+  });
+});
+
+test('a model that holds nothing for a home with no projects', () => {
+  const empty: Work = { schema: WORK_SCHEMA, agent: { name: 'Scout', emoji: '' }, projects: [], tasks: [] };
+  expect(projectLoads(empty)).toEqual([]);
+  expect(queue(empty)).toEqual([]);
+});

@@ -45,6 +45,10 @@ export const daysBetween = (fromIso: string, toIso: string): number => {
   return Math.round((to - from) / 86_400_000);
 };
 
+/** The date `days` after `iso` (before it when negative); both YYYY-MM-DD. */
+export const shiftDate = (iso: string, days: number): string =>
+  new Date(Date.parse(`${iso}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+
 /** YYYY-MM-DD `n` days ago in local time. */
 export function daysAgoDate(n: number): string {
   return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toLocaleDateString('sv-SE', {

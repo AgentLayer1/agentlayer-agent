@@ -239,6 +239,10 @@ export const FILES = {
   get CADENCE() {
     return resolve(dataRoot(), 'cadence.json');
   },
+  /** The home's projects and tasks as one model (work/model.ts), rewritten when the work changes. */
+  get WORK() {
+    return resolve(dataRoot(), 'work.json');
+  },
   /** Snooze streaks and snoozed-through dates per notice (notices/ledger.ts). */
   get NOTICES() {
     return resolve(dataRoot(), 'notices.json');
