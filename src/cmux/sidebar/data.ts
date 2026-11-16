@@ -1,21 +1,21 @@
 /**
  * The entry format's version. A sidebar shows an entry with another schema as "update this agent".
  */
-export const SCHEMA = 5;
+export const SCHEMA = 6;
 
 export interface TaskItem {
   id: string;
   title: string;
+  /**
+   * The slug of the project it belongs to.
+   */
+  project: string;
   status: string;
   priority: string;
   /**
    * `YYYY-MM-DD`, or `''` when the task has no due date. The sidebar words it against today's date.
    */
   due: string;
-  /**
-   * `YYYY-MM-DD` of the task's last change; breaks ties after priority and due date.
-   */
-  updated: string;
   /**
    * Entries in the task's thread, as the dashboard counts them.
    */
@@ -52,10 +52,6 @@ export interface ProjectCard {
    * The pins in the project README.
    */
   pins: PinItem[];
-  /**
-   * The project's live tasks by priority, then due date, then the most recently updated.
-   */
-  tasks: TaskItem[];
 }
 
 export interface ReportItem {
@@ -146,6 +142,10 @@ export interface HomeEntry {
    */
   roadmap: string | null;
   projects: ProjectCard[];
+  /**
+   * Every live task by priority, then due date, then the most recently updated; a project's card shows its own.
+   */
+  tasks: TaskItem[];
   /**
    * The home's own pins (reports/pinned.md); each project's ride on its card.
    */

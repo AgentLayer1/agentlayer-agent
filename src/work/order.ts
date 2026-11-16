@@ -1,5 +1,5 @@
 /*
- * The one order for task lists, shared by the dashboard, TASKS.md and the cmux sidebar's bundle, so it imports nothing.
+ * The one order for task lists: the dashboard, TASKS.md, the attention pages and the cmux sidebar's entry.
  */
 
 const PRIORITY_ORDER: Readonly<Record<string, number>> = { P0: 0, P1: 1, P2: 2, P3: 3 };

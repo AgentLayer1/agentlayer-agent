@@ -1,7 +1,6 @@
 import { searchField } from 'cmux-custom-manager/components';
 import type { HomeEntry, PinItem, ProjectCard, TaskItem } from './data';
 import { BUCKETS, dueBucket, type DueBucket } from '../../work/due';
-import { taskOrderById } from '../../work/order';
 import { dueLabel } from './due';
 import {
   ACCENT,
@@ -9,6 +8,7 @@ import {
   dividedList,
   foldingCard,
   foldTitle,
+  GREY,
   groupTitle,
   hueColor,
   note,
@@ -61,11 +61,13 @@ interface AgendaGroup {
   tasks: Listed[];
 }
 
-// Every project's tasks as one list, in the same order as each project's own.
-const listedTasks = (entry: HomeEntry): Listed[] =>
-  entry.projects
-    .flatMap(({ slug, hue, tasks }) => tasks.map((task) => ({ task, project: { slug, color: hueColor(hue) } })))
-    .toSorted((a, b) => taskOrderById(a.task, b.task));
+const listedTasks = (entry: HomeEntry): Listed[] => {
+  const colors = new Map(entry.projects.map(({ slug, hue }) => [slug, hueColor(hue)]));
+  return entry.tasks.map((task) => ({
+    task,
+    project: { slug: task.project, color: colors.get(task.project) ?? GREY }
+  }));
+};
 
 // In flight leads and carries its own due words, so each task shows once, as on the dashboard's Tasks page.
 const agenda = (listed: readonly Listed[], day: string): AgendaGroup[] => {
@@ -128,13 +130,12 @@ const tasksCard = (entry: HomeEntry, listed: readonly Listed[]) => {
   );
 };
 
-// The entry is fixed while the sidebar is loaded (an update arrives as a rewrite), so a card reads its project
-// once; only whether it's open is live.
-const projectCard = (item: () => ProjectCard) => {
-  const project = item();
+// The entry is fixed while the sidebar is loaded (an update arrives as a rewrite), so a card takes its project and
+// tasks once; only whether it's open is live.
+const projectCard = (project: ProjectCard, tasks: TaskItem[]) => {
   const [expanded, setExpanded] = signal(false);
   const color = hueColor(project.hue);
-  const next = project.tasks[0];
+  const next = tasks[0];
   const links = [...(project.roadmap ? [roadmapLink(project.roadmap)] : []), ...project.pins];
   return foldingCard(
     VStack({ spacing: 6 }, [
@@ -177,7 +178,7 @@ const projectCard = (item: () => ProjectCard) => {
             ]
           : []),
         dividedList(
-          () => project.tasks,
+          () => tasks,
           (task) => task.id,
           (task) => taskRow(task)
         )
@@ -191,11 +192,16 @@ const STATES = [
   { title: 'Quiet', holds: (project: ProjectCard) => !project.active && !project.blocked }
 ];
 
-const stateGroup = (title: string, projects: ProjectCard[]) => {
+const stateGroup = (title: string, projects: ProjectCard[], tasks: TaskItem[]) => {
   const [expanded, setExpanded] = signal(true);
   return VStack({ spacing: 6 }, [
     foldTitle(title, projects.length, expanded, setExpanded),
-    ForEach({ items: () => (expanded() ? projects : []), key: (project) => project.slug }, projectCard)
+    ForEach({ items: () => (expanded() ? projects : []), key: (project) => project.slug }, (item) =>
+      projectCard(
+        item(),
+        tasks.filter((task) => task.project === item().slug)
+      )
+    )
   ]);
 };
 
@@ -229,7 +235,7 @@ export const projectsBody = (entry: HomeEntry) => {
           tasksCard(entry, listed),
           ...STATES.flatMap(({ title, holds }) => {
             const projects = entry.projects.filter(holds);
-            return projects.length ? [stateGroup(title, projects)] : [];
+            return projects.length ? [stateGroup(title, projects, entry.tasks)] : [];
           }),
           ...(entry.projects.length ? [] : [note('No projects yet.')])
         ])

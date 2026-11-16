@@ -9,7 +9,7 @@ import { SCHEMA } from './sidebar/data';
 const url = (...parts: string[]) => pathToFileURL(join(...parts)).href;
 const taskPath = (project: string, id: string) => join(NOVA_HOME, 'projects', project, 'tasks', `${id}.md`);
 
-test('a home’s projects, at work first, each with its live tasks by priority, then due date', () => {
+test('a home’s projects, at work first, and every live task in one list by priority, then due date', () => {
   const entry = homeEntry(NOVA_HOME, NOVA);
   expect(entry).toMatchObject({
     schema: SCHEMA,
@@ -38,45 +38,23 @@ test('a home’s projects, at work first, each with its live tasks by priority, 
         icon: '📊',
         target: { kind: 'page', url: url(NOVA_HOME, 'reports', 'plans', 'pricing.html') }
       }
-    ],
-    tasks: [
-      {
-        id: 'ac-102',
-        title: 'Fix the checkout total',
-        status: 'open',
-        priority: 'P0',
-        due: '2026-11-10',
-        updated: '2026-11-08',
-        comments: 0,
-        path: taskPath('acme-app', 'ac-102')
-      },
-      {
-        id: 'ac-101',
-        title: 'Ship the invoice export',
-        status: 'active',
-        priority: 'P1',
-        due: '2026-11-07',
-        updated: '2026-11-08',
-        comments: 3,
-        path: taskPath('acme-app', 'ac-101')
-      },
-      {
-        id: 'ac-103',
-        title: 'Write the release notes',
-        status: 'open',
-        priority: 'P2',
-        due: '2026-12-01',
-        updated: '2026-11-08',
-        comments: 0,
-        path: taskPath('acme-app', 'ac-103')
-      }
     ]
   });
   expect(
-    entry.projects[1]?.tasks.map((task) => task.id),
-    'by priority, whatever the status'
-  ).toEqual(['gs-201', 'gs-202']);
-  expect(entry.projects[2]).toMatchObject({ done: 2, roadmap: null, pins: [], tasks: [] });
+    entry.tasks.map((task) => task.id),
+    'one list by priority, then due date, whatever the status'
+  ).toEqual(['ac-102', 'ac-101', 'ac-103', 'gs-201', 'gs-202']);
+  expect(entry.tasks[0]).toEqual({
+    id: 'ac-102',
+    title: 'Fix the checkout total',
+    project: 'acme-app',
+    status: 'open',
+    priority: 'P0',
+    due: '2026-11-10',
+    comments: 0,
+    path: taskPath('acme-app', 'ac-102')
+  });
+  expect(entry.projects[2]).toMatchObject({ done: 2, roadmap: null, pins: [] });
 });
 
 test('a home with no projects or roadmap', () => {
@@ -90,9 +68,9 @@ test('the same projects and tasks in another order give the same entry', () => {
 
 test('closed and archived tasks count as done and never show as rows', () => {
   const archived = { ...NOVA.tasks[0], id: 'ac-099', status: 'done', archived: true };
-  const card = homeEntry(NOVA_HOME, { ...NOVA, tasks: [...NOVA.tasks, archived] }).projects[0];
-  expect(card?.done).toBe(6);
-  expect(card?.tasks.map((task) => task.id)).not.toContain('ac-099');
+  const entry = homeEntry(NOVA_HOME, { ...NOVA, tasks: [...NOVA.tasks, archived] });
+  expect(entry.projects[0]?.done).toBe(6);
+  expect(entry.tasks.map((task) => task.id)).not.toContain('ac-099');
 });
 
 test('a path with a space becomes a URL a browser can open', () => {

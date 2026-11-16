@@ -81,23 +81,22 @@ const goalsOf = (work: Work): GoalsItem => {
  * newest reports and its goals.
  */
 export const homeEntry = (home: string, work: Work): HomeEntry => {
-  const liveTasks = live(work);
   // An index line without a link names a report nothing can open.
   const openable = work.reports.filter((report) => report.path !== '');
-  const tasksOf = (project: string): TaskItem[] =>
-    liveTasks
-      .filter((task) => task.project === project)
-      .map(({ id, title, status, priority, due, updated, comments, path }) => ({
+  const tasks = live(work)
+    .toSorted(taskOrderById)
+    .map(
+      ({ id, title, project, status, priority, due, comments, path }): TaskItem => ({
         id,
         title,
+        project,
         status,
         priority,
         due,
-        updated,
         comments,
         path: join(home, path)
-      }))
-      .toSorted(taskOrderById);
+      })
+    );
   const card = (project: WorkProject): ProjectCard => {
     const { active, open, blocked, done } = projectLoad(work, project);
     return {
@@ -108,8 +107,7 @@ export const homeEntry = (home: string, work: Work): HomeEntry => {
       blocked,
       done,
       roadmap: pageUrl(home, project.roadmap),
-      pins: project.pins.map((pin) => pinItem(home, pin)),
-      tasks: tasksOf(project.slug)
+      pins: project.pins.map((pin) => pinItem(home, pin))
     };
   };
   return {
@@ -119,6 +117,7 @@ export const homeEntry = (home: string, work: Work): HomeEntry => {
     dashboard: fileUrl(join(home, 'dashboard.html')),
     roadmap: pageUrl(home, work.roadmap),
     projects: work.projects.map(card).toSorted(byWork),
+    tasks,
     pins: work.pins.map((pin) => pinItem(home, pin)),
     reports: openable.slice(0, REPORT_LIMIT).map((report) => reportItem(home, report)),
     olderReports: Math.max(0, openable.length - REPORT_LIMIT),

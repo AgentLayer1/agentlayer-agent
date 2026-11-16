@@ -269,7 +269,7 @@ var packLines = (items, label, firstWidth, width) => items.reduce(({ lines, used
 }, { lines: [[]], used: 0 }).lines;
 
 // src/cmux/sidebar/data.ts
-var SCHEMA = 5;
+var SCHEMA = 6;
 
 // src/cmux/sidebar/style.ts
 var hueColor = (hue) => {
@@ -560,12 +560,6 @@ var goalsBody = (entry) => {
   ]);
 };
 
-// src/work/order.ts
-var PRIORITY_ORDER = { P0: 0, P1: 1, P2: 2, P3: 3 };
-var priorityRank = (priority) => PRIORITY_ORDER[priority] ?? 9;
-var taskOrder = (a, b) => priorityRank(a.priority) - priorityRank(b.priority) || (a.due || "9999").localeCompare(b.due || "9999") || b.updated.localeCompare(a.updated);
-var taskOrderById = (a, b) => taskOrder(a, b) || a.id.localeCompare(b.id);
-
 // src/cmux/sidebar/projects.ts
 var linkRow = ({ icon, title, target }) => HStack({ spacing: 6 }, [
   Text(icon).font(11).frame({ width: 14 }),
@@ -580,7 +574,13 @@ var AGENDA = {
   month: "This month",
   later: "Later"
 };
-var listedTasks = (entry) => entry.projects.flatMap(({ slug, hue, tasks }) => tasks.map((task) => ({ task, project: { slug, color: hueColor(hue) } }))).toSorted((a, b) => taskOrderById(a.task, b.task));
+var listedTasks = (entry) => {
+  const colors = new Map(entry.projects.map(({ slug, hue }) => [slug, hueColor(hue)]));
+  return entry.tasks.map((task) => ({
+    task,
+    project: { slug: task.project, color: colors.get(task.project) ?? GREY }
+  }));
+};
 var agenda = (listed, day) => {
   const waiting = listed.filter(({ task }) => task.status !== "active");
   return [
@@ -620,11 +620,10 @@ var tasksCard = (entry, listed) => {
     ]))
   ]));
 };
-var projectCard = (item) => {
-  const project = item();
+var projectCard = (project, tasks) => {
   const [expanded, setExpanded] = signal(false);
   const color = hueColor(project.hue);
-  const next = project.tasks[0];
+  const next = tasks[0];
   const links = [...project.roadmap ? [roadmapLink(project.roadmap)] : [], ...project.pins];
   return foldingCard(VStack({ spacing: 6 }, [
     HStack({ spacing: 7 }, [
@@ -647,7 +646,7 @@ var projectCard = (item) => {
         ForEach({ items: links, key: (link) => targetKey(link.target) }, (link) => linkRow(link()))
       ])
     ] : [],
-    dividedList(() => project.tasks, (task) => task.id, (task) => taskRow(task))
+    dividedList(() => tasks, (task) => task.id, (task) => taskRow(task))
   ]));
 };
 var STATES = [
@@ -655,11 +654,11 @@ var STATES = [
   { title: "Blocked", holds: (project) => !project.active && project.blocked > 0 },
   { title: "Quiet", holds: (project) => !project.active && !project.blocked }
 ];
-var stateGroup = (title, projects) => {
+var stateGroup = (title, projects, tasks) => {
   const [expanded, setExpanded] = signal(true);
   return VStack({ spacing: 6 }, [
     foldTitle(title, projects.length, expanded, setExpanded),
-    ForEach({ items: () => expanded() ? projects : [], key: (project) => project.slug }, projectCard)
+    ForEach({ items: () => expanded() ? projects : [], key: (project) => project.slug }, (item) => projectCard(item(), tasks.filter((task) => task.project === item().slug)))
   ]);
 };
 var projectsBody = (entry) => {
@@ -677,7 +676,7 @@ var projectsBody = (entry) => {
       tasksCard(entry, listed),
       ...STATES.flatMap(({ title, holds }) => {
         const projects = entry.projects.filter(holds);
-        return projects.length ? [stateGroup(title, projects)] : [];
+        return projects.length ? [stateGroup(title, projects, entry.tasks)] : [];
       }),
       ...entry.projects.length ? [] : [note("No projects yet.")]
     ]))
