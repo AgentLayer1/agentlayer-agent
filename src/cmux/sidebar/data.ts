@@ -1,7 +1,7 @@
 /**
  * The entry format's version. A sidebar shows an entry with another schema as "update this agent".
  */
-export const SCHEMA = 2;
+export const SCHEMA = 3;
 
 export interface TaskItem {
   id: string;
@@ -13,9 +13,24 @@ export interface TaskItem {
    */
   due: string;
   /**
+   * Entries in the task's thread, as the dashboard counts them.
+   */
+  comments: number;
+  /**
    * Absolute path of the task file.
    */
   path: string;
+}
+
+/**
+ * Where a pin opens: an HTML page in a browser tab, anything else as a file.
+ */
+export type PinTarget = { kind: 'page'; url: string } | { kind: 'file'; path: string };
+
+export interface PinItem {
+  title: string;
+  icon: string;
+  target: PinTarget;
 }
 
 export interface ProjectCard {
@@ -25,6 +40,14 @@ export interface ProjectCard {
   open: number;
   blocked: number;
   done: number;
+  /**
+   * `file://` URL of the project's own roadmap.html, or `null` when it has none.
+   */
+  roadmap: string | null;
+  /**
+   * The pins in the project README.
+   */
+  pins: PinItem[];
   /**
    * The project's live tasks: active, then blocked, then open; by priority, then due date.
    */

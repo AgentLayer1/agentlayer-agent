@@ -1,8 +1,8 @@
-import { join } from 'node:path';
+import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Persona, ProjectLoad, StatusSnapshot, SurfaceLink, TaskRef } from '@/status/collect';
 import { projectHue } from '@/status/html-primitives';
-import { SCHEMA, type HomeEntry, type ProjectCard, type TaskItem } from './sidebar/data';
+import { SCHEMA, type HomeEntry, type PinItem, type ProjectCard, type TaskItem } from './sidebar/data';
 
 /**
  * The slice of a dashboard snapshot the sidebar reads. Nothing that changes without a task or project changing fits.
@@ -13,8 +13,8 @@ export interface EntrySource {
   projectHues: Readonly<Record<string, number>>;
   surfaces: readonly Pick<SurfaceLink, 'href'>[];
   tasks: {
-    byProject: readonly Pick<ProjectLoad, 'project' | 'active' | 'open' | 'blocked' | 'done'>[];
-    queue: readonly Pick<TaskRef, 'id' | 'title' | 'status' | 'priority' | 'due' | 'project' | 'path'>[];
+    byProject: readonly Pick<ProjectLoad, 'project' | 'active' | 'open' | 'blocked' | 'done' | 'roadmap' | 'pins'>[];
+    queue: readonly Pick<TaskRef, 'id' | 'title' | 'status' | 'priority' | 'due' | 'comments' | 'project' | 'path'>[];
   };
 }
 
@@ -36,18 +36,28 @@ const byWork = (a: ProjectCard, b: ProjectCard): number =>
 
 const fileUrl = (path: string): string => pathToFileURL(path).href;
 
+const pinItem = (home: string, { title, icon, path }: ProjectLoad['pins'][number]): PinItem => {
+  const absolute = join(home, path);
+  return {
+    title,
+    icon,
+    target: extname(path) === '.html' ? { kind: 'page', url: fileUrl(absolute) } : { kind: 'file', path: absolute }
+  };
+};
+
 export const homeEntry = (source: EntrySource): HomeEntry => {
   const home = source.runtime.home;
   const roadmap = join(home, 'roadmap.html');
   const tasksOf = (project: string): TaskItem[] =>
     source.tasks.queue
       .filter((task) => task.project === project)
-      .map(({ id, title, status, priority, due, path }) => ({
+      .map(({ id, title, status, priority, due, comments, path }) => ({
         id,
         title,
         status,
         priority,
         due,
+        comments,
         path: join(home, path)
       }))
       .sort(byUrgency);
@@ -58,13 +68,15 @@ export const homeEntry = (source: EntrySource): HomeEntry => {
     dashboard: fileUrl(join(home, 'dashboard.html')),
     roadmap: source.surfaces.some((link) => link.href === roadmap) ? fileUrl(roadmap) : null,
     projects: source.tasks.byProject
-      .map(({ project, active, open, blocked, done }) => ({
+      .map(({ project, active, open, blocked, done, roadmap: page, pins }) => ({
         slug: project,
         hue: projectHue(project, source.projectHues),
         active,
         open,
         blocked,
         done,
+        roadmap: page ? fileUrl(join(home, page)) : null,
+        pins: pins.map((pin) => pinItem(home, pin)),
         tasks: tasksOf(project)
       }))
       .sort(byWork)

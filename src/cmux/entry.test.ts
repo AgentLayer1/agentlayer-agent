@@ -26,6 +26,19 @@ test('a home’s projects, at work first, each with its live tasks in the order 
     open: 2,
     blocked: 0,
     done: 5,
+    roadmap: url(NOVA_HOME, 'projects', 'acme-app', 'roadmap.html'),
+    pins: [
+      {
+        title: 'Launch checklist',
+        icon: '✅',
+        target: { kind: 'file', path: join(NOVA_HOME, 'projects', 'acme-app', 'launch-checklist.md') }
+      },
+      {
+        title: 'Pricing page',
+        icon: '📊',
+        target: { kind: 'page', url: url(NOVA_HOME, 'reports', 'plans', 'pricing.html') }
+      }
+    ],
     tasks: [
       {
         id: 'ac-101',
@@ -33,6 +46,7 @@ test('a home’s projects, at work first, each with its live tasks in the order 
         status: 'active',
         priority: 'P1',
         due: '2026-11-07',
+        comments: 3,
         path: taskPath('acme-app', 'ac-101')
       },
       {
@@ -41,6 +55,7 @@ test('a home’s projects, at work first, each with its live tasks in the order 
         status: 'open',
         priority: 'P0',
         due: '2026-11-10',
+        comments: 0,
         path: taskPath('acme-app', 'ac-102')
       },
       {
@@ -49,6 +64,7 @@ test('a home’s projects, at work first, each with its live tasks in the order 
         status: 'open',
         priority: 'P2',
         due: '2026-12-01',
+        comments: 0,
         path: taskPath('acme-app', 'ac-103')
       }
     ]
@@ -57,7 +73,7 @@ test('a home’s projects, at work first, each with its live tasks in the order 
     entry.projects[1]?.tasks.map((task) => task.id),
     'blocked before open'
   ).toEqual(['gs-201', 'gs-202']);
-  expect(entry.projects[2]?.tasks).toEqual([]);
+  expect(entry.projects[2]).toMatchObject({ roadmap: null, pins: [], tasks: [] });
 });
 
 test('a home with no projects or roadmap', () => {

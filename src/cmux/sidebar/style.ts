@@ -15,6 +15,30 @@ export const hueColor = (hue: number): string => {
   return `#${channel(0)}${channel(8)}${channel(4)}`;
 };
 
+const SEGMENTS = 40;
+
+/**
+ * A thin progress bar in `color`. Drawn from shapes because cmux's ProgressView ignores its colour.
+ */
+export const progressBar = (fraction: number, color: string) => {
+  const filled = Math.round(Math.min(Math.max(fraction, 0), 1) * SEGMENTS);
+  return HStack(
+    { spacing: 0 },
+    Array.from({ length: SEGMENTS }, (_, index) =>
+      Rectangle()
+        .fill(index < filled ? color : '#7f7f7f33')
+        .frame({ maxWidth: 'infinity', height: 4 })
+    )
+  ).cornerRadius(2);
+};
+
+export const groupTitle = (title: string, count: number) =>
+  HStack({ spacing: 4 }, [
+    Text(title.toUpperCase()).font(10).weight('semibold').color('tertiary'),
+    Text(String(count)).font(10).monospaced().color('quaternary'),
+    Spacer({ minLength: 0 })
+  ]).paddingHorizontal(4);
+
 export const note = (text: string) => Text(text).font(11).color('tertiary').paddingHorizontal(10);
 
 /**

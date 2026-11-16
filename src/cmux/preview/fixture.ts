@@ -4,18 +4,27 @@ import type { EntrySource } from '../entry';
 const NOVA_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Nova');
 const SCOUT_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Scout');
 
-const task = (project: string, id: string, title: string, status: string, priority: string, due = '') => ({
+const task = (
+  project: string,
+  id: string,
+  title: string,
+  status: string,
+  priority: string,
+  due = '',
+  comments = 0
+) => ({
   id,
   title,
   status,
   priority,
   due,
+  comments,
   project,
   path: join('projects', project, 'tasks', `${id}.md`)
 });
 
 /**
- * An invented home with a roadmap and three projects: one at work, one blocked, one quiet. The fixture's clock
+ * An invented home with a roadmap and three projects: one at work (with its own roadmap and pins), one blocked, one quiet. The fixture's clock
  * reads 9 Nov 2026, so the due dates cover overdue, tomorrow and later.
  */
 export const NOVA: EntrySource = {
@@ -25,14 +34,25 @@ export const NOVA: EntrySource = {
   surfaces: [{ href: join(NOVA_HOME, 'roadmap.html') }, { href: 'projects/acme-app/dashboard.html' }],
   tasks: {
     byProject: [
-      { project: 'garden-shop', active: 0, open: 1, blocked: 1, done: 4 },
-      { project: 'acme-app', active: 1, open: 2, blocked: 0, done: 5 },
-      { project: 'blog', active: 0, open: 0, blocked: 0, done: 2 }
+      { project: 'garden-shop', active: 0, open: 1, blocked: 1, done: 4, roadmap: '', pins: [] },
+      {
+        project: 'acme-app',
+        active: 1,
+        open: 2,
+        blocked: 0,
+        done: 5,
+        roadmap: join('projects', 'acme-app', 'roadmap.html'),
+        pins: [
+          { title: 'Launch checklist', icon: '✅', path: join('projects', 'acme-app', 'launch-checklist.md') },
+          { title: 'Pricing page', icon: '📊', path: join('reports', 'plans', 'pricing.html') }
+        ]
+      },
+      { project: 'blog', active: 0, open: 0, blocked: 0, done: 2, roadmap: '', pins: [] }
     ],
     queue: [
       task('acme-app', 'ac-103', 'Write the release notes', 'open', 'P2', '2026-12-01'),
       task('garden-shop', 'gs-201', 'Wait on the supplier price list', 'blocked', 'P2'),
-      task('acme-app', 'ac-101', 'Ship the invoice export', 'active', 'P1', '2026-11-07'),
+      task('acme-app', 'ac-101', 'Ship the invoice export', 'active', 'P1', '2026-11-07', 3),
       task('garden-shop', 'gs-202', 'Photograph the spring range', 'open', 'P3'),
       task('acme-app', 'ac-102', 'Fix the checkout total', 'open', 'P0', '2026-11-10')
     ]

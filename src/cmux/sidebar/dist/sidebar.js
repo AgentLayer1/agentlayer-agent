@@ -274,6 +274,20 @@ var dueLabel = (due, today) => {
   }
   return { text: `due in ${days}d`, tone: days <= 7 ? "soon" : "later" };
 };
+var BUCKETS = ["overdue", "today", "week", "month", "later", "someday"];
+var dueBucket = (due, today) => {
+  const days = dayNumber(due) - dayNumber(today);
+  if (!due || Number.isNaN(days)) {
+    return "someday";
+  }
+  if (days < 0) {
+    return "overdue";
+  }
+  if (days === 0) {
+    return "today";
+  }
+  return days <= 7 ? "week" : days <= 30 ? "month" : "later";
+};
 var isoDay = (epochSeconds) => {
   const date = new Date(epochSeconds * 1000);
   const pad = (part) => String(part).padStart(2, "0");
@@ -292,11 +306,64 @@ var hueColor = (hue) => {
   };
   return `#${channel(0)}${channel(8)}${channel(4)}`;
 };
+var SEGMENTS = 40;
+var progressBar = (fraction, color) => {
+  const filled = Math.round(Math.min(Math.max(fraction, 0), 1) * SEGMENTS);
+  return HStack({ spacing: 0 }, Array.from({ length: SEGMENTS }, (_, index) => Rectangle().fill(index < filled ? color : "#7f7f7f33").frame({ maxWidth: "infinity", height: 4 }))).cornerRadius(2);
+};
+var groupTitle = (title, count) => HStack({ spacing: 4 }, [
+  Text(title.toUpperCase()).font(10).weight("semibold").color("tertiary"),
+  Text(String(count)).font(10).monospaced().color("quaternary"),
+  Spacer({ minLength: 0 })
+]).paddingHorizontal(4);
 var note = (text) => Text(text).font(11).color("tertiary").paddingHorizontal(10);
 var tabIcon = (symbol, help, active, onTap) => Image(symbol).font(12).color(() => active() ? "accent" : "secondary").padding(5).background(() => active() ? "#7f7f7f3d" : null).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
 
+// src/cmux/sidebar/tasks.ts
+var STATUS = {
+  active: { symbol: "circle.inset.filled", color: "#34C759" },
+  blocked: { symbol: "exclamationmark.circle.fill", color: "#FF453A" },
+  open: { symbol: "circle", color: "#8E8E93" }
+};
+var statusOf = (status) => STATUS[status] ?? { symbol: "circle", color: "#8E8E93" };
+var TONE = { overdue: "#FF453A", soon: "#FF9F0A", later: "tertiary" };
+var URGENT = new Set(["P0", "P1"]);
+var today = computed(() => isoDay(data.clock()?.epoch ?? Date.now() / 1000));
+var count = (amount, status) => {
+  const { symbol, color } = statusOf(status);
+  return amount ? [
+    HStack({ spacing: 2 }, [
+      Image(symbol).font(8).color(color),
+      Text(String(amount)).font(10).weight("semibold").monospaced().color("secondary")
+    ]).fixedSize()
+  ] : [];
+};
+var taskMeta = (task, projectColor) => HStack({ spacing: 6 }, [
+  ...projectColor ? [Circle({ size: 6 }).fill(projectColor)] : [],
+  Text(task.id).font(10).monospaced().color("tertiary"),
+  Text(task.priority).font(10).weight("semibold").monospaced().color(URGENT.has(task.priority) ? "#FF9F0A" : "tertiary"),
+  Text(() => dueLabel(task.due, today())?.text ?? "").font(10).color(() => TONE[dueLabel(task.due, today())?.tone ?? "later"]),
+  Spacer({ minLength: 0 }),
+  ...task.comments ? [
+    HStack({ spacing: 2 }, [
+      Image("bubble.left").font(9).color("tertiary"),
+      Text(String(task.comments)).font(10).monospaced().color("tertiary")
+    ]).fixedSize()
+  ] : []
+]);
+var taskRow = (task, projectColor) => {
+  const { symbol, color } = statusOf(task.status);
+  return HStack({ spacing: 6, alignment: "top" }, [
+    Image(symbol).font(10).color(color).frame({ width: 12 }).paddingTop(2),
+    VStack({ spacing: 2, alignment: "leading" }, [
+      Text(task.title).font(12).lineLimit(3).truncation("tail"),
+      taskMeta(task, projectColor)
+    ])
+  ]).paddingLeading(2).paddingTrailing(6).paddingVertical(5).cornerRadius(8).hoverBackground("#7f7f7f26").cursor("pointer").frame({ maxWidth: "infinity", alignment: "leading" }).onTap(() => cmux("file.open", { path: task.path }));
+};
+
 // src/cmux/sidebar/data.ts
-var SCHEMA = 2;
+var SCHEMA = 3;
 
 // src/cmux/sidebar/view.ts
 var homeLabel = (home) => {
@@ -318,70 +385,123 @@ var scopedPage = (home, ready) => {
 };
 
 // src/cmux/sidebar/pages/work.ts
-var STATUS = {
-  active: { symbol: "circle.inset.filled", color: "#34C759" },
-  blocked: { symbol: "exclamationmark.circle.fill", color: "#FF453A" },
-  open: { symbol: "circle", color: "#8E8E93" }
-};
-var statusOf = (status) => STATUS[status] ?? { symbol: "circle", color: "#8E8E93" };
-var TONE = { overdue: "#FF453A", soon: "#FF9F0A", later: "tertiary" };
-var URGENT = new Set(["P0", "P1"]);
-var today = computed(() => isoDay(data.clock()?.epoch ?? Date.now() / 1000));
+var ACCENT = "#0A84FF";
+var CARD = "#7f7f7f12";
+var open = (target) => target.kind === "page" ? cmux("browser.tab.new", { url: target.url }) : cmux("file.open", { path: target.path });
 var pageChip = (symbol, title, url) => HStack({ spacing: 4 }, [Image(symbol).font(10).color("secondary"), Text(title).font(11).weight("medium")]).paddingHorizontal(8).paddingVertical(4).background("#7f7f7f1f").cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(() => cmux("browser.tab.new", { url }));
-var count = (value, symbol, color) => value ? [
-  HStack({ spacing: 2 }, [
-    Image(symbol).font(8).color(color),
-    Text(String(value)).font(10).weight("semibold").monospaced().color("secondary")
-  ]).fixedSize()
-] : [];
-var taskMeta = (task) => HStack({ spacing: 6 }, [
-  Text(task.id).font(10).monospaced().color("tertiary"),
-  Text(task.priority).font(10).weight("semibold").monospaced().color(URGENT.has(task.priority) ? "#FF9F0A" : "tertiary"),
-  Text(() => dueLabel(task.due, today())?.text ?? "").font(10).color(() => TONE[dueLabel(task.due, today())?.tone ?? "later"]),
+var linkRow = ({ icon, title, target }) => HStack({ spacing: 6 }, [
+  Text(icon).font(11).frame({ width: 14 }),
+  Text(title).font(11).color("secondary").lineLimit(1).truncation("tail"),
   Spacer({ minLength: 0 })
-]);
-var taskRow = (item) => {
-  const task = item();
-  const { symbol, color } = statusOf(task.status);
-  return HStack({ spacing: 7 }, [
-    Image(symbol).font(10).color(color).frame({ width: 14 }),
-    VStack({ spacing: 1, alignment: "leading" }, [
-      Text(task.title).font(12).lineLimit(1).truncation("tail"),
-      taskMeta(task)
-    ])
-  ]).paddingHorizontal(8).paddingVertical(5).cornerRadius(8).hoverBackground("#7f7f7f26").cursor("pointer").frame({ maxWidth: "infinity", alignment: "leading" }).onTap(() => cmux("file.open", { path: task.path }));
+]).paddingLeading(2).paddingVertical(3).cornerRadius(6).hoverBackground("#7f7f7f26").cursor("pointer").onTap(() => open(target));
+var roadmapLink = (url) => ({ title: "Roadmap", icon: "\uD83D\uDDFA️", target: { kind: "page", url } });
+var chevron = (open) => Image(() => open() ? "chevron.down" : "chevron.right").font(9).weight("semibold").color("tertiary");
+var card = (view) => view.paddingHorizontal(10).paddingVertical(8).background(CARD).cornerRadius(10);
+var fraction = (done, live) => done + live ? done / (done + live) : 0;
+var AGENDA = {
+  overdue: "Overdue",
+  today: "Today",
+  week: "This week",
+  month: "This month",
+  later: "Later",
+  someday: "Someday"
+};
+var agenda = (listed, day) => {
+  const waiting = listed.filter(({ task }) => task.status !== "active");
+  return [
+    { title: "In flight", tasks: listed.filter(({ task }) => task.status === "active") },
+    ...BUCKETS.map((bucket) => ({
+      title: AGENDA[bucket],
+      tasks: waiting.filter(({ task }) => dueBucket(task.due, day) === bucket)
+    }))
+  ].filter((group) => group.tasks.length);
+};
+var dueTally = (amount, label, color) => Text(() => amount() ? `${amount()} ${label}` : "").font(10).weight("semibold").color(color);
+var tasksCard = (entry) => {
+  const [expanded, setExpanded] = signal(false);
+  const listed = entry.projects.flatMap((project) => project.tasks.map((task) => ({ task, color: hueColor(project.hue) })));
+  const total = (field) => entry.projects.reduce((sum, project) => sum + project[field], 0);
+  const tone = (wanted) => () => listed.filter(({ task }) => dueLabel(task.due, today())?.tone === wanted).length;
+  const groups = computed(() => agenda(listed, today()));
+  return card(VStack({ spacing: 6 }, [
+    VStack({ spacing: 6 }, [
+      HStack({ spacing: 7 }, [
+        Image("checklist").font(11).color(ACCENT),
+        Text("Tasks").font(12).weight("semibold"),
+        Spacer({ minLength: 4 }),
+        ...count(total("active"), "active"),
+        ...count(total("blocked"), "blocked"),
+        ...count(total("open"), "open"),
+        chevron(expanded)
+      ]),
+      progressBar(fraction(total("done"), total("active") + total("blocked") + total("open")), ACCENT),
+      HStack({ spacing: 8 }, [
+        dueTally(tone("overdue"), "overdue", "#FF453A"),
+        dueTally(tone("soon"), "due this week", "#FF9F0A"),
+        Spacer({ minLength: 0 })
+      ])
+    ]).cursor("pointer").onTap(() => setExpanded(!expanded())),
+    ForEach({ items: () => expanded() ? groups() : [], key: (group) => group.title }, (group) => VStack({ spacing: 1 }, [
+      groupTitle(group().title, group().tasks.length).paddingHorizontal(0).paddingTop(4),
+      ForEach({ items: () => group().tasks, key: (item) => item.task.id }, (item) => taskRow(item().task, item().color))
+    ]))
+  ]));
 };
 var projectCard = (item) => {
   const project = item();
-  const [open, setOpen] = signal(false);
-  const live = project.active + project.blocked + project.open;
-  const total = live + project.done;
+  const [expanded, setExpanded] = signal(false);
   const color = hueColor(project.hue);
   const next = project.tasks[0];
-  return VStack({ spacing: 6 }, [
+  const links = [...project.roadmap ? [roadmapLink(project.roadmap)] : [], ...project.pins];
+  return card(VStack({ spacing: 6 }, [
     VStack({ spacing: 6 }, [
       HStack({ spacing: 7 }, [
         Circle({ size: 8 }).fill(color),
         Text(project.slug).font(12).weight("semibold").lineLimit(1).truncation("tail"),
         Spacer({ minLength: 4 }),
-        ...count(project.active, "circle.inset.filled", "#34C759"),
-        ...count(project.blocked, "exclamationmark.circle.fill", "#FF453A"),
-        ...count(project.open, "circle", "#8E8E93"),
-        Image(() => open() ? "chevron.down" : "chevron.right").font(9).weight("semibold").color("tertiary")
+        ...count(project.active, "active"),
+        ...count(project.blocked, "blocked"),
+        ...count(project.open, "open"),
+        ...links.length ? [Image("pin.fill").font(8).color("tertiary").help(`${links.length} pinned`)] : [],
+        chevron(expanded)
       ]),
-      ProgressView({ value: total ? project.done / total : 0 }).color(color),
-      ForEach({ items: () => next && !open() ? [next] : [], key: (task) => task.id }, (task) => HStack({ spacing: 6 }, [
+      progressBar(fraction(project.done, project.active + project.blocked + project.open), color),
+      ForEach({ items: () => next && !expanded() ? [next] : [], key: (task) => task.id }, (task) => HStack({ spacing: 6 }, [
         Image(statusOf(task().status).symbol).font(9).color(statusOf(task().status).color),
         Text(task().title).font(11).color("secondary").lineLimit(1).truncation("tail"),
         Spacer({ minLength: 0 })
       ]))
-    ]).cursor("pointer").onTap(() => setOpen(!open())),
-    VStack({ spacing: 1 }, [ForEach({ items: () => open() ? project.tasks : [], key: (task) => task.id }, taskRow)])
-  ]).paddingHorizontal(10).paddingVertical(8).background("#7f7f7f12").cornerRadius(10).frame({ maxWidth: "infinity" });
+    ]).cursor("pointer").onTap(() => setExpanded(!expanded())),
+    ForEach({ items: () => expanded() ? links : [], key: (link) => link.title }, (link) => linkRow(link())),
+    VStack({ spacing: 1 }, [
+      ForEach({ items: () => expanded() ? project.tasks : [], key: (task) => task.id }, (task) => taskRow(task()))
+    ])
+  ])).frame({ maxWidth: "infinity" });
 };
-var workBody = (entry) => VStack({ spacing: 6 }, [
-  ForEach({ items: entry.projects, key: (project) => project.slug }, projectCard),
-  ...entry.projects.length ? [] : [note("No projects yet.")]
+var STATES = [
+  { title: "At work", holds: (project) => project.active > 0 },
+  { title: "Blocked", holds: (project) => !project.active && project.blocked > 0 },
+  { title: "Quiet", holds: (project) => !project.active && !project.blocked }
+];
+var projectsSection = (projects) => {
+  const [expanded, setExpanded] = signal(true);
+  const groups = STATES.map(({ title, holds }) => ({ title, projects: projects.filter(holds) })).filter((group) => group.projects.length);
+  return VStack({ spacing: 6 }, [
+    HStack({ spacing: 4 }, [
+      Text("PROJECTS").font(10).weight("semibold").color("secondary"),
+      Text(String(projects.length)).font(10).monospaced().color("tertiary"),
+      Spacer({ minLength: 0 }),
+      chevron(expanded)
+    ]).paddingHorizontal(4).cursor("pointer").onTap(() => setExpanded(!expanded())),
+    ForEach({ items: () => expanded() ? groups : [], key: (group) => group.title }, (group) => VStack({ spacing: 6 }, [
+      groupTitle(group().title, group().projects.length),
+      ForEach({ items: group().projects, key: (project) => project.slug }, projectCard)
+    ]))
+  ]);
+};
+var workBody = (entry) => VStack({ spacing: 10 }, [
+  tasksCard(entry),
+  ...entry.projects.length ? [projectsSection(entry.projects)] : [note("No projects yet.")]
 ]);
 var workPage = ({ tabs, home, homes, pick }) => {
   const entry = () => {

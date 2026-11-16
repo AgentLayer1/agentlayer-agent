@@ -27,6 +27,26 @@ export const dueLabel = (due: string, today: string): DueLabel | null => {
   return { text: `due in ${days}d`, tone: days <= 7 ? 'soon' : 'later' };
 };
 
+export const BUCKETS = ['overdue', 'today', 'week', 'month', 'later', 'someday'] as const;
+export type DueBucket = (typeof BUCKETS)[number];
+
+/**
+ * Where a due date falls on the agenda, as the dashboard's Tasks page groups it.
+ */
+export const dueBucket = (due: string, today: string): DueBucket => {
+  const days = dayNumber(due) - dayNumber(today);
+  if (!due || Number.isNaN(days)) {
+    return 'someday';
+  }
+  if (days < 0) {
+    return 'overdue';
+  }
+  if (days === 0) {
+    return 'today';
+  }
+  return days <= 7 ? 'week' : days <= 30 ? 'month' : 'later';
+};
+
 /**
  * The local date of a moment given in epoch seconds, as `YYYY-MM-DD`.
  */

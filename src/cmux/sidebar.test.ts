@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { bundleSidebar, DIST } from './build';
 import { homeEntry } from './entry';
 import { renderSidebar } from './file';
@@ -42,24 +43,78 @@ run('Work opens the dashboard and the roadmap as full tabs', () => {
   expect(sidebar.tap('Roadmap')?.params).toEqual({ url: NOVA_ENTRY.roadmap ?? '' });
 });
 
-run('each project is a card with its counts and the task it needs next, at work first', () => {
+const between = (texts: string[], from: string, to: string) => texts.slice(texts.indexOf(from), texts.indexOf(to));
+
+run('the Tasks card leads with every live task counted, what is overdue or due this week, folded', () => {
   const texts = onWork().visibleTexts();
-  const cards = texts.filter((text) => ['acme-app', 'garden-shop', 'blog'].includes(text));
-  expect(cards).toEqual(['acme-app', 'garden-shop', 'blog']);
-  const acme = texts.slice(texts.indexOf('acme-app'), texts.indexOf('garden-shop'));
-  expect(acme, 'name, 1 active, 2 open, then the next task').toEqual(['acme-app', '1', '2', 'Ship the invoice export']);
+  expect(between(texts, 'Tasks', 'PROJECTS'), 'title, 1 active, 1 blocked, 3 open, then the due tallies').toEqual([
+    'Tasks',
+    '1',
+    '1',
+    '3',
+    '1 overdue',
+    '1 due this week'
+  ]);
 });
 
-run('a card opens into its tasks, each with its id, priority and due date read against today', () => {
+run('the Tasks card opens into the agenda: in flight, then by due date, each row with its project', () => {
+  const sidebar = onWork();
+  sidebar.tap('Tasks');
+  const titles = between(sidebar.visibleTexts(), 'IN FLIGHT', 'PROJECTS').filter(
+    (text) => /^[A-Z ]+$/.test(text) || text.includes(' the ')
+  );
+  expect(titles).toEqual([
+    'IN FLIGHT',
+    'Ship the invoice export',
+    'THIS WEEK',
+    'Fix the checkout total',
+    'THIS MONTH',
+    'Write the release notes',
+    'SOMEDAY',
+    'Wait on the supplier price list',
+    'Photograph the spring range'
+  ]);
+});
+
+run('projects are grouped at work, blocked and quiet, each card with its counts and the task it needs next', () => {
+  const texts = onWork().visibleTexts();
+  const outline = texts
+    .slice(texts.indexOf('PROJECTS'))
+    .filter((text) => ['PROJECTS', 'AT WORK', 'BLOCKED', 'QUIET', 'acme-app', 'garden-shop', 'blog'].includes(text));
+  expect(outline).toEqual(['PROJECTS', 'AT WORK', 'acme-app', 'BLOCKED', 'garden-shop', 'QUIET', 'blog']);
+  expect(texts.slice(texts.indexOf('QUIET'))).toEqual(['QUIET', '1', 'blog']);
+  expect(between(texts, 'acme-app', 'BLOCKED'), 'name, 1 active, 2 open, then the next task').toEqual([
+    'acme-app',
+    '1',
+    '2',
+    'Ship the invoice export'
+  ]);
+});
+
+run('the projects section folds away and back', () => {
+  const sidebar = onWork();
+  sidebar.tap('PROJECTS');
+  expect(sidebar.visibleTexts()).not.toContain('acme-app');
+  sidebar.tap('PROJECTS');
+  expect(sidebar.visibleTexts()).toContain('acme-app');
+});
+
+run('a card opens into its roadmap, its pins, then its tasks with id, priority, due words and comments', () => {
   const sidebar = onWork();
   sidebar.tap('acme-app');
   const texts = sidebar.visibleTexts();
-  const rows = texts.slice(texts.indexOf('acme-app') + 3, texts.indexOf('garden-shop'));
-  expect(rows).toEqual([
+  expect(between(texts, 'acme-app', 'BLOCKED').slice(3)).toEqual([
+    '🗺️',
+    'Roadmap',
+    '✅',
+    'Launch checklist',
+    '📊',
+    'Pricing page',
     'Ship the invoice export',
     'ac-101',
     'P1',
     'overdue 2d',
+    '3',
     'Fix the checkout total',
     'ac-102',
     'P0',
@@ -73,6 +128,21 @@ run('a card opens into its tasks, each with its id, priority and due date read a
     kind: 'cmux',
     method: 'file.open',
     params: { path: join(NOVA_HOME, 'projects', 'acme-app', 'tasks', 'ac-102.md') }
+  });
+  expect(sidebar.tap('Launch checklist')).toEqual({
+    kind: 'cmux',
+    method: 'file.open',
+    params: { path: join(NOVA_HOME, 'projects', 'acme-app', 'launch-checklist.md') }
+  });
+  expect(sidebar.tap('Pricing page')).toEqual({
+    kind: 'cmux',
+    method: 'browser.tab.new',
+    params: { url: pathToFileURL(join(NOVA_HOME, 'reports', 'plans', 'pricing.html')).href }
+  });
+  expect(sidebar.tap('Roadmap'), 'the project’s roadmap, not the home’s').toEqual({
+    kind: 'cmux',
+    method: 'browser.tab.new',
+    params: { url: pathToFileURL(join(NOVA_HOME, 'projects', 'acme-app', 'roadmap.html')).href }
   });
 });
 
