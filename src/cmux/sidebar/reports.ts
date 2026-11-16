@@ -88,9 +88,9 @@ const reportCard = (item: ReportItem) =>
       Text(item.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation('tail'),
       HStack({ spacing: 6 }, [
         badge(item.kind, hueColor(item.hue)),
-        Text(clock(item.time)).font(10).monospaced().color('tertiary'),
         ...(item.status ? [statusBadge(item.status)] : []),
-        Spacer({ minLength: 0 })
+        Spacer({ minLength: 0 }),
+        Text(clock(item.time)).font(10).monospaced().color('tertiary')
       ])
     ]),
     () => openTarget(item.target)

@@ -298,7 +298,7 @@ var groupTitle = (title, count, icon) => HStack({ spacing: 4 }, [
 ]).paddingHorizontal(4);
 var chevron = (expanded) => Image(() => expanded() ? "chevron.down" : "chevron.right").font(9).weight("semibold").color("tertiary");
 var foldTitle = (title, count, expanded, setExpanded, icon) => HStack({ spacing: 4 }, [groupTitle(title, count, icon), chevron(expanded)]).paddingTrailing(4).cursor("pointer").onTap(() => setExpanded(!expanded()));
-var TITLE_OPACITY = 0.83;
+var TITLE_OPACITY = 0.85;
 var toolIcon = (symbol, help, onTap) => Image(symbol).font(11).color("secondary").padding(5).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
 var CARD = "#7f7f7f12";
 var card = (view) => view.paddingHorizontal(10).paddingVertical(8).background(CARD).cornerRadius(10);
@@ -607,9 +607,9 @@ var reportCard = (item) => tile(VStack({ spacing: 3, alignment: "leading" }, [
   Text(item.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail"),
   HStack({ spacing: 6 }, [
     badge2(item.kind, hueColor(item.hue)),
-    Text(clock(item.time)).font(10).monospaced().color("tertiary"),
     ...item.status ? [statusBadge(item.status)] : [],
-    Spacer({ minLength: 0 })
+    Spacer({ minLength: 0 }),
+    Text(clock(item.time)).font(10).monospaced().color("tertiary")
   ])
 ]), () => openTarget(item.target));
 var pinCard = ({ pin, project }) => tile(HStack({ spacing: 6 }, [
