@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "target": "ES2023",
+    "module": "Preserve",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "types": [],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "verbatimModuleSyntax": true
+  },
+  "files": ["main.ts", "../../../node_modules/cmux-custom-dashboard/src/runtime.d.ts"]
+}

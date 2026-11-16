@@ -1,6 +1,7 @@
 # compiled
 build/
 dist/
+!src/cmux/sidebar/dist/
 *.tsbuildinfo
 
 # dependencies

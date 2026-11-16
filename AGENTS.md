@@ -11,7 +11,8 @@ The `agentlayer` plugin: an MCP server, hook handlers, a CLI, skills and mods th
 | `src/tools.ts` | The tool registry: one import per domain's `tool.ts` |
 | `src/config.ts` | Home paths (resolved live, never frozen), plugin identity, timezone |
 | `src/bootstrap.ts`, `src/test.ts` | The server's first import (settings env), and the test preload that pins a throwaway home |
-| `src/<domain>/` | One folder per domain or pack: `api`, `appstore`, `browser`, `database`, `github`, `helpdesk`, `home`, `knowledge`, `media`, `reports`, `seed`, `seo`, `slack`, `status`, `tasks`, `upgrade`, `worktree` |
+| `src/<domain>/` | One folder per domain or pack: `api`, `appstore`, `browser`, `cmux`, `database`, `github`, `helpdesk`, `home`, `knowledge`, `media`, `reports`, `seed`, `seo`, `slack`, `status`, `tasks`, `upgrade`, `worktree` |
+| `src/cmux/sidebar/` | The cmux sidebar's own code, run by cmux and not by Bun: its own `tsconfig.json` (no Bun or Node types), bundled into the committed `dist/sidebar.js` by `bun run cmux:build` |
 | `src/hooks/` | Session start (context, banner), the shell guard, and `handlers.ts`, which speaks each host's hook protocol |
 | `src/notices/`, `src/statusline/`, `src/roadmap/` | Banner and prompt-row notices, the status line, roadmap data |
 | `src/shared/` | Cross-domain code only. A module with one consumer lives with that consumer |
@@ -38,7 +39,9 @@ Skill scripts import plugin source by relative path (`../../../src/shared/naming
 | Command | Does |
 | --- | --- |
 | `bun install` | Dependencies, plus Chromium through the postinstall hook |
-| `bun run typecheck` | `tsc` over `src/` and `skills/**/*.ts` |
+| `bun run typecheck` | `tsc` over `src/` and `skills/**/*.ts`, then the cmux sidebar against cmux's runtime types |
+| `bun run cmux:build` | Rebuild `src/cmux/sidebar/dist/sidebar.js` after changing the sidebar; a test fails while it's stale |
+| `bun run cmux:check` | Typecheck, rebuild the sidebar, and run the cmux pack's tests (they mount the sidebar on the installed cmux app's runtime, and skip without it) |
 | `bun test` | Every test under `src/` and `skills/` (mods excluded) |
 | `bun src/server.ts` | Boot the server; expect `MCP server started — tools=<count>` |
 | `bun src/cli.ts help` | List the CLI verbs |
