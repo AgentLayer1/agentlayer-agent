@@ -36,10 +36,10 @@ import { RUNTIME_DIR } from '@/shared/naming';
 import { DEFAULT_AGENT_EMOJI } from '@/shared/persona';
 import { THEME_BLOCK } from '@/shared/theme';
 import { issueLabel } from '@/tasks/issue';
+import type { ProjectLoad } from '@/work/views';
 import type {
   ContextGroup,
   ProfileSection,
-  ProjectLoad,
   RadarLatest,
   RadarSession,
   ReportRef,

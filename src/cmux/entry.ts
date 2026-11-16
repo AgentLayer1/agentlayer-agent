@@ -1,6 +1,7 @@
 import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { Persona, ProjectLoad, StatusSnapshot, SurfaceLink, TaskRef } from '@/status/collect';
+import type { Persona, StatusSnapshot, SurfaceLink, TaskRef } from '@/status/collect';
+import type { ProjectLoad } from '@/work/views';
 import { projectHue } from '@/status/html-primitives';
 import { SCHEMA, type HomeEntry, type PinItem, type ProjectCard, type TaskItem } from './sidebar/data';
 

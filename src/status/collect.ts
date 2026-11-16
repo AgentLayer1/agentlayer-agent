@@ -28,7 +28,7 @@ import { listInboxFiles } from '@/knowledge/utils';
 import { readLedger } from '@/notices/ledger';
 import { type ChangelogEntry, getUpgradeStatus, parseChangelog, type UpgradeState } from '@/upgrade/version';
 import { readCadence } from '@/shared/cadence';
-import { nowISO, nowTime, todayDate } from '@/shared/date';
+import { nowISO, nowTime, shiftDate, todayDate } from '@/shared/date';
 import { agentDisplayName, agentEmoji } from '@/shared/agent-name';
 import { CLI_PATH } from '@/shared/naming';
 import { routerPlaybooks } from '@/status/playbooks';
@@ -44,16 +44,17 @@ import {
 } from './radar-refs';
 import { sanitizeHtml } from '@/status/sanitize-html';
 import { firstParagraph, readText, stripMarkdown } from '@/shared/text';
-import type { TaskFile } from '@/tasks/types';
-import { discoverProjects, scanAllTasks, scanArchivedTasks, scanMalformedTasks } from '@/tasks/scan';
-import { resolveTasks } from '@/tasks/resolve';
+import { scanMalformedTasks } from '@/tasks/scan';
+import { buildWork } from '@/work/build';
+import type { Work, WorkTask } from '@/work/model';
+import { inPlace, overdue, projectLoads, queue, stale, updatedBetween, type ProjectLoad } from '@/work/views';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { MOD_FEATURES, type ModFeature } from '../../mods/shared/catalog';
 import { collectAttentionView } from './attention';
 import type { AttentionView } from './attention-data';
-import { livePins, projectHues, projectPinLinks, surfaceFiles, type PinLink } from './surfaces';
+import { livePins, projectHues, surfaceFiles } from './surfaces';
 
 export interface SettingsLayer {
   label: string;
@@ -294,27 +295,6 @@ export interface RuleEntry {
   bytes: number;
   /** HOME-relative path for project rules (clickable); absolute for user. */
   path: string;
-}
-
-export interface ProjectLoad {
-  project: string;
-  open: number;
-  active: number;
-  blocked: number;
-  /** Open + active + blocked — the live working set. */
-  total: number;
-  /** Done/cancelled tasks: still-in-place ones plus the archive folder. */
-  done: number;
-  /** Most recent `updated:` across the project's live tasks; '' if none. */
-  updatedAt: string;
-  /** First paragraph of the project README, markdown stripped; '' if none. */
-  description: string;
-  /** HOME-relative path to the project's own roadmap.html; '' when it has none. */
-  roadmap: string;
-  /** HOME-relative path to the project's own attention.html; '' when it has none. */
-  attention: string;
-  /** The live pins in the README's `## Pinned` section. */
-  pins: PinLink[];
 }
 
 export interface TaskRef {
@@ -778,115 +758,41 @@ const collectCompile = (): StatusSnapshot['compile'] => {
   };
 };
 
-const toRef = (task: TaskFile): TaskRef => ({
-  id: task.frontmatter.id,
-  title: task.frontmatter.title,
-  priority: task.frontmatter.priority,
-  project: task.frontmatter.project,
-  status: task.frontmatter.status,
-  due: task.frontmatter.due,
-  updated: task.frontmatter.updated,
-  dependsOn: task.frontmatter.depends_on,
-  blockedBy: task.frontmatter.blocked_by,
-  issue: task.frontmatter.issue,
-  comments: task.thread.length,
-  path: relative(FOLDERS.HOME, task.filePath)
+const toRef = (task: WorkTask): TaskRef => ({
+  id: task.id,
+  title: task.title,
+  priority: task.priority,
+  project: task.project,
+  status: task.status,
+  due: task.due,
+  updated: task.updated,
+  dependsOn: task.dependsOn,
+  blockedBy: task.blockedBy,
+  issue: task.issue,
+  comments: task.comments,
+  path: task.path
 });
 
-const OPEN_STATUSES = new Set(['open', 'active', 'blocked']);
-
-/** First plain paragraph of a project README (frontmatter skipped). */
-const projectDescription = (project: string): string => firstParagraph(resolve(FOLDERS.PROJECTS, project, 'README.md'));
-
-/** Same convention as the HOME-root north star and attention page, one level down: a project's
- *  own roadmap.html or attention.html sits at its root and links from its card. '' when absent. */
-const projectPage = (project: string, file: 'roadmap.html' | 'attention.html'): string => {
-  const path = resolve(FOLDERS.PROJECTS, project, file);
-  return existsSync(path) ? relative(FOLDERS.HOME, path) : '';
-};
-
-const collectTasks = (): StatusSnapshot['tasks'] => {
-  const all = scanAllTasks();
-  const archived = scanArchivedTasks();
-  const scan = resolveTasks(all, archived);
-  const pathById = Object.fromEntries(
-    [...all, ...archived].map((task) => [task.frontmatter.id, relative(FOLDERS.HOME, task.filePath)])
-  );
-  const today = new Date().toLocaleDateString('sv-SE', { timeZone: TIMEZONE });
-  const yesterday = new Date(Date.now() - 86_400_000).toLocaleDateString('sv-SE', { timeZone: TIMEZONE });
-  const byStatus = (status: string) => all.filter((task) => task.frontmatter.status === status).length;
-
-  const emptyLoad = (project: string): ProjectLoad => ({
-    project,
-    open: 0,
-    active: 0,
-    blocked: 0,
-    total: 0,
-    done: 0,
-    updatedAt: '',
-    description: '',
-    roadmap: '',
-    attention: '',
-    pins: []
-  });
-
-  // Seed every discovered project so those with no live tasks still render as
-  // "quiet" cards. Archived projects move out of PROJECTS, so they drop off
-  // automatically; without this seeding, a live project whose tasks are all
-  // done/archived would silently vanish from the board.
-  const projectMap = new Map<string, ProjectLoad>(discoverProjects().map((project) => [project, emptyLoad(project)]));
-  for (const task of all) {
-    const { project, status, updated } = task.frontmatter;
-    const load = projectMap.get(project) ?? emptyLoad(project);
-    if (status === 'open') load.open += 1;
-    else if (status === 'active') load.active += 1;
-    else if (status === 'blocked') load.blocked += 1;
-    else load.done += 1;
-    if (OPEN_STATUSES.has(status)) load.total += 1;
-    if (updated > load.updatedAt) load.updatedAt = updated;
-    projectMap.set(project, load);
-  }
-  const byProject = [...projectMap.values()]
-    .map((load) => ({
-      ...load,
-      done:
-        load.done + countDir(resolve(FOLDERS.PROJECTS, load.project, 'tasks', 'archive'), (n) => MARKDOWN_RE.test(n)),
-      description: projectDescription(load.project),
-      roadmap: projectPage(load.project, 'roadmap.html'),
-      attention: projectPage(load.project, 'attention.html'),
-      pins: projectPinLinks(load.project)
-    }))
-    // Most recently touched project first (by latest live-task `updated:`),
-    // then by open-task count, then alphabetically. Quiet projects (no live
-    // tasks → empty updatedAt) sink to the bottom deterministically.
-    .sort(
-      (a, b) =>
-        (b.updatedAt || '').localeCompare(a.updatedAt || '') || b.total - a.total || a.project.localeCompare(b.project)
-    );
-
-  // Whole working set, P0 first then earliest due — the dashboard's agenda raw material.
-  const queue = all
-    .filter((task) => OPEN_STATUSES.has(task.frontmatter.status))
-    .map(toRef)
-    .sort((a, b) => a.priority.localeCompare(b.priority) || (a.due || '9999').localeCompare(b.due || '9999'));
-
+const collectTasks = (work: Work): StatusSnapshot['tasks'] => {
+  const today = todayDate();
+  const placed = inPlace(work);
+  const late = overdue(work, today);
+  const idle = stale(work, today);
   return {
-    active: byStatus('active'),
-    blocked: byStatus('blocked'),
-    stale: scan.stale.length,
-    overdue: scan.overdue.length,
-    projects: discoverProjects().length,
-    byProject,
-    overdueList: scan.overdue.map(toRef),
-    staleList: scan.stale.map(toRef),
-    activeList: all.filter((task) => task.frontmatter.status === 'active').map(toRef),
-    queue,
+    active: placed.filter((task) => task.status === 'active').length,
+    blocked: placed.filter((task) => task.status === 'blocked').length,
+    stale: idle.length,
+    overdue: late.length,
+    projects: work.projects.length,
+    byProject: projectLoads(work),
+    overdueList: late.map(toRef),
+    staleList: idle.map(toRef),
+    activeList: placed.filter((task) => task.status === 'active').map(toRef),
+    queue: queue(work).map(toRef),
     // "Today" with date-only granularity: include yesterday too so the feed
     // survives the stroke of midnight (the renderer labels it last-24h).
-    touchedToday: all
-      .filter((task) => task.frontmatter.updated === today || task.frontmatter.updated === yesterday)
-      .map(toRef),
-    pathById,
+    touchedToday: updatedBetween(work, shiftDate(today, -1), today).map(toRef),
+    pathById: Object.fromEntries(work.tasks.map((task) => [task.id, task.path])),
     malformed: scanMalformedTasks().map((path) => relative(FOLDERS.HOME, path))
   };
 };
@@ -1539,7 +1445,9 @@ const collectReports = (): ReportRef[] => {
         continue;
       }
       // A title's own brackets are written escaped (`\[draft\]`), so the link text runs to the first bare `]`.
-      const entry = line.match(/^- (\d{2}:\d{2}) · \[((?:\\.|[^\]\\])+)\](?:\(([^)]+)\))?(?: · `([^`]+)`)?(?: · (\S+))?/);
+      const entry = line.match(
+        /^- (\d{2}:\d{2}) · \[((?:\\.|[^\]\\])+)\](?:\(([^)]+)\))?(?: · `([^`]+)`)?(?: · (\S+))?/
+      );
       if (!entry) continue;
       // Index links are relative to reports/; the dashboard sits at <HOME>.
       const href = entry[3] ? `reports/${entry[3]}` : '';
@@ -1641,7 +1549,7 @@ const sessionMetaRows = (
 
 /** Read the newest radar report's body and render it to HTML for the Sessions
  *  page Radar tab. `reports` must be newest-first (collectReports output). */
-const collectRadarLatest = async (reports: ReportRef[]): Promise<RadarLatest | null> => {
+const collectRadarLatest = async (reports: ReportRef[], work: Work): Promise<RadarLatest | null> => {
   const ref = reports.find((report) => report.category === 'radar' && report.href);
   if (!ref) return null;
   let body = '';
@@ -1672,10 +1580,7 @@ const collectRadarLatest = async (reports: ReportRef[]): Promise<RadarLatest | n
   // built off `raw`/`normalized` only, so the Today feed (parseRadarSessions on
   // `raw`) is untouched and only the Recent tab gains them.
   const taskIndex = new Map<string, RadarTaskRef>(
-    [...scanAllTasks(), ...scanArchivedTasks()].map((task) => [
-      task.frontmatter.id,
-      { title: task.frontmatter.title, filePath: task.filePath }
-    ])
+    work.tasks.map((task) => [task.id, { title: task.title, filePath: resolve(FOLDERS.HOME, task.path) }])
   );
   const planTitles = new Map<string, string>(
     reports.filter((report) => report.category === 'plans' && report.href).map((report) => [report.href, report.title])
@@ -1833,7 +1738,11 @@ const collectPinned = (): SurfaceLink[] =>
 
 const MAX_REPORTS = 60;
 
-export const collectStatus = async (): Promise<StatusSnapshot> => {
+/**
+ * Everything the dashboard shows. The tasks and projects come from `work`, so a rebuild that already built the
+ * model passes it in rather than reading the files again.
+ */
+export const collectStatus = async (work: Work = buildWork()): Promise<StatusSnapshot> => {
   const allReports = collectReports();
   const knowledge = collectKnowledge();
   const base = {
@@ -1860,13 +1769,13 @@ export const collectStatus = async (): Promise<StatusSnapshot> => {
     mods: collectMods(),
     knowledge,
     compile: collectCompile(),
-    tasks: collectTasks(),
+    tasks: collectTasks(work),
     context: await collectContext(),
     settings: collectSettings(),
     logs: collectLogs(),
     reports: allReports.slice(0, MAX_REPORTS),
     reportsTotal: allReports.length,
-    radarLatest: await collectRadarLatest(allReports),
+    radarLatest: await collectRadarLatest(allReports, work),
     attention: collectAttentionView(''),
     changelog: parseChangelog()
   };
