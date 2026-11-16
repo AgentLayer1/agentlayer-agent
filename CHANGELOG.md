@@ -47,6 +47,56 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.0.1] - 2026-11-16
+
+A hardening release: fixes from a full review of the plugin and a second model's adversarial
+review, a reorganised source tree, and a moved home that checks its move before finishing it.
+
+### Added
+- A moved home's first session checks the move with you before the upgrade and the sync
+  rewrite its lines: it reads the change list the move saved, flags renames that meant someone
+  else, and puts back the ones you pick. It then lists what is left of the move note's
+  checklist.
+- `upgrade` flags a home missing from the auto-mode "Agent homes:" entry, and a Codex-wired home
+  whose Codex has no `agentlayer` plugin.
+- A new home that keeps the name Oppi gets its nickname, Ops.
+
+### Changed
+- `curl_run` accepts a listed set of request flags and one URL per call, and reads no `.curlrc`,
+  instead of refusing known-bad flags.
+- Every outbound request has a deadline and stops when its call is cancelled.
+- Codex wiring is named after the plugin: `[mcp_servers.agentlayer]`, `[permissions.agentlayer]`
+  and `.codex/rules/agentlayer.rules`, so it no longer shares the bare `agent` name with your own
+  Codex config.
+- Source layout: each domain owns its `tool.ts` and one registry imports them; only entry points,
+  config and the registry sit at the `src/` root; `shared/` holds cross-domain code only; hook
+  verbs live in `src/hooks`. The paths a home stores (`src/cli.ts`, `src/server.ts`) are
+  unchanged. The repo has a contributor manual (`AGENTS.md`).
+- The README leads with AgentLayer and introduces Oppi; the changelog notes that `agent-kevin`
+  ends at 0.9.5.
+
+### Fixed
+- Security: tool paths that could write outside the home or hand out its secrets; curl's
+  `--next` and `--variable` bypasses; the secret store's keys reaching child processes; Slack
+  messages now wrapped as untrusted, like every other outside source.
+- Capture: the session briefing is redacted (the whole first turn, before it is cut); three ways
+  a capture lost turns; an inbox item's frontmatter reads back whatever the file is called.
+- Session start: the size cap never cuts a warning, and the session tail is where the session
+  ended, keeps its role label and stays within its cap.
+- Tasks: five ways a task file lost data or a task went missing.
+- Knowledge: feedback logged mid-compile stays pending, and prune repoints the days it deletes.
+- The CLI reads the named home's settings, survives a mistyped time zone, and keeps a note that
+  starts with `--`.
+- A report's title, summary or extra key can't break the report or its index line.
+- Atomic rewrites keep the file's mode; `.env` files read `export` lines; one cadence writer,
+  which never replaces a damaged file.
+- The GitHub sweep compares "new since the last sweep" as instants, not strings.
+- Four skill scripts that wrote or matched the wrong thing.
+- A moved home's first session always syncs, even across a restart.
+
+### Upgrade
+- `manual: required` — only for a home wired for Codex on 1.0.0. The upgrade's `codex_setup` writes the new `agentlayer` tables but leaves the old ones: in the home's `.codex/config.toml`, delete `[mcp_servers.agent]` and `[permissions.agent]` and set `default_permissions = "agentlayer"`, then delete `.codex/rules/agent.rules`. A home without `.codex/` has nothing to do.
+
 ## [1.0.0] - 2026-11-15
 
 The first release as `agentlayer`, with Oppi 🐙 as the agent a new home wakes up with. A home
