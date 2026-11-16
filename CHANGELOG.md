@@ -4,8 +4,8 @@ All notable changes to **agentlayer** are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/), and the project aims to follow
 [Semantic Versioning](https://semver.org/).
 
-This plugin was `agent-kevin` through 0.9.4. Those releases are in the
-[agent-kevin CHANGELOG at v0.9.4](https://github.com/AgentLayer1/agentlayer-agent/blob/v0.9.4/CHANGELOG.md);
+This plugin was `agent-kevin` before 1.0, and its last release is 0.9.5. Those releases are in the
+[agent-kevin CHANGELOG at v0.9.5](https://github.com/AgentLayer1/agent-kevin/blob/v0.9.5/CHANGELOG.md);
 a home moves from it with that plugin's `/agent-kevin:move`, not with an upgrade.
 
 The version that matters is the one in `.claude-plugin/plugin.json`. `/plugin update`
