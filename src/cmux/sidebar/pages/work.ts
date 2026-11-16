@@ -154,7 +154,7 @@ export const workPage = ({ tabs, home, homes, pick }: WorkOptions) => {
             )
           ]
         : [])
-    ]).paddingHorizontal(10),
+    ]).paddingHorizontal(4),
     scopedPage(home, (_path, current) => workBody(current))
   ]).paddingHorizontal(6);
 };

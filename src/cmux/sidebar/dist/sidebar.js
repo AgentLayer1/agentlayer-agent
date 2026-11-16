@@ -402,7 +402,7 @@ var workPage = ({ tabs, home, homes, pick }) => {
       ...homes.length > 1 ? [
         Menu(() => homeLabel(home() ?? ""), homes.map((path) => Button(homeLabel(path), () => pick(path))))
       ] : []
-    ]).paddingHorizontal(10),
+    ]).paddingHorizontal(4),
     scopedPage(home, (_path, current) => workBody(current))
   ]).paddingHorizontal(6);
 };
