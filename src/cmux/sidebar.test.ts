@@ -363,3 +363,17 @@ run('yesterday’s daily goals leave today empty, with the command that sets the
 run('the Dashboard icon on Goals opens the dashboard’s Goals', () => {
   expect(onGoals().tap('Dashboard')?.params).toEqual({ url: `${NOVA_ENTRY.dashboard}#today/goals` });
 });
+
+run('a preview can open on any page, while the installed sidebar opens on the Manager', () => {
+  const opened = mount(
+    renderSidebar({
+      version: '1.1.0',
+      homes: { [NOVA_HOME]: NOVA_ENTRY },
+      open: { tab: 'agents', section: 'goals' },
+      bundle: readFileSync(DIST, 'utf8')
+    }),
+    CMUX_DATA
+  ).visibleTexts();
+  expect(opened).toEqual(expect.arrayContaining(['This week', 'This month']));
+  expect(mount(installed(), CMUX_DATA).visibleTexts()[0]).toBe('Manager');
+});

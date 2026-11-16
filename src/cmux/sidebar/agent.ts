@@ -8,6 +8,7 @@ import { toolIcon } from './style';
 import { scopedPage } from './view';
 
 interface Section {
+  id: 'projects' | 'reports' | 'goals';
   label: string;
   /**
    * The dashboard page its Dashboard icon opens.
@@ -16,12 +17,12 @@ interface Section {
   body: (entry: HomeEntry) => View;
 }
 
-const PROJECTS: Section = { label: 'Projects', page: 'today', body: projectsBody };
+const PROJECTS: Section = { id: 'projects', label: 'Projects', page: 'today', body: projectsBody };
 
 const SECTIONS: readonly Section[] = [
   PROJECTS,
-  { label: 'Reports', page: 'reports', body: reportsBody },
-  { label: 'Goals', page: 'today/goals', body: goalsBody }
+  { id: 'reports', label: 'Reports', page: 'reports', body: reportsBody },
+  { id: 'goals', label: 'Goals', page: 'today/goals', body: goalsBody }
 ];
 
 /**
@@ -29,7 +30,7 @@ const SECTIONS: readonly Section[] = [
  * roadmap a tap away, opened as full tabs. The chosen section outlasts a switch of agent.
  */
 export const agentPage = (options: AgentOptions) => {
-  const [section, setSection] = signal(PROJECTS);
+  const [section, setSection] = signal(SECTIONS.find((item) => item.id === DATA.open?.section) ?? PROJECTS);
   return VStack({ spacing: 8 }, [
     agentHeader(options),
     scopedPage(options.home, (entry) => {

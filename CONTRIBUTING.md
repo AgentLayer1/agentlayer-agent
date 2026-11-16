@@ -93,24 +93,29 @@ It renders in isolation (its own `HOME`, environment, and working directory), re
 
 ## The cmux sidebar
 
-The optional cmux pack lives in `src/cmux/`. The Bun side (`entry.ts`, `file.ts`, `lifecycle.ts`, `command.ts`) builds this home's entry from the work model (`src/work/`) and writes it into `~/.config/cmux/sidebars/agentlayer.js`, the one sidebar every home on the Mac joins. The sidebar's own code in `src/cmux/sidebar/` runs inside cmux, not Bun: its `tsconfig.json` has no Bun or Node types, so a call to either fails the typecheck, and it never builds a path (every path and URL arrives ready-made in its data). Its Manager tab is [cmux Manager](https://github.com/AgentLayer1/cmux-custom-manager) (`cmux-custom-manager`, a devDependency bundled into `dist/`); the Agents tab is `sidebar/agent.ts`, which puts the agent chips (`agents.ts`, packed into lines by `lines.ts`) over the Projects (`projects.ts`) and Reports (`reports.ts`) sub-tabs.
+The optional cmux pack lives in `src/cmux/`. The Bun side (`entry.ts`, `file.ts`, `lifecycle.ts`, `command.ts`) builds this home's entry from the work model (`src/work/`) and writes it into `~/.config/cmux/sidebars/agentlayer.js`, the one sidebar every home on the Mac joins. The sidebar's own code in `src/cmux/sidebar/` runs inside cmux, not Bun: its `tsconfig.json` has no Bun or Node types, so a call to either fails the typecheck, and it never builds a path (every path and URL arrives ready-made in its data). Its Manager tab is [cmux Manager](https://github.com/AgentLayer1/cmux-custom-manager) (`cmux-custom-manager`, a devDependency bundled into `dist/`); the Agents tab is `sidebar/agent.ts`, which puts the agent chips (`agents.ts`, packed into lines by `lines.ts`) over the Projects (`projects.ts`), Reports (`reports.ts`) and Goals (`goals.ts`) sub-tabs.
 
 | Command | Does |
 | --- | --- |
 | `bun run cmux:build` | Bundle `src/cmux/sidebar/main.ts` into the committed `src/cmux/sidebar/dist/sidebar.js`. Run it after every sidebar change; a test fails while the file is stale |
 | `bun run cmux:check` | Typecheck, rebuild, and run the pack's tests |
 | `bun run cmux:preview --text` | Print what each page draws for the invented homes in `src/cmux/preview/fixture.ts` |
-| `bun run cmux:preview` | Write `agentlayer-preview`, the sidebar drawing those homes with a frozen clock, for a screenshot |
+| `bun run cmux:preview` | Write `agentlayer-preview`, the sidebar drawing those homes with a frozen clock |
+| `bun run cmux:screenshot` | Retake the screenshots: each page of the preview, cropped to the panel; `--window-demo` adds the whole window with made-up workspaces and groups; `--out <dir>` picks the folder |
 
 The tests mount the built sidebar on cmux's own `SidebarRuntime.js`, read from the installed app and never copied into the repo (it is GPL-licensed), and assert what each page draws and which cmux call each tap makes. Without cmux installed they skip.
 
-To retake the screenshot, from a terminal inside cmux (its CLI answers nowhere else):
+To retake the screenshots, from a terminal inside cmux (its CLI answers nowhere else):
 
 ```bash
-bun run cmux:preview && cmux right-sidebar set custom agentlayer-preview
-cmux shot --out assets/cmux-sidebar-full.png   # then crop the panel into assets/cmux-sidebar.png
-rm ~/.config/cmux/sidebars/agentlayer-preview.js && cmux right-sidebar set custom agentlayer
+bun run cmux:screenshot --window-demo --out <docs-repo>/public/assets/cmux
 ```
+
+It opens a window of its own, sized 1400×900, and does everything there:
+- each page (Manager, Projects, Reports, Goals) shot and cropped to the panel by `src/cmux/preview/png.ts`, which finds the panel's edge in the image itself, as `cmux-sidebar-<page>.png`;
+- with `--window-demo`, made-up workspaces and two groups in that window's left sidebar and a mock chat in its terminal (`demo.ts`), then the whole window as `cmux-workstation.png`.
+
+Every command names that window, except `workspace-group create`, which runs inside it. It closes the window at the end, so no other window, workspace or group is touched. `png.ts` and `window.ts` are copies of cmux-custom-manager's `preview/`, kept in step by hand.
 
 ## PR conventions
 

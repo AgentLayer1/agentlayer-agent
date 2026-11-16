@@ -10,6 +10,7 @@
     "cmux:build": "bun src/cmux/build.ts",
     "cmux:check": "bun run typecheck && bun run cmux:build && bun test src/cmux",
     "cmux:preview": "bun run cmux:build && bun src/cmux/preview/write.ts",
+    "cmux:screenshot": "bun run cmux:build && bun src/cmux/preview/shot.ts",
     "start": "bun src/server.ts",
     "format": "bunx prettier --write \"src/**/*.{ts,json}\" --ignore-path .gitignore",
     "clean": "rm -rf node_modules",

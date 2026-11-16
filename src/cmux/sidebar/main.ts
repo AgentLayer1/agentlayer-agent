@@ -3,8 +3,9 @@
  * Every agent on this Mac, and the work each one keeps.
  *
  *   Manager   every session, sorted by what needs you (cmux Manager)
- *   Agents    a chip per agent, then the chosen agent's Projects (its tasks and projects by state) and Reports
- *             (its pins and newest reports by day), with its dashboard and roadmap a tap away
+ *   Agents    a chip per agent, then the chosen agent's Projects (its tasks and projects by state), Reports (its pins
+ *             and newest reports by day) and Goals (the year's theme, then today, this week, this month and this
+ *             year), with its dashboard and roadmap a tap away
  *
  * The workspace you're in picks the agent; a chip picks another.
  *
@@ -23,7 +24,7 @@ type Tab = 'manager' | 'agents';
 
 const app = () => {
   const homes = Object.keys(DATA.homes);
-  const [tab, setTab] = signal<Tab>('manager');
+  const [tab, setTab] = signal<Tab>(DATA.open?.tab ?? 'manager');
   const [pin, setPin] = signal<Pin | null>(null);
   const workspaces = () => data.workspaces() ?? [];
   const selectedId = computed(() => workspaces().find((workspace) => workspace.selected)?.id ?? '');

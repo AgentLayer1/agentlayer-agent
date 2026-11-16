@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { isRecord } from '@/shared/json-block';
 import { compareSemver } from '@/upgrade/version';
-import type { HomeEntry } from './sidebar/data';
+import type { HomeEntry, StartPage } from './sidebar/data';
 
 export const SIDEBAR_NAME = 'agentlayer';
 
@@ -21,6 +21,10 @@ export interface SidebarCode {
 
 export interface SidebarParts extends SidebarCode {
   homes: Record<string, HomeEntry>;
+  /**
+   * Where a preview opens; the installed sidebar never sets it.
+   */
+  open?: StartPage;
 }
 
 const META = /^\/\* agentlayer sidebar · bundle (\S+) \*\/\n/;
@@ -51,8 +55,8 @@ export const parseSidebar = (text: string): SidebarParts | null => {
   return meta?.[1] && data && homes ? { version: meta[1], homes, bundle: rest.slice(data[0].length) } : null;
 };
 
-export const renderSidebar = ({ version, homes, bundle }: SidebarParts): string =>
-  `/* agentlayer sidebar · bundle ${version} */\nconst DATA = ${JSON.stringify({ homes })};\n${bundle}`;
+export const renderSidebar = ({ version, homes, open, bundle }: SidebarParts): string =>
+  `/* agentlayer sidebar · bundle ${version} */\nconst DATA = ${JSON.stringify(open ? { homes, open } : { homes })};\n${bundle}`;
 
 /**
  * The installed homes with this one's entry put in (or taken out, for `null`), minus homes whose folder is gone.

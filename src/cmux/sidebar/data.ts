@@ -161,9 +161,18 @@ export interface HomeEntry {
   goals: GoalsItem;
 }
 
+export interface StartPage {
+  tab: 'manager' | 'agents';
+  section?: 'projects' | 'reports' | 'goals';
+}
+
 export interface SidebarData {
   /**
    * Keyed by the home's absolute path.
    */
   homes: Record<string, HomeEntry>;
+  /**
+   * The page to open on; only a preview sets it, so a screenshot can show any page. Absent, the Manager.
+   */
+  open?: StartPage;
 }

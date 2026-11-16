@@ -3,8 +3,9 @@
  * Every agent on this Mac, and the work each one keeps.
  *
  *   Manager   every session, sorted by what needs you (cmux Manager)
- *   Agents    a chip per agent, then the chosen agent's Projects (its tasks and projects by state) and Reports
- *             (its pins and newest reports by day), with its dashboard and roadmap a tap away
+ *   Agents    a chip per agent, then the chosen agent's Projects (its tasks and projects by state), Reports (its pins
+ *             and newest reports by day) and Goals (the year's theme, then today, this week, this month and this
+ *             year), with its dashboard and roadmap a tap away
  *
  * The workspace you're in picks the agent; a chip picks another.
  *
@@ -770,14 +771,14 @@ var reportsBody = (entry) => {
 };
 
 // src/cmux/sidebar/agent.ts
-var PROJECTS = { label: "Projects", page: "today", body: projectsBody };
+var PROJECTS = { id: "projects", label: "Projects", page: "today", body: projectsBody };
 var SECTIONS2 = [
   PROJECTS,
-  { label: "Reports", page: "reports", body: reportsBody },
-  { label: "Goals", page: "today/goals", body: goalsBody }
+  { id: "reports", label: "Reports", page: "reports", body: reportsBody },
+  { id: "goals", label: "Goals", page: "today/goals", body: goalsBody }
 ];
 var agentPage = (options) => {
-  const [section, setSection] = signal(PROJECTS);
+  const [section, setSection] = signal(SECTIONS2.find((item) => item.id === DATA.open?.section) ?? PROJECTS);
   return VStack({ spacing: 8 }, [
     agentHeader(options),
     scopedPage(options.home, (entry) => {
@@ -807,7 +808,7 @@ var scopedHome = (homes, workspaces, pin) => {
 // src/cmux/sidebar/main.ts
 var app = () => {
   const homes = Object.keys(DATA.homes);
-  const [tab, setTab] = signal("manager");
+  const [tab, setTab] = signal(DATA.open?.tab ?? "manager");
   const [pin, setPin] = signal(null);
   const workspaces = () => data.workspaces() ?? [];
   const selectedId = computed(() => workspaces().find((workspace) => workspace.selected)?.id ?? "");
