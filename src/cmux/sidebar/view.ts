@@ -1,5 +1,5 @@
 import { SCHEMA, type HomeEntry, type PinTarget } from './data';
-import { note } from './style';
+import { note, when } from './style';
 
 interface Scoped {
   path: string;
@@ -13,7 +13,19 @@ export const openTarget = (target: PinTarget) =>
 // A link's identity is where it goes: two pins may share a title, and cmux drops a repeated list key.
 export const targetKey = (target: PinTarget): string => (target.kind === 'page' ? target.url : target.path);
 
-export const entryOf = (home: string | undefined): HomeEntry | undefined => (home ? DATA.homes[home] : undefined);
+const entryOf = (home: string | undefined): HomeEntry | undefined => (home ? DATA.homes[home] : undefined);
+
+/**
+ * Whether `texts` hold every word of `query`, case-insensitively; an empty query matches everything.
+ */
+export const matchesQuery = (query: string, ...texts: string[]): boolean => {
+  const haystack = texts.join(' ').toLowerCase();
+  return query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((word) => haystack.includes(word));
+};
 
 /**
  * A joined home as its chips and headers name it.
@@ -39,8 +51,9 @@ export const scopedPage = (home: () => string | undefined, ready: (entry: HomeEn
     ForEach({ items: showing(false), key: (item) => item.path }, (item) =>
       note(`${homeLabel(item().path)} needs its agent updated to show here.`)
     ),
-    ForEach({ items: () => (view() ? [] : ['none']), key: (item) => item }, () =>
-      note('No agent has joined this sidebar yet. Ask an agent to set up its cmux pack.')
+    when(
+      () => view() === null,
+      () => note('No agent has joined this sidebar yet. Ask an agent to set up its cmux pack.')
     )
   ]);
 };

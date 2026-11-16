@@ -9,17 +9,8 @@ import type { TaskFrontmatter } from '@/tasks/types';
 import { buildWork } from './build';
 import { WORK_SCHEMA, type Work, type WorkTask } from './model';
 import { readWork, writeWork } from './store';
-import {
-  byPriorityThenDue,
-  closedSince,
-  isDueSoon,
-  isOverdue,
-  isStale,
-  projectLoads,
-  queue,
-  touchedRecently,
-  withStatus
-} from './views';
+import { taskOrder } from './order';
+import { closedSince, isDueSoon, isOverdue, isStale, projectLoads, queue, touchedRecently, withStatus } from './views';
 
 const previousHome = process.env.AGENT_HOME;
 let home = '';
@@ -113,7 +104,7 @@ beforeAll(() => {
   utimesSync(join(FOLDERS.REPORTS, 'plans', 'loose-notes.md'), looseDay, looseDay);
   writeFileSync(
     FILES.REPORTS_INDEX,
-    '# Reports\n\n## 2026-11-09\n\n- 08:30 · [Morning brief \\[draft\\]](briefings/2026-11-09-0830-morning.md) · `briefing` · 🟠\n'
+    '# Reports\n\n## 2026-11-09\n\n- 08:30 · [Morning brief \\[draft\\]](briefings/2026-11-09-0830-morning.md) · `briefing` · 🟠 findings\n'
   );
   writeFileSync(FILES.REPORTS_PINNED, '# Pinned\n\n- 🗺️ [Launch plan](plans/2026-11-08-0900-launch.md)\n');
 });
@@ -216,13 +207,14 @@ describe('views', () => {
     expect(ids(withStatus(work, 'active', 'done'))).toEqual(['ac-002', 'ac-003']);
   });
 
-  test('a priority outside P0–P3 sorts after P3 everywhere', () => {
-    const odd = { priority: 'urgent', due: '2026-11-01' };
-    expect([odd, { priority: 'P3', due: '' }, { priority: 'P0', due: '' }].toSorted(byPriorityThenDue)).toEqual([
-      { priority: 'P0', due: '' },
-      { priority: 'P3', due: '' },
-      odd
-    ]);
+  test('tasks order by priority, then due date with undated last, then the most recently updated', () => {
+    const ranked = (priority: string, due: string, updated: string) => ({ priority, due, updated });
+    const odd = ranked('urgent', '2026-11-01', '2026-11-09');
+    const older = ranked('P1', '', '2026-11-01');
+    const newer = ranked('P1', '', '2026-11-08');
+    const dated = ranked('P1', '2026-11-20', '2026-10-01');
+    const first = ranked('P0', '', '2026-10-01');
+    expect([odd, older, newer, dated, first].toSorted(taskOrder)).toEqual([first, dated, newer, older, odd]);
   });
 
   test('the queue is the live tasks by priority, then due date', () => {
@@ -246,6 +238,7 @@ test('a model that holds nothing for a home with no projects', () => {
     tasks: [],
     reports: [],
     pins: [],
+    goals: [],
     malformed: []
   };
   expect(projectLoads(empty)).toEqual([]);

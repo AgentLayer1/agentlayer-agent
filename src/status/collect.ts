@@ -43,10 +43,11 @@ import {
   type RadarTaskRef
 } from './radar-refs';
 import { sanitizeHtml } from '@/status/sanitize-html';
-import { firstParagraph, readText, stripMarkdown } from '@/shared/text';
+import { firstParagraph, listMarkdown, MARKDOWN_RE, readText, stripMarkdown } from '@/shared/text';
 import { buildWork } from '@/work/build';
 import type { Work, WorkReport, WorkTask } from '@/work/model';
-import { REPORT_FRONTMATTER_RE } from '@/reports/read';
+import { taskOrder } from '@/work/order';
+import { stripFrontmatter } from '@/knowledge/utils';
 import { overdue, projectLoads, queue, stale, touchedRecently, withStatus, type ProjectLoad } from '@/work/views';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -478,7 +479,6 @@ export interface StatusSnapshot {
   health: Health;
 }
 
-const MARKDOWN_RE = /\.md$/;
 const SECRET_KEY_RE = new RegExp(
   `(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CRED|PRIVATE|OAUTH|SESSION|DB_URL|DB_URI|DATABASE|DSN|CONN|MCP_DB|AGENT_DB)`,
   'i'
@@ -624,16 +624,6 @@ const collectMods = (): ModsInfo => ({
   lastSeen: readLedger().row ?? null
 });
 
-const listMarkdown = (dir: string, exclude: (name: string) => boolean = () => false): string[] => {
-  try {
-    return readdirSync(dir)
-      .filter((name) => MARKDOWN_RE.test(name) && !exclude(name))
-      .sort((a, b) => a.localeCompare(b));
-  } catch {
-    return [];
-  }
-};
-
 /** Recursively sum the bytes of every markdown file under a directory. */
 const treeBytes = (dir: string): number => {
   try {
@@ -755,9 +745,9 @@ const collectCompile = (): StatusSnapshot['compile'] => {
 
 const collectTasks = (work: Work): StatusSnapshot['tasks'] => {
   const today = todayDate();
-  const active = withStatus(work, 'active');
-  const late = overdue(work, today);
-  const idle = stale(work, today);
+  const active = withStatus(work, 'active').toSorted(taskOrder);
+  const late = overdue(work, today).toSorted(taskOrder);
+  const idle = stale(work, today).toSorted(taskOrder);
   return {
     active: active.length,
     blocked: withStatus(work, 'blocked').length,
@@ -769,7 +759,7 @@ const collectTasks = (work: Work): StatusSnapshot['tasks'] => {
     staleList: idle,
     activeList: active,
     queue: queue(work),
-    touchedToday: touchedRecently(work, today),
+    touchedToday: touchedRecently(work, today).toSorted(taskOrder),
     pathById: Object.fromEntries(work.tasks.map((task) => [task.id, task.path])),
     malformed: work.malformed
   };
@@ -1439,8 +1429,7 @@ const collectRadarLatest = async (reports: ReportRef[], work: Work): Promise<Rad
   // the body; the dashboard renders it below its own divider, with the radar
   // count note.
   let footer: string | undefined;
-  const raw = body
-    .replace(REPORT_FRONTMATTER_RE, '')
+  const raw = stripFrontmatter(body)
     .trim()
     .replace(/\n*---\s*\n+\*([^\n]*)\*\s*$/, (_match, stats: string) => {
       footer = stats.trim();

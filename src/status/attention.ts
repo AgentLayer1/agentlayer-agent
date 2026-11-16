@@ -12,10 +12,10 @@ import { nowTime, todayDate } from '@/shared/date';
 import { createLogger } from '@/shared/log';
 import { writeFileAtomic } from '@/shared/utils';
 import { HORIZON_BUCKETS, horizonBucket, horizonWithin, isoWeekOf, type HorizonBucket } from '@/tasks/horizon';
-import { PROJECT_SLUG, discoverProjects, isProject } from '@/tasks/scan';
-import { buildWork } from '@/work/build';
+import { PROJECT_SLUG, isProject } from '@/tasks/scan';
 import type { Work, WorkTask } from '@/work/model';
-import { byPriorityThenDue } from '@/work/views';
+import { taskOrder } from '@/work/order';
+import { hueBySlug, isClosed } from '@/work/views';
 import { existsSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { z } from 'zod';
@@ -29,7 +29,7 @@ import {
   type AttentionView
 } from './attention-data';
 import { renderAttentionHtml } from './attention-render';
-import { projectHues, projectPinLinks, type PinLink } from './surfaces';
+import type { PinLink } from './surfaces';
 import { titleize } from './format';
 
 const log = createLogger('status.attention');
@@ -64,13 +64,12 @@ export interface AttentionInputs {
   timeZone: string;
 }
 
-const OPEN = new Set(['open', 'active', 'blocked']);
 const byUrgency = (a: AttentionTask, b: AttentionTask): number =>
-  byPriorityThenDue(a, b) || a.horizon.localeCompare(b.horizon);
+  taskOrder(a, b) || a.horizon.localeCompare(b.horizon);
 
 const toAttentionTask = (task: WorkTask): AttentionTask => {
-  const { id, title, priority, project, status, due, horizon, blockedBy, path } = task;
-  return { id, title, priority, project, status, due, horizon, blockedBy, path };
+  const { id, title, priority, project, status, due, updated, horizon, blockedBy, path } = task;
+  return { id, title, priority, project, status, due, updated, horizon, blockedBy, path };
 };
 
 const isMine = (task: WorkTask, self: Set<string>): boolean =>
@@ -158,7 +157,7 @@ const buildRoadmap = (inputs: AttentionInputs): AttentionView['roadmap'] => {
               .filter((item) => item.status === 'progress')
               .map((item) => plainText(item.text)),
             tasks,
-            gap: linksTasks && !tasks.some((task) => OPEN.has(task.status)),
+            gap: linksTasks && !tasks.some((task) => !isClosed(task.status)),
             source
           }
         ];
@@ -189,14 +188,14 @@ export const buildAttentionView = (inputs: AttentionInputs): AttentionView => {
     if (!bucket) {
       return;
     }
-    if (OPEN.has(task.status)) {
+    if (!isClosed(task.status)) {
       lanes[bucket].push(task);
     } else if (task.status === 'done' && (bucket === 'today' || bucket === 'week' || bucket === 'month')) {
       done[bucket].push(task);
     }
   });
   const isDue = (task: AttentionTask): boolean => Boolean(task.due) && task.due <= inputs.today;
-  const unplanned = bucketed.filter(({ task, bucket }) => !bucket && OPEN.has(task.status)).map(({ task }) => task);
+  const unplanned = bucketed.filter(({ task, bucket }) => !bucket && !isClosed(task.status)).map(({ task }) => task);
   const dueUnplanned = [...unplanned, ...lanes.later].filter(isDue).sort(byUrgency);
   lanes.later = lanes.later.filter((task) => !isDue(task));
   HORIZON_BUCKETS.forEach((bucket) => lanes[bucket].sort(byUrgency));
@@ -205,7 +204,7 @@ export const buildAttentionView = (inputs: AttentionInputs): AttentionView => {
       .map(({ task }) => task)
       .filter((task) => task.status !== 'cancelled' && horizonWithin(task.horizon, span, inputs.today));
     return {
-      open: inSpan.filter((task) => OPEN.has(task.status)).sort(byUrgency),
+      open: inSpan.filter((task) => !isClosed(task.status)).sort(byUrgency),
       done: inSpan.filter((task) => task.status === 'done')
     };
   };
@@ -291,7 +290,7 @@ const roadmapSources = (project: string): AttentionRoadmapSource[] =>
   });
 
 /** The live view of one page: tasks and roadmaps from the work model, goals read now, the queue from its last pull. */
-export const collectAttentionView = (project = '', work: Work = buildWork()): AttentionView => {
+export const collectAttentionView = (project: string, work: Work): AttentionView => {
   const operator = boldField(FILES.USER, 'Name');
   const goals = collectGoals();
   return buildAttentionView({
@@ -299,7 +298,7 @@ export const collectAttentionView = (project = '', work: Work = buildWork()): At
     tasks: work.tasks,
     goals: { daily: goals.daily, weekly: goals.weekly, monthly: goals.monthly },
     roadmaps: roadmapSources(project),
-    pins: project ? projectPinLinks(project) : [],
+    pins: work.projects.find((item) => item.slug === project)?.pins ?? [],
     snapshot: readAttentionQueue(project),
     self: selfNames(operator, operatorGithubLogin()),
     operator,
@@ -307,16 +306,13 @@ export const collectAttentionView = (project = '', work: Work = buildWork()): At
     generatedAt: nowTime(),
     home: FOLDERS.HOME,
     markdownUrl: MARKDOWN_URL,
-    projectHues: projectHues(),
+    projectHues: hueBySlug(work),
     timeZone: TIMEZONE
   });
 };
 
 /** Render a project's attention page, creating it on first call. */
-export const writeAttentionPage = (
-  project: string,
-  work: Work = buildWork()
-): { path: string; bytes: number; view: AttentionView } => {
+export const writeAttentionPage = (project: string, work: Work): { path: string; bytes: number; view: AttentionView } => {
   const view = collectAttentionView(project, work);
   const html = renderAttentionHtml(view);
   const path = attentionPagePath(project);
@@ -324,19 +320,16 @@ export const writeAttentionPage = (
   return { path, bytes: Buffer.byteLength(html), view };
 };
 
-/** Projects whose attention page already exists. */
-export const existingAttentionPages = (): string[] =>
-  discoverProjects()
-    .filter((slug) => PROJECT_SLUG.test(slug))
-    .filter((project) => existsSync(attentionPagePath(project)));
-
 /** Rebuild hook: re-render every page the attention skill has created from the rebuild's model, never throw. */
 export const writeAttentionPagesSafe = (work: Work): void => {
-  existingAttentionPages().forEach((project) => {
-    try {
-      writeAttentionPage(project, work);
-    } catch (err) {
-      log.warn(`attention page rebuild failed for ${project}`, err);
-    }
-  });
+  work.projects
+    .filter((project) => project.attention && PROJECT_SLUG.test(project.slug))
+    .map((project) => project.slug)
+    .forEach((project) => {
+      try {
+        writeAttentionPage(project, work);
+      } catch (err) {
+        log.warn(`attention page rebuild failed for ${project}`, err);
+      }
+    });
 };

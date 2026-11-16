@@ -10,9 +10,11 @@ import { FOLDERS } from '@/config';
 import { agentDisplayName } from '@/shared/agent-name';
 import { shiftDate, todayDate } from '@/shared/date';
 import { readText } from '@/shared/text';
-import { buildWork } from '@/work/build';
+import { readTasks } from '@/work/build';
+import { GOALS_MARKER_END, GOALS_MARKER_START } from '@/work/goals';
 import type { Work, WorkTask } from '@/work/model';
-import { closedSince, overdue, priorityRank, stale, withStatus } from '@/work/views';
+import { taskOrder } from '@/work/order';
+import { closedSince, overdue, stale, withStatus } from '@/work/views';
 import { writeFileSync } from 'fs';
 import { basename, join } from 'path';
 import { issueLabel } from './issue';
@@ -27,13 +29,10 @@ export interface DashboardSections {
   closedRecent: WorkTask[];
 }
 
-const byPriorityThenProject = (a: WorkTask, b: WorkTask): number =>
-  priorityRank(a.priority) - priorityRank(b.priority) || a.project.localeCompare(b.project);
-
 /** Every section of TASKS.md, read from the work model against `today`. Pure — no I/O. */
-export const buildSections = (work: Work, today: string): DashboardSections => ({
-  active: withStatus(work, 'active', 'open').toSorted(byPriorityThenProject),
-  blocked: withStatus(work, 'blocked').toSorted(byPriorityThenProject),
+export const buildSections = (work: Pick<Work, 'tasks'>, today: string): DashboardSections => ({
+  active: withStatus(work, 'active', 'open').toSorted(taskOrder),
+  blocked: withStatus(work, 'blocked').toSorted(taskOrder),
   overdue: overdue(work, today).toSorted((a, b) => a.due.localeCompare(b.due)),
   stale: stale(work, today).toSorted((a, b) => a.updated.localeCompare(b.updated)),
   closedRecent: closedSince(work, shiftDate(today, -14))
@@ -137,9 +136,6 @@ export const formatDashboard = (
 // edited by hand. The dashboard never touches it — extract from existing
 // file, re-emit verbatim. Empty default is written on first run.
 
-const GOALS_MARKER_START = '<!-- GOALS:START -->';
-const GOALS_MARKER_END = '<!-- GOALS:END -->';
-
 const EMPTY_GOALS_BLOCK = `${GOALS_MARKER_START}
 ## Daily Goals
 
@@ -184,7 +180,7 @@ const sectionCounts = (sections: DashboardSections): DashboardCounts => ({
 });
 
 /** Rebuild and write projects/TASKS.md from the work model. Preserves the goals block. */
-export const writeDashboard = (work: Work): DashboardCounts => {
+export const writeDashboard = (work: Pick<Work, 'tasks' | 'malformed'>): DashboardCounts => {
   const tasksFile = join(FOLDERS.PROJECTS, 'TASKS.md');
   let existing = '';
   try {
@@ -234,7 +230,7 @@ export const writeDashboardSafe = (): DashboardCounts | null => {
     return null;
   }
   try {
-    const counts = writeDashboard(buildWork());
+    const counts = writeDashboard(readTasks());
     rebuildHtmlSafe();
     return counts;
   } catch {
@@ -252,7 +248,7 @@ export const withDashboardBatch = <T>(fn: () => T): T => {
     if (batchDepth === 0 && pendingWrite) {
       pendingWrite = false;
       try {
-        writeDashboard(buildWork());
+        writeDashboard(readTasks());
         rebuildHtmlSafe();
       } catch {
         // best-effort — caller has already succeeded

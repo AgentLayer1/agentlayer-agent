@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 
 export const toLf = (text: string): string => text.replace(/\r\n/g, '\n');
@@ -31,5 +31,20 @@ export const firstParagraph = (file: string): string => {
     return paragraph ? stripMarkdown(paragraph.trim()) : '';
   } catch {
     return '';
+  }
+};
+
+export const MARKDOWN_RE = /\.md$/;
+
+/**
+ * The markdown files directly in `dir`, sorted by name; none when it can't be read.
+ */
+export const listMarkdown = (dir: string, exclude: (name: string) => boolean = () => false): string[] => {
+  try {
+    return readdirSync(dir)
+      .filter((name) => MARKDOWN_RE.test(name) && !exclude(name))
+      .sort((a, b) => a.localeCompare(b));
+  } catch {
+    return [];
   }
 };

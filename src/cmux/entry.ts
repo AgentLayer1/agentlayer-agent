@@ -1,11 +1,15 @@
 import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { reportKind } from '@/reports/kinds';
 import { nameHue } from '@/status/html-primitives';
-import type { Work, WorkProject, WorkReport } from '@/work/model';
-import { byPriorityThenDue, live, projectLoad } from '@/work/views';
+import type { Work, WorkGoal, WorkProject, WorkReport } from '@/work/model';
+import { taskOrderById } from '@/work/order';
+import { hueBySlug, live, projectLoad } from '@/work/views';
 import {
   SCHEMA,
   type HomeEntry,
+  type GoalItem,
+  type GoalsItem,
   type PinItem,
   type PinTarget,
   type ProjectCard,
@@ -15,13 +19,6 @@ import {
 
 // Enough for a few weeks of reports while keeping the shared sidebar file small; the dashboard lists them all.
 export const REPORT_LIMIT = 40;
-
-const STATUS_ORDER: Readonly<Record<string, number>> = { active: 0, blocked: 1, open: 2 };
-
-const statusRank = (status: string): number => STATUS_ORDER[status] ?? Object.keys(STATUS_ORDER).length;
-
-const byUrgency = (a: TaskItem, b: TaskItem): number =>
-  statusRank(a.status) - statusRank(b.status) || byPriorityThenDue(a, b) || a.id.localeCompare(b.id);
 
 // Projects at work first, then the busiest, then by name, so the same tasks always render the same bytes.
 const byWork = (a: ProjectCard, b: ProjectCard): number =>
@@ -44,14 +41,44 @@ const pinItem = (home: string, { title, icon, path }: WorkProject['pins'][number
   target: targetOf(home, path)
 });
 
-const reportItem = (home: string, { title, skill, category, date, time, status, path }: WorkReport): ReportItem => {
-  const kind = skill || category;
+const reportItem = (home: string, report: WorkReport): ReportItem => {
+  const kind = reportKind(report);
+  const { title, date, time, status, path } = report;
   return { title, kind, hue: nameHue(kind), date, time, status, target: targetOf(home, path) };
 };
 
+// A goal that opens with a project's slug (`acme-app: …`) wears that project's pill instead.
+const goalItem =
+  (hues: Readonly<Record<string, number>>) =>
+  (goal: WorkGoal, index: number): GoalItem => {
+    const base = { ...goal, number: index + 1, project: null };
+    const at = goal.title.indexOf(': ');
+    const slug = at === -1 ? '' : goal.title.slice(0, at);
+    const hue = hues[slug];
+    if (hue === undefined) {
+      return base;
+    }
+    const rest = goal.title.slice(at + 2);
+    return { ...base, title: rest.charAt(0).toUpperCase() + rest.slice(1), project: { slug, hue } };
+  };
+
+const goalsOf = (work: Work): GoalsItem => {
+  const toGoal = goalItem(hueBySlug(work));
+  return {
+    theme: work.goals.find((block) => block.theme)?.theme ?? null,
+    blocks: work.goals.map(({ horizon, date, caption, goals, notes }) => ({
+      horizon,
+      date,
+      caption,
+      goals: goals.map(toGoal),
+      notes
+    }))
+  };
+};
+
 /**
- * What the sidebar shows of the home at `home`: its agent, pages, each project's counts and live tasks, its pins and
- * its newest reports.
+ * What the sidebar shows of the home at `home`: its agent, pages, each project's counts and live tasks, its pins, its
+ * newest reports and its goals.
  */
 export const homeEntry = (home: string, work: Work): HomeEntry => {
   const liveTasks = live(work);
@@ -60,16 +87,17 @@ export const homeEntry = (home: string, work: Work): HomeEntry => {
   const tasksOf = (project: string): TaskItem[] =>
     liveTasks
       .filter((task) => task.project === project)
-      .map(({ id, title, status, priority, due, comments, path }) => ({
+      .map(({ id, title, status, priority, due, updated, comments, path }) => ({
         id,
         title,
         status,
         priority,
         due,
+        updated,
         comments,
         path: join(home, path)
       }))
-      .toSorted(byUrgency);
+      .toSorted(taskOrderById);
   const card = (project: WorkProject): ProjectCard => {
     const { active, open, blocked, done } = projectLoad(work, project);
     return {
@@ -93,6 +121,7 @@ export const homeEntry = (home: string, work: Work): HomeEntry => {
     projects: work.projects.map(card).toSorted(byWork),
     pins: work.pins.map((pin) => pinItem(home, pin)),
     reports: openable.slice(0, REPORT_LIMIT).map((report) => reportItem(home, report)),
-    olderReports: Math.max(0, openable.length - REPORT_LIMIT)
+    olderReports: Math.max(0, openable.length - REPORT_LIMIT),
+    goals: goalsOf(work)
   };
 };

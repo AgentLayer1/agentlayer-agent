@@ -1,24 +1,15 @@
-import { readdirSync, statSync } from 'node:fs';
+import { statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FILES, FOLDERS } from '@/config';
+import { splitFrontmatter } from '@/knowledge/utils';
 import { nowTime, todayDate } from '@/shared/date';
-import { readText } from '@/shared/text';
+import { listMarkdown, MARKDOWN_RE, readText } from '@/shared/text';
 import type { WorkReport } from '@/work/model';
-import { STATUS_ICON } from './reports';
+import { REPORT_CATEGORIES } from './kinds';
 
-const REPORT_CATEGORIES = ['briefings', 'plans', 'radar', 'api', 'reviews', 'helpdesk', 'slack'] as const;
-
-export const REPORT_FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n?/;
-
-const MARKDOWN_RE = /\.md$/;
-
-// The index writes a report's status as an emoji; readers get the word.
-const STATUS_WORD: Readonly<Record<string, string>> = Object.fromEntries(
-  Object.entries(STATUS_ICON).map(([word, icon]) => [icon, word])
-);
-
-// A title's own brackets are written escaped (`\[draft\]`), so the link text runs to the first bare `]`.
-const INDEX_LINE = /^- (\d{2}:\d{2}) · \[((?:\\.|[^\]\\])+)\](?:\(([^)]+)\))?(?: · `([^`]+)`)?(?: · (\S+))?/;
+// A title's own brackets are written escaped (`\[draft\]`), so the link text runs to the first bare `]`. The status
+// is written as an emoji and its word (`· 🟠 findings`); the word is kept.
+const INDEX_LINE = /^- (\d{2}:\d{2}) · \[((?:\\.|[^\]\\])+)\](?:\(([^)]+)\))?(?: · `([^`]+)`)?(?: · \S+ (\w+))?/;
 
 /** Category segment from a path like `reports/plans/2026-…md` → `plans`. */
 const categoryOf = (path: string): string => path.split('/')[1] ?? '';
@@ -26,28 +17,14 @@ const categoryOf = (path: string): string => path.split('/')[1] ?? '';
 /** Display title for an orphan report file (one written outside report_write,
  *  e.g. a plan-mode export): frontmatter `title:`, else the first H1, else the
  *  filename. */
-const orphanTitle = (body: string, fileName: string): string => {
-  const frontmatter = body.match(REPORT_FRONTMATTER_RE)?.[1];
+const orphanTitle = (content: string, fileName: string): string => {
+  const { frontmatter, body } = splitFrontmatter(content);
   const fmTitle = frontmatter
-    ?.match(/^title:[ \t]*(.+)$/m)?.[1]
+    .match(/^title:[ \t]*(.+)$/m)?.[1]
     ?.trim()
     .replace(/^["']|["']$/g, '');
   if (fmTitle) return fmTitle;
-  const h1 = body
-    .replace(REPORT_FRONTMATTER_RE, '')
-    .match(/^#\s+(.+)$/m)?.[1]
-    ?.trim();
-  return h1 ?? fileName.replace(MARKDOWN_RE, '');
-};
-
-const listMarkdown = (dir: string): string[] => {
-  try {
-    return readdirSync(dir)
-      .filter((name) => MARKDOWN_RE.test(name))
-      .sort((a, b) => a.localeCompare(b));
-  } catch {
-    return [];
-  }
+  return body.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? fileName.replace(MARKDOWN_RE, '');
 };
 
 const safeMtime = (path: string): Date => {
@@ -87,7 +64,7 @@ export const readReports = (): WorkReport[] => {
         title: entry[2].replace(/\\([[\]])/g, '$1'),
         path,
         skill: entry[4] ?? '',
-        status: STATUS_WORD[entry[5] ?? ''] ?? '',
+        status: entry[5] ?? '',
         category: categoryOf(path)
       });
     }
@@ -108,11 +85,12 @@ export const readReports = (): WorkReport[] => {
       } catch {
         continue;
       }
+      // A filename's YYYY-MM-DD-HHMM stamp gives its day and time; a file without one goes by when it last changed.
       const stamp = fileName.match(/^(\d{4}-\d{2}-\d{2})-(\d{2})(\d{2})/);
-      const mtime = stamp ? null : safeMtime(full);
+      const changed = safeMtime(full);
       refs.push({
-        date: stamp?.[1] ?? todayDate(mtime ?? new Date(0)),
-        time: stamp ? `${stamp[2]}:${stamp[3]}` : nowTime(mtime ?? new Date(0)),
+        date: stamp?.[1] ?? todayDate(changed),
+        time: stamp ? `${stamp[2]}:${stamp[3]}` : nowTime(changed),
         title: orphanTitle(body, fileName),
         path,
         skill: '',

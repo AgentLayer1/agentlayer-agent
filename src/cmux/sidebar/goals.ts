@@ -1,0 +1,177 @@
+import { daysUntil } from '../../work/due';
+import type { GoalBlockItem, GoalItem, GoalsItem, HomeEntry } from './data';
+import { dateParts } from './due';
+import {
+  ACCENT,
+  dividedList,
+  foldCard,
+  GREEN,
+  GREY,
+  hueColor,
+  ORANGE,
+  pill,
+  PURPLE,
+  TITLE_OPACITY,
+  when
+} from './style';
+import { today } from './tasks';
+
+interface Shelf {
+  horizon: GoalBlockItem['horizon'];
+  title: string;
+  icon: string;
+  color: string;
+  open: boolean;
+}
+
+// The year folds by default: it's the longest, and the theme above keeps it in view.
+const SHELVES: readonly Shelf[] = [
+  { horizon: 'day', title: 'Today', icon: 'sun.max.fill', color: ORANGE, open: true },
+  { horizon: 'week', title: 'This week', icon: 'calendar', color: ACCENT, open: true },
+  { horizon: 'month', title: 'This month', icon: 'target', color: GREEN, open: true },
+  { horizon: 'year', title: 'This year', icon: 'flag.fill', color: PURPLE, open: false }
+];
+
+// A week starts on Monday, as the goals skill sets one.
+const daysSinceMonday = (day: string): number => ((dateParts(day)?.weekday ?? 1) + 6) % 7;
+
+const shortDate = (date: string): string => {
+  const parts = dateParts(date);
+  return parts ? `${parts.day} ${parts.month}` : date;
+};
+
+// Whether a block still speaks for the sidebar's day: a daily block only on its day, a weekly one through its week.
+const current = ({ horizon, date }: GoalBlockItem, day: string): boolean => {
+  const days = daysUntil(date, day);
+  if (horizon === 'day') {
+    return days === 0;
+  }
+  return horizon !== 'week' || days === null || days >= -daysSinceMonday(day);
+};
+
+const themeBanner = ({ label, text }: NonNullable<GoalsItem['theme']>) =>
+  HStack({ spacing: 10 }, [
+    Image('sparkles').font(13).color(PURPLE),
+    // A text beside a Spacer gets half the row and wraps early, so the column takes the width itself.
+    VStack({ spacing: 2, alignment: 'leading' }, [
+      Text(label.toUpperCase()).font(9).weight('semibold').color('tertiary'),
+      Text(text).font(14).weight('semibold').italic().opacity(TITLE_OPACITY)
+    ]).frame({ maxWidth: 'infinity', alignment: 'leading' })
+  ])
+    .paddingHorizontal(12)
+    .paddingVertical(10)
+    .background(`${PURPLE}1f`)
+    .cornerRadius(10);
+
+// A scored goal belongs to a quarter that's over, so it steps back.
+const goalRow = (goal: GoalItem) =>
+  VStack({ spacing: 4, alignment: 'leading' }, [
+    HStack({ spacing: 6 }, [
+      goal.label
+        ? pill(goal.label, GREY)
+        : Text(String(goal.number)).font(10).weight('semibold').monospaced().color('tertiary'),
+      ...(goal.mark ? [Text(goal.mark).font(10)] : []),
+      ...(goal.project ? [pill(goal.project.slug, hueColor(goal.project.hue))] : []),
+      Spacer({ minLength: 0 })
+    ]),
+    Text(goal.title).font(12).weight('medium').opacity(TITLE_OPACITY),
+    ...(goal.check
+      ? [
+          VStack({ spacing: 1, alignment: 'leading' }, [
+            Text('DONE WHEN').font(9).weight('semibold').color('tertiary'),
+            Text(goal.check).font(11).color('secondary')
+          ])
+        ]
+      : []),
+    ...(goal.detail ? [Text(goal.detail).font(11).color('tertiary')] : [])
+  ])
+    .paddingHorizontal(4)
+    .paddingVertical(7)
+    .frame({ maxWidth: 'infinity', alignment: 'leading' })
+    .opacity(goal.mark ? 0.55 : 1);
+
+const shelfCard = (shelf: Shelf, block: GoalBlockItem | undefined, agent: string) => {
+  const [open, setOpen] = signal(shelf.open);
+  const command = `goals ${shelf.horizon}`;
+  const live = () => block !== undefined && current(block, today());
+  // An earlier day's goals aren't today's; an earlier week's still show, marked as such.
+  const shown = () => (block && (shelf.horizon !== 'day' || live()) ? block.goals : []);
+  const caption = (): string => {
+    if (!block) {
+      return '';
+    }
+    if (shelf.horizon === 'week' && block.date) {
+      return live()
+        ? `Week of ${shortDate(block.date)}`
+        : `Set for the week of ${shortDate(block.date)} · ask ${agent}: ${command}`;
+    }
+    return block.caption;
+  };
+  return foldCard(
+    {
+      title: shelf.title,
+      count: () => shown().length,
+      icon: shelf.icon,
+      color: shelf.color,
+      expanded: open,
+      setExpanded: setOpen
+    },
+    () =>
+      VStack({ spacing: 4 }, [
+        when(
+          () => caption() !== '',
+          () =>
+            Text(caption)
+              .font(10)
+              .color(() => (live() ? 'secondary' : ORANGE))
+              .paddingHorizontal(4)
+              .frame({ maxWidth: 'infinity', alignment: 'leading' })
+        ),
+        when(
+          () => shown().length === 0,
+          () =>
+            VStack({ spacing: 2, alignment: 'leading' }, [
+              Text(`No goals set for ${shelf.title.toLowerCase()}.`).font(11).color('secondary'),
+              Text(`Ask ${agent}: ${command}`).font(10).color('tertiary')
+            ])
+              .paddingHorizontal(4)
+              .paddingVertical(4)
+              .frame({ maxWidth: 'infinity', alignment: 'leading' })
+        ),
+        dividedList(shown, (goal) => String(goal.number), goalRow),
+        when(
+          () => shown().length > 0 && (block?.notes.length ?? 0) > 0,
+          () =>
+            VStack(
+              { spacing: 4, alignment: 'leading' },
+              (block?.notes ?? []).map((note) =>
+                Text(note).font(10).italic().color('tertiary').frame({ maxWidth: 'infinity', alignment: 'leading' })
+              )
+            )
+              .paddingHorizontal(4)
+              .paddingTop(4)
+        )
+      ])
+  );
+};
+
+/**
+ * The scoped agent's goals: the year's theme, then today, this week, this month and this year as folding cards, each
+ * goal with its headline, what counts as done, and the block's notes at its foot.
+ */
+export const goalsBody = (entry: HomeEntry) => {
+  const { theme, blocks } = entry.goals;
+  return VStack({ spacing: 10 }, [
+    ...(theme ? [themeBanner(theme)] : []),
+    VStack(
+      { spacing: 6 },
+      SHELVES.map((shelf) =>
+        shelfCard(
+          shelf,
+          blocks.find((block) => block.horizon === shelf.horizon),
+          entry.name
+        )
+      )
+    )
+  ]);
+};

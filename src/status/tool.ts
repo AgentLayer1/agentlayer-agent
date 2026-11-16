@@ -3,6 +3,7 @@ import { stampSync } from '@/shared/cadence';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { collectAttentionView, saveAttentionQueue, writeAttentionPage } from '@/status/attention';
 import { AttentionGroupSchema, attentionData } from '@/status/attention-data';
+import { buildWork } from '@/work/build';
 import { rebuildDashboards } from '@/status/html';
 import { z } from 'zod';
 
@@ -52,9 +53,10 @@ export const tools: ToolDef[] = [
       if (queue) {
         saveAttentionQueue(project, queue);
       }
-      const page = project ? writeAttentionPage(project) : null;
+      const work = buildWork();
+      const page = project ? writeAttentionPage(project, work) : null;
       await rebuildDashboards();
-      const view = page ? page.view : collectAttentionView('');
+      const view = page ? page.view : collectAttentionView('', work);
       return { path: page ? page.path : FILES.DASHBOARD, ...attentionData(view) };
     }
   })

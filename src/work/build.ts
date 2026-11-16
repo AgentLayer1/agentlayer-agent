@@ -4,10 +4,11 @@ import { FILES, FOLDERS } from '@/config';
 import { agentDisplayName, agentEmoji } from '@/shared/agent-name';
 import { firstParagraph } from '@/shared/text';
 import { projectHue } from '@/status/html-primitives';
-import { livePins, projectHues, projectPinLinks } from '@/status/surfaces';
+import { homePinLinks, projectHues, projectPinLinks } from '@/status/surfaces';
 import { readReports } from '@/reports/read';
 import { discoverProjects, scanTasks } from '@/tasks/scan';
 import type { TaskFile } from '@/tasks/types';
+import { readGoals } from './goals';
 import { WORK_SCHEMA, type Work, type WorkProject, type WorkTask } from './model';
 
 const fromHome = (path: string): string => relative(FOLDERS.HOME, path);
@@ -53,12 +54,24 @@ const toProject =
 const byPath = (a: WorkTask, b: WorkTask): number => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
 /**
- * Reads the home's work from its files: one scan of every task file, live, archived and unparseable, plus each project's README,
- * pages and pins. Tasks are ordered by path and projects by slug, so the same files always give the same model.
+ * The task files alone, for what reads only tasks (TASKS.md before a task tool replies): one scan, ordered by path,
+ * with no README, report or pin read.
+ */
+export const readTasks = (): Pick<Work, 'tasks' | 'malformed'> => {
+  const scan = scanTasks();
+  return {
+    tasks: [...scan.tasks.map(toTask(false)), ...scan.archived.map(toTask(true))].toSorted(byPath),
+    malformed: scan.malformed.map(fromHome)
+  };
+};
+
+/**
+ * Reads the home's work from its files: one scan of every task file, live, archived and unparseable, plus each
+ * project's README, pages and pins, the reports, the home pins and the goals. Tasks are ordered by path and projects by slug, so
+ * the same files always give the same model.
  */
 export const buildWork = (): Work => {
-  const scan = scanTasks();
-  const tasks = [...scan.tasks.map(toTask(false)), ...scan.archived.map(toTask(true))].toSorted(byPath);
+  const { tasks, malformed } = readTasks();
   // A task can name a project that has no folder of its own; it still gets a card.
   const named = tasks.filter((task) => !task.archived).map((task) => task.project);
   const slugs = [...new Set([...discoverProjects(), ...named])].toSorted();
@@ -69,7 +82,8 @@ export const buildWork = (): Work => {
     projects: slugs.map(toProject(projectHues())),
     tasks,
     reports: readReports(),
-    pins: livePins().map((pin) => ({ title: pin.title, icon: pin.icon ?? '📌', path: fromHome(pin.path) })),
-    malformed: scan.malformed.map(fromHome)
+    pins: homePinLinks(),
+    goals: readGoals(),
+    malformed
   };
 };

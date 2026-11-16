@@ -1,9 +1,25 @@
 import { searchField } from 'cmux-custom-manager/components';
 import { daysUntil } from '../../work/due';
 import type { HomeEntry, PinItem, ReportItem } from './data';
-import { CARD, foldTitle, hueColor, note, TITLE_OPACITY } from './style';
+import { dateParts, WEEKDAYS } from './due';
+import {
+  ACCENT,
+  dividedList,
+  foldCard,
+  GREEN,
+  GREY,
+  hueColor,
+  listRow,
+  note,
+  ORANGE,
+  pill,
+  RED,
+  TITLE_OPACITY,
+  type ProjectTag,
+  when
+} from './style';
 import { today } from './tasks';
-import { openTarget, targetKey } from './view';
+import { matchesQuery, openTarget, targetKey } from './view';
 
 // 24-hour `HH:MM` as the index writes it, shown as `8:30 AM`.
 const clock = (time: string): string => {
@@ -14,9 +30,6 @@ const clock = (time: string): string => {
   return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
 };
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 // Today and Yesterday by name, then the weekday and date, worded against the sidebar's day so it turns at midnight.
 const dayTitle = (date: string, day: string): string => {
   const days = daysUntil(date, day);
@@ -26,20 +39,16 @@ const dayTitle = (date: string, day: string): string => {
   if (days === -1) {
     return 'Yesterday';
   }
-  const [year, month, dayOfMonth] = date.split('-').map(Number);
-  if (!year || !month || !dayOfMonth) {
-    return date || 'Undated';
-  }
-  const weekday = new Date(Date.UTC(year, month - 1, dayOfMonth)).getUTCDay();
-  return `${WEEKDAYS[weekday] ?? ''} ${dayOfMonth} ${MONTHS[month - 1] ?? ''}`;
+  const parts = dateParts(date);
+  return parts ? `${WEEKDAYS[parts.weekday] ?? ''} ${parts.day} ${parts.month}` : date || 'Undated';
 };
 
 interface Pinned {
   pin: PinItem;
   /**
-   * The project a pin came from, with its colour; absent for the home's own pins.
+   * The project a pin came from; absent for the home's own pins.
    */
-  project?: { slug: string; color: string };
+  project?: ProjectTag;
 }
 
 interface DayGroup {
@@ -47,43 +56,18 @@ interface DayGroup {
   reports: ReportItem[];
 }
 
-const tile = (view: View, onTap: () => void) =>
-  view
-    .paddingHorizontal(8)
-    .paddingVertical(6)
-    .background(CARD)
-    .cornerRadius(8)
-    .hoverBackground('#7f7f7f26')
-    .cursor('pointer')
-    .frame({ maxWidth: 'infinity', alignment: 'leading' })
-    .onTap(onTap);
-
 const badge = (label: string, color: string) =>
   HStack({ spacing: 4 }, [
     Circle({ size: 6 }).fill(color),
     Text(label).font(10).color('secondary').lineLimit(1).truncation('tail')
   ]).fixedSize('horizontal');
 
-const STATUS_COLOR: Readonly<Record<string, string>> = {
-  clean: '#34C759',
-  findings: '#FF9F0A',
-  critical: '#FF453A',
-  draft: '#8E8E93'
-};
+const STATUS_COLOR: Readonly<Record<string, string>> = { clean: GREEN, findings: ORANGE, critical: RED, draft: GREY };
 
-const statusBadge = (status: string) =>
-  Text(status)
-    .font(9)
-    .weight('semibold')
-    .color(STATUS_COLOR[status] ?? 'secondary')
-    .paddingHorizontal(5)
-    .paddingVertical(1)
-    .background(`${STATUS_COLOR[status] ?? '#8E8E93'}26`)
-    .cornerRadius(4)
-    .fixedSize('horizontal');
+const statusBadge = (status: string) => pill(status, STATUS_COLOR[status] ?? GREY);
 
-const reportCard = (item: ReportItem) =>
-  tile(
+const reportRow = (item: ReportItem) =>
+  listRow(
     VStack({ spacing: 3, alignment: 'leading' }, [
       Text(item.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation('tail'),
       HStack({ spacing: 6 }, [
@@ -92,29 +76,22 @@ const reportCard = (item: ReportItem) =>
         Spacer({ minLength: 0 }),
         Text(clock(item.time)).font(10).monospaced().color('tertiary')
       ])
-    ]),
-    () => openTarget(item.target)
-  );
+    ])
+  ).onTap(() => openTarget(item.target));
 
-const pinCard = ({ pin, project }: Pinned) =>
-  tile(
+const pinRow = ({ pin, project }: Pinned) =>
+  listRow(
     HStack({ spacing: 6 }, [
       Text(pin.icon).font(11).frame({ width: 14 }),
-      Text(pin.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation('tail'),
-      Spacer({ minLength: 4 }),
-      ...(project ? [badge(project.slug, project.color)] : [])
-    ]),
-    () => openTarget(pin.target)
-  );
-
-const matches = (query: string, ...texts: string[]): boolean => {
-  const haystack = texts.join(' ').toLowerCase();
-  return query
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean)
-    .every((word) => haystack.includes(word));
-};
+      Text(pin.title)
+        .font(12)
+        .opacity(TITLE_OPACITY)
+        .lineLimit(2)
+        .truncation('tail')
+        .frame({ maxWidth: 'infinity', alignment: 'leading' }),
+      ...(project ? [pill(project.slug, project.color)] : [])
+    ])
+  ).onTap(() => openTarget(pin.target));
 
 const byDay = (reports: readonly ReportItem[]): DayGroup[] =>
   reports.reduce<DayGroup[]>((groups, report) => {
@@ -137,9 +114,11 @@ export const reportsBody = (entry: HomeEntry) => {
     )
   ];
   const shownPins = computed(() =>
-    pinned.filter(({ pin, project }) => matches(query(), pin.title, project?.slug ?? ''))
+    pinned.filter(({ pin, project }) => matchesQuery(query(), pin.title, project?.slug ?? ''))
   );
-  const days = computed(() => byDay(entry.reports.filter((report) => matches(query(), report.title, report.kind))));
+  const days = computed(() =>
+    byDay(entry.reports.filter((report) => matchesQuery(query(), report.title, report.kind)))
+  );
   const empty = computed(() => !shownPins().length && !days().length);
   // A search shows every match, folded groups included.
   const searching = () => query().trim() !== '';
@@ -147,32 +126,45 @@ export const reportsBody = (entry: HomeEntry) => {
   const [pinsOpen, setPinsOpen] = signal(true);
   return VStack({ spacing: 10 }, [
     searchField('Search reports…', setQuery),
-    ForEach({ items: () => (shownPins().length ? ['pinned'] : []), key: (name) => name }, () =>
-      VStack({ spacing: 4 }, [
-        foldTitle('Pinned', () => shownPins().length, showing(pinsOpen), setPinsOpen, 'pin.fill'),
-        ForEach(
-          { items: () => (showing(pinsOpen)() ? shownPins() : []), key: (item) => targetKey(item.pin.target) },
-          (item) => pinCard(item())
-        )
-      ])
-    ),
-    // Today and yesterday open; earlier days start folded.
-    ForEach({ items: days, key: (group) => group.date }, (group) => {
-      const [open, setOpen] = signal((daysUntil(group().date, today()) ?? -2) >= -1);
-      return VStack({ spacing: 4 }, [
-        foldTitle(
-          () => dayTitle(group().date, today()),
-          () => group().reports.length,
-          showing(open),
-          setOpen
-        ),
-        ForEach(
-          { items: () => (showing(open)() ? group().reports : []), key: (report) => targetKey(report.target) },
-          (report) => reportCard(report())
-        )
-      ]);
-    }),
-    Text(() => (empty() ? (query().trim() ? 'No matching reports.' : 'No reports yet.') : ''))
+    VStack({ spacing: 6 }, [
+      when(
+        () => shownPins().length > 0,
+        () =>
+          foldCard(
+            {
+              title: 'Pinned',
+              count: () => shownPins().length,
+              icon: 'pin.fill',
+              color: ORANGE,
+              expanded: showing(pinsOpen),
+              setExpanded: setPinsOpen
+            },
+            () => dividedList(shownPins, (item) => targetKey(item.pin.target), pinRow)
+          )
+      ),
+      // Today and yesterday open; earlier days start folded.
+      ForEach({ items: days, key: (group) => group.date }, (group) => {
+        const age = daysUntil(group().date, today());
+        const [open, setOpen] = signal(age !== null && age >= -1);
+        return foldCard(
+          {
+            title: () => dayTitle(group().date, today()),
+            count: () => group().reports.length,
+            icon: 'calendar',
+            color: ACCENT,
+            expanded: showing(open),
+            setExpanded: setOpen
+          },
+          () =>
+            dividedList(
+              () => group().reports,
+              (report) => targetKey(report.target),
+              reportRow
+            )
+        );
+      })
+    ]),
+    Text(() => (empty() ? (searching() ? 'No matching reports.' : 'No reports yet.') : ''))
       .font(11)
       .color('tertiary')
       .paddingHorizontal(4),

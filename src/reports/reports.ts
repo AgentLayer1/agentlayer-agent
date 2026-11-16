@@ -22,8 +22,7 @@ import { writeFileAtomic } from '@/shared/utils';
 import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
-
-export type ReportCategory = 'briefings' | 'plans' | 'radar' | 'api' | 'reviews' | 'helpdesk' | 'slack';
+import type { ReportCategory } from './kinds';
 
 export type ReportStatus = 'clean' | 'findings' | 'critical' | 'draft';
 
@@ -55,7 +54,7 @@ export interface WriteReportResult {
   indexUpdated: boolean;
 }
 
-export const STATUS_ICON: Record<ReportStatus, string> = {
+const STATUS_ICON: Record<ReportStatus, string> = {
   clean: '🟢',
   findings: '🟠',
   critical: '🔴',

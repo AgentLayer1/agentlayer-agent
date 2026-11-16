@@ -448,7 +448,7 @@ describe('attention pages on disk', () => {
     expect(existsSync(page)).toBe(false);
     expect(existsSync(join(FOLDERS.HOME, 'attention.html'))).toBe(false);
 
-    writeAttentionPage('acme');
+    writeAttentionPage('acme', buildWork());
     const archived = join(FOLDERS.PROJECTS, 'acme', 'tasks', 'archive');
     mkdirSync(archived, { recursive: true });
     writeFileSync(
@@ -481,7 +481,7 @@ describe('attention pages on disk', () => {
       `<body>${roadmapDataBlock({ a: { title: 'Lane', items: [{ text: 'Invoice export', status: 'progress' }] } })}</body>`
     );
     writeFileSync(root, '<script>const ROADMAP = { a: 1 };</script>');
-    const { view } = writeAttentionPage('acme');
+    const { view } = writeAttentionPage('acme', buildWork());
     expect(view.roadmap).toMatchObject({
       milestones: [{ title: 'Lane', source: 'projects/acme/roadmap.html' }],
       notices: [
@@ -514,11 +514,11 @@ describe('attention pages on disk', () => {
 
   test('the home scope has no page of its own; it lives in the dashboard', () => {
     expect(() => attentionPagePath('')).toThrow('lives in the dashboard');
-    expect(() => writeAttentionPage('')).toThrow('lives in the dashboard');
+    expect(() => writeAttentionPage('', buildWork())).toThrow('lives in the dashboard');
   });
 
   test('a slug that is not a project folder is refused before it becomes a path', () => {
     expect(() => attentionPagePath('../..')).toThrow('Unknown project');
-    expect(() => writeAttentionPage('nope')).toThrow('Unknown project');
+    expect(() => writeAttentionPage('nope', buildWork())).toThrow('Unknown project');
   });
 });

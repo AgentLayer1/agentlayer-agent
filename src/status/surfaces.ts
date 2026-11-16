@@ -69,14 +69,25 @@ export interface PinLink {
   path: string;
 }
 
+const pinLink = (pin: Pin): PinLink => ({
+  title: pin.title,
+  icon: pin.icon ?? '📌',
+  path: relative(FOLDERS.HOME, pin.path)
+});
+
 /** A project's pins whose file is there; a broken one is the brain audit's to flag. */
 export const projectPinLinks = (project: string): PinLink[] =>
   projectPins(project)
     .filter((pin) => pin.exists)
-    .map((pin) => ({ title: pin.title, icon: pin.icon ?? '📌', path: relative(FOLDERS.HOME, pin.path) }));
+    .map(pinLink);
 
 /** The pins whose file is there, which the sidebar and the session context show. */
 export const livePins = (): Pin[] => readPins().filter((pin) => pin.exists);
+
+/**
+ * The home's own live pins (reports/pinned.md), as project pins are given.
+ */
+export const homePinLinks = (): PinLink[] => livePins().map(pinLink);
 
 /** The `hue:` (0–359) each project's README frontmatter sets, so the operator can pick a project's color. */
 export const projectHues = (): Record<string, number> =>

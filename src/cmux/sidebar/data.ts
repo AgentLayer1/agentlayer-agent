@@ -1,7 +1,7 @@
 /**
  * The entry format's version. A sidebar shows an entry with another schema as "update this agent".
  */
-export const SCHEMA = 4;
+export const SCHEMA = 5;
 
 export interface TaskItem {
   id: string;
@@ -12,6 +12,10 @@ export interface TaskItem {
    * `YYYY-MM-DD`, or `''` when the task has no due date. The sidebar words it against today's date.
    */
   due: string;
+  /**
+   * `YYYY-MM-DD` of the task's last change; breaks ties after priority and due date.
+   */
+  updated: string;
   /**
    * Entries in the task's thread, as the dashboard counts them.
    */
@@ -49,14 +53,11 @@ export interface ProjectCard {
    */
   pins: PinItem[];
   /**
-   * The project's live tasks: active, then blocked, then open; by priority, then due date.
+   * The project's live tasks by priority, then due date, then the most recently updated.
    */
   tasks: TaskItem[];
 }
 
-/**
- * What the sidebar knows about one home, rewritten whenever a project or one of its live tasks changes.
- */
 export interface ReportItem {
   title: string;
   /**
@@ -79,6 +80,59 @@ export interface ReportItem {
   target: PinTarget;
 }
 
+export interface GoalItem {
+  /**
+   * Its place in its block, from 1.
+   */
+  number: number;
+  /**
+   * A quarter (`Q4`) on a yearly goal, '' otherwise.
+   */
+  label: string;
+  /**
+   * The quarter's score, ✅ ❌ 🟡 or ↪, '' when unscored.
+   */
+  mark: string;
+  title: string;
+  /**
+   * What counts as done, '' when the goal doesn't say.
+   */
+  check: string;
+  detail: string;
+  /**
+   * The project the goal's title opened with (`acme-app: …`), which the title then drops.
+   */
+  project: { slug: string; hue: number } | null;
+}
+
+export interface GoalBlockItem {
+  horizon: 'day' | 'week' | 'month' | 'year';
+  /**
+   * The day a daily block is for, or the Monday a weekly one starts; '' otherwise.
+   */
+  date: string;
+  /**
+   * The month a monthly block names (`November 2026`), '' otherwise.
+   */
+  caption: string;
+  goals: GoalItem[];
+  /**
+   * The block's other lines: what its intro says beyond the caption, then what follows the goals.
+   */
+  notes: string[];
+}
+
+export interface GoalsItem {
+  /**
+   * The year's theme, as the yearly block's intro names it (`2026 theme: …`).
+   */
+  theme: { label: string; text: string } | null;
+  blocks: GoalBlockItem[];
+}
+
+/**
+ * What the sidebar knows about one home, rewritten whenever its projects, tasks, pins, reports or goals change.
+ */
 export interface HomeEntry {
   schema: number;
   name: string;
@@ -104,6 +158,7 @@ export interface HomeEntry {
    * How many older reports were left out, which the dashboard still lists.
    */
   olderReports: number;
+  goals: GoalsItem;
 }
 
 export interface SidebarData {

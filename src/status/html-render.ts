@@ -37,6 +37,7 @@ import { DEFAULT_AGENT_EMOJI } from '@/shared/persona';
 import { THEME_BLOCK } from '@/shared/theme';
 import { issueLabel } from '@/tasks/issue';
 import { daysUntil, dueBucket, toneOf, type DueBucket, type DueTone } from '@/work/due';
+import { REPORT_CATEGORIES, reportKind } from '@/reports/kinds';
 import type { ProjectLoad } from '@/work/views';
 import type {
   ContextGroup,
@@ -233,8 +234,9 @@ const TONE_CLASS: Readonly<Record<DueTone, string>> = { overdue: 'bad', soon: 'w
 const dueLabel = (due: string, todayIso: string): { text: string; cls: string } => {
   const days = daysUntil(due, todayIso);
   if (days === null) return { text: '', cls: '' };
-  const text = days < 0 ? `${-days}d overdue` : days === 0 ? 'due today' : days <= 7 ? `due in ${days}d` : `due ${due}`;
-  return { text, cls: TONE_CLASS[toneOf(days)] };
+  const tone = toneOf(days);
+  const text = days < 0 ? `${-days}d overdue` : days === 0 ? 'due today' : tone === 'soon' ? `due in ${days}d` : `due ${due}`;
+  return { text, cls: TONE_CLASS[tone] };
 };
 
 // ── tasks ─────────────────────────────────────────────────────────────
@@ -338,7 +340,8 @@ const reportRow = (report: ReportRef, snap: StatusSnapshot): string => {
   const title = report.href ? mdLink(snap, report.href, report.title) : esc(report.title);
   // Skill chip when there is one (briefings, radar); fall back to the category
   // so chip-less rows (plan-mode exports have no skill) still carry a tag.
-  const chip = report.skill ? projChip(report.skill) : report.category ? projChip(report.category) : '';
+  const kind = reportKind(report);
+  const chip = kind ? projChip(kind) : '';
   const status = report.status ? `<span class="chip status ${esc(report.status)}">${esc(report.status)}</span>` : '';
   return `<div class="row" data-row data-cat="${esc(report.category)}"><span class="dim" style="flex:none">${esc(report.time)}</span><span class="grow">${title}</span>${status}${chip}</div>`;
 };
@@ -352,7 +355,7 @@ const reportChips = (reports: ReportRef[], pinned: number): string => {
     if (report.category) acc[report.category] = (acc[report.category] ?? 0) + 1;
     return acc;
   }, {});
-  const present = REPORT_CATEGORY_ORDER.filter((category) => counts[category]);
+  const present = REPORT_CATEGORIES.filter((category) => counts[category]);
   if (present.length < 2 && pinned === 0) return ''; // nothing to filter between
   const chip = (filter: string, label: string, count: number, dotKey: string, active: boolean): string => {
     const dot = dotKey ? `<i style="background:${projectColor(dotKey)}"></i>` : '';
@@ -373,7 +376,6 @@ const reportChips = (reports: ReportRef[], pinned: number): string => {
     .join('')}</div>`;
 };
 
-const REPORT_CATEGORY_ORDER = ['briefings', 'plans', 'radar', 'api', 'reviews', 'helpdesk', 'slack'] as const;
 
 /** Dot hue per category — keyed to a representative row chip so the filter and
  *  the list share colors. Briefings uses the briefing skill's hue. */
@@ -625,7 +627,7 @@ const pageTasks = (snap: StatusSnapshot): string => {
   const agenda = `<div data-filterbox>${filterInput('filter tasks…')}${projectFilterChips(tasks.queue, snap.projectHues)}${[
     taskGroup(
       '▶ In flight',
-      [...tasks.activeList].sort((left, right) => (left.due || '9999').localeCompare(right.due || '9999')),
+      tasks.activeList,
       snap,
       {},
       'agenda-active'

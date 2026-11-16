@@ -38,9 +38,8 @@ type LiveCount = number | (() => number);
 const textOf = (text: LiveText): string => (typeof text === 'string' ? text : text());
 const countOf = (count: LiveCount): number => (typeof count === 'number' ? count : count());
 
-export const groupTitle = (title: LiveText, count: LiveCount, icon?: string) =>
+export const groupTitle = (title: LiveText, count: LiveCount) =>
   HStack({ spacing: 4 }, [
-    ...(icon ? [Image(icon).font(9).color('tertiary')] : []),
     Text(() => textOf(title).toUpperCase())
       .font(10)
       .weight('semibold')
@@ -65,16 +64,72 @@ export const foldTitle = (
   title: LiveText,
   count: LiveCount,
   expanded: () => boolean,
-  setExpanded: (next: boolean) => void,
-  icon?: string
+  setExpanded: (next: boolean) => void
 ) =>
-  HStack({ spacing: 4 }, [groupTitle(title, count, icon), chevron(expanded)])
+  HStack({ spacing: 4 }, [groupTitle(title, count), chevron(expanded)])
     .paddingTrailing(4)
     .cursor('pointer')
     .onTap(() => setExpanded(!expanded()));
 
 // Titles sit a step below full white (or black) so a list of them reads softer.
 export const TITLE_OPACITY = 0.85;
+
+/**
+ * A tappable row in a list: no hover wash, since one per row made a long sidebar lag as it scrolled.
+ */
+export const listRow = (view: View) =>
+  view.paddingHorizontal(4).paddingVertical(5).cursor('pointer').frame({ maxWidth: 'infinity', alignment: 'leading' });
+
+/**
+ * Rows with a faint line between them. Whether a row leads stays live, since a search reorders the rows it keeps.
+ */
+export const dividedList = <Item>(items: () => Item[], key: (item: Item) => string, row: (item: Item) => View) => {
+  // One computed for the list, so a reorder re-runs only the rows whose divider changes.
+  const headKey = computed(() => {
+    const head = items()[0];
+    return head === undefined ? '' : key(head);
+  });
+  return VStack({ spacing: 0 }, [
+    ForEach({ items, key }, (item, itemKey) =>
+      VStack({ spacing: 0 }, [
+        Divider()
+          .opacity(() => (headKey() === itemKey ? 0 : 0.5))
+          .paddingHorizontal(4),
+        row(item())
+      ])
+    )
+  ]);
+};
+
+/**
+ * `build`'s view while `show()` holds, and nothing otherwise; the runtime has no conditional view, so it is a list of
+ * one or none.
+ */
+export const when = (show: () => boolean, build: () => View) =>
+  ForEach({ items: () => (show() ? ['shown'] : []), key: (name) => name }, build);
+
+/**
+ * A project as its pill names it: its slug and its colour.
+ */
+export interface ProjectTag {
+  slug: string;
+  color: string;
+}
+
+/**
+ * A word on a tint of its own colour, for a project or a report's status. `color` is `#rrggbb`.
+ */
+export const pill = (label: string, color: string) =>
+  Text(label)
+    .font(9)
+    .weight('semibold')
+    .color(color)
+    .paddingHorizontal(5)
+    .paddingVertical(1)
+    .background(`${color}26`)
+    .cornerRadius(4)
+    .lineLimit(1)
+    .fixedSize('horizontal');
 
 /**
  * A plain icon button for the top row; `help` names it on hover.
@@ -90,9 +145,75 @@ export const toolIcon = (symbol: string, help: string, onTap: () => void) =>
     .help(help)
     .onTap(onTap);
 
-export const CARD = '#7f7f7f12';
+const CARD = '#7f7f7f12';
 
-export const card = (view: View) => view.paddingHorizontal(10).paddingVertical(8).background(CARD).cornerRadius(10);
+/**
+ * A card that folds from its header. The padding sits inside the tappable header, so a click in the card's margin
+ * folds it too; `body` is built only while it's open.
+ */
+export const foldingCard = (
+  header: View,
+  expanded: () => boolean,
+  setExpanded: (next: boolean) => void,
+  body: () => View
+) =>
+  VStack({ spacing: 0 }, [
+    VStack({ spacing: 0 }, [
+      header
+        .paddingHorizontal(10)
+        .paddingTop(8)
+        .paddingBottom(() => (expanded() ? 6 : 8))
+    ])
+      .frame({ maxWidth: 'infinity', alignment: 'leading' })
+      .cursor('pointer')
+      .onTap(() => setExpanded(!expanded())),
+    when(expanded, () => body().paddingHorizontal(10).paddingBottom(8))
+  ])
+    .background(CARD)
+    .cornerRadius(10)
+    .frame({ maxWidth: 'infinity' });
+
+interface FoldCard {
+  title: LiveText;
+  count: LiveCount;
+  icon: string;
+  color: string;
+  expanded: () => boolean;
+  setExpanded: (next: boolean) => void;
+}
+
+/**
+ * A folding card whose header is an icon, a title, a count and the chevron.
+ */
+export const foldCard = ({ title, count, icon, color, expanded, setExpanded }: FoldCard, content: () => View) =>
+  foldingCard(
+    HStack({ spacing: 7 }, [
+      Image(icon).font(11).color(color),
+      Text(() => textOf(title))
+        .font(12)
+        .weight('semibold')
+        .lineLimit(1)
+        .truncation('tail')
+        .frame({ maxWidth: 'infinity', alignment: 'leading' }),
+      Text(() => String(countOf(count)))
+        .font(10)
+        .weight('medium')
+        .monospaced()
+        .color('secondary'),
+      chevron(expanded)
+    ]),
+    expanded,
+    setExpanded,
+    content
+  );
+
+// The sidebar's palette, shared by its icons, badges and tallies.
+export const ACCENT = '#0A84FF';
+export const GREEN = '#34C759';
+export const ORANGE = '#FF9F0A';
+export const RED = '#FF453A';
+export const GREY = '#8E8E93';
+export const PURPLE = '#BF5AF2';
 
 export const note = (text: string) => Text(text).font(11).color('tertiary').paddingHorizontal(10);
 

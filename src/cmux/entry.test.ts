@@ -9,7 +9,7 @@ import { SCHEMA } from './sidebar/data';
 const url = (...parts: string[]) => pathToFileURL(join(...parts)).href;
 const taskPath = (project: string, id: string) => join(NOVA_HOME, 'projects', project, 'tasks', `${id}.md`);
 
-test('a home’s projects, at work first, each with its live tasks in the order they need you', () => {
+test('a home’s projects, at work first, each with its live tasks by priority, then due date', () => {
   const entry = homeEntry(NOVA_HOME, NOVA);
   expect(entry).toMatchObject({
     schema: SCHEMA,
@@ -41,22 +41,24 @@ test('a home’s projects, at work first, each with its live tasks in the order 
     ],
     tasks: [
       {
-        id: 'ac-101',
-        title: 'Ship the invoice export',
-        status: 'active',
-        priority: 'P1',
-        due: '2026-11-07',
-        comments: 3,
-        path: taskPath('acme-app', 'ac-101')
-      },
-      {
         id: 'ac-102',
         title: 'Fix the checkout total',
         status: 'open',
         priority: 'P0',
         due: '2026-11-10',
+        updated: '2026-11-08',
         comments: 0,
         path: taskPath('acme-app', 'ac-102')
+      },
+      {
+        id: 'ac-101',
+        title: 'Ship the invoice export',
+        status: 'active',
+        priority: 'P1',
+        due: '2026-11-07',
+        updated: '2026-11-08',
+        comments: 3,
+        path: taskPath('acme-app', 'ac-101')
       },
       {
         id: 'ac-103',
@@ -64,6 +66,7 @@ test('a home’s projects, at work first, each with its live tasks in the order 
         status: 'open',
         priority: 'P2',
         due: '2026-12-01',
+        updated: '2026-11-08',
         comments: 0,
         path: taskPath('acme-app', 'ac-103')
       }
@@ -71,7 +74,7 @@ test('a home’s projects, at work first, each with its live tasks in the order 
   });
   expect(
     entry.projects[1]?.tasks.map((task) => task.id),
-    'blocked before open'
+    'by priority, whatever the status'
   ).toEqual(['gs-201', 'gs-202']);
   expect(entry.projects[2]).toMatchObject({ done: 2, roadmap: null, pins: [], tasks: [] });
 });
@@ -134,4 +137,26 @@ test('reports past the limit are counted, not carried, and an HTML report opens 
   expect(entry.reports).toHaveLength(REPORT_LIMIT);
   expect(entry.olderReports).toBe(3);
   expect(entry.reports[0]?.target).toEqual({ kind: 'page', url: url(NOVA_HOME, 'reports', 'plans', 'r-0.html') });
+});
+
+test('the goals carry the year’s theme, each block’s date or month, and a project pill where a goal names one', () => {
+  const { goals } = homeEntry(NOVA_HOME, NOVA);
+  expect(goals.theme).toEqual({ label: '2026 theme', text: 'Make the shop run itself' });
+  expect(goals.blocks.map(({ horizon, date, caption }) => [horizon, date, caption])).toEqual([
+    ['day', '2026-11-09', ''],
+    ['week', '2026-11-02', ''],
+    ['month', '', 'November 2026'],
+    ['year', '', '']
+  ]);
+  expect(goals.blocks[1]?.goals[0]).toEqual({
+    number: 1,
+    label: '',
+    mark: '',
+    title: "The invoice export in customers' hands (ac-101)",
+    check: 'exported files open in the accounting tool for two customers',
+    detail: '',
+    project: { slug: 'acme-app', hue: 210 }
+  });
+  expect(goals.blocks[2]?.notes).toEqual(['set 2026-11-01', 'acme first', 'Not doing in November: the blog redesign.']);
+  expect(goals.blocks[3]?.notes).toEqual(['planned 2026-01-05', 'Foundations: the books closed every month.']);
 });

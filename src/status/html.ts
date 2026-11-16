@@ -7,7 +7,7 @@
 import { FILES, FOLDERS } from '@/config';
 import { writeFileAtomic } from '@/shared/utils';
 import { writeDashboard, type DashboardCounts } from '@/tasks/dashboard';
-import { buildWork } from '@/work/build';
+import { buildWork, readTasks } from '@/work/build';
 import { writeWork } from '@/work/store';
 import { collectStatus } from './collect';
 import { writeAttentionPagesSafe } from './attention';
@@ -57,7 +57,7 @@ export const writeDashboardHtml = (): Promise<Written> => {
 export const rebuildDashboards = async (): Promise<{ path: string; bytes: number; tasks: DashboardCounts | null }> => {
   let tasks: DashboardCounts | null = null;
   try {
-    tasks = writeDashboard(buildWork());
+    tasks = writeDashboard(readTasks());
   } catch {
     // TASKS.md is best-effort here — the HTML snapshot is the contract
   }

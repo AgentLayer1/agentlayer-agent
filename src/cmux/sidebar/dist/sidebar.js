@@ -269,7 +269,7 @@ var packLines = (items, label, firstWidth, width) => items.reduce(({ lines, used
 }, { lines: [[]], used: 0 }).lines;
 
 // src/cmux/sidebar/data.ts
-var SCHEMA = 4;
+var SCHEMA = 5;
 
 // src/cmux/sidebar/style.ts
 var hueColor = (hue) => {
@@ -290,18 +290,49 @@ var progressBar = (fraction, color) => {
 };
 var textOf = (text) => typeof text === "string" ? text : text();
 var countOf = (count) => typeof count === "number" ? count : count();
-var groupTitle = (title, count, icon) => HStack({ spacing: 4 }, [
-  ...icon ? [Image(icon).font(9).color("tertiary")] : [],
+var groupTitle = (title, count) => HStack({ spacing: 4 }, [
   Text(() => textOf(title).toUpperCase()).font(10).weight("semibold").color("tertiary"),
   Text(() => String(countOf(count))).font(10).monospaced().color("quaternary"),
   Spacer({ minLength: 0 })
 ]).paddingHorizontal(4);
 var chevron = (expanded) => Image(() => expanded() ? "chevron.down" : "chevron.right").font(9).weight("semibold").color("tertiary");
-var foldTitle = (title, count, expanded, setExpanded, icon) => HStack({ spacing: 4 }, [groupTitle(title, count, icon), chevron(expanded)]).paddingTrailing(4).cursor("pointer").onTap(() => setExpanded(!expanded()));
+var foldTitle = (title, count, expanded, setExpanded) => HStack({ spacing: 4 }, [groupTitle(title, count), chevron(expanded)]).paddingTrailing(4).cursor("pointer").onTap(() => setExpanded(!expanded()));
 var TITLE_OPACITY = 0.85;
+var listRow = (view) => view.paddingHorizontal(4).paddingVertical(5).cursor("pointer").frame({ maxWidth: "infinity", alignment: "leading" });
+var dividedList = (items, key, row) => {
+  const headKey = computed(() => {
+    const head = items()[0];
+    return head === undefined ? "" : key(head);
+  });
+  return VStack({ spacing: 0 }, [
+    ForEach({ items, key }, (item, itemKey) => VStack({ spacing: 0 }, [
+      Divider().opacity(() => headKey() === itemKey ? 0 : 0.5).paddingHorizontal(4),
+      row(item())
+    ]))
+  ]);
+};
+var when = (show, build) => ForEach({ items: () => show() ? ["shown"] : [], key: (name) => name }, build);
+var pill = (label, color) => Text(label).font(9).weight("semibold").color(color).paddingHorizontal(5).paddingVertical(1).background(`${color}26`).cornerRadius(4).lineLimit(1).fixedSize("horizontal");
 var toolIcon = (symbol, help, onTap) => Image(symbol).font(11).color("secondary").padding(5).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
 var CARD = "#7f7f7f12";
-var card = (view) => view.paddingHorizontal(10).paddingVertical(8).background(CARD).cornerRadius(10);
+var foldingCard = (header, expanded, setExpanded, body) => VStack({ spacing: 0 }, [
+  VStack({ spacing: 0 }, [
+    header.paddingHorizontal(10).paddingTop(8).paddingBottom(() => expanded() ? 6 : 8)
+  ]).frame({ maxWidth: "infinity", alignment: "leading" }).cursor("pointer").onTap(() => setExpanded(!expanded())),
+  when(expanded, () => body().paddingHorizontal(10).paddingBottom(8))
+]).background(CARD).cornerRadius(10).frame({ maxWidth: "infinity" });
+var foldCard = ({ title, count, icon, color, expanded, setExpanded }, content) => foldingCard(HStack({ spacing: 7 }, [
+  Image(icon).font(11).color(color),
+  Text(() => textOf(title)).font(12).weight("semibold").lineLimit(1).truncation("tail").frame({ maxWidth: "infinity", alignment: "leading" }),
+  Text(() => String(countOf(count))).font(10).weight("medium").monospaced().color("secondary"),
+  chevron(expanded)
+]), expanded, setExpanded, content);
+var ACCENT = "#0A84FF";
+var GREEN = "#34C759";
+var ORANGE = "#FF9F0A";
+var RED = "#FF453A";
+var GREY = "#8E8E93";
+var PURPLE = "#BF5AF2";
 var note = (text) => Text(text).font(11).color("tertiary").paddingHorizontal(10);
 var tabIcon = (symbol, help, active, onTap) => Image(symbol).font(12).color(() => active() ? "accent" : "secondary").padding(5).background(() => active() ? "#7f7f7f3d" : null).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
 
@@ -309,6 +340,10 @@ var tabIcon = (symbol, help, active, onTap) => Image(symbol).font(12).color(() =
 var openTarget = (target) => target.kind === "page" ? cmux("browser.tab.new", { url: target.url }) : cmux("file.open", { path: target.path });
 var targetKey = (target) => target.kind === "page" ? target.url : target.path;
 var entryOf = (home) => home ? DATA.homes[home] : undefined;
+var matchesQuery = (query, ...texts) => {
+  const haystack = texts.join(" ").toLowerCase();
+  return query.toLowerCase().split(/\s+/).filter(Boolean).every((word) => haystack.includes(word));
+};
 var homeLabel = (home) => {
   const entry = DATA.homes[home];
   return entry ? `${entry.emoji} ${entry.name}`.trim() : home;
@@ -323,7 +358,7 @@ var scopedPage = (home, ready) => {
   return VStack({ spacing: 0 }, [
     ForEach({ items: showing(true), key: (item) => item.path }, (item) => ready(item().entry)),
     ForEach({ items: showing(false), key: (item) => item.path }, (item) => note(`${homeLabel(item().path)} needs its agent updated to show here.`)),
-    ForEach({ items: () => view() ? [] : ["none"], key: (item) => item }, () => note("No agent has joined this sidebar yet. Ask an agent to set up its cmux pack."))
+    when(() => view() === null, () => note("No agent has joined this sidebar yet. Ask an agent to set up its cmux pack."))
   ]);
 };
 
@@ -388,6 +423,15 @@ var dueLabel = (due, today) => {
   const days = daysUntil(due, today);
   return days === null ? null : { text: wordsFor(days), tone: toneOf(days) };
 };
+var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+var dateParts = (date) => {
+  const [year, month, day] = date.split("-").map(Number);
+  if (!year || !month || !day) {
+    return null;
+  }
+  return { weekday: new Date(Date.UTC(year, month - 1, day)).getUTCDay(), day, month: MONTHS[month - 1] ?? "" };
+};
 var isoDay = (epochSeconds) => {
   const date = new Date(epochSeconds * 1000);
   const pad = (part) => String(part).padStart(2, "0");
@@ -395,14 +439,14 @@ var isoDay = (epochSeconds) => {
 };
 
 // src/cmux/sidebar/tasks.ts
-var OPEN = { symbol: "circle", color: "#8E8E93" };
+var OPEN = { symbol: "circle", color: GREY };
 var STATUS = {
-  active: { symbol: "circle.fill", color: "#34C759" },
-  blocked: { symbol: "exclamationmark.circle.fill", color: "#FF453A" },
+  active: { symbol: "circle.fill", color: GREEN },
+  blocked: { symbol: "exclamationmark.circle.fill", color: RED },
   open: OPEN
 };
 var statusOf = (status) => STATUS[status] ?? OPEN;
-var TONE2 = { overdue: "#FF453A", soon: "#FF9F0A", later: "tertiary" };
+var TONE2 = { overdue: RED, soon: ORANGE, later: "tertiary" };
 var URGENT = new Set(["P0", "P1"]);
 var today = computed(() => isoDay(data.clock()?.epoch ?? Date.now() / 1000));
 var statusIcon = (status, size = 7) => {
@@ -415,12 +459,13 @@ var count = (amount, status) => amount ? [
     Text(String(amount)).font(10).weight("medium").monospaced().color("secondary")
   ]).fixedSize()
 ] : [];
-var taskMeta = (task, projectColor) => HStack({ spacing: 6 }, [
+var taskMeta = (task, project) => HStack({ spacing: 6 }, [
   statusIcon(task.status),
-  Text(task.id).font(10).monospaced().color(projectColor ?? "tertiary"),
-  Text(task.priority).font(10).weight("semibold").monospaced().color(URGENT.has(task.priority) ? "#FF9F0A" : "tertiary"),
+  Text(task.id).font(10).monospaced().color("tertiary"),
+  Text(task.priority).font(10).weight("semibold").monospaced().color(URGENT.has(task.priority) ? ORANGE : "tertiary"),
   Text(() => dueLabel(task.due, today())?.text ?? "").font(10).color(() => TONE2[dueLabel(task.due, today())?.tone ?? "later"]),
   Spacer({ minLength: 0 }),
+  ...project ? [pill(project.slug, project.color)] : [],
   ...task.comments ? [
     HStack({ spacing: 2 }, [
       Image("bubble.left").font(9).color("tertiary"),
@@ -428,17 +473,102 @@ var taskMeta = (task, projectColor) => HStack({ spacing: 6 }, [
     ]).fixedSize()
   ] : []
 ]);
-var taskRow = (task, projectColor) => VStack({ spacing: 2, alignment: "leading" }, [
+var taskRow = (task, project) => listRow(VStack({ spacing: 2, alignment: "leading" }, [
   Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(3).truncation("tail"),
-  taskMeta(task, projectColor)
-]).paddingHorizontal(4).paddingVertical(5).cornerRadius(8).hoverBackground("#7f7f7f26").cursor("pointer").frame({ maxWidth: "infinity", alignment: "leading" }).onTap(() => cmux("file.open", { path: task.path }));
+  taskMeta(task, project)
+])).onTap(() => cmux("file.open", { path: task.path }));
+
+// src/cmux/sidebar/goals.ts
+var SHELVES = [
+  { horizon: "day", title: "Today", icon: "sun.max.fill", color: ORANGE, open: true },
+  { horizon: "week", title: "This week", icon: "calendar", color: ACCENT, open: true },
+  { horizon: "month", title: "This month", icon: "target", color: GREEN, open: true },
+  { horizon: "year", title: "This year", icon: "flag.fill", color: PURPLE, open: false }
+];
+var daysSinceMonday = (day) => ((dateParts(day)?.weekday ?? 1) + 6) % 7;
+var shortDate = (date) => {
+  const parts = dateParts(date);
+  return parts ? `${parts.day} ${parts.month}` : date;
+};
+var current = ({ horizon, date }, day) => {
+  const days = daysUntil(date, day);
+  if (horizon === "day") {
+    return days === 0;
+  }
+  return horizon !== "week" || days === null || days >= -daysSinceMonday(day);
+};
+var themeBanner = ({ label, text }) => HStack({ spacing: 10 }, [
+  Image("sparkles").font(13).color(PURPLE),
+  VStack({ spacing: 2, alignment: "leading" }, [
+    Text(label.toUpperCase()).font(9).weight("semibold").color("tertiary"),
+    Text(text).font(14).weight("semibold").italic().opacity(TITLE_OPACITY)
+  ]).frame({ maxWidth: "infinity", alignment: "leading" })
+]).paddingHorizontal(12).paddingVertical(10).background(`${PURPLE}1f`).cornerRadius(10);
+var goalRow = (goal) => VStack({ spacing: 4, alignment: "leading" }, [
+  HStack({ spacing: 6 }, [
+    goal.label ? pill(goal.label, GREY) : Text(String(goal.number)).font(10).weight("semibold").monospaced().color("tertiary"),
+    ...goal.mark ? [Text(goal.mark).font(10)] : [],
+    ...goal.project ? [pill(goal.project.slug, hueColor(goal.project.hue))] : [],
+    Spacer({ minLength: 0 })
+  ]),
+  Text(goal.title).font(12).weight("medium").opacity(TITLE_OPACITY),
+  ...goal.check ? [
+    VStack({ spacing: 1, alignment: "leading" }, [
+      Text("DONE WHEN").font(9).weight("semibold").color("tertiary"),
+      Text(goal.check).font(11).color("secondary")
+    ])
+  ] : [],
+  ...goal.detail ? [Text(goal.detail).font(11).color("tertiary")] : []
+]).paddingHorizontal(4).paddingVertical(7).frame({ maxWidth: "infinity", alignment: "leading" }).opacity(goal.mark ? 0.55 : 1);
+var shelfCard = (shelf, block, agent) => {
+  const [open, setOpen] = signal(shelf.open);
+  const command = `goals ${shelf.horizon}`;
+  const live = () => block !== undefined && current(block, today());
+  const shown = () => block && (shelf.horizon !== "day" || live()) ? block.goals : [];
+  const caption = () => {
+    if (!block) {
+      return "";
+    }
+    if (shelf.horizon === "week" && block.date) {
+      return live() ? `Week of ${shortDate(block.date)}` : `Set for the week of ${shortDate(block.date)} · ask ${agent}: ${command}`;
+    }
+    return block.caption;
+  };
+  return foldCard({
+    title: shelf.title,
+    count: () => shown().length,
+    icon: shelf.icon,
+    color: shelf.color,
+    expanded: open,
+    setExpanded: setOpen
+  }, () => VStack({ spacing: 4 }, [
+    when(() => caption() !== "", () => Text(caption).font(10).color(() => live() ? "secondary" : ORANGE).paddingHorizontal(4).frame({ maxWidth: "infinity", alignment: "leading" })),
+    when(() => shown().length === 0, () => VStack({ spacing: 2, alignment: "leading" }, [
+      Text(`No goals set for ${shelf.title.toLowerCase()}.`).font(11).color("secondary"),
+      Text(`Ask ${agent}: ${command}`).font(10).color("tertiary")
+    ]).paddingHorizontal(4).paddingVertical(4).frame({ maxWidth: "infinity", alignment: "leading" })),
+    dividedList(shown, (goal) => String(goal.number), goalRow),
+    when(() => shown().length > 0 && (block?.notes.length ?? 0) > 0, () => VStack({ spacing: 4, alignment: "leading" }, (block?.notes ?? []).map((note) => Text(note).font(10).italic().color("tertiary").frame({ maxWidth: "infinity", alignment: "leading" }))).paddingHorizontal(4).paddingTop(4))
+  ]));
+};
+var goalsBody = (entry) => {
+  const { theme, blocks } = entry.goals;
+  return VStack({ spacing: 10 }, [
+    ...theme ? [themeBanner(theme)] : [],
+    VStack({ spacing: 6 }, SHELVES.map((shelf) => shelfCard(shelf, blocks.find((block) => block.horizon === shelf.horizon), entry.name)))
+  ]);
+};
+
+// src/work/order.ts
+var PRIORITY_ORDER = { P0: 0, P1: 1, P2: 2, P3: 3 };
+var priorityRank = (priority) => PRIORITY_ORDER[priority] ?? 9;
+var taskOrder = (a, b) => priorityRank(a.priority) - priorityRank(b.priority) || (a.due || "9999").localeCompare(b.due || "9999") || b.updated.localeCompare(a.updated);
+var taskOrderById = (a, b) => taskOrder(a, b) || a.id.localeCompare(b.id);
 
 // src/cmux/sidebar/projects.ts
-var ACCENT = "#0A84FF";
 var linkRow = ({ icon, title, target }) => HStack({ spacing: 6 }, [
   Text(icon).font(11).frame({ width: 14 }),
-  Text(title).font(11).color("secondary").lineLimit(1).truncation("tail"),
-  Spacer({ minLength: 0 })
+  Text(title).font(11).color("secondary").lineLimit(1).truncation("tail").frame({ maxWidth: "infinity", alignment: "leading" })
 ]).paddingHorizontal(4).paddingVertical(2).cornerRadius(6).hoverBackground("#7f7f7f26").cursor("pointer").onTap(() => openTarget(target));
 var roadmapLink = (url) => ({ title: "Roadmap", icon: "\uD83D\uDDFA️", target: { kind: "page", url } });
 var fraction = (done, live) => done + live ? done / (done + live) : 0;
@@ -449,7 +579,7 @@ var AGENDA = {
   month: "This month",
   later: "Later"
 };
-var listedTasks = (entry) => entry.projects.flatMap((project) => project.tasks.map((task) => ({ task, color: hueColor(project.hue) })));
+var listedTasks = (entry) => entry.projects.flatMap(({ slug, hue, tasks }) => tasks.map((task) => ({ task, project: { slug, color: hueColor(hue) } }))).toSorted((a, b) => taskOrderById(a.task, b.task));
 var agenda = (listed, day) => {
   const waiting = listed.filter(({ task }) => task.status !== "active");
   return [
@@ -466,27 +596,26 @@ var tasksCard = (entry, listed) => {
   const total = (field) => entry.projects.reduce((sum, project) => sum + project[field], 0);
   const tone = (wanted) => () => listed.filter(({ task }) => dueLabel(task.due, today())?.tone === wanted).length;
   const groups = computed(() => agenda(listed, today()));
-  return card(VStack({ spacing: 6 }, [
-    VStack({ spacing: 6 }, [
-      HStack({ spacing: 7 }, [
-        Image("checklist").font(11).color(ACCENT),
-        Text("Tasks").font(12).weight("semibold"),
-        Spacer({ minLength: 4 }),
-        ...count(total("active"), "active"),
-        ...count(total("blocked"), "blocked"),
-        ...count(total("open"), "open"),
-        chevron(expanded)
-      ]),
-      progressBar(fraction(total("done"), total("active") + total("blocked") + total("open")), ACCENT),
-      HStack({ spacing: 8 }, [
-        dueTally(tone("overdue"), "overdue", "#FF453A"),
-        dueTally(tone("soon"), "due this week", "#FF9F0A"),
-        Spacer({ minLength: 0 })
-      ])
-    ]).cursor("pointer").onTap(() => setExpanded(!expanded())),
-    ForEach({ items: () => expanded() ? groups() : [], key: (group) => group.title }, (group) => VStack({ spacing: 1 }, [
+  return foldingCard(VStack({ spacing: 6 }, [
+    HStack({ spacing: 7 }, [
+      Image("checklist").font(11).color(ACCENT),
+      Text("Tasks").font(12).weight("semibold"),
+      Spacer({ minLength: 4 }),
+      ...count(total("active"), "active"),
+      ...count(total("blocked"), "blocked"),
+      ...count(total("open"), "open"),
+      chevron(expanded)
+    ]),
+    progressBar(fraction(total("done"), total("active") + total("blocked") + total("open")), ACCENT),
+    HStack({ spacing: 8 }, [
+      dueTally(tone("overdue"), "overdue", RED),
+      dueTally(tone("soon"), "due this week", ORANGE),
+      Spacer({ minLength: 0 })
+    ])
+  ]), expanded, setExpanded, () => VStack({ spacing: 6 }, [
+    ForEach({ items: groups, key: (group) => group.title }, (group) => VStack({ spacing: 1 }, [
       groupTitle(group().title, group().tasks.length).paddingTop(4),
-      ForEach({ items: () => group().tasks, key: (item) => item.task.id }, (item) => taskRow(item().task, item().color))
+      dividedList(() => group().tasks, (item) => item.task.id, (item) => taskRow(item.task, item.project))
     ]))
   ]));
 };
@@ -496,34 +625,29 @@ var projectCard = (item) => {
   const color = hueColor(project.hue);
   const next = project.tasks[0];
   const links = [...project.roadmap ? [roadmapLink(project.roadmap)] : [], ...project.pins];
-  return card(VStack({ spacing: 6 }, [
-    VStack({ spacing: 6 }, [
-      HStack({ spacing: 7 }, [
-        Circle({ size: 8 }).fill(color),
-        Text(project.slug).font(12).weight("semibold").lineLimit(1).truncation("tail"),
-        Spacer({ minLength: 4 }),
-        ...count(project.active, "active"),
-        ...count(project.blocked, "blocked"),
-        ...count(project.open, "open"),
-        ...links.length ? [Image("pin.fill").font(8).color("tertiary").help(`${links.length} pinned`)] : [],
-        chevron(expanded)
-      ]),
-      progressBar(fraction(project.done, project.active + project.blocked + project.open), color),
-      ForEach({ items: () => next && !expanded() ? [next] : [], key: (task) => task.id }, (task) => HStack({ spacing: 5 }, [
-        Image("arrow.turn.down.right").font(8).color("quaternary"),
-        Text(task().title).font(11).color("secondary").lineLimit(1).truncation("tail"),
-        Spacer({ minLength: 0 })
-      ]))
-    ]).cursor("pointer").onTap(() => setExpanded(!expanded())),
-    ForEach({ items: () => expanded() ? [project.slug] : [], key: (slug) => slug }, () => VStack({ spacing: 6 }, [
-      ...links.length ? [
-        VStack({ spacing: 0 }, [
-          ForEach({ items: links, key: (link) => targetKey(link.target) }, (link) => linkRow(link()))
-        ])
-      ] : [],
-      VStack({ spacing: 1 }, [ForEach({ items: project.tasks, key: (task) => task.id }, (task) => taskRow(task()))])
+  return foldingCard(VStack({ spacing: 6 }, [
+    HStack({ spacing: 7 }, [
+      Circle({ size: 8 }).fill(color),
+      Text(project.slug).font(12).weight("semibold").lineLimit(1).truncation("tail").frame({ maxWidth: "infinity", alignment: "leading" }),
+      ...count(project.active, "active"),
+      ...count(project.blocked, "blocked"),
+      ...count(project.open, "open"),
+      ...links.length ? [Image("pin.fill").font(8).color("tertiary").help(`${links.length} pinned`)] : [],
+      chevron(expanded)
+    ]),
+    progressBar(fraction(project.done, project.active + project.blocked + project.open), color),
+    ForEach({ items: () => next && !expanded() ? [next] : [], key: (task) => task.id }, (task) => HStack({ spacing: 5 }, [
+      Image("arrow.turn.down.right").font(8).color("quaternary"),
+      Text(task().title).font(11).color("secondary").lineLimit(1).truncation("tail").frame({ maxWidth: "infinity", alignment: "leading" })
     ]))
-  ])).frame({ maxWidth: "infinity" });
+  ]), expanded, setExpanded, () => VStack({ spacing: 6 }, [
+    ...links.length ? [
+      VStack({ spacing: 0 }, [
+        ForEach({ items: links, key: (link) => targetKey(link.target) }, (link) => linkRow(link()))
+      ])
+    ] : [],
+    dividedList(() => project.tasks, (task) => task.id, (task) => taskRow(task))
+  ]));
 };
 var STATES = [
   { title: "At work", holds: (project) => project.active > 0 },
@@ -537,25 +661,18 @@ var stateGroup = (title, projects) => {
     ForEach({ items: () => expanded() ? projects : [], key: (project) => project.slug }, projectCard)
   ]);
 };
-var matches = (listed, query) => {
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  return listed.filter(({ task }) => {
-    const haystack = `${task.title} ${task.id}`.toLowerCase();
-    return words.every((word) => haystack.includes(word));
-  });
-};
 var projectsBody = (entry) => {
   const [query, setQuery] = signal("");
   const listed = listedTasks(entry);
-  const found = computed(() => matches(listed, query()));
+  const found = computed(() => listed.filter(({ task }) => matchesQuery(query(), task.title, task.id)));
   const searching = () => query().trim() !== "";
   return VStack({ spacing: 10 }, [
     searchField("Search tasks…", setQuery),
-    ForEach({ items: () => searching() ? ["results"] : [], key: (name) => name }, () => VStack({ spacing: 1 }, [
-      ForEach({ items: found, key: (item) => item.task.id }, (item) => taskRow(item().task, item().color)),
+    when(searching, () => VStack({ spacing: 1 }, [
+      dividedList(found, (item) => item.task.id, (item) => taskRow(item.task, item.project)),
       Text(() => found().length ? "" : "No matching tasks.").font(11).color("tertiary").paddingHorizontal(4)
     ])),
-    ForEach({ items: () => searching() ? [] : ["browse"], key: (name) => name }, () => VStack({ spacing: 10 }, [
+    when(() => !searching(), () => VStack({ spacing: 10 }, [
       tasksCard(entry, listed),
       ...STATES.flatMap(({ title, holds }) => {
         const projects = entry.projects.filter(holds);
@@ -574,8 +691,6 @@ var clock = (time) => {
   }
   return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${hour < 12 ? "AM" : "PM"}`;
 };
-var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 var dayTitle = (date, day) => {
   const days = daysUntil(date, day);
   if (days === 0) {
@@ -584,26 +699,16 @@ var dayTitle = (date, day) => {
   if (days === -1) {
     return "Yesterday";
   }
-  const [year, month, dayOfMonth] = date.split("-").map(Number);
-  if (!year || !month || !dayOfMonth) {
-    return date || "Undated";
-  }
-  const weekday = new Date(Date.UTC(year, month - 1, dayOfMonth)).getUTCDay();
-  return `${WEEKDAYS[weekday] ?? ""} ${dayOfMonth} ${MONTHS[month - 1] ?? ""}`;
+  const parts = dateParts(date);
+  return parts ? `${WEEKDAYS[parts.weekday] ?? ""} ${parts.day} ${parts.month}` : date || "Undated";
 };
-var tile = (view, onTap) => view.paddingHorizontal(8).paddingVertical(6).background(CARD).cornerRadius(8).hoverBackground("#7f7f7f26").cursor("pointer").frame({ maxWidth: "infinity", alignment: "leading" }).onTap(onTap);
 var badge2 = (label, color) => HStack({ spacing: 4 }, [
   Circle({ size: 6 }).fill(color),
   Text(label).font(10).color("secondary").lineLimit(1).truncation("tail")
 ]).fixedSize("horizontal");
-var STATUS_COLOR = {
-  clean: "#34C759",
-  findings: "#FF9F0A",
-  critical: "#FF453A",
-  draft: "#8E8E93"
-};
-var statusBadge = (status) => Text(status).font(9).weight("semibold").color(STATUS_COLOR[status] ?? "secondary").paddingHorizontal(5).paddingVertical(1).background(`${STATUS_COLOR[status] ?? "#8E8E93"}26`).cornerRadius(4).fixedSize("horizontal");
-var reportCard = (item) => tile(VStack({ spacing: 3, alignment: "leading" }, [
+var STATUS_COLOR = { clean: GREEN, findings: ORANGE, critical: RED, draft: GREY };
+var statusBadge = (status) => pill(status, STATUS_COLOR[status] ?? GREY);
+var reportRow = (item) => listRow(VStack({ spacing: 3, alignment: "leading" }, [
   Text(item.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail"),
   HStack({ spacing: 6 }, [
     badge2(item.kind, hueColor(item.hue)),
@@ -611,17 +716,12 @@ var reportCard = (item) => tile(VStack({ spacing: 3, alignment: "leading" }, [
     Spacer({ minLength: 0 }),
     Text(clock(item.time)).font(10).monospaced().color("tertiary")
   ])
-]), () => openTarget(item.target));
-var pinCard = ({ pin, project }) => tile(HStack({ spacing: 6 }, [
+])).onTap(() => openTarget(item.target));
+var pinRow = ({ pin, project }) => listRow(HStack({ spacing: 6 }, [
   Text(pin.icon).font(11).frame({ width: 14 }),
-  Text(pin.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail"),
-  Spacer({ minLength: 4 }),
-  ...project ? [badge2(project.slug, project.color)] : []
-]), () => openTarget(pin.target));
-var matches2 = (query, ...texts) => {
-  const haystack = texts.join(" ").toLowerCase();
-  return query.toLowerCase().split(/\s+/).filter(Boolean).every((word) => haystack.includes(word));
-};
+  Text(pin.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail").frame({ maxWidth: "infinity", alignment: "leading" }),
+  ...project ? [pill(project.slug, project.color)] : []
+])).onTap(() => openTarget(pin.target));
 var byDay = (reports) => reports.reduce((groups, report) => {
   const last = groups.at(-1);
   return last && last.date === report.date ? [...groups.slice(0, -1), { date: last.date, reports: [...last.reports, report] }] : [...groups, { date: report.date, reports: [report] }];
@@ -632,26 +732,37 @@ var reportsBody = (entry) => {
     ...entry.pins.map((pin) => ({ pin })),
     ...entry.projects.flatMap((project) => project.pins.map((pin) => ({ pin, project: { slug: project.slug, color: hueColor(project.hue) } })))
   ];
-  const shownPins = computed(() => pinned.filter(({ pin, project }) => matches2(query(), pin.title, project?.slug ?? "")));
-  const days = computed(() => byDay(entry.reports.filter((report) => matches2(query(), report.title, report.kind))));
+  const shownPins = computed(() => pinned.filter(({ pin, project }) => matchesQuery(query(), pin.title, project?.slug ?? "")));
+  const days = computed(() => byDay(entry.reports.filter((report) => matchesQuery(query(), report.title, report.kind))));
   const empty = computed(() => !shownPins().length && !days().length);
   const searching = () => query().trim() !== "";
   const showing = (open) => () => open() || searching();
   const [pinsOpen, setPinsOpen] = signal(true);
   return VStack({ spacing: 10 }, [
     searchField("Search reports…", setQuery),
-    ForEach({ items: () => shownPins().length ? ["pinned"] : [], key: (name) => name }, () => VStack({ spacing: 4 }, [
-      foldTitle("Pinned", () => shownPins().length, showing(pinsOpen), setPinsOpen, "pin.fill"),
-      ForEach({ items: () => showing(pinsOpen)() ? shownPins() : [], key: (item) => targetKey(item.pin.target) }, (item) => pinCard(item()))
-    ])),
-    ForEach({ items: days, key: (group) => group.date }, (group) => {
-      const [open, setOpen] = signal((daysUntil(group().date, today()) ?? -2) >= -1);
-      return VStack({ spacing: 4 }, [
-        foldTitle(() => dayTitle(group().date, today()), () => group().reports.length, showing(open), setOpen),
-        ForEach({ items: () => showing(open)() ? group().reports : [], key: (report) => targetKey(report.target) }, (report) => reportCard(report()))
-      ]);
-    }),
-    Text(() => empty() ? query().trim() ? "No matching reports." : "No reports yet." : "").font(11).color("tertiary").paddingHorizontal(4),
+    VStack({ spacing: 6 }, [
+      when(() => shownPins().length > 0, () => foldCard({
+        title: "Pinned",
+        count: () => shownPins().length,
+        icon: "pin.fill",
+        color: ORANGE,
+        expanded: showing(pinsOpen),
+        setExpanded: setPinsOpen
+      }, () => dividedList(shownPins, (item) => targetKey(item.pin.target), pinRow))),
+      ForEach({ items: days, key: (group) => group.date }, (group) => {
+        const age = daysUntil(group().date, today());
+        const [open, setOpen] = signal(age !== null && age >= -1);
+        return foldCard({
+          title: () => dayTitle(group().date, today()),
+          count: () => group().reports.length,
+          icon: "calendar",
+          color: ACCENT,
+          expanded: showing(open),
+          setExpanded: setOpen
+        }, () => dividedList(() => group().reports, (report) => targetKey(report.target), reportRow));
+      })
+    ]),
+    Text(() => empty() ? searching() ? "No matching reports." : "No reports yet." : "").font(11).color("tertiary").paddingHorizontal(4),
     ...entry.olderReports ? [
       note(`${entry.olderReports} older reports are on the dashboard.`).cursor("pointer").onTap(() => cmux("browser.tab.new", { url: `${entry.dashboard}#reports` }))
     ] : []
@@ -659,21 +770,26 @@ var reportsBody = (entry) => {
 };
 
 // src/cmux/sidebar/agent.ts
-var agentPage = ({ pill, home, homes, pick }) => {
-  const [section, setSection] = signal("projects");
+var PROJECTS = { label: "Projects", page: "today", body: projectsBody };
+var SECTIONS2 = [
+  PROJECTS,
+  { label: "Reports", page: "reports", body: reportsBody },
+  { label: "Goals", page: "today/goals", body: goalsBody }
+];
+var agentPage = (options) => {
+  const [section, setSection] = signal(PROJECTS);
   return VStack({ spacing: 8 }, [
-    agentHeader({ pill, homes, home, pick }),
-    scopedPage(home, (entry) => {
+    agentHeader(options),
+    scopedPage(options.home, (entry) => {
       const { dashboard, roadmap } = entry;
       return VStack({ spacing: 8 }, [
         HStack({ spacing: 4 }, [
-          chip("Projects", () => section() === "projects", () => setSection("projects")),
-          chip("Reports", () => section() === "reports", () => setSection("reports")),
+          ...SECTIONS2.map((item) => chip(item.label, () => section() === item, () => setSection(item))),
           Spacer({ minLength: 4 }),
-          toolIcon("square.grid.3x3", "Dashboard", () => cmux("browser.tab.new", { url: `${dashboard}#${section() === "reports" ? "reports" : "today"}` })),
+          toolIcon("square.grid.3x3", "Dashboard", () => cmux("browser.tab.new", { url: `${dashboard}#${section().page}` })),
           ...roadmap ? [toolIcon("map", "Roadmap", () => cmux("browser.tab.new", { url: roadmap }))] : []
         ]),
-        ForEach({ items: () => [section()], key: (name) => name }, (name) => name() === "projects" ? projectsBody(entry) : reportsBody(entry))
+        ForEach({ items: () => [section()], key: (item) => item.label }, (item) => item().body(entry))
       ]);
     })
   ]).paddingHorizontal(6);

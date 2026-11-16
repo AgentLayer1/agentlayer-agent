@@ -5,7 +5,7 @@ import { homeLabel } from './view';
 const FIRST_LINE = 190;
 const LINE = 260;
 
-// As tall as the tab pill beside it (a 12 pt icon with 5 pt padding, inside 2 pt), and filled like it.
+// Sized and filled to sit level with the tab pill beside it (the padding was matched by eye on cmux 0.65.2).
 const agentButton = (label: string, active: () => boolean, onTap: () => void) =>
   Text(label)
     .font(11)
@@ -20,7 +20,7 @@ const agentButton = (label: string, active: () => boolean, onTap: () => void) =>
     .fixedSize('horizontal')
     .onTap(onTap);
 
-export interface AgentHeaderOptions {
+export interface AgentOptions {
   pill: View;
   homes: readonly string[];
   home: () => string | undefined;
@@ -31,7 +31,7 @@ export interface AgentHeaderOptions {
  * The tab pill, then a chip per joined agent, lit for the one the workspace shows; chips that don't fit beside the
  * pill continue on lines below.
  */
-export const agentHeader = ({ pill, homes, home, pick }: AgentHeaderOptions) => {
+export const agentHeader = ({ pill, homes, home, pick }: AgentOptions) => {
   const agentChip = (path: string) =>
     agentButton(
       homeLabel(path),

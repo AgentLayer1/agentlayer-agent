@@ -1,16 +1,16 @@
 import type { TaskItem } from './data';
 import { dueLabel, isoDay, type DueLabel } from './due';
-import { TITLE_OPACITY } from './style';
+import { GREEN, GREY, listRow, ORANGE, pill, RED, TITLE_OPACITY, type ProjectTag } from './style';
 
-const OPEN = { symbol: 'circle', color: '#8E8E93' };
+const OPEN = { symbol: 'circle', color: GREY };
 const STATUS: Readonly<Record<string, { symbol: string; color: string }>> = {
-  active: { symbol: 'circle.fill', color: '#34C759' },
-  blocked: { symbol: 'exclamationmark.circle.fill', color: '#FF453A' },
+  active: { symbol: 'circle.fill', color: GREEN },
+  blocked: { symbol: 'exclamationmark.circle.fill', color: RED },
   open: OPEN
 };
 const statusOf = (status: string) => STATUS[status] ?? OPEN;
 
-const TONE: Readonly<Record<DueLabel['tone'], string>> = { overdue: '#FF453A', soon: '#FF9F0A', later: 'tertiary' };
+const TONE: Readonly<Record<DueLabel['tone'], string>> = { overdue: RED, soon: ORANGE, later: 'tertiary' };
 const URGENT = new Set(['P0', 'P1']);
 
 // The due words only change at midnight, so the label follows a day, not the per-second clock.
@@ -34,23 +34,20 @@ export const count = (amount: number, status: string) =>
       ]
     : [];
 
-// The id takes the project's colour where tasks from several projects sit together.
-const taskMeta = (task: TaskItem, projectColor?: string) =>
+const taskMeta = (task: TaskItem, project?: ProjectTag) =>
   HStack({ spacing: 6 }, [
     statusIcon(task.status),
-    Text(task.id)
-      .font(10)
-      .monospaced()
-      .color(projectColor ?? 'tertiary'),
+    Text(task.id).font(10).monospaced().color('tertiary'),
     Text(task.priority)
       .font(10)
       .weight('semibold')
       .monospaced()
-      .color(URGENT.has(task.priority) ? '#FF9F0A' : 'tertiary'),
+      .color(URGENT.has(task.priority) ? ORANGE : 'tertiary'),
     Text(() => dueLabel(task.due, today())?.text ?? '')
       .font(10)
       .color(() => TONE[dueLabel(task.due, today())?.tone ?? 'later']),
     Spacer({ minLength: 0 }),
+    ...(project ? [pill(project.slug, project.color)] : []),
     ...(task.comments
       ? [
           HStack({ spacing: 2 }, [
@@ -63,17 +60,12 @@ const taskMeta = (task: TaskItem, projectColor?: string) =>
 
 /**
  * A task with its title on up to three lines and its status leading the line below; a tap opens its file as a full
- * tab.
+ * tab. `project` names the task's project where tasks from several projects sit together.
  */
-export const taskRow = (task: TaskItem, projectColor?: string) =>
-  VStack({ spacing: 2, alignment: 'leading' }, [
-    Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(3).truncation('tail'),
-    taskMeta(task, projectColor)
-  ])
-    .paddingHorizontal(4)
-    .paddingVertical(5)
-    .cornerRadius(8)
-    .hoverBackground('#7f7f7f26')
-    .cursor('pointer')
-    .frame({ maxWidth: 'infinity', alignment: 'leading' })
-    .onTap(() => cmux('file.open', { path: task.path }));
+export const taskRow = (task: TaskItem, project?: ProjectTag) =>
+  listRow(
+    VStack({ spacing: 2, alignment: 'leading' }, [
+      Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(3).truncation('tail'),
+      taskMeta(task, project)
+    ])
+  ).onTap(() => cmux('file.open', { path: task.path }));

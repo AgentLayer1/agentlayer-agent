@@ -38,6 +38,8 @@ const AttentionTaskSchema = z.object({
   project: z.string(),
   status: z.string(),
   due: z.string(),
+  // Pages written before tasks were ordered by their last update carry none.
+  updated: z.string().default(''),
   horizon: z.string(),
   blockedBy: z.string(),
   /** HOME-relative, so a page never embeds a machine path. */

@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * The model's version. A reader treats a file with another version as missing, and the next rebuild rewrites it.
  */
-export const WORK_SCHEMA = 1;
+export const WORK_SCHEMA = 2;
 
 const PinSchema = z.object({ title: z.string(), icon: z.string(), path: z.string() });
 
@@ -78,11 +78,51 @@ const ReportSchema = z.object({
   category: z.string()
 });
 
+const GoalSchema = z.object({
+  /**
+   * A quarter (`Q4`, `Q1 2027`) on a yearly goal, '' otherwise.
+   */
+  label: z.string(),
+  /**
+   * The score written beside a quarter: ✅ ❌ 🟡 or ↪, '' when unscored.
+   */
+  mark: z.string(),
+  title: z.string(),
+  /**
+   * What counts as done: a `(success: …)` or `(check: …)` clause, or a weekly goal's text after its dash.
+   */
+  check: z.string(),
+  /**
+   * Anything written after the headline and check, such as an added note.
+   */
+  detail: z.string()
+});
+
+const GoalBlockSchema = z.object({
+  horizon: z.enum(['day', 'week', 'month', 'year']),
+  /**
+   * The date in the heading: the day a daily block is for, or the Monday a weekly one starts; '' when none.
+   */
+  date: z.string(),
+  /**
+   * The month a monthly block's intro opens with (`November 2026`), '' otherwise.
+   */
+  caption: z.string(),
+  /**
+   * The year's theme when the intro names one (`2026 theme: …`).
+   */
+  theme: z.object({ label: z.string(), text: z.string() }).nullable(),
+  goals: z.array(GoalSchema),
+  /**
+   * The intro's other facts, then the lines after the goals; markdown stripped.
+   */
+  notes: z.array(z.string())
+});
+
 /**
- * The home's work as the files state it: its projects, every task file (live, closed and archived), its reports and
- * its pins. It holds no
- * counts, dates of its own or judgements like "overdue"; those are views over it (views.ts), so it changes only
- * when the work does.
+ * The home's work as the files state it: its projects, every task file (live, closed and archived), its reports, its
+ * pins and its goals. It holds no counts, dates of its own or judgements like "overdue"; those are views over it
+ * (views.ts), so it changes only when the work does.
  */
 export const WorkSchema = z.object({
   schema: z.literal(WORK_SCHEMA),
@@ -102,6 +142,10 @@ export const WorkSchema = z.object({
    */
   pins: z.array(PinSchema),
   /**
+   * The goal blocks in projects/TASKS.md, in file order.
+   */
+  goals: z.array(GoalBlockSchema),
+  /**
    * HOME-relative paths of task files that don't parse, so a broken task shows as broken rather than missing.
    */
   malformed: z.array(z.string())
@@ -111,3 +155,5 @@ export type Work = z.infer<typeof WorkSchema>;
 export type WorkProject = Work['projects'][number];
 export type WorkTask = Work['tasks'][number];
 export type WorkReport = Work['reports'][number];
+export type WorkGoalBlock = Work['goals'][number];
+export type WorkGoal = WorkGoalBlock['goals'][number];

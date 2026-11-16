@@ -72,6 +72,19 @@ run('the Tasks card opens into the agenda: in flight, then by due date, leaving 
   ]);
 });
 
+run('a task beside other projects’ tasks names its project after its due words', () => {
+  const sidebar = onProjects();
+  sidebar.tap('Tasks');
+  expect(between(sidebar.visibleTexts(), 'Ship the invoice export', 'THIS WEEK')).toEqual([
+    'Ship the invoice export',
+    'ac-101',
+    'P1',
+    'overdue 2d',
+    'acme-app',
+    '3'
+  ]);
+});
+
 run('projects are grouped at work, blocked and quiet, each card with its counts and the task it needs next', () => {
   const texts = onProjects().visibleTexts();
   const outline = texts.filter((text) =>
@@ -83,7 +96,7 @@ run('projects are grouped at work, blocked and quiet, each card with its counts 
     'acme-app',
     '1',
     '2',
-    'Ship the invoice export'
+    'Fix the checkout total'
   ]);
 });
 
@@ -124,15 +137,15 @@ run('a card opens into its roadmap, its pins, then its tasks with id, priority, 
     'Launch checklist',
     '📊',
     'Pricing page',
+    'Fix the checkout total',
+    'ac-102',
+    'P0',
+    'due tomorrow',
     'Ship the invoice export',
     'ac-101',
     'P1',
     'overdue 2d',
     '3',
-    'Fix the checkout total',
-    'ac-102',
-    'P0',
-    'due tomorrow',
     'Write the release notes',
     'ac-103',
     'P2',
@@ -212,8 +225,8 @@ const onReports = (homes?: Record<string, HomeEntry>) => {
 
 run('Reports lists the pins, then the newest reports by day, worded against the sidebar’s day', () => {
   const texts = onReports().visibleTexts();
-  const headings = texts.filter((text) => /^[A-Z0-9 ]+$/.test(text) && !/^[0-9]+$/.test(text));
-  expect(headings).toEqual(['PINNED', 'TODAY', 'YESTERDAY', 'MON 2 NOV']);
+  const cards = ['Pinned', 'Today', 'Yesterday', 'Mon 2 Nov'];
+  expect(texts.filter((text) => cards.includes(text))).toEqual(cards);
   const titles = [
     'Support playbook',
     'Morning brief — Mon 9 Nov',
@@ -250,7 +263,7 @@ run('the report search matches titles and kinds, folded days included', () => {
     'Morning brief — Mon 9 Nov',
     'Evening wrap — Sun 8 Nov'
   ]);
-  expect(sidebar.visibleTexts()).not.toContain('PINNED');
+  expect(sidebar.visibleTexts()).not.toContain('Pinned');
   sidebar.type('nothing like this');
   expect(sidebar.visibleTexts()).toContain('No matching reports.');
 });
@@ -273,14 +286,80 @@ run('a dozen agents all get a chip', () => {
 
 run('every report group folds and opens on its own, and times read in twelve hours', () => {
   const sidebar = onReports();
-  sidebar.tap('MON 2 NOV');
+  sidebar.tap('Mon 2 Nov');
   expect(sidebar.visibleTexts()).toEqual(expect.arrayContaining(['8:30 AM', '7:10 AM', '9:00 PM', '2:20 PM']));
-  sidebar.tap('TODAY');
+  sidebar.tap('Today');
   expect(sidebar.visibleTexts()).not.toContain('Morning brief — Mon 9 Nov');
   expect(sidebar.visibleTexts()).toContain('Evening wrap — Sun 8 Nov');
-  sidebar.tap('TODAY');
+  sidebar.tap('Today');
   expect(sidebar.visibleTexts()).toContain('Morning brief — Mon 9 Nov');
-  sidebar.tap('PINNED');
+  sidebar.tap('Pinned');
   expect(sidebar.visibleTexts()).not.toContain('Support playbook');
-  expect(sidebar.visibleTexts()).toContain('PINNED');
+  expect(sidebar.visibleTexts()).toContain('Pinned');
+});
+
+const onGoals = (homes?: Record<string, HomeEntry>) => {
+  const sidebar = onProjects(homes);
+  sidebar.tap('Goals');
+  return sidebar;
+};
+
+run('Goals leads with the year’s theme, then today, this week, this month and this year', () => {
+  const texts = onGoals().visibleTexts();
+  expect(texts.slice(0, texts.indexOf('Today')).slice(-2)).toEqual(['2026 THEME', 'Make the shop run itself']);
+  const cards = ['Today', 'This week', 'This month', 'This year'];
+  expect(texts.filter((text) => cards.includes(text))).toEqual(cards);
+});
+
+run('a goal reads as its number and project, its headline, what counts as done, and the block’s notes', () => {
+  const texts = onGoals().visibleTexts();
+  expect(between(texts, 'This week', 'This month')).toEqual([
+    'This week',
+    '2',
+    'Set for the week of 2 Nov · ask Nova: goals week',
+    '1',
+    'acme-app',
+    "The invoice export in customers' hands (ac-101)",
+    'DONE WHEN',
+    'exported files open in the accounting tool for two customers',
+    '2',
+    'garden-shop',
+    'The spring range photographed (gs-202)',
+    'DONE WHEN',
+    'every product has three photos',
+    'Set Monday for a full week.'
+  ]);
+  expect(between(texts, 'This month', 'This year')).toEqual(
+    expect.arrayContaining([
+      'November 2026',
+      "Acme's invoices go out on their own",
+      'added 11-05: the release notes ride along'
+    ])
+  );
+});
+
+run('this year starts folded and opens to every quarter, the scored ones included', () => {
+  const sidebar = onGoals();
+  expect(sidebar.visibleTexts()).not.toContain('🧾 Invoices without hands');
+  sidebar.tap('This year');
+  expect(sidebar.visibleTexts()).toEqual(
+    expect.arrayContaining(['Q3', '✅', '🧾 Checkout rebuilt: the old flow is gone', 'Q4', '🧾 Invoices without hands'])
+  );
+});
+
+run('yesterday’s daily goals leave today empty, with the command that sets them', () => {
+  const blocks = NOVA_ENTRY.goals.blocks.map((block) =>
+    block.horizon === 'day' ? { ...block, date: '2026-11-08' } : block
+  );
+  const texts = onGoals({ [NOVA_HOME]: { ...NOVA_ENTRY, goals: { ...NOVA_ENTRY.goals, blocks } } }).visibleTexts();
+  expect(between(texts, 'Today', 'This week')).toEqual([
+    'Today',
+    '0',
+    'No goals set for today.',
+    'Ask Nova: goals day'
+  ]);
+});
+
+run('the Dashboard icon on Goals opens the dashboard’s Goals', () => {
+  expect(onGoals().tap('Dashboard')?.params).toEqual({ url: `${NOVA_ENTRY.dashboard}#today/goals` });
 });

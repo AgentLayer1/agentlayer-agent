@@ -474,19 +474,6 @@ describe('renderDashboardHtml', () => {
     });
   });
 
-  test('in-flight tasks run soonest deadline first, undated last', () => {
-    const base = makeSnapshot();
-    const activeList = [
-      taskRef({ id: 'lo-201', due: '' }),
-      taskRef({ id: 'lo-202', due: '2026-12-31' }),
-      taskRef({ id: 'lo-203', due: '2026-06-12' })
-    ];
-    const html = renderDashboardHtml(makeSnapshot({ tasks: { ...base.tasks, activeList } }));
-    const order = ['lo-203', 'lo-202', 'lo-201'].map((id) => html.indexOf(`>${id}</a>`));
-    expect(order.every((index) => index > 0)).toBe(true);
-    expect(order).toEqual([...order].sort((left, right) => left - right));
-  });
-
   test('brain page carries threads, decisions, concepts, and the memory tab', () => {
     const html = renderDashboardHtml(makeSnapshot());
     expect(html).toContain('ab-005 vendor portal blocked on a signing rule');

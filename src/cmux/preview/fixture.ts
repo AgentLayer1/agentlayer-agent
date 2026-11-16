@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { parseGoals } from '@/work/goals';
 import { WORK_SCHEMA, type Work, type WorkReport, type WorkTask } from '@/work/model';
 
 export const NOVA_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Nova');
@@ -63,6 +64,39 @@ const project = (slug: string, hue: number, pages: Partial<Work['projects'][numb
   ...pages
 });
 
+// The goal blocks as the goals skill writes them into TASKS.md. The week was set for the week before the clock's.
+export const NOVA_GOALS = `<!-- GOALS:START -->
+## Daily Goals — 2026-11-09
+
+1. Ship the invoice export to staging (ac-101)
+
+## Weekly Goals — Week of Monday, 2026-11-02
+
+1. acme-app: the invoice export in customers' hands (ac-101) — exported files open in the accounting tool for two customers
+2. garden-shop: the spring range photographed (gs-202) — every product has three photos
+
+_Set Monday for a full week._
+
+## Monthly Goals
+
+_November 2026 · set 2026-11-01 · acme first_
+
+1. **Acme's invoices go out on their own** _(success: by 11-30 every invoice is exported without a manual step)_ · added 11-05: the release notes ride along
+2. **The garden shop's spring range is live** _(success: by 11-30 the range is listed with photos)_
+
+_Not doing in November: the blog redesign._
+
+## Yearly Goals
+
+_2026 theme: Make the shop run itself · planned 2026-01-05_
+
+- **Q3** ✅ — 🧾 Checkout rebuilt: the old flow is gone
+- **Q4** — 🧾 Invoices without hands _(check: by 12-31 no invoice needs a manual step)_
+- **Q1 2027** — 🌱 Spring launch _(check: by 03-31 the range sells online)_
+
+_Foundations: the books closed every month._
+<!-- GOALS:END -->`;
+
 /**
  * An invented home with a roadmap and three projects: one at work (with its own roadmap and pins), one blocked, one
  * quiet. The fixture's clock reads 9 Nov 2026, so the due dates cover overdue, tomorrow and later.
@@ -100,6 +134,7 @@ export const NOVA: Work = {
     { date: '2026-11-01', time: '09:00', title: 'A line with no link', path: '', skill: '', status: '', category: '' }
   ],
   pins: [{ title: 'Support playbook', icon: '🛟', path: join('reports', 'plans', 'support-playbook.md') }],
+  goals: parseGoals(NOVA_GOALS),
   malformed: []
 };
 
@@ -113,6 +148,7 @@ export const SCOUT: Work = {
   projects: [],
   tasks: [],
   reports: [],
+  goals: [],
   pins: [],
   malformed: []
 };

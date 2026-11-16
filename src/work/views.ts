@@ -1,12 +1,16 @@
 import { shiftDate } from '@/shared/date';
 import type { Work, WorkProject, WorkTask } from './model';
+import { taskOrder } from './order';
+
+// What the task rules read; TASKS.md hands them tasks alone, without the rest of the model.
+type Tasks = Pick<Work, 'tasks'>;
 
 export const DUE_SOON_DAYS = 14;
 const STALE_DAYS = 7;
 
 const CLOSED = new Set(['done', 'cancelled']);
 
-const isClosed = (status: string): boolean => CLOSED.has(status);
+export const isClosed = (status: string): boolean => CLOSED.has(status);
 
 /**
  * The fields the date rules read, so a parsed task file and a model task share them.
@@ -35,48 +39,41 @@ export const isStale = (task: Dated, today: string): boolean =>
 /**
  * Task files in the projects' `tasks/` folders, closed ones included; archived tasks are left out.
  */
-export const inPlace = (work: Work): WorkTask[] => work.tasks.filter((task) => !task.archived);
+const inPlace = (work: Tasks): WorkTask[] => work.tasks.filter((task) => !task.archived);
 
-export const live = (work: Work): WorkTask[] => inPlace(work).filter((task) => !isClosed(task.status));
+export const live = (work: Tasks): WorkTask[] => inPlace(work).filter((task) => !isClosed(task.status));
 
 /**
  * Tasks in place with any of `statuses`.
  */
-export const withStatus = (work: Work, ...statuses: string[]): WorkTask[] =>
+export const withStatus = (work: Tasks, ...statuses: string[]): WorkTask[] =>
   inPlace(work).filter((task) => statuses.includes(task.status));
 
-export const overdue = (work: Work, today: string): WorkTask[] =>
+export const overdue = (work: Tasks, today: string): WorkTask[] =>
   inPlace(work).filter((task) => isOverdue(task, today));
 
-export const stale = (work: Work, today: string): WorkTask[] => inPlace(work).filter((task) => isStale(task, today));
+export const stale = (work: Tasks, today: string): WorkTask[] => inPlace(work).filter((task) => isStale(task, today));
 
 /**
  * Closed tasks still in place whose `closed:` date is on or after `since`.
  */
-export const closedSince = (work: Work, since: string): WorkTask[] =>
+export const closedSince = (work: Tasks, since: string): WorkTask[] =>
   inPlace(work).filter((task) => isClosed(task.status) && task.closed !== '' && task.closed >= since);
 
 /**
  * Tasks in place updated today or yesterday: dates carry no time, so yesterday keeps the list from emptying at
  * midnight.
  */
-export const touchedRecently = (work: Work, today: string): WorkTask[] =>
+export const touchedRecently = (work: Tasks, today: string): WorkTask[] =>
   inPlace(work).filter((task) => task.updated >= shiftDate(today, -1) && task.updated <= today);
 
-const PRIORITY_ORDER: Readonly<Record<string, number>> = { P0: 0, P1: 1, P2: 2, P3: 3 };
+export const queue = (work: Tasks): WorkTask[] => live(work).toSorted(taskOrder);
 
 /**
- * P0 first; a priority outside P0–P3 (a hand edit) sorts after P3.
+ * Each project's hue by its slug.
  */
-export const priorityRank = (priority: string): number => PRIORITY_ORDER[priority] ?? 9;
-
-/**
- * Highest priority first, then earliest due; undated last.
- */
-export const byPriorityThenDue = (a: Pick<WorkTask, 'priority' | 'due'>, b: Pick<WorkTask, 'priority' | 'due'>) =>
-  priorityRank(a.priority) - priorityRank(b.priority) || (a.due || '9999').localeCompare(b.due || '9999');
-
-export const queue = (work: Work): WorkTask[] => live(work).toSorted(byPriorityThenDue);
+export const hueBySlug = (work: Pick<Work, 'projects'>): Record<string, number> =>
+  Object.fromEntries(work.projects.map((project) => [project.slug, project.hue]));
 
 export interface ProjectLoad extends Pick<WorkProject, 'description' | 'roadmap' | 'attention' | 'pins'> {
   project: string;
