@@ -34,7 +34,7 @@
     "@types/jsdom": "~21.1.7",
     "@types/pg": "~8.11.10",
     "@types/turndown": "~5.0.5",
-    "cmux-custom-manager": "github:AgentLayer1/cmux-custom-dashboard#feat/manager",
+    "cmux-custom-manager": "github:AgentLayer1/cmux-custom-manager#main",
     "prettier": "~3.8.3",
     "typescript": "~5.9.3"
   }
