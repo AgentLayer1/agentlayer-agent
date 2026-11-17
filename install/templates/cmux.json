@@ -1,0 +1,38 @@
+{
+  "$schema": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json",
+  "schemaVersion": 1,
+  "actions": {
+    "claude": {
+      "type": "command",
+      "command": "claude",
+      "target": "newTabInCurrentPane",
+      "title": "Claude Code",
+      "subtitle": "Open Claude Code in a new terminal tab",
+      "icon": { "type": "symbol", "name": "staroflife.fill" }
+    },
+    "manager": {
+      "type": "command",
+      "command": "cmux right-sidebar set custom agentlayer && exit",
+      "target": "newTabInCurrentPane",
+      "title": "Manager",
+      "icon": { "type": "symbol", "name": "square.grid.2x2" }
+    }
+  },
+  "ui": {
+    "surfaceTabBar": {
+      "buttons": ["claude", "cmux.newTerminal", "cmux.splitRight", "cmux.splitDown", "manager"]
+    }
+  },
+  "shortcuts": {
+    "bindings": {
+      "newSurface": "cmd+t",
+      "quit": "cmd+q",
+      "renameTab": "cmd+r",
+      "showHideAllWindows": "ctrl+opt+`",
+      "toggleFileExplorer": "cmd+b"
+    }
+  },
+  "computerUse": {
+    "enabled": false
+  }
+}

@@ -43,7 +43,7 @@ Skill scripts import plugin source by relative path (`../../../src/shared/naming
 | Command | Does |
 | --- | --- |
 | `bun install` | Dependencies, plus Chromium through the postinstall hook |
-| `bun run typecheck` | `tsc` over `src/` and `skills/**/*.ts`, then the cmux sidebar against cmux's runtime types |
+| `bun run typecheck` | `tsc` over `src/`, `skills/**/*.ts` and `test/`, then the cmux sidebar against cmux's runtime types |
 | `bun run cmux:build` | Rebuild `src/cmux/sidebar/dist/sidebar.js` after changing the sidebar; a test fails while it's stale |
 | `bun run cmux:check` | Typecheck, rebuild the sidebar, and run the cmux pack's tests (they mount the sidebar on the installed cmux app's runtime, and skip without it) |
 | `bun test` | Every test under `src/` and `skills/` (mods excluded) |

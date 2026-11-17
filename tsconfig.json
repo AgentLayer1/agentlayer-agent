@@ -27,6 +27,6 @@
     "strictPropertyInitialization": false,
     "verbatimModuleSyntax": true
   },
-  "include": ["src", "skills/**/*.ts"],
+  "include": ["src", "skills/**/*.ts", "test/**/*.ts"],
   "exclude": ["src/cmux/sidebar"]
 }

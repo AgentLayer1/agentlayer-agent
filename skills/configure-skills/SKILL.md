@@ -759,7 +759,16 @@ Gives a cmux user the AgentLayer sidebar: one native panel in cmux's right sideb
 
 **(1) Check cmux:** `test -d /Applications/cmux.app && echo CMUX || echo NO_CMUX`. On `NO_CMUX`, stop: the sidebar needs the cmux app, from https://cmux.com.
 
-**(2) Install.** The sandbox can't write `~/.config/cmux/`, and cmux's CLI only answers from a terminal inside cmux, so hand the operator this line to run in a cmux terminal:
+**(2) Recommended settings.** cmux draws with Ghostty's engine and reads its settings. Check both files against the recommended ones the plugin ships (`install/templates/`); the check only reads:
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux settings --file=ghostty
+bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux settings --file=cmux
+```
+
+Each prints how many recommended settings are already set, what's missing, and what the operator set differently (theirs are kept, never flagged as wrong). When something is missing it also prints the command to run and, under **To paste**, the text to copy. Show the operator both, in that order: they copy the text, then run the command themselves in a terminal. Don't write either file. For cmux's JSON the command backs the file up and opens it in CotEditor, where they merge the fragment by hand. Exit 0 means nothing is missing, so say so in one line and move on.
+
+**(3) Install.** The sandbox can't write `~/.config/cmux/`, and cmux's CLI only answers from a terminal inside cmux, so hand the operator this line to run in a cmux terminal:
 
 ```
 bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar install --home="<HOME_DIR>"
@@ -767,7 +776,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar install --home="<HOME_DIR>"
 
 It checks the cmux version, adds this home to the sidebar (starting the file if this is the first home), has cmux validate it under a staging name so a rejected file never replaces the installed one, and selects it in the right sidebar. It ends with "<name> is in the AgentLayer sidebar." "cmux didn't accept the sidebar" almost always means it ran in a terminal outside cmux. Every other agent home on the Mac joins with the same line, run with its own `--home`.
 
-**(3) Summary:**
+**(4) Summary:**
 
 ```
 ✅ cmux pack activated.

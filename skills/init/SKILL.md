@@ -244,6 +244,12 @@ grep -m1 '^- \*\*Name:\*\*' "$HOME_DIR/IDENTITY.md" 2>/dev/null
 Whatever that returns is the default below. Only fall back to `Oppi` when the file or
 the field is absent (a genuinely fresh home).
 
+**A name passed in is the default on a fresh home.** The setup guide ends with
+`/agentlayer:init name=<Name>` when the operator already picked a name there. On a fresh
+home, offer that name as the recommended option instead of `Oppi`, so they aren't asked
+to type it twice. It goes through the naming rule below like any typed answer, and on a
+re-init the name in `IDENTITY.md` still wins.
+
 Ask it plainly with `AskUserQuestion`:
 
 > **What should this agent be called?**

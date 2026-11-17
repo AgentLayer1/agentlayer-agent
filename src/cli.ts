@@ -179,6 +179,9 @@ Sidebar commands for cmux (this CLI's, not the cmux app's own; run them from a t
   cmux sidebar install              Add this home to the AgentLayer sidebar (starting it if it's the first), have cmux check it, and show it
   cmux sidebar refresh              Put this home's latest projects and tasks into the sidebar (every dashboard refresh also does this)
   cmux sidebar remove               Take this home out of the sidebar; the last home out deletes it
+  cmux settings --file=<ghostty|cmux> [--json]
+                                    Compare a Mac's Ghostty or cmux settings with the recommended ones (read-only;
+                                    prints what to paste and the command to run; without --json, exit 3 unless the file is complete)
 
 Database commands:
   database list                     List configured AGENT_DB_<NAME> connections (name + host/db, never credentials)
@@ -218,6 +221,13 @@ async function run(): Promise<void> {
   if (!group || group === 'help' || group === '--help' || group === '-h') {
     console.log(HELP);
     process.exit(group ? 0 : 1);
+  }
+
+  // Read-only, and runs before a home exists: the setup guide checks a Mac's terminal settings with it. It comes
+  // before the invocation log below, which writes into the home it runs in.
+  if (group === 'cmux' && command === 'settings') {
+    const { runSettingsCommand } = await import('@/cmux/settings');
+    process.exit(runSettingsCommand(flag('file'), bool('json')));
   }
 
   // One info line per CLI invocation so file logs reveal user-invoked vs
