@@ -7,60 +7,58 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isRecord } from '@/shared/json-block';
+import { AGENTS } from './showcase';
 import { cmux, windowRows, type Step } from './window';
 
 interface DemoWorkspace {
   name: string;
   description: string;
   color: string;
-  group: 'Nova' | 'Scout' | '';
-  status?: { text: string; icon: string; color: string };
-  progress?: { value: number; label: string };
+  /**
+   * The group's name, the agent's emoji and name, as in the sidebar's agent chips.
+   */
+  group: string;
+  /**
+   * The agent's folder, `Agents/<name>` with no emoji, which all its workspaces sit in; the sidebar shows its last two
+   * parts, as it shows `…/Agents/<name>` for a real home.
+   */
+  folder: string;
+  status: { text: string; icon: string; color: string };
 }
 
-// The same story the preview sidebar tells: Nova's support sweep needs you, Scout is fixing the checkout. Nova's
-// workspace is the one the build runs in.
-const NOVA: DemoWorkspace = {
-  name: 'Nova',
-  description: 'Support sweep · Morning brief',
-  color: 'Indigo',
-  group: 'Nova',
-  status: { text: 'needs you', icon: 'bell', color: '#FF9F0A' }
+const STATUS = {
+  needs_input: { text: 'needs you', icon: 'bell', color: '#FF9F0A' },
+  working: { text: 'working', icon: 'hammer', color: '#4C8DFF' },
+  idle: { text: 'idle', icon: 'moon', color: '#8E8E93' },
+  ended: { text: 'done', icon: 'checkmark', color: '#34C759' }
+} as const;
+
+// A group per agent, named after it, holding its own workspace and the ones for its kinds of work, all in the
+// agent's folder, as a real agent's workspaces sit in its home.
+export const WORKSPACES: readonly DemoWorkspace[] = AGENTS.flatMap((agent) =>
+  agent.workspaces.map((workspace) => ({
+    name: workspace.title,
+    description: workspace.description,
+    color: agent.color.named,
+    group: `${agent.emoji} ${agent.name}`,
+    folder: join('Agents', agent.name),
+    status: STATUS[workspace.sessions[0]?.status ?? 'idle']
+  }))
+);
+
+const GROUPS = AGENTS.map((agent) => `${agent.emoji} ${agent.name}`);
+
+// The build runs in the first agent's own workspace, which the screenshot then shows with its chat.
+const lead = (): DemoWorkspace => {
+  const [first] = WORKSPACES;
+  if (!first) {
+    throw new Error('the showcase has no workspaces');
+  }
+  return first;
 };
 
-const OTHERS: readonly DemoWorkspace[] = [
-  {
-    name: 'Morning brief',
-    description: 'Ready since 8:30 AM',
-    color: 'Indigo',
-    group: 'Nova',
-    status: { text: 'done', icon: 'checkmark', color: '#34C759' }
-  },
-  {
-    name: 'acme-app',
-    description: 'Fix the checkout total',
-    color: 'Blue',
-    group: 'Scout',
-    status: { text: 'working', icon: 'hammer', color: '#4C8DFF' },
-    progress: { value: 0.6, label: 'tests' }
-  },
-  {
-    name: 'Release notes',
-    description: 'Write the release notes for 2.4',
-    color: 'Blue',
-    group: 'Scout',
-    status: { text: 'queued', icon: 'clock', color: '#8E8E93' }
-  },
-  { name: 'Downloads', description: 'Rename the photos', color: 'Charcoal', group: '' }
-];
-
-export const WORKSPACES: readonly DemoWorkspace[] = [NOVA, ...OTHERS];
-
-const GROUPS = ['Nova', 'Scout'] as const;
-
 /**
- * What makes a workspace look the part: its colour, a status pill and, on one, a progress bar. Every step names the
- * demo window.
+ * What makes a workspace look the part: its agent's colour and a status pill. Every step names the demo window.
  */
 export const decorateSteps = (window: string, workspace: string, demo: DemoWorkspace): Step[] => [
   {
@@ -76,41 +74,21 @@ export const decorateSteps = (window: string, workspace: string, demo: DemoWorks
       window
     ]
   },
-  ...(demo.status
-    ? [
-        {
-          args: [
-            'set-status',
-            'agent',
-            demo.status.text,
-            '--icon',
-            demo.status.icon,
-            '--color',
-            demo.status.color,
-            '--workspace',
-            workspace,
-            '--window',
-            window
-          ]
-        }
-      ]
-    : []),
-  ...(demo.progress
-    ? [
-        {
-          args: [
-            'set-progress',
-            String(demo.progress.value),
-            '--label',
-            demo.progress.label,
-            '--workspace',
-            workspace,
-            '--window',
-            window
-          ]
-        }
-      ]
-    : [])
+  {
+    args: [
+      'set-status',
+      'agent',
+      demo.status.text,
+      '--icon',
+      demo.status.icon,
+      '--color',
+      demo.status.color,
+      '--workspace',
+      workspace,
+      '--window',
+      window
+    ]
+  }
 ];
 
 const REF = /workspace:\d+|[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}/i;
@@ -130,11 +108,11 @@ const quote = (text: string): string => `'${text.replaceAll("'", "'\\''")}'`;
 
 /**
  * Builds the demo in `window` (main half): its first workspace runs this file's build half there, and once that
- * reports back the window's own starting workspace goes and Nova is selected. `homes` holds a folder per workspace.
+ * reports back the window's own starting workspace goes and Nova is selected. `homes` holds a folder per agent.
  */
 export const buildDemo = async (window: string, homes: string): Promise<void> => {
   const starting = refsIn(cmux('list-workspaces', '--window', window));
-  WORKSPACES.forEach(({ name }) => mkdirSync(join(homes, name), { recursive: true }));
+  WORKSPACES.forEach(({ folder }) => mkdirSync(join(homes, folder), { recursive: true }));
   // The shell expands CMUX_WORKSPACE_ID to the workspace this command runs in, the build half's own.
   const script = [process.execPath, fileURLToPath(import.meta.url), 'build', window, homes].map(quote).join(' ');
   const build = `${script} "$CMUX_WORKSPACE_ID"`;
@@ -144,11 +122,11 @@ export const buildDemo = async (window: string, homes: string): Promise<void> =>
       '--window',
       window,
       '--name',
-      NOVA.name,
+      lead().name,
       '--description',
-      NOVA.description,
+      lead().description,
       '--cwd',
-      join(homes, NOVA.name),
+      join(homes, lead().folder),
       '--command',
       build
     )
@@ -172,22 +150,64 @@ export const buildDemo = async (window: string, homes: string): Promise<void> =>
   cmux('select-workspace', '--workspace', self, '--window', window);
 };
 
-const CHAT = [
+const [DIM, BOLD, RESET] = ['\x1b[2m', '\x1b[1m', '\x1b[0m'];
+const [GREEN, ORANGE, PINK, BLUE] = ['\x1b[32m', '\x1b[33m', '\x1b[35m', '\x1b[34m'];
+
+const CONVERSATION = [
   '',
-  '  \x1b[1;35m✻ Nova\x1b[0m \x1b[2m· support and planning for Acme\x1b[0m',
+  `  ${PINK}${BOLD}✻ Nova${RESET} ${DIM}· support and operations for Acme · 🦄${RESET}`,
   '',
-  '  \x1b[2m>\x1b[0m What needs me today?',
+  `  ${DIM}>${RESET} What needs me today?`,
   '',
-  '  \x1b[32m●\x1b[0m Three things, most urgent first:',
+  `  ${GREEN}●${RESET} Checking today's tasks, the support queue and the overnight reports.`,
   '',
-  '    1. Fix the checkout total \x1b[2m(ac-102)\x1b[0m · \x1b[33mP0\x1b[0m · due tomorrow',
-  '    2. The support sweep: two tickets wait on your reply',
-  '    3. The morning brief, ready since 8:30 AM',
+  `  ${GREEN}●${RESET} ${BOLD}task_scan${RESET}(all projects)`,
+  `    ${DIM}└ 9 live tasks · 1 overdue · 2 due this week${RESET}`,
+  `  ${GREEN}●${RESET} ${BOLD}helpdesk_tickets${RESET}(waiting on you)`,
+  `    ${DIM}└ 2 tickets: #4812 partial refund, #4815 partial refund${RESET}`,
+  `  ${GREEN}●${RESET} ${BOLD}Read${RESET}(reports/briefings/2026-11-09-0830-morning.md)`,
+  `    ${DIM}└ Read 64 lines${RESET}`,
   '',
-  "    I put the checkout fix first on today's list and drafted both replies.",
-  "    Say the word and I'll open them.",
-  ''
-].join('\n');
+  `  ${GREEN}●${RESET} Three things, most urgent first:`,
+  '',
+  `    1. ${BOLD}Fix the checkout total${RESET} ${DIM}(ac-102)${RESET} · ${ORANGE}P0${RESET} · due tomorrow`,
+  `       Scout is on it in acme-app; the checkout tests are running.`,
+  `    2. ${BOLD}Two partial refund tickets${RESET} wait on your reply`,
+  `       I drafted both replies in Support Desk, citing the refund policy.`,
+  `    3. ${BOLD}The invoice export${RESET} ${DIM}(ac-101)${RESET} is two days overdue`,
+  `       I moved it to tomorrow's plan and told the customer it ships Wednesday.`,
+  '',
+  `    ${BOLD}Today${RESET}`,
+  `    ${GREEN}☒${RESET} ${DIM}Read the morning brief${RESET}`,
+  `    ☐ Answer the refund tickets`,
+  `    ☐ Review PR 412 ${DIM}(Scout flagged one rounding case)${RESET}`,
+  `    ☐ Chase Atlas's two missing receipts`,
+  '',
+  `  ${DIM}>${RESET} Send the refund replies, then open PR 412`,
+  '',
+  `  ${GREEN}●${RESET} ${BOLD}helpdesk_note${RESET}(#4812, #4815)`,
+  `    ${DIM}└ 2 replies sent${RESET}`,
+  `  ${GREEN}●${RESET} Both replies are out. Opening PR 412 in Code Reviews.`,
+  '',
+  `  ${PINK}✻${RESET} ${DIM}Reviewing PR 412… (14s · ↓ 2.1k tokens)${RESET}`
+];
+
+// The prompt box and status line a session keeps at the bottom of its terminal.
+const FOOTER = (width: number) => [
+  `${DIM}${'─'.repeat(width)}${RESET}`,
+  ` ${DIM}>${RESET} `,
+  `${DIM}${'─'.repeat(width)}${RESET}`,
+  `  ${PINK}🦄 Nova${RESET}  ${DIM}│${RESET}  ${BLUE}main${RESET}  ${DIM}│${RESET}  ${GREEN}5 tasks today${RESET}  ${DIM}│${RESET}  ${ORANGE}2 need you${RESET}`
+];
+
+/**
+ * The mock session filling the demo's terminal, its prompt box on the bottom rows as in a real one.
+ */
+const chat = (rows: number, columns: number): string => {
+  const footer = FOOTER(Math.max(20, columns - 2));
+  const gap = Math.max(0, rows - CONVERSATION.length - footer.length - 1);
+  return [...CONVERSATION, ...Array.from({ length: gap }, () => ''), ...footer].join('\n');
+};
 
 // The build half, inside the demo window: refuses unless this terminal is in it.
 const buildInside = (window: string, homes: string, self: string): void => {
@@ -195,7 +215,7 @@ const buildInside = (window: string, homes: string, self: string): void => {
   if (!self || !demoWorkspaces.includes(self)) {
     throw new Error(`this terminal isn't in the demo window ${window}`);
   }
-  const created = OTHERS.map((demo) => ({
+  const created = WORKSPACES.slice(1).map((demo) => ({
     demo,
     ref: refIn(
       cmux(
@@ -207,13 +227,15 @@ const buildInside = (window: string, homes: string, self: string): void => {
         '--description',
         demo.description,
         '--cwd',
-        join(homes, demo.name)
+        join(homes, demo.folder)
       )
     )
   }));
-  const all = [{ demo: NOVA, ref: self }, ...created];
+  const all = [{ demo: lead(), ref: self }, ...created];
   all.forEach(({ demo, ref }) => decorateSteps(window, ref, demo).forEach(({ args }) => cmux(...args)));
-  GROUPS.forEach((group) => {
+  // cmux puts each new workspace and group at the top, so the order is set outright, then the groups go in last first.
+  cmux('reorder-workspaces', '--order', all.map(({ ref }) => ref).join(','), '--window', window);
+  GROUPS.toReversed().forEach((group) => {
     const members = all.filter(({ demo }) => demo.group === group).map(({ ref }) => ref);
     cmux('workspace-group', 'create', '--name', group, '--from', members.join(','));
   });
@@ -238,8 +260,10 @@ if (import.meta.main && process.argv[2] === 'build') {
   try {
     buildInside(window, homes, self);
     writeFileSync(state, JSON.stringify({ ok: true }));
+    // The tab takes the terminal's title, so naming it hides the command line, and the path to bun with it.
+    process.stdout.write('\x1b]0;support-sweep\x07\x1b[?25l');
     console.clear();
-    console.log(CHAT);
+    process.stdout.write(chat(process.stdout.rows || 40, process.stdout.columns || 100));
   } catch (error) {
     writeFileSync(state, JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }));
     console.error(error);

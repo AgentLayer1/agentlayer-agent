@@ -15,6 +15,11 @@ export const projectColors = (entry: HomeEntry) => {
   return (slug: string): string => colors.get(slug) ?? GREY;
 };
 
+/**
+ * Whether a card starts open: only a preview opens any, through its start page.
+ */
+export const startsOpen = (card: string): boolean => DATA.open?.expanded?.includes(card) ?? false;
+
 export const openTarget = (target: PinTarget) =>
   target.kind === 'page' ? cmux('browser.tab.new', { url: target.url }) : cmux('file.open', { path: target.path });
 

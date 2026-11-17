@@ -370,3 +370,13 @@ run('a preview can open on any page, while the installed sidebar opens on the Ma
   expect(opened).toEqual(expect.arrayContaining(['This week', 'This month']));
   expect(mount(installed(), CMUX_DATA).visibleTexts()[0]).toBe('Manager');
 });
+
+run('a preview can open with the Tasks card and a project already unfolded', () => {
+  const own = { version: '1.1.0', bundle: readFileSync(DIST, 'utf8') };
+  const page = { tab: 'agents', section: 'projects' } as const;
+  const folded = mount(previewText(own, page)).visibleTexts();
+  const unfolded = mount(previewText(own, { ...page, expanded: ['tasks', 'support-desk'] })).visibleTexts();
+  expect(folded).not.toContain('IN FLIGHT');
+  expect(folded).not.toContain('Publish the refunds FAQ');
+  expect(unfolded).toEqual(expect.arrayContaining(['IN FLIGHT', 'Publish the refunds FAQ']));
+});

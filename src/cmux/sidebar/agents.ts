@@ -1,9 +1,10 @@
 import { packLines } from './lines';
 import { homeLabel } from './view';
 
-// Points across the sidebar for chips: the first line shares its row with the tab pill.
-const FIRST_LINE = 190;
-const LINE = 260;
+// Points across the sidebar for chips, as measured on cmux 0.65.2's panel: about 280 inside its padding, less the tab
+// pill and its gap on the first line.
+const FIRST_LINE = 216;
+const LINE = 276;
 
 // Sized and filled to sit level with the tab pill beside it (the padding was matched by eye on cmux 0.65.2).
 const agentButton = (label: string, active: () => boolean, onTap: () => void) =>

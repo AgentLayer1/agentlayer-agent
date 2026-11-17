@@ -260,12 +260,13 @@ var manager = ({ header, trailing } = {}) => {
 // src/cmux/sidebar/lines.ts
 var CHAR_WIDTH = 7;
 var CHIP_EXTRA = 22;
+var GAP = 4;
 var widthOf = (label) => [...label].length * CHAR_WIDTH + CHIP_EXTRA;
 var packLines = (items, label, firstWidth, width) => items.reduce(({ lines, used }, item) => {
   const cost = widthOf(label(item));
   const budget = lines.length === 1 ? firstWidth : width;
   const current = lines.at(-1) ?? [];
-  return current.length && used + cost > budget ? { lines: [...lines, [item]], used: cost } : { lines: [...lines.slice(0, -1), [...current, item]], used: used + cost };
+  return current.length && used + GAP + cost > budget ? { lines: [...lines, [item]], used: cost } : { lines: [...lines.slice(0, -1), [...current, item]], used: used + (current.length ? GAP : 0) + cost };
 }, { lines: [[]], used: 0 }).lines;
 
 // src/cmux/sidebar/data.ts
@@ -342,6 +343,7 @@ var projectColors = (entry) => {
   const colors = new Map(entry.projects.map(({ slug, hue }) => [slug, hueColor(hue)]));
   return (slug) => colors.get(slug) ?? GREY;
 };
+var startsOpen = (card) => DATA.open?.expanded?.includes(card) ?? false;
 var openTarget = (target) => target.kind === "page" ? cmux("browser.tab.new", { url: target.url }) : cmux("file.open", { path: target.path });
 var targetKey = (target) => target.kind === "page" ? target.url : target.path;
 var entryOf = (home) => home ? DATA.homes[home] : undefined;
@@ -368,8 +370,8 @@ var scopedPage = (home, ready) => {
 };
 
 // src/cmux/sidebar/agents.ts
-var FIRST_LINE = 190;
-var LINE = 260;
+var FIRST_LINE = 216;
+var LINE = 276;
 var agentButton = (label, active, onTap) => Text(label).font(11).weight("semibold").paddingHorizontal(9).paddingVertical(6).cornerRadius(8).color(() => active() ? "primary" : "secondary").background(() => active() ? "#7f7f7f3d" : "#7f7f7f1f").hoverBackground("#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(onTap);
 var agentHeader = ({ pill, homes, home, pick }) => {
   const agentChip = (path) => agentButton(homeLabel(path), () => home() === path, () => pick(path));
@@ -606,7 +608,7 @@ var agenda = (listed, day) => {
 };
 var dueTally = (amount, label, color) => keepWidth(Text(() => amount() ? `${amount()} ${label}` : "").font(10).weight("semibold").color(color));
 var tasksCard = (entry, listed) => {
-  const [expanded, setExpanded] = signal(false);
+  const [expanded, setExpanded] = signal(startsOpen("tasks"));
   const total = (field) => entry.projects.reduce((sum, project) => sum + project[field], 0);
   const tone = (wanted) => () => listed.filter(({ task }) => dueLabel(task.due, today())?.tone === wanted).length;
   const groups = computed(() => agenda(listed, today()));
@@ -634,7 +636,7 @@ var tasksCard = (entry, listed) => {
   ]));
 };
 var projectCard = (project, tasks) => {
-  const [expanded, setExpanded] = signal(false);
+  const [expanded, setExpanded] = signal(startsOpen(project.slug));
   const color = hueColor(project.hue);
   const next = tasks[0];
   const links = [...project.roadmap ? [roadmapLink(project.roadmap)] : [], ...project.pins];

@@ -18,7 +18,7 @@ import {
   when
 } from './style';
 import { count, taskRow, today } from './tasks';
-import { matchesQuery, openTarget, projectColors, targetKey } from './view';
+import { matchesQuery, openTarget, projectColors, startsOpen, targetKey } from './view';
 
 const linkRow = ({ icon, title, target }: PinItem) =>
   HStack({ spacing: 6 }, [
@@ -86,7 +86,7 @@ const dueTally = (amount: () => number, label: string, color: string) =>
   );
 
 const tasksCard = (entry: HomeEntry, listed: readonly Listed[]) => {
-  const [expanded, setExpanded] = signal(false);
+  const [expanded, setExpanded] = signal(startsOpen('tasks'));
   const total = (field: 'active' | 'blocked' | 'open' | 'done') =>
     entry.projects.reduce((sum, project) => sum + project[field], 0);
   const tone = (wanted: string) => () =>
@@ -131,7 +131,7 @@ const tasksCard = (entry: HomeEntry, listed: readonly Listed[]) => {
 // The entry is fixed while the sidebar is loaded (an update arrives as a rewrite), so a card takes its project and
 // tasks once; only whether it's open is live.
 const projectCard = (project: ProjectCard, tasks: TaskItem[]) => {
-  const [expanded, setExpanded] = signal(false);
+  const [expanded, setExpanded] = signal(startsOpen(project.slug));
   const color = hueColor(project.hue);
   const next = tasks[0];
   const links = [...(project.roadmap ? [roadmapLink(project.roadmap)] : []), ...project.pins];

@@ -5,7 +5,7 @@ import { WORK_SCHEMA, type Work, type WorkReport, type WorkTask } from '@/work/m
 export const NOVA_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Nova');
 export const SCOUT_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Scout');
 
-const task = (
+export const task = (
   project: string,
   id: string,
   title: string,
@@ -32,7 +32,7 @@ const task = (
   path: join('projects', project, 'tasks', `${id}.md`)
 });
 
-const report = (
+export const report = (
   date: string,
   time: string,
   title: string,
@@ -49,12 +49,12 @@ const report = (
   category
 });
 
-const closed = (project: string, count: number): WorkTask[] =>
+export const closed = (project: string, count: number): WorkTask[] =>
   Array.from({ length: count }, (_unused, index) =>
     task(project, `${project}-done-${index}`, 'Done work', 'done', 'P3')
   );
 
-const project = (slug: string, hue: number, pages: Partial<Work['projects'][number]> = {}) => ({
+export const project = (slug: string, hue: number, pages: Partial<Work['projects'][number]> = {}) => ({
   slug,
   hue,
   description: '',
@@ -153,7 +153,7 @@ export const SCOUT: Work = {
   malformed: []
 };
 
-const NOW = 1_794_218_400;
+export const NOW = 1_794_218_400;
 
 const session = (
   workspace: string,

@@ -164,6 +164,10 @@ export interface HomeEntry {
 export interface StartPage {
   tab: 'manager' | 'agents';
   section?: 'projects' | 'reports' | 'goals';
+  /**
+   * Cards that start open: `tasks` for the Tasks card, or a project's slug.
+   */
+  expanded?: string[];
 }
 
 export interface SidebarData {

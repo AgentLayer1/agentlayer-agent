@@ -5,6 +5,8 @@
 
 const CHAR_WIDTH = 7;
 const CHIP_EXTRA = 22;
+// The spacing between chips on a line.
+const GAP = 4;
 
 const widthOf = (label: string): number => [...label].length * CHAR_WIDTH + CHIP_EXTRA;
 
@@ -28,9 +30,9 @@ export const packLines = <Item>(
       const cost = widthOf(label(item));
       const budget = lines.length === 1 ? firstWidth : width;
       const current = lines.at(-1) ?? [];
-      return current.length && used + cost > budget
+      return current.length && used + GAP + cost > budget
         ? { lines: [...lines, [item]], used: cost }
-        : { lines: [...lines.slice(0, -1), [...current, item]], used: used + cost };
+        : { lines: [...lines.slice(0, -1), [...current, item]], used: used + (current.length ? GAP : 0) + cost };
     },
     { lines: [[]], used: 0 }
   ).lines;

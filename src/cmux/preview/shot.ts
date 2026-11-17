@@ -16,7 +16,7 @@ import { inNewWindow, runSteps, writePanel, type Step } from './window';
 
 export const PAGES = {
   manager: { tab: 'manager' },
-  projects: { tab: 'agents', section: 'projects' },
+  projects: { tab: 'agents', section: 'projects', expanded: ['tasks', 'support-desk'] },
   reports: { tab: 'agents', section: 'reports' },
   goals: { tab: 'agents', section: 'goals' }
 } as const satisfies Record<string, StartPage>;
