@@ -351,6 +351,16 @@ describe('round 2 fixes', () => {
     expect(run.out).toContain(`cd ${clone} && bun install`);
   });
 
+  test.concurrent('a permission change is caught too', async () => {
+    const { made } = setUpMac();
+    const target = join(made.home, 'mode-target');
+    writeFileSync(target, 'x', { mode: 0o600 });
+    const script = join(made.base, 'chmods.sh');
+    writeFileSync(script, `source ${join(ROOT, 'install', 'lib.sh')}\nchmod 644 "${target}"\n`);
+    const run = await guide(made, [], '', {}, script);
+    expect(changingCalls(run)).toContain('changed home/mode-target');
+  });
+
   test.concurrent('a write to the temp folder is caught too', async () => {
     const { made } = setUpMac();
     const script = join(made.base, 'writes.sh');

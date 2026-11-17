@@ -365,6 +365,14 @@ function Get-PinProblem([string]$Target) {
   "AGENT_HOME is set to $pin $where, so Claude Code would use that home instead of $Target. Remove the pin, then run the guide again."
 }
 
+# A tool as a shown command names it: bare when the window the guide started in finds it, else by its full path
+# with the call operator, since PATH changes in this process never reach the user's other windows.
+function Format-Tool([string]$Tool) {
+  $found = Get-Command $Tool -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($found -and ($Script:StartPath -split ';') -notcontains (Split-Path $found.Source)) { return "& $(Format-Path $found.Source)" }
+  $Tool
+}
+
 # A path as a command shows it: bare when nothing needs quoting, else in single quotes with any quote doubled.
 function Format-Path([string]$Path) {
   if ($Path -match '^[\w\\/:.@+-]+$') { return $Path }
@@ -420,11 +428,11 @@ function Invoke-Guide {
     Write-Link 'https://git-scm.com/downloads/win'
   }
   $null = Invoke-Step 'Bun' 'required' { Test-Tool 'bun' $Script:MinBun } {
-    if ($Script:Detail -like '*older*') { Write-Para "The plugin needs Bun $($Script:MinBun) or later."; Write-Box @('bun upgrade') }
+    if ($Script:Detail -like '*older*') { Write-Para "The plugin needs Bun $($Script:MinBun) or later."; Write-Box @("$(Format-Tool 'bun') upgrade") }
     else { Write-Para "Bun runs the agent's tools. Copy the Windows install line on its home page and run it."; Write-Link 'https://bun.sh' }
   }
   $null = Invoke-Step 'Claude Code' 'required' { Test-Tool 'claude' $Script:MinClaude } {
-    if ($Script:Detail -like '*older*') { Write-Para "The plugin needs Claude Code $($Script:MinClaude) or later."; Write-Box @('claude update') }
+    if ($Script:Detail -like '*older*') { Write-Para "The plugin needs Claude Code $($Script:MinClaude) or later."; Write-Box @("$(Format-Tool 'claude') update") }
     else { Write-Para 'Claude Code is where the agent runs. Follow the Windows install on its setup page.'; Write-Link 'https://code.claude.com/docs/en/setup' }
   }
   $null = Invoke-Step 'poppler' 'recommended' { Test-Tool 'pdftoppm' } {
@@ -530,24 +538,24 @@ function Invoke-Guide {
       $here = "Set-Location $(Format-Path $target)"
       if ($script:found -and -not $script:found.Enabled) {
         Write-Para 'The plugin is installed for this folder but turned off, which happens when the trust question is dismissed. Turn it back on:'
-        Write-Box @("$here; claude plugin enable $($Script:Plugin)@$($script:found.Source) -s local")
+        Write-Box @("$here; $(Format-Tool 'claude') plugin enable $($Script:Plugin)@$($script:found.Source) -s local")
         return
       }
       # A user-scope copy is shared by every folder, so it's switched off for this one rather than removed.
       $remove = @()
       if ($script:found -and $script:found.Scope -eq 'user') {
         Write-Para "This folder uses the plugin from $($script:found.Source) that every folder shares, not the one you picked. The first line switches that copy off for this folder only."
-        $remove = @("$here; claude plugin disable $($Script:Plugin)@$($script:found.Source) -s local")
+        $remove = @("$here; $(Format-Tool 'claude') plugin disable $($Script:Plugin)@$($script:found.Source) -s local")
       } elseif ($script:found) {
         Write-Para "This folder has the plugin from $($script:found.Source), not the one you picked. The first line removes that copy."
-        $remove = @("$here; claude plugin uninstall $($Script:Plugin)@$($script:found.Source) -s $($script:found.Scope)")
+        $remove = @("$here; $(Format-Tool 'claude') plugin uninstall $($Script:Plugin)@$($script:found.Source) -s $($script:found.Scope)")
       }
       if ($dev) {
         Write-Para 'Add your clone as a marketplace, then switch the plugin on for this folder only.'
-        Write-Box @($remove + "claude plugin marketplace add $(Format-Path $Script:CloneFolder)" + "$here; claude plugin install $($Script:Plugin)@$($Script:DevMarketplace) -s local")
+        Write-Box @($remove + "$(Format-Tool 'claude') plugin marketplace add $(Format-Path $Script:CloneFolder)" + "$here; $(Format-Tool 'claude') plugin install $($Script:Plugin)@$($Script:DevMarketplace) -s local")
       } else {
         Write-Para 'This switches the plugin on for this folder only, and adds the AgentLayer marketplace to Claude Code the first time.'
-        Write-Box @($remove + "$here; claude plugin install $($Script:Plugin) --marketplace $($Script:MarketplaceRepo) -s local")
+        Write-Box @($remove + "$here; $(Format-Tool 'claude') plugin install $($Script:Plugin) --marketplace $($Script:MarketplaceRepo) -s local")
       }
     }
     if ($plugged -and $roots -notcontains $script:found.Root) {
@@ -555,7 +563,7 @@ function Invoke-Guide {
       $roots += $root
       $null = Invoke-Step 'Packages' 'required' { Test-Packages $root } {
         Write-Para "The plugin's packages, and the browser its web tools use: about 300 MB the first time."
-        Write-Box @("Set-Location $(Format-Path $root); bun install")
+        Write-Box @("Set-Location $(Format-Path $root); $(Format-Tool 'bun') install")
       }
     }
   }
@@ -570,9 +578,7 @@ function Complete-Guide([string]$NewHome = '', [string[]]$Homes = @()) {
     exit 1
   }
   if ($Script:Mode -eq 'check') { Write-Para "Everything's set up."; Write-Host ''; exit 0 }
-  $claude = 'claude'
-  $found = Get-Command claude -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
-  if ($found -and ($Script:StartPath -split ';') -notcontains (Split-Path $found.Source)) { $claude = "& $(Format-Path $found.Source)" }
+  $claude = Format-Tool 'claude'
   if ($NewHome) {
     $init = if ($Name) { "/$($Script:Plugin):init name=$Name" } else { "/$($Script:Plugin):init" }
     Write-Para 'Ready. Start setup, which asks a few questions and wakes your agent:'

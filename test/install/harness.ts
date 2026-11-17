@@ -155,7 +155,7 @@ interface Run {
   changes: string[];
 }
 
-// Every file and folder in the fixture with its size and modified time, so a run that writes into it shows up,
+// Every file and folder in the fixture with its permissions, size and modified time, so a run that changes it shows up,
 // whatever binary it used. The stubs' own call log is the one file allowed to change. Writes outside the fixture
 // (an absolute path elsewhere) aren't seen.
 const snapshot = (machine: Machine): Map<string, string> =>
@@ -164,7 +164,7 @@ const snapshot = (machine: Machine): Map<string, string> =>
       .filter((path) => path !== 'calls.log')
       .map((path) => {
         const stat = statSync(join(machine.base, path));
-        return [path, stat.isDirectory() ? 'dir' : `${stat.size}:${stat.mtimeMs}`];
+        return [path, stat.isDirectory() ? `dir:${stat.mode}` : `${stat.mode}:${stat.size}:${stat.mtimeMs}`];
       })
   );
 
