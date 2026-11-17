@@ -822,10 +822,14 @@ show_packages() {
 
 # --- Start ---
 
+# A home with its own Claude subscription starts with the agent launcher, which passes that file to Claude Code;
+# started with claude, it would bill the default login instead.
 start_line() {
   local home=$1 init=$2 claude
   claude=$(al_tool_path claude)
-  if [[ -z $init ]]; then
+  if [[ -z $init && -f $home/.state/secrets/.env.claude.json ]]; then
+    printf 'cd %s && agent' "$(al_show_path "$home")"
+  elif [[ -z $init ]]; then
     printf 'cd %s && %s' "$(al_show_path "$home")" "$claude"
   elif [[ -n $AL_NAME ]]; then
     printf 'cd %s && %s "/%s:init name=%s"' "$(al_show_path "$home")" "$claude" "$AL_PLUGIN" "$AL_NAME"

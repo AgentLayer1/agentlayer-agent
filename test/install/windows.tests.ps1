@@ -218,6 +218,15 @@ Test-Case 'a folder with a quote in its name is shown so a pasted command keeps 
   Assert-Contains $run.Out "New-Item -ItemType Directory -Force '$($odd -replace "'", "''")'"
 }
 
+Test-Case 'a home with its own Claude subscription starts with agent' {
+  $machine = New-SetUpMachine
+  $secrets = Join-Path $machine.Agents 'Oppi' '.state' 'secrets'
+  New-Item -ItemType Directory -Force -Path $secrets | Out-Null
+  '{}' | Set-Content (Join-Path $secrets '.env.claude.json')
+  $run = Invoke-Scenario $machine $all
+  Assert-Contains $run.Out "; agent"
+}
+
 Test-Case 'the guide ends with the line the front door checks it arrived whole by' {
   Assert-Equal (Get-Content $guide -Tail 1) '# agentlayer:end'
 }

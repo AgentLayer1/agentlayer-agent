@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MIN_CMUX } from '@/cmux/app';
 import { NAME_RE } from '@/shared/agent-name';
+import { secretsReadBlocked } from '@/shared/sandbox-probe';
 import { HOST_FLOORS } from '@/upgrade/hosts';
 import {
   LINUX_GUIDE,
@@ -335,6 +336,22 @@ describe('round 2 fixes', () => {
     const run = await guide(made, ['--home', odd, '--marketplace']);
     expect(run.out).toContain('claude "/agentlayer:init"');
     expect(run.out).not.toContain('name=Agent');
+  });
+
+  // The sandbox this suite may run in hides .state/secrets from reads and refuses to delete it.
+  test.skipIf(secretsReadBlocked())('a home with its own Claude subscription starts with agent, the others with claude', async () => {
+    const { made, clone, oppi } = setUpMac();
+    const nova = agentHome(made, 'Nova');
+    plugins(made, [
+      { home: oppi, root: clone, source: 'agentlayer-dev' },
+      { home: nova, root: clone, source: 'agentlayer-dev' }
+    ]);
+    mkdirSync(join(oppi, '.state', 'secrets'), { recursive: true });
+    writeFileSync(join(oppi, '.state', 'secrets', '.env.claude.json'), '{}');
+    const run = await guide(made, []);
+    expect(run.out).toContain('cd ~/Documents/Agents/Oppi && agent');
+    expect(run.out).toContain('cd ~/Documents/Agents/Nova && claude');
+    expect(changingCalls(run)).toEqual([]);
   });
 
   test.concurrent('a ~ pin at this agent’s own folder is accepted', async () => {

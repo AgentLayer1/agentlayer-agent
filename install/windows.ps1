@@ -585,7 +585,11 @@ function Complete-Guide([string]$NewHome = '', [string[]]$Homes = @()) {
     Write-Box @("Set-Location $(Format-Path $NewHome); $claude '$init'")
   } else {
     Write-Para 'Nothing to do. Start an agent:'
-    Write-Box @($Homes | ForEach-Object { "Set-Location $(Format-Path $_); $claude" })
+    # A home with its own Claude subscription starts with the agent launcher, which passes that file to Claude Code.
+    Write-Box @($Homes | ForEach-Object {
+        $launcher = if (Test-Path (Join-Path $_ '.state' 'secrets' '.env.claude.json')) { 'agent' } else { $claude }
+        "Set-Location $(Format-Path $_); $launcher"
+      })
     Write-Para 'A new agent: run the guide again with -Name and the name you want.'
   }
   Write-Host ''
