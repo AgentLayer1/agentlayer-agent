@@ -9,7 +9,7 @@ import { parseGoals } from '@/work/goals';
 import { WORK_SCHEMA, type Work } from '@/work/model';
 import { closed, NOVA_GOALS, NOVA_HOME, NOW, project, report, SCOUT_HOME, task } from './fixture';
 
-export const ATLAS_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Atlas');
+export const OPPI_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Oppi');
 
 type Status = 'needs_input' | 'working' | 'idle' | 'ended';
 
@@ -50,14 +50,14 @@ export interface ShowcaseAgent {
 
 export const AGENTS: readonly ShowcaseAgent[] = [
   {
-    name: 'Nova',
-    emoji: '🦄',
-    home: NOVA_HOME,
+    name: 'Oppi',
+    emoji: '🐙',
+    home: OPPI_HOME,
     color: { hex: '#C62828', named: 'Red' },
     workspaces: [
       {
-        id: 'w-nova',
-        title: 'Agent Nova',
+        id: 'w-oppi',
+        title: 'Agent Oppi',
         description: 'Two refund tickets wait on your reply; the brief is ready',
         sessions: [
           {
@@ -120,6 +120,70 @@ export const AGENTS: readonly ShowcaseAgent[] = [
             prompt: 'Send the welcome pack to this week’s new customers',
             minutesAgo: 50,
             unread: true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'Nova',
+    emoji: '🦄',
+    home: NOVA_HOME,
+    color: { hex: '#1565C0', named: 'Blue' },
+    workspaces: [
+      {
+        id: 'w-nova',
+        title: 'Agent Nova',
+        description: 'Month-end close: two receipts missing',
+        sessions: [
+          {
+            id: 'month-end',
+            title: 'Month-end close',
+            status: 'needs_input',
+            prompt: 'Two receipts are missing for October',
+            minutesAgo: 25
+          }
+        ]
+      },
+      {
+        id: 'w-investors',
+        title: 'Investor Update',
+        description: 'November update, numbers in',
+        sessions: [
+          {
+            id: 'investor-update',
+            title: 'November investor update',
+            status: 'working',
+            prompt: 'Add the revenue chart and send me the draft',
+            minutesAgo: 6
+          }
+        ]
+      },
+      {
+        id: 'w-expenses',
+        title: 'Expenses',
+        description: 'Receipts filed for the week',
+        sessions: [
+          {
+            id: 'receipts',
+            title: 'File the receipts',
+            status: 'idle',
+            prompt: 'File this week’s receipts',
+            minutesAgo: 180
+          }
+        ]
+      },
+      {
+        id: 'w-contracts',
+        title: 'Contracts',
+        description: 'Office lease renewal, comments sent',
+        sessions: [
+          {
+            id: 'lease',
+            title: 'Office lease renewal',
+            status: 'idle',
+            prompt: 'Mark up the renewal and send it to the landlord',
+            minutesAgo: 240
           }
         ]
       }
@@ -192,70 +256,6 @@ export const AGENTS: readonly ShowcaseAgent[] = [
         ]
       }
     ]
-  },
-  {
-    name: 'Atlas',
-    emoji: '🦊',
-    home: ATLAS_HOME,
-    color: { hex: '#1565C0', named: 'Blue' },
-    workspaces: [
-      {
-        id: 'w-atlas',
-        title: 'Agent Atlas',
-        description: 'Month-end close: two receipts missing',
-        sessions: [
-          {
-            id: 'month-end',
-            title: 'Month-end close',
-            status: 'needs_input',
-            prompt: 'Two receipts are missing for October',
-            minutesAgo: 25
-          }
-        ]
-      },
-      {
-        id: 'w-investors',
-        title: 'Investor Update',
-        description: 'November update, numbers in',
-        sessions: [
-          {
-            id: 'investor-update',
-            title: 'November investor update',
-            status: 'working',
-            prompt: 'Add the revenue chart and send me the draft',
-            minutesAgo: 6
-          }
-        ]
-      },
-      {
-        id: 'w-expenses',
-        title: 'Expenses',
-        description: 'Receipts filed for the week',
-        sessions: [
-          {
-            id: 'receipts',
-            title: 'File the receipts',
-            status: 'idle',
-            prompt: 'File this week’s receipts',
-            minutesAgo: 180
-          }
-        ]
-      },
-      {
-        id: 'w-contracts',
-        title: 'Contracts',
-        description: 'Office lease renewal, comments sent',
-        sessions: [
-          {
-            id: 'lease',
-            title: 'Office lease renewal',
-            status: 'idle',
-            prompt: 'Mark up the renewal and send it to the landlord',
-            minutesAgo: 240
-          }
-        ]
-      }
-    ]
   }
 ];
 
@@ -308,8 +308,8 @@ const session = (workspace: string, home: string, spec: ShowcaseSession) => {
 };
 
 /**
- * cmux's data for the preview: every agent's workspaces and sessions, with Agent Nova's selected, so the Agents tab
- * opens on Nova. cmux 0.65.2's right sidebar gets no workspace groups, so neither does the preview.
+ * cmux's data for the preview: every agent's workspaces and sessions, with Agent Oppi's selected, so the Agents tab
+ * opens on Oppi. cmux 0.65.2's right sidebar gets no workspace groups, so neither does the preview.
  */
 export const SHOWCASE_CMUX_DATA = {
   workspaces: AGENTS.flatMap(({ home, color, workspaces }) =>
@@ -319,7 +319,7 @@ export const SHOWCASE_CMUX_DATA = {
         id,
         title,
         color: color.hex,
-        selected: id === 'w-nova',
+        selected: id === 'w-oppi',
         pinned: false,
         index: 0,
         directory: home,
@@ -339,12 +339,12 @@ export const SHOWCASE_CMUX_DATA = {
 const pin = (title: string, icon: string, ...path: string[]) => ({ title, icon, path: join(...path) });
 
 /**
- * Nova's work: six projects in every state (three at work, one blocked, two quiet), tasks from overdue to someday,
+ * Oppi's work: six projects in every state (three at work, one blocked, two quiet), tasks from overdue to someday,
  * reports across four days, pins, and goals set for this week.
  */
-export const SHOWCASE_NOVA: Work = {
+export const SHOWCASE_OPPI: Work = {
   schema: WORK_SCHEMA,
-  agent: { name: 'Nova', emoji: agentNamed('Nova').emoji },
+  agent: { name: 'Oppi', emoji: agentNamed('Oppi').emoji },
   roadmap: 'roadmap.html',
   projects: [
     project('acme-app', 210, {
@@ -419,8 +419,8 @@ export const SHOWCASE_SCOUT = quietHome(
   ]
 );
 
-export const SHOWCASE_ATLAS = quietHome(
-  'Atlas',
+export const SHOWCASE_NOVA = quietHome(
+  'Nova',
   [project('month-end', 30), project('investor-update', 220)],
   [
     task('month-end', 'me-31', 'Chase the two missing receipts', 'active', 'P1', '2026-11-09'),

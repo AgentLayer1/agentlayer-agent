@@ -108,7 +108,7 @@ const quote = (text: string): string => `'${text.replaceAll("'", "'\\''")}'`;
 
 /**
  * Builds the demo in `window` (main half): its first workspace runs this file's build half there, and once that
- * reports back the window's own starting workspace goes and Nova is selected. `homes` holds a folder per agent.
+ * reports back the window's own starting workspace goes and Oppi's is selected. `homes` holds a folder per agent.
  */
 export const buildDemo = async (window: string, homes: string): Promise<void> => {
   const starting = refsIn(cmux('list-workspaces', '--window', window));
@@ -155,7 +155,7 @@ const [GREEN, ORANGE, PINK, BLUE] = ['\x1b[32m', '\x1b[33m', '\x1b[35m', '\x1b[3
 
 const CONVERSATION = [
   '',
-  `  ${PINK}${BOLD}✻ Nova${RESET} ${DIM}· support and operations for Acme · 🦄${RESET}`,
+  `  ${PINK}${BOLD}✻ Oppi${RESET} ${DIM}· support and operations for Acme · 🐙${RESET}`,
   '',
   `  ${DIM}>${RESET} What needs me today?`,
   '',
@@ -181,7 +181,7 @@ const CONVERSATION = [
   `    ${GREEN}☒${RESET} ${DIM}Read the morning brief${RESET}`,
   `    ☐ Answer the refund tickets`,
   `    ☐ Review PR 412 ${DIM}(Scout flagged one rounding case)${RESET}`,
-  `    ☐ Chase Atlas's two missing receipts`,
+  `    ☐ Chase Nova's two missing receipts`,
   '',
   `  ${DIM}>${RESET} Send the refund replies, then open PR 412`,
   '',
@@ -197,7 +197,7 @@ const FOOTER = (width: number) => [
   `${DIM}${'─'.repeat(width)}${RESET}`,
   ` ${DIM}>${RESET} `,
   `${DIM}${'─'.repeat(width)}${RESET}`,
-  `  ${PINK}🦄 Nova${RESET}  ${DIM}│${RESET}  ${BLUE}main${RESET}  ${DIM}│${RESET}  ${GREEN}5 tasks today${RESET}  ${DIM}│${RESET}  ${ORANGE}2 need you${RESET}`
+  `  ${PINK}🐙 Oppi${RESET}  ${DIM}│${RESET}  ${BLUE}main${RESET}  ${DIM}│${RESET}  ${GREEN}5 tasks today${RESET}  ${DIM}│${RESET}  ${ORANGE}2 need you${RESET}`
 ];
 
 /**

@@ -111,7 +111,7 @@ To retake the screenshots, from a terminal inside cmux (its CLI answers nowhere 
 bun run cmux:screenshot --window-demo --out <docs-repo>/public/assets/cmux
 ```
 
-The preview draws `src/cmux/preview/showcase.ts`: three made-up agents, each with its own workspace and two more for its kinds of work, Nova's six projects in every state, reports across four days, and goals. The tests use the smaller `fixture.ts`, whose exact texts they assert. It opens a window of its own, sized 1400×900, and does everything there:
+The preview draws `src/cmux/preview/showcase.ts`: three made-up agents (🐙 Oppi, 🦄 Nova, 🦀 Scout), each with its own workspace and three more for its kinds of work, Oppi's six projects in every state, reports across four days, and goals. The tests use the smaller `fixture.ts`, whose exact texts they assert. It opens a window of its own, sized 1400×900, and does everything there:
 - each page (Manager, Projects, Reports, Goals) shot and cropped to the panel by `src/cmux/preview/png.ts`, which finds the panel's edge in the image itself, as `cmux-sidebar-<page>.png`;
 - with `--window-demo`, made-up workspaces and two groups in that window's left sidebar and a mock chat in its terminal (`demo.ts`), then the whole window as `cmux-workstation.png`.
 
