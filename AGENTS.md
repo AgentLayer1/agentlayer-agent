@@ -47,6 +47,8 @@ Skill scripts import plugin source by relative path (`../../../src/shared/naming
 | `bun run cmux:build` | Rebuild `src/cmux/sidebar/dist/sidebar.js` after changing the sidebar; a test fails while it's stale |
 | `bun run cmux:check` | Typecheck, rebuild the sidebar, and run the cmux pack's tests (they mount the sidebar on the installed cmux app's runtime, and skip without it) |
 | `bun test` | Every test under `src/` and `skills/` (mods excluded) |
+| `claude plugin test mods` | The mods' tests |
+| `claude plugin validate --strict .` | The manifests and the mods as Claude Code reads them, type-checking the hooks module; a deprecated setting shows up here first |
 | `bun src/server.ts` | Boot the server; expect `MCP server started — tools=<count>` |
 | `bun src/cli.ts help` | List the CLI verbs |
 

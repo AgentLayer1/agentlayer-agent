@@ -122,7 +122,7 @@ describe('contextBar', () => {
   });
 
   test('shows one cell for any usage too small to fill a whole cell', () => {
-    expect(plain(contextBar(11, 8))).toBe(`█${'⣿'.repeat(7)}`);
+    expect(plain(contextBar(1))).toBe(`█${'⣿'.repeat(11)}`);
   });
 });
 

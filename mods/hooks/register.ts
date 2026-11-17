@@ -1,5 +1,6 @@
 import type { Register } from 'claude-code';
 
+import { registerAgents } from '../agents/agents';
 import { registerCommands } from '../commands/commands';
 import { registerManuals } from '../manuals/manuals';
 import { registerNotices } from '../notices/notices';
@@ -18,4 +19,5 @@ export const register: Register = (on) => {
   registerNotices(on);
   registerQueue(on);
   registerSetup(on);
+  registerAgents(on);
 };

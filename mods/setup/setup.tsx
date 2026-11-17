@@ -64,7 +64,7 @@ export const registerSetup = (on: On): void => {
     return (
       <Box flexDirection="column">
         <Box gap={1}>
-          <Text bold>{`${DEFAULT_AGENT_NAME} isn't set up in this folder yet`}</Text>
+          <Text weight="semibold">{`${DEFAULT_AGENT_NAME} isn't set up in this folder yet`}</Text>
           <Box marginLeft={2}>
             <Button key="setup:init" variant="primary" label="Set up" onPress={() => runInit($)} />
           </Box>

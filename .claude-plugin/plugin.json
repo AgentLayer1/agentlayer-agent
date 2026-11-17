@@ -10,6 +10,10 @@
   "homepage": "https://agentlayer.one",
   "repository": "https://github.com/AgentLayer1/agentlayer-agent",
   "license": "Apache-2.0",
+  "icon": "./assets/agentlayer-logo.png",
+  "engines": {
+    "claude-code": ">=2.1.314"
+  },
   "keywords": [
     "personal-ai",
     "knowledge-base",

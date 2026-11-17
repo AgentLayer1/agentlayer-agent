@@ -69,7 +69,7 @@ interface Palette {
 }
 
 /** White and the bright hues wash out on a light background; the rest read on both. */
-export const PALETTES: Record<Theme, Palette> = {
+const PALETTES: Record<Theme, Palette> = {
   dark: { text: WHITE, folder: BRIGHT_BLUE, branch: BRIGHT_CYAN },
   light: { text: DEFAULT_FOREGROUND, folder: BLUE, branch: CYAN }
 };
@@ -81,9 +81,9 @@ const paint = (color: string, text: string): string => `${color}${text}${RESET}`
 /** Green under half, yellow to 79%, red from 80%: the same scale for context and rate limits. */
 const usageColor = (percent: number): string => (percent < 50 ? GREEN : percent < 80 ? YELLOW : RED);
 
-export const contextBar = (percent: number, width = BAR_WIDTH): string => {
-  const filled = percent > 0 ? Math.max(1, Math.floor((percent * width) / 100)) : 0;
-  return `${usageColor(percent)}${'█'.repeat(filled)}${DIM}${'⣿'.repeat(width - filled)}${RESET}`;
+export const contextBar = (percent: number): string => {
+  const filled = percent > 0 ? Math.max(1, Math.floor((percent * BAR_WIDTH) / 100)) : 0;
+  return `${usageColor(percent)}${'█'.repeat(filled)}${DIM}${'⣿'.repeat(BAR_WIDTH - filled)}${RESET}`;
 };
 
 /** "Claude 3.5 Opus" and "Claude Opus" both read as "Opus". */

@@ -201,7 +201,7 @@ export const registerTasks = (on: On): void => {
         <Box gap={1}>
           <Text dimColor>{card.id}</Text>
           <Box flexGrow={1} flexShrink={1}>
-            <Text bold>{card.title}</Text>
+            <Text weight="semibold">{card.title}</Text>
           </Box>
           <Box marginLeft={2} flexShrink={0}>
             <Button key="task:dismiss" dimColor label="Dismiss" onPress={() => update($, taskCard, () => null)} />

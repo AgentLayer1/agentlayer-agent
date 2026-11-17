@@ -241,7 +241,7 @@ export const registerSync = (on: On): void => {
     const header = (
       <Box>
         <Text color={look.color}>{look.icon} </Text>
-        <Text bold>sync</Text>
+        <Text weight="semibold">sync</Text>
         <Text dimColor>
           {' '}
           · {look.status} · {elapsed}

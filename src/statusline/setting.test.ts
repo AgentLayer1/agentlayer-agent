@@ -39,7 +39,7 @@ describe('statusLineSetting', () => {
 describe('commandCliPath', () => {
   test('reads our own command back, quoted or not, and ignores anything else', () => {
     expect(commandCliPath('bun "/opt/plugin/src/cli.ts" statusline')).toBe('/opt/plugin/src/cli.ts');
-    expect(commandCliPath('bun /opt/plugin/src/cli.ts statusline --subagent')).toBe('/opt/plugin/src/cli.ts');
+    expect(commandCliPath('bun /opt/plugin/src/cli.ts statusline --setting')).toBe('/opt/plugin/src/cli.ts');
     expect(commandCliPath('bun "/opt/scout/bin/scout" statusline')).toBeUndefined();
     expect(commandCliPath('~/.claude/statusline.sh')).toBeUndefined();
   });

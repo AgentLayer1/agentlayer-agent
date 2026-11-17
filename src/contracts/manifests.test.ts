@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AGENT_SLUG } from '@/config';
 import { CLI_FILE, PLUGIN_SOURCE_ROOT } from '@/shared/naming';
+import { HOST_FLOORS } from '@/upgrade/hosts';
 
 const ROOT = PLUGIN_SOURCE_ROOT;
 const read = (rel: string) => JSON.parse(readFileSync(resolve(ROOT, rel), 'utf-8'));
@@ -27,19 +28,15 @@ describe('plugin manifests', () => {
     expect(codex.interface.defaultPrompt.length).toBeLessThanOrEqual(3);
   });
 
-  test('the plugin ships the subagent status line, run from whichever checkout loaded', () => {
-    expect(read('settings.json')).toEqual({
-      subagentStatusLine: {
-        type: 'command',
-        command: 'bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" statusline --subagent'
-      }
-    });
+  test('the Claude Code range the host enforces is the floor upgrade checks', () => {
+    const floor = HOST_FLOORS.find((host) => host.name === 'claude')?.version;
+    expect(claude.engines).toEqual({ 'claude-code': `>=${floor}` });
   });
 
-  test('every hook and the status line run the one CLI file', () => {
+  test('every hook runs the one CLI file', () => {
     const groups: { hooks: { command: string }[] }[][] = Object.values(read('hooks/claude.json').hooks);
-    const commands = [...groups.flat().flatMap((group) => group.hooks.map((hook) => hook.command)), read('settings.json').subagentStatusLine.command];
-    expect(commands.length).toBeGreaterThan(4);
+    const commands = groups.flat().flatMap((group) => group.hooks.map((hook) => hook.command));
+    expect(commands.length).toBeGreaterThan(3);
     commands.forEach((command) => expect(command).toStartWith(`bun "\${CLAUDE_PLUGIN_ROOT}/${CLI_FILE.replaceAll('\\', '/')}" `));
   });
 

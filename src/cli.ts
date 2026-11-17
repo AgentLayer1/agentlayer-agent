@@ -81,7 +81,7 @@ Groups:
   capture                           Capture text / a file / stdin into raw/inbox/ (or feedback.md) for the next compile
   session-capture                   Ingest a session transcript into raw/sessions/<today>.md (called by Claude Code hooks)
   session-start                     Emit dynamic context (today / last session tail / git activity) for the host's SessionStart hook
-  statusline                        Render Claude Code's footer from the status-line JSON on stdin (--subagent: the agent panel rows; --setting: the settings entry)
+  statusline                        Render Claude Code's footer from the status-line JSON on stdin (--setting: the settings entry)
   task                              Read + mutate task files under projects/*/tasks/
   compile                           Knowledge-compile state (synthesis runs in Claude Code, not here)
   knowledge                         Wiki maintenance (lint)

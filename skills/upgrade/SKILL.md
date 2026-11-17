@@ -618,8 +618,8 @@ object with the printed one in the file that holds it; if neither file has a `st
 `settings.local.json`, since the command names this machine's checkout; anything else is the
 operator's own line and is kept. Same write discipline as the `ask` backfill above (in-memory merge, the
 Write tool, no `jq`, and the permission-error fallback to a `manual:` note). A changed entry shows
-on relaunch; say so in the Step 6 report. The subagent panel needs nothing here: the plugin ships
-its own `subagentStatusLine`.
+on relaunch; say so in the Step 6 report. The agent rows under the prompt need nothing here: the
+plugin's mods draw them.
 
 **Check the user-global auto-mode block (built-in invariant, every run).** The recommended
 block lives in the init skill's auto-mode section, and it moves with the plugin. A copy the

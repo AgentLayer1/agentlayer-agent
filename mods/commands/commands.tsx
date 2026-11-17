@@ -98,7 +98,7 @@ export const registerCommands = (on: On): void => {
     return (
       <Box flexDirection="column">
         <Box gap={1}>
-          <Text bold>Session</Text>
+          <Text weight="semibold">Session</Text>
           <Text>{id}</Text>
           <Box marginLeft={2} gap={2}>
             <Button
@@ -143,7 +143,7 @@ export const registerCommands = (on: On): void => {
       items.length ? (
         <Box key={title} flexDirection="column" marginTop={1}>
           <Box paddingLeft={2}>
-            <Text bold>{title}</Text>
+            <Text weight="semibold">{title}</Text>
             <Text dimColor>{`  ${items.length}`}</Text>
           </Box>
           {items.map((item) => row(item, isLate))}
@@ -153,7 +153,7 @@ export const registerCommands = (on: On): void => {
       <Box flexDirection="column">
         <Box gap={1}>
           <Text>{view.emoji}</Text>
-          <Text bold>Today</Text>
+          <Text weight="semibold">Today</Text>
           <Text dimColor>
             · {view.dateLabel} · {view.hijriLabel}
           </Text>

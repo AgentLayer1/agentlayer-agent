@@ -304,7 +304,7 @@ export const registerReports = (on: On): void => {
     return (
       <Box flexDirection="column">
         <Box gap={1}>
-          <Text bold>📎 Reports</Text>
+          <Text weight="semibold">📎 Reports</Text>
           <Text dimColor>{`· ${rows.length} in this conversation`}</Text>
           <Box marginLeft={2}>
             <Button key="reports:dismiss" dimColor label="Dismiss" onPress={() => update($, reportsBand, () => null)} />

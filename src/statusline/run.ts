@@ -8,7 +8,6 @@
  */
 import { renderStatusLine, type StatusLinePayload } from '@/statusline/render';
 import { statusLineSetting } from '@/statusline/setting';
-import { renderSubagentRows, type SubagentPayload } from '@/statusline/subagent';
 import { terminalTheme } from '@/statusline/theme';
 import { emojiIn } from '@/shared/persona';
 import { readText } from '@/shared/text';
@@ -55,7 +54,7 @@ const print = (text: string): Promise<number> => Bun.write(Bun.stdout, text);
 
 /**
  * `--setting` prints the settings entry that runs this very script, for init and upgrade to
- * merge; `--subagent` renders the subagent panel rows; otherwise the two-line footer.
+ * merge; otherwise the two-line footer.
  */
 export const runStatusLine = async (args: string[], cliPath: string): Promise<void> => {
   if (args.includes('--setting')) {
@@ -63,11 +62,6 @@ export const runStatusLine = async (args: string[], cliPath: string): Promise<vo
     return;
   }
   const raw = await Bun.stdin.text();
-  if (args.includes('--subagent')) {
-    const rows = renderSubagentRows(parse<SubagentPayload>(raw) ?? {}, terminalTheme(process.cwd()));
-    if (rows) await print(`${rows}\n`);
-    return;
-  }
   const payload = parse<StatusLinePayload>(raw);
   if (!payload) return;
   const dir = payload.workspace?.current_dir ?? payload.cwd;

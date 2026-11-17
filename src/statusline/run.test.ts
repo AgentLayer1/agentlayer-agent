@@ -65,15 +65,6 @@ describe(`${AGENT_SLUG} statusline`, () => {
     expect(proc.stdout).toBe('');
   });
 
-  test('--subagent writes one JSON row per task', () => {
-    const proc = run(
-      JSON.stringify({ columns: 60, tasks: [{ id: 'a', name: 'A', tokenCount: 5 }] }),
-      scratch(),
-      '--subagent'
-    );
-    expect(JSON.parse(proc.stdout)).toEqual({ id: 'a', content: expect.stringContaining('A · ') });
-  });
-
   test('--setting prints the settings entry that runs this very script', () => {
     const proc = run('', scratch(), '--setting');
     expect(JSON.parse(proc.stdout)).toEqual({ statusLine: { type: 'command', command: `bun "${CLI}" statusline` } });

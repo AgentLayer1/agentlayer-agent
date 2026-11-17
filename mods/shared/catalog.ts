@@ -132,6 +132,15 @@ export const SETUP_FEATURE = {
   tools: []
 } as const satisfies ModFeature;
 
+export const AGENTS_FEATURE = {
+  id: 'agents',
+  title: 'Agent rows',
+  summary: "Each subagent's row shows its name, what it's doing, and a bar for how much of its context it has used.",
+  where: 'the agent rows under the prompt, in the terminal',
+  commands: [],
+  tools: []
+} as const satisfies ModFeature;
+
 export const MOD_FEATURES: readonly ModFeature[] = [
   COMMANDS_FEATURE,
   TASKS_FEATURE,
@@ -140,5 +149,6 @@ export const MOD_FEATURES: readonly ModFeature[] = [
   SYNC_FEATURE,
   NOTICES_FEATURE,
   QUEUE_FEATURE,
-  SETUP_FEATURE
+  SETUP_FEATURE,
+  AGENTS_FEATURE
 ];
