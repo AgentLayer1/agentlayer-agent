@@ -47,6 +47,49 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.0.2] - 2026-11-17
+
+The cmux pack: an AgentLayer sidebar in cmux, fed by one model of the home's projects and tasks
+that the dashboard and TASKS.md now read too.
+
+### Added
+- The cmux pack (macOS, cmux 0.65.2 or later): an AgentLayer panel in cmux's right sidebar that
+  every agent home on the Mac can join. **Manager** lists every agent session, sorted by what
+  needs you. **Agents** has a chip per home and three tabs: Projects (task search, a Tasks card
+  with what's overdue and due this week, projects grouped at work, blocked and quiet), Reports
+  (pins, then the newest reports by day) and Goals (today through the year). The dashboard and
+  roadmap open as full tabs. Set it up with configure-skills; there are no keys or permissions.
+- `cmux sidebar install | refresh | remove` CLI verbs, and every dashboard refresh keeps the
+  sidebar current.
+- init offers the Helpdesk, App Store and cmux packs with the others; cmux is ticked by default
+  when init runs inside cmux.
+- A report's status shows as a word with a coloured badge, on the dashboard and in the sidebar.
+
+### Changed
+- One work model of the home's projects and tasks, read once per rebuild and kept in
+  `.state/work.json`; the dashboard, TASKS.md, `task_scan` and the sidebar all derive from it,
+  with one priority order, one set of due-date words and one reading of a date.
+- The dashboard's Goals read like the sidebar's.
+- Outside Obsidian, the dashboard opens HTML pages as pages in a new tab.
+- The agent rows under the prompt are drawn by a mod, since Claude Code 2.1.323 removed
+  `subagentStatusLine`; they show the agent type, its description and a context bar.
+- The plugin declares Claude Code 2.1.314 or later, so an older host skips it rather than
+  half-loading it, and names the AgentLayer logo as its icon.
+
+### Fixed
+- Dashboard writes run one at a time, each from the files as they are, so two refreshes can't
+  overwrite each other.
+- The sidebar reads its file back whatever its titles hold, and keys a project's links by where
+  they go rather than their title.
+
+### Removed
+- The plugin's `subagentStatusLine` setting and the `statusline --subagent` renderer, which
+  printed a deprecation warning at every session start.
+
+### Upgrade
+- `deps: required` — new dependency `cmux-custom-manager` (the sidebar's library); run `bun install` in the plugin root.
+- `manual: optional` — on macOS with cmux 0.65.2 or later, run `/agentlayer:configure-skills` and pick cmux to put this home in the AgentLayer sidebar.
+
 ## [1.0.1] - 2026-11-16
 
 A hardening release: fixes from a full review of the plugin and a second model's adversarial
