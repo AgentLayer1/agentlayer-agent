@@ -354,6 +354,22 @@ describe('round 2 fixes', () => {
     expect(changingCalls(run)).toEqual([]);
   });
 
+  test.skipIf(secretsReadBlocked())('a home with its own subscription makes agent the recommended button launcher', async () => {
+    const { made, oppi } = setUpMac();
+    mkdirSync(join(oppi, '.state', 'secrets'), { recursive: true });
+    writeFileSync(join(oppi, '.state', 'secrets', '.env.claude.json'), '{}');
+    const run = await guide(made, []);
+    expect(run.calls.filter((call) => call.includes('cmux settings')).every((call) => call.includes('--launcher=agent'))).toBe(true);
+  });
+
+  test.concurrent('without one, the button stays on claude', async () => {
+    const { made } = setUpMac();
+    const run = await guide(made, []);
+    const settings = run.calls.filter((call) => call.includes('cmux settings'));
+    expect(settings).toHaveLength(2);
+    expect(settings.every((call) => call.includes('--launcher=claude'))).toBe(true);
+  });
+
   test.concurrent('a ~ pin at this agent’s own folder is accepted', async () => {
     const { made } = setUpMac();
     const run = await guide(made, [], '', { AGENT_HOME: '~/Documents/Agents/Oppi' });

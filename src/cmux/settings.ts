@@ -1,13 +1,20 @@
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { SUBSCRIPTION_MARKER } from '@/config';
 import { mergeSettings } from '@/home/settings-scope';
+import { env } from '@/shared/env';
 import { isRecord } from '@/shared/json-block';
 import { PLUGIN_SOURCE_ROOT } from '@/shared/naming';
 import { readText } from '@/shared/text';
 
 const SETTINGS_FILES = ['ghostty', 'cmux'] as const;
 type SettingsFile = (typeof SETTINGS_FILES)[number];
+
+// What the Claude Code button runs. A home with its own subscription starts with the agent launcher, which falls
+// back to plain claude in a folder without one, so one machine-wide button can run agent safely.
+const LAUNCHERS = ['claude', 'agent'] as const;
+type Launcher = (typeof LAUNCHERS)[number];
 
 interface SettingDifference {
   key: string;
@@ -158,10 +165,11 @@ const shortValue = (value: unknown): string => {
   return typeof command === 'string' ? command : stableJson(value);
 };
 
-const checkCmux = (home: string, applications: string): SettingsReport => {
+const checkCmux = (home: string, applications: string, launcher: Launcher): SettingsReport => {
   const path = join(home, '.config', 'cmux', 'cmux.json');
-  const templateText = readText(templatePath('cmux'));
-  const template = parseJson(templateText) ?? {};
+  const shipped = readText(templatePath('cmux'));
+  const template = mergeSettings(parseJson(shipped) ?? {}, { actions: { claude: { command: launcher } } });
+  const templateText = launcher === 'claude' ? shipped : `${JSON.stringify(template, null, 2)}\n`;
   const text = existsSync(path) ? readText(path) : null;
   const yours = text === null ? {} : parseJson(text);
   const yourButtons = namesOf(child(child(child(yours, 'ui'), 'surfaceTabBar'), 'buttons'));
@@ -224,20 +232,27 @@ const checkCmux = (home: string, applications: string): SettingsReport => {
 /**
  * Read-only: compares a Mac's settings with `install/templates/`, and never writes either file.
  */
-export const checkSettings = (file: SettingsFile, home = homedir(), applications = '/Applications'): SettingsReport =>
-  file === 'ghostty' ? checkGhostty(home) : checkCmux(home, applications);
+export const checkSettings = (
+  file: SettingsFile,
+  home = homedir(),
+  applications = '/Applications',
+  launcher: Launcher = 'claude'
+): SettingsReport => (file === 'ghostty' ? checkGhostty(home) : checkCmux(home, applications, launcher));
+
+const isLauncher = (value: string | undefined): value is Launcher => LAUNCHERS.some((launcher) => launcher === value);
 
 const isSettingsFile = (value: string | undefined): value is SettingsFile => SETTINGS_FILES.some((file) => file === value);
 
 /**
- * `cmux settings --file=<ghostty|cmux> [--json]`. Without --json, exits 3 unless the file is complete.
+ * `cmux settings --file=<ghostty|cmux> [--launcher=<claude|agent>] [--json]`. Without --json, exits 3 unless the file is
+ * complete. The launcher defaults to agent in a session started with it.
  */
-export const runSettingsCommand = (file: string | undefined, json: boolean): number => {
+export const runSettingsCommand = (file: string | undefined, json: boolean, launcher?: string): number => {
   if (!isSettingsFile(file)) {
     console.error(`Usage: cmux settings --file=<${SETTINGS_FILES.join('|')}> [--json]`);
     return 1;
   }
-  const report = checkSettings(file);
+  const report = checkSettings(file, homedir(), '/Applications', isLauncher(launcher) ? launcher : env(SUBSCRIPTION_MARKER) ? 'agent' : 'claude');
   if (json) {
     console.log(JSON.stringify(report, null, 2));
     return 0;
