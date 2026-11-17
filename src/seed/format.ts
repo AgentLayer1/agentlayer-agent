@@ -1,6 +1,6 @@
 /**
  * Seed bundle format (formatVersion 1) — the contract behind `seed_scan` /
- * `seed_export` / `seed_import` and the agentlayer.one/dev wizard.
+ * `seed_export` / `seed_import`.
  *
  * A seed bundle is a one-shot handoff: an operator exports their agent's
  * persona + diverged setup as a plain zip, and a teammate's fresh home imports
@@ -15,7 +15,8 @@
  *
  * The format must accept a MINIMAL producer: a valid bundle can be just
  * manifest.json + IDENTITY.md + SOUL.md, generated client-side in a browser
- * with no source home (the website wizard). Every manifest field beyond
+ * with no source home (the retired website wizard made these, and import still
+ * accepts them). Every manifest field beyond
  * formatVersion/agentName/files is optional.
  *
  * What never travels, regardless of producer: secret VALUES, the data dir (`.state/`),
@@ -52,7 +53,7 @@ export interface SeedManifest {
   formatVersion: 1;
   /** Display name the agent carries (IDENTITY.md is the authoritative file; this labels the bundle). */
   agentName: string;
-  /** Absent on bundles from older producers and the website wizard; import treats that as `teammate`. */
+  /** Absent on bundles from older producers, the retired website wizard among them; import treats that as `teammate`. */
   audience?: SeedAudience;
   /** ISO timestamp of the export. */
   createdAt: string;

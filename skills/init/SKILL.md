@@ -292,7 +292,7 @@ update so template changes arrive phrased in this agent's name instead of propos
 ## Step 1c — Starting from a seed bundle?
 
 If the operator mentioned a seed bundle when invoking init (a `*-seed.zip` from a
-teammate's `/agentlayer:seed export` or the AgentLayer website wizard), or you want to
+teammate's `/agentlayer:seed export`), or you want to
 offer it, ask:
 
 > **Do you have a seed bundle from a teammate?**

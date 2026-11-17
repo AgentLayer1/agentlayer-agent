@@ -68,7 +68,7 @@ Five minutes of questions later you have a home. See [What setup asks](https://a
 
 **On a plugin version from before 1.0?** Your home moves to a new folder rather than updating in place: see [Updating](https://agentlayer.one/docs/run/updating).
 
-**Want a head start?** The [wizard](https://agentlayer.one/engage#wizard) turns eleven prompts about your company into a seed bundle; hand the zip to `init` and the agent wakes up named, characterised, and briefed. A teammate's `seed export` does the same from an existing agent. → [Seed bundles](https://agentlayer.one/docs/run/seed-bundles)
+**Want a head start?** A teammate's `seed export` turns their agent's persona and setup into a zip; hand it to `init` and your agent wakes up named, characterised, and briefed. → [Seed bundles](https://agentlayer.one/docs/run/seed-bundles)
 
 **Always launch from the agent home.** The plugin loads only for sessions started there, and that is also what keeps several agents on one machine apart. Reach your code through `permissions.additionalDirectories` in the home's `.claude/settings.local.json` (init writes it there, since the path is this machine's), not by launching from a repo.
 
