@@ -68,25 +68,30 @@ Branch into the matching section below. For authoring brand-new custom skills (n
 
 ### A.1 Pick pack(s)
 
-`AskUserQuestion` (**multi-select**):
+`AskUserQuestion` takes at most four options per question, so ask the packs as **three multi-select questions in one call**, grouped as below. **Every pack is its own option**: never merge two packs into one option ("Database + API") to fit the limit.
 
-> **Which pack(s) to configure?** Tick any combination.
->
-> - ☐ SEO — the `seo` skill (audit, Search Console, PageSpeed, SERP, rank) and `wordpress-rest` (already loaded; this walks API key + permission setup)
+> **Search and web — which to configure?** (header `Web`)
 > - ☐ Browser **(recommended)** — Playwright tool permissions + optional Perplexity search (briefings fall back to the built-in web search without it)
-> - ☐ Database — connect the agent to one or more Postgres databases (read-only `database_list`/`database_schema`/`database_query` + `database_fork` to clone a local DB for risky schema work)
+> - ☐ SEO — the `seo` skill (audit, Search Console, PageSpeed, SERP, rank) and `wordpress-rest` (already loaded; this walks API key + permission setup)
+> - ☐ Third-party libraries — clone separately-authored skill libraries (e.g. SEO/GEO from `aaron-he-zhu`, marketing playbooks from `coreyhaines31`) into `<HOME>/.claude/skills/`. Apache-2.0 licensed.
+>
+> **Code — which to configure?** (header `Code`)
 > - ☐ GitHub — PR, issue + GitHub Actions access (`github_pr_*` / `github_issue_*` / `github_run_*`), plus the writes your token allows (issues, a PR's title and description), so the agent can review PRs, walk their own, and brief a second model on them or on any branch (the `engineer` skill's PR playbooks and the `adversarial-review` skill) and diagnose failing CI builds
+> - ☐ Database — connect the agent to one or more Postgres databases (read-only `database_list`/`database_schema`/`database_query` + `database_fork` to clone a local DB for risky schema work)
 > - ☐ API — draft API requests as file-based collections you fire yourself (Bruno or Postman visual clients, or plain curl scripts). No keys or permissions; this walks the adapter setup.
 > - ☐ Xcode — build, test, run and debug Apple apps and Swift packages through Apple's Xcode MCP server, plus the sandbox and permission posture that makes the toolchain reachable. **macOS with Xcode 27 or later** (the headless server ships there). No API key.
+>
+> **Support and workspace — which to configure?** (header `Support`)
 > - ☐ Helpdesk — read support tickets and leave private draft notes in SupportCandy or Pylon (`helpdesk_*`); a person sends every reply
 > - ☐ App Store — read any app's App Store reviews (`appstore_reviews`); no key, read-only, never replies
-> - ☐ cmux — the AgentLayer sidebar in cmux's right panel: every agent session on the Mac sorted by what needs you, and each agent's tasks and projects with its dashboard and roadmap a tap away. **macOS with cmux 0.65.2 or later.** No key.
 > - ☐ Slack — read-only Slack through your own account (`slack_*`): pulses, the replies you owe and the external threads waiting; never posts or reads DMs. Needs a Slack app in your workspace (the walk creates one if there isn't)
-> - ☐ Third-party libraries — clone separately-authored skill libraries (e.g. SEO/GEO from `aaron-he-zhu`, marketing playbooks from `coreyhaines31`) into `<HOME>/.claude/skills/`. Apache-2.0 licensed.
+> - ☐ cmux — the AgentLayer sidebar in cmux's right panel: every agent session on the Mac sorted by what needs you, and each agent's tasks and projects with its dashboard and roadmap a tap away. **macOS with cmux 0.65.2 or later.** No key.
+
+Option descriptions are shortened to fit the picker; keep the pack's name as the label.
 
 **Never offer the Xcode tick on Windows, WSL2 or Linux.** Render it only when `$AGENT_PLATFORM` = `macos` (or `[ "$(uname -s)" = "Darwin" ]`); on every other host drop the row entirely rather than showing a pack that can only fail. The A.2f preflight is a second wall, but a Windows operator should never see the option in the first place. **The cmux tick follows the same rule**, and also needs the app: render it only on macOS with `/Applications/cmux.app` present.
 
-If nothing is ticked, cancel and return to Step 1. Otherwise run the matching sub-section(s) below in order: SEO (A.2a) → Browser (A.2b) → Database (A.2c) → GitHub (A.2d) → API (A.2e) → Xcode (A.2f) → Helpdesk (A.2g) → App Store (A.2h) → Slack (A.2i) → cmux (A.2j) → Third-party (Section F).
+If nothing is ticked across the three questions, cancel and return to Step 1. Otherwise run the matching sub-section(s) below in order: SEO (A.2a) → Browser (A.2b) → Database (A.2c) → GitHub (A.2d) → API (A.2e) → Xcode (A.2f) → Helpdesk (A.2g) → App Store (A.2h) → Slack (A.2i) → cmux (A.2j) → Third-party (Section F).
 
 ### A.2a — SEO pack walk
 
@@ -904,20 +909,26 @@ Print per library: install status + symlink path + upstream LICENSE first-line. 
 
 ## Section C — Deconfigure a skill pack
 
-### C.1 Pick pack to deconfigure
+### C.1 Pick pack(s) to deconfigure
 
-`AskUserQuestion`:
+`AskUserQuestion`, as **three multi-select questions in one call** (the same four-option limit and the same rule as A.1: every pack is its own option, never two merged into one; Xcode and cmux only where A.1 would show them):
 
-> **Which pack's configuration to remove?**
+> **Search and web — which to remove?** (header `Web`)
 > - SEO (clears API keys + permissions; skill files stay loaded but tool calls will error)
 > - Browser (removes the Perplexity API key from `.state/secrets/.env`; the MCP server stays plugin-bundled; briefings fall back to the built-in web search. Playwright tools stay since they're built-in)
-> - Database (revokes the db tool permissions; optionally removes the `AGENT_DB_*` connection keys)
+>
+> **Code — which to remove?** (header `Code`)
 > - GitHub (revokes the `github_*` tool permissions; optionally removes the `GITHUB_TOKEN*` lines)
+> - Database (revokes the db tool permissions; optionally removes the `AGENT_DB_*` connection keys)
+> - Xcode (unregisters the `xcode` MCP server, revokes its tool + Bash permissions; optionally removes the seeded rules)
+>
+> **Support and workspace — which to remove?** (header `Support`)
 > - Helpdesk (revokes the `helpdesk_*` tool permissions; optionally removes the helpdesk keys)
 > - App Store (revokes `appstore_reviews`; the learned storefront files in `.state/appstore/` can stay)
 > - Slack (revokes the `slack_*` tools and the slack skill grant; optionally deletes your local Slack token)
-> - Xcode (unregisters the `xcode` MCP server, revokes its tool + Bash permissions; optionally removes the seeded rules)
 > - cmux (takes this home out of the AgentLayer sidebar; the last home out deletes it)
+
+Run C.2 for each ticked pack; nothing ticked returns to Step 1.
 
 ### C.2 Deconfigure actions
 

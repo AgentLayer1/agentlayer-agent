@@ -1659,8 +1659,10 @@ The scaffold is done. Before showing the final confirmation, offer to wire up AP
 > **Activate skill packs now?**
 > Each pack already ships loaded with the plugin. Activating a pack grants its MCP tool permissions in `settings.json` (so calls don't re-prompt), plants the non-secret `GSC_SITE_URL` placeholder in `settings.local.json`, and ensures `.state/secrets/.env` exists for the secret keys you'll add via your editor. Skip entirely if you want to come back later via `/agentlayer:configure-skills`.
 >
-> - ☐ SEO pack (the seo skill: audit · Search Console · PageSpeed · SERP · rank; plus wordpress-rest)
+> `AskUserQuestion` takes at most four options per question, so ask the packs as **three multi-select questions in one call**: **Search and web** (header `Web`: Browser, SEO, Third-party libraries), **Code** (header `Code`: GitHub, Database, Xcode) and **Support and workspace** (header `Support`: Helpdesk, App Store, Slack, cmux). **Every pack is its own option**: never merge two packs into one option to fit the limit.
+>
 > - ☑ Browser pack **(recommended)** (browser screenshot/pdf/record + browser-flows + optional Perplexity search)
+> - ☐ SEO pack (the seo skill: audit · Search Console · PageSpeed · SERP · rank; plus wordpress-rest)
 > - ☐ Database pack (connect the agent to one or more Postgres databases — read-only `database_list`/`database_schema`/`database_query` + `database_fork` to clone a local DB for risky schema work)
 > - ☐ GitHub pack **(recommended when you gave a code path)** (PR, issue + GitHub Actions access — `github_pr_*` / `github_issue_*` / `github_run_*` — to review PRs/issues and diagnose failing CI builds, and the writes the token allows: issues and a PR's title or description, plus `github_fast_forward`, which is what keeps your checkouts current on every `/agentlayer:sync`; needs a token per repo owner (`GITHUB_TOKEN_<OWNER>`, or one `GITHUB_TOKEN`) **and** the `gh` CLI)
 > - ☐ Xcode pack (build, test, run and debug Apple apps + Swift packages through Apple's headless Xcode MCP server, with the sandbox and permission posture the toolchain needs; Xcode 27+, no API key)
