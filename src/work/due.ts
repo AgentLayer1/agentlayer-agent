@@ -44,16 +44,45 @@ export const daysUntil = (due: string, today: string): number | null => {
   return due && !Number.isNaN(days) ? days : null;
 };
 
-/**
- * Whether a goal block dated `date` still speaks for `today`: a day's only on that day, a week's through that week,
- * a month's or a year's always.
- */
-export const goalPeriodHolds = (horizon: string, date: string, today: string): boolean => {
+// Whether a goal block dated `date` still speaks for `today`: a day's only on that day, a week's through that week,
+// a month's or a year's always.
+const periodHolds = (horizon: string, date: string, today: string): boolean => {
   const days = daysUntil(date, today);
   if (horizon === 'day') {
     return days === 0;
   }
   return horizon !== 'week' || days === null || days >= -(mondayIndex(today) ?? 0);
+};
+
+export interface GoalShelf<Goal> {
+  goals: Goal[];
+  /**
+   * Whether the block still speaks for today; an earlier week's goals still show, marked.
+   */
+  current: boolean;
+  /**
+   * The Monday a weekly block starts, as `9 Nov`; '' for other blocks.
+   */
+  weekOf: string;
+}
+
+/**
+ * What a horizon's card shows of its goal block against `today`, the same on the dashboard, the attention pages and
+ * the sidebar: an earlier day's goals aren't today's, so they don't show.
+ */
+export const goalShelf = <Goal>(
+  block: { horizon: string; date: string; goals: Goal[] } | undefined,
+  today: string
+): GoalShelf<Goal> => {
+  if (!block) {
+    return { goals: [], current: false, weekOf: '' };
+  }
+  const current = periodHolds(block.horizon, block.date, today);
+  return {
+    goals: block.horizon === 'day' && !current ? [] : block.goals,
+    current,
+    weekOf: block.horizon === 'week' && block.date ? (shortDate(block.date) ?? block.date) : ''
+  };
 };
 
 export const BUCKETS = ['overdue', 'today', 'week', 'month', 'later', 'someday'] as const;

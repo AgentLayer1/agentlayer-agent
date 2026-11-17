@@ -8,6 +8,7 @@ import {
   GREEN,
   GREY,
   hueColor,
+  keepWidth,
   listRow,
   note,
   ORANGE,
@@ -72,7 +73,7 @@ const reportRow = (item: ReportItem) =>
         badge(item.kind, hueColor(item.hue)),
         ...(item.status ? [statusBadge(item.status)] : []),
         Spacer({ minLength: 0 }),
-        Text(clock(item.time)).font(10).monospaced().color('tertiary').fixedSize('horizontal')
+        keepWidth(Text(clock(item.time)).font(10).monospaced().color('tertiary'))
       ])
     ])
   ).onTap(() => openTarget(item.target));

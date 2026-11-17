@@ -1,6 +1,6 @@
 import type { TaskItem } from './data';
 import { dueLabel, isoDay, type DueLabel } from './due';
-import { GREEN, GREY, listRow, ORANGE, pill, RED, TITLE_OPACITY, type ProjectTag } from './style';
+import { GREEN, GREY, keepWidth, listRow, ORANGE, pill, RED, TITLE_OPACITY } from './style';
 
 const OPEN = { symbol: 'circle', color: GREY };
 const STATUS: Readonly<Record<string, { symbol: string; color: string }>> = {
@@ -34,23 +34,24 @@ export const count = (amount: number, status: string) =>
       ]
     : [];
 
-// Each word keeps its own width: beside a Spacer, a text is offered part of the row and wraps.
-const taskMeta = (task: TaskItem, project?: ProjectTag) =>
+const taskMeta = (task: TaskItem, projectColor?: string) =>
   HStack({ spacing: 6 }, [
     statusIcon(task.status),
-    Text(task.id).font(10).monospaced().color('tertiary').fixedSize('horizontal'),
-    Text(task.priority)
-      .font(10)
-      .weight('semibold')
-      .monospaced()
-      .color(URGENT.has(task.priority) ? ORANGE : 'tertiary')
-      .fixedSize('horizontal'),
-    Text(() => dueLabel(task.due, today())?.text ?? '')
-      .font(10)
-      .color(() => TONE[dueLabel(task.due, today())?.tone ?? 'later'])
-      .fixedSize('horizontal'),
+    keepWidth(Text(task.id).font(10).monospaced().color('tertiary')),
+    keepWidth(
+      Text(task.priority)
+        .font(10)
+        .weight('semibold')
+        .monospaced()
+        .color(URGENT.has(task.priority) ? ORANGE : 'tertiary')
+    ),
+    keepWidth(
+      Text(() => dueLabel(task.due, today())?.text ?? '')
+        .font(10)
+        .color(() => TONE[dueLabel(task.due, today())?.tone ?? 'later'])
+    ),
     Spacer({ minLength: 0 }),
-    ...(project ? [pill(project.slug, project.color)] : []),
+    ...(projectColor ? [pill(task.project, projectColor)] : []),
     ...(task.comments
       ? [
           HStack({ spacing: 2 }, [
@@ -63,12 +64,12 @@ const taskMeta = (task: TaskItem, project?: ProjectTag) =>
 
 /**
  * A task with its title on up to three lines and its status leading the line below; a tap opens its file as a full
- * tab. `project` names the task's project where tasks from several projects sit together.
+ * tab. `projectColor` puts the task's project on a pill, where tasks from several projects sit together.
  */
-export const taskRow = (task: TaskItem, project?: ProjectTag) =>
+export const taskRow = (task: TaskItem, projectColor?: string) =>
   listRow(
     VStack({ spacing: 2, alignment: 'leading' }, [
       Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(3).truncation('tail'),
-      taskMeta(task, project)
+      taskMeta(task, projectColor)
     ])
   ).onTap(() => cmux('file.open', { path: task.path }));

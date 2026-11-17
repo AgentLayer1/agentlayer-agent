@@ -14,14 +14,14 @@ import { buildDemo } from './demo';
 import { previewText } from './preview';
 import { inNewWindow, runSteps, writePanel, type Step } from './window';
 
-export const PAGES: Readonly<Record<string, StartPage>> = {
+export const PAGES = {
   manager: { tab: 'manager' },
   projects: { tab: 'agents', section: 'projects' },
   reports: { tab: 'agents', section: 'reports' },
   goals: { tab: 'agents', section: 'goals' }
-};
+} as const satisfies Record<string, StartPage>;
 
-// cmux redraws a sidebar about a second after its file changes.
+// cmux redraws a sidebar about a second after it reloads.
 const REDRAW = 1500;
 
 /**
@@ -32,10 +32,14 @@ export const setupSteps = (window: string, sidebar: string): Step[] => [
   { args: ['right-sidebar', 'set', 'custom', sidebar, '--window', window] }
 ];
 
-export const shotStep = (window: string, out: string): Step => ({
-  args: ['shot', '--window', window, '--out', out],
-  wait: REDRAW
-});
+/**
+ * Reloads the preview, which validates it first, so a broken bundle stops the run instead of reaching a screenshot,
+ * then shoots `window` once it has redrawn.
+ */
+export const shotSteps = (window: string, sidebar: string, out: string): Step[] => [
+  { args: ['sidebar', 'reload', sidebar] },
+  { args: ['shot', '--window', window, '--out', out], wait: REDRAW }
+];
 
 if (import.meta.main) {
   const args = process.argv.slice(2);
@@ -48,9 +52,10 @@ if (import.meta.main) {
   const own = defaultTarget().own();
   const show = (page: StartPage) => writeFileAtomic(preview, previewText(own, page));
   const raw = mkdtempSync(join(tmpdir(), 'agentlayer-shot-'));
-  const homes = mkdtempSync(join('/tmp', 'agentlayer-demo-'));
+  // Short folder names, since the demo's left sidebar shows each workspace's folder.
+  const homes = demo ? mkdtempSync(join('/tmp', 'agentlayer-demo-')) : '';
   const written: string[] = [];
-  show(PAGES.manager ?? { tab: 'manager' });
+  show(PAGES.manager);
   try {
     await inNewWindow('AgentLayer preview', async (window) => {
       if (demo) {
@@ -60,22 +65,21 @@ if (import.meta.main) {
       for (const [page, start] of Object.entries(PAGES)) {
         const full = join(raw, `${page}.png`);
         show(start);
-        await runSteps([shotStep(window, full)]);
+        await runSteps(shotSteps(window, name, full));
         const panel = join(out, `cmux-sidebar-${page}.png`);
         writePanel(full, panel);
         written.push(panel);
       }
       if (demo) {
-        const full = join(raw, 'workstation.png');
-        show(PAGES.projects ?? { tab: 'agents' });
-        await runSteps([shotStep(window, full)]);
         const whole = join(out, 'cmux-workstation.png');
-        copyFileSync(full, whole);
+        copyFileSync(join(raw, 'projects.png'), whole);
         written.push(whole);
       }
     });
   } finally {
-    rmSync(homes, { recursive: true, force: true });
+    if (homes) {
+      rmSync(homes, { recursive: true, force: true });
+    }
   }
   console.log(['Wrote:', ...written].join('\n  '));
 }

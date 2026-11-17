@@ -312,7 +312,8 @@ var dividedList = (items, key, row) => {
   ]);
 };
 var when = (show, build) => ForEach({ items: () => show() ? ["shown"] : [], key: (name) => name }, build);
-var pill = (label, color) => Text(label).font(9).weight("semibold").color(color).paddingHorizontal(5).paddingVertical(1).background(`${color}26`).cornerRadius(4).lineLimit(1).fixedSize("horizontal");
+var keepWidth = (view) => view.lineLimit(1).fixedSize("horizontal");
+var pill = (label, color) => keepWidth(Text(label).font(9).weight("semibold").color(color).paddingHorizontal(5).paddingVertical(1).background(`${color}26`).cornerRadius(4));
 var toolIcon = (symbol, help, onTap) => Image(symbol).font(11).color("secondary").padding(5).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
 var CARD = "#7f7f7f12";
 var foldingCard = (header, expanded, setExpanded, body) => VStack({ spacing: 0 }, [
@@ -404,12 +405,23 @@ var daysUntil = (due, today) => {
   const days = dayNumber(due) - dayNumber(today);
   return due && !Number.isNaN(days) ? days : null;
 };
-var goalPeriodHolds = (horizon, date, today) => {
+var periodHolds = (horizon, date, today) => {
   const days = daysUntil(date, today);
   if (horizon === "day") {
     return days === 0;
   }
   return horizon !== "week" || days === null || days >= -(mondayIndex(today) ?? 0);
+};
+var goalShelf = (block, today) => {
+  if (!block) {
+    return { goals: [], current: false, weekOf: "" };
+  }
+  const current = periodHolds(block.horizon, block.date, today);
+  return {
+    goals: block.horizon === "day" && !current ? [] : block.goals,
+    current,
+    weekOf: block.horizon === "week" && block.date ? shortDate(block.date) ?? block.date : ""
+  };
 };
 var BUCKETS = ["overdue", "today", "week", "month", "later", "someday"];
 var bucketOf = (days) => {
@@ -476,13 +488,13 @@ var count = (amount, status) => amount ? [
     Text(String(amount)).font(10).weight("medium").monospaced().color("secondary")
   ]).fixedSize()
 ] : [];
-var taskMeta = (task, project) => HStack({ spacing: 6 }, [
+var taskMeta = (task, projectColor) => HStack({ spacing: 6 }, [
   statusIcon(task.status),
-  Text(task.id).font(10).monospaced().color("tertiary").fixedSize("horizontal"),
-  Text(task.priority).font(10).weight("semibold").monospaced().color(URGENT.has(task.priority) ? ORANGE : "tertiary").fixedSize("horizontal"),
-  Text(() => dueLabel(task.due, today())?.text ?? "").font(10).color(() => TONE2[dueLabel(task.due, today())?.tone ?? "later"]).fixedSize("horizontal"),
+  keepWidth(Text(task.id).font(10).monospaced().color("tertiary")),
+  keepWidth(Text(task.priority).font(10).weight("semibold").monospaced().color(URGENT.has(task.priority) ? ORANGE : "tertiary")),
+  keepWidth(Text(() => dueLabel(task.due, today())?.text ?? "").font(10).color(() => TONE2[dueLabel(task.due, today())?.tone ?? "later"])),
   Spacer({ minLength: 0 }),
-  ...project ? [pill(project.slug, project.color)] : [],
+  ...projectColor ? [pill(task.project, projectColor)] : [],
   ...task.comments ? [
     HStack({ spacing: 2 }, [
       Image("bubble.left").font(9).color("tertiary"),
@@ -490,9 +502,9 @@ var taskMeta = (task, project) => HStack({ spacing: 6 }, [
     ]).fixedSize()
   ] : []
 ]);
-var taskRow = (task, project) => listRow(VStack({ spacing: 2, alignment: "leading" }, [
+var taskRow = (task, projectColor) => listRow(VStack({ spacing: 2, alignment: "leading" }, [
   Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(3).truncation("tail"),
-  taskMeta(task, project)
+  taskMeta(task, projectColor)
 ])).onTap(() => cmux("file.open", { path: task.path }));
 
 // src/cmux/sidebar/goals.ts
@@ -528,16 +540,15 @@ var goalRow = (colorOf) => (goal) => VStack({ spacing: 4, alignment: "leading" }
 var shelfCard = (shelf, block, agent, colorOf) => {
   const [open, setOpen] = signal(shelf.open);
   const command = `goals ${shelf.horizon}`;
-  const live = () => block !== undefined && goalPeriodHolds(block.horizon, block.date, today());
-  const shown = () => block && (shelf.horizon !== "day" || live()) ? block.goals : [];
+  const view = computed(() => goalShelf(block, today()));
+  const live = () => view().current;
+  const shown = () => view().goals;
   const caption = () => {
-    if (!block) {
-      return "";
+    const { weekOf, current } = view();
+    if (!weekOf) {
+      return block?.caption ?? "";
     }
-    if (shelf.horizon === "week" && block.date) {
-      return live() ? `Week of ${shortDate(block.date) ?? block.date}` : `Set for the week of ${shortDate(block.date) ?? block.date} · ask ${agent}: ${command}`;
-    }
-    return block.caption;
+    return current ? `Week of ${weekOf}` : `Set for the week of ${weekOf} · ask ${agent}: ${command}`;
   };
   return foldCard({
     title: shelf.title,
@@ -581,7 +592,7 @@ var AGENDA = {
 };
 var listedTasks = (entry) => {
   const colorOf = projectColors(entry);
-  return entry.tasks.map((task) => ({ task, project: { slug: task.project, color: colorOf(task.project) } }));
+  return entry.tasks.map((task) => ({ task, color: colorOf(task.project) }));
 };
 var agenda = (listed, day) => {
   const waiting = listed.filter(({ task }) => task.status !== "active");
@@ -593,7 +604,7 @@ var agenda = (listed, day) => {
     })
   ].filter((group) => group.tasks.length);
 };
-var dueTally = (amount, label, color) => Text(() => amount() ? `${amount()} ${label}` : "").font(10).weight("semibold").color(color).fixedSize("horizontal");
+var dueTally = (amount, label, color) => keepWidth(Text(() => amount() ? `${amount()} ${label}` : "").font(10).weight("semibold").color(color));
 var tasksCard = (entry, listed) => {
   const [expanded, setExpanded] = signal(false);
   const total = (field) => entry.projects.reduce((sum, project) => sum + project[field], 0);
@@ -618,7 +629,7 @@ var tasksCard = (entry, listed) => {
   ]), expanded, setExpanded, () => VStack({ spacing: 6 }, [
     ForEach({ items: groups, key: (group) => group.title }, (group) => VStack({ spacing: 1 }, [
       groupTitle(group().title, group().tasks.length).paddingTop(4),
-      dividedList(() => group().tasks, (item) => item.task.id, (item) => taskRow(item.task, item.project))
+      dividedList(() => group().tasks, (item) => item.task.id, (item) => taskRow(item.task, item.color))
     ]))
   ]));
 };
@@ -656,29 +667,30 @@ var STATES = [
   { title: "Blocked", holds: (project) => !project.active && project.blocked > 0 },
   { title: "Quiet", holds: (project) => !project.active && !project.blocked }
 ];
-var stateGroup = (title, projects, tasks) => {
+var stateGroup = (title, projects, tasksOf) => {
   const [expanded, setExpanded] = signal(true);
   return VStack({ spacing: 6 }, [
     foldTitle(title, projects.length, expanded, setExpanded),
-    ForEach({ items: () => expanded() ? projects : [], key: (project) => project.slug }, (item) => projectCard(item(), tasks.filter((task) => task.project === item().slug)))
+    ForEach({ items: () => expanded() ? projects : [], key: (project) => project.slug }, (item) => projectCard(item(), tasksOf.get(item().slug) ?? []))
   ]);
 };
 var projectsBody = (entry) => {
   const [query, setQuery] = signal("");
   const listed = listedTasks(entry);
+  const tasksOf = entry.tasks.reduce((byProject, task) => byProject.set(task.project, [...byProject.get(task.project) ?? [], task]), new Map);
   const found = computed(() => listed.filter(({ task }) => matchesQuery(query(), task.title, task.id)));
   const searching = () => query().trim() !== "";
   return VStack({ spacing: 10 }, [
     searchField("Search tasks…", setQuery),
     when(searching, () => VStack({ spacing: 1 }, [
-      dividedList(found, (item) => item.task.id, (item) => taskRow(item.task, item.project)),
+      dividedList(found, (item) => item.task.id, (item) => taskRow(item.task, item.color)),
       Text(() => found().length ? "" : "No matching tasks.").font(11).color("tertiary").paddingHorizontal(4)
     ])),
     when(() => !searching(), () => VStack({ spacing: 10 }, [
       tasksCard(entry, listed),
       ...STATES.flatMap(({ title, holds }) => {
         const projects = entry.projects.filter(holds);
-        return projects.length ? [stateGroup(title, projects, entry.tasks)] : [];
+        return projects.length ? [stateGroup(title, projects, tasksOf)] : [];
       }),
       ...entry.projects.length ? [] : [note("No projects yet.")]
     ]))
@@ -715,7 +727,7 @@ var reportRow = (item) => listRow(VStack({ spacing: 3, alignment: "leading" }, [
     badge2(item.kind, hueColor(item.hue)),
     ...item.status ? [statusBadge(item.status)] : [],
     Spacer({ minLength: 0 }),
-    Text(clock(item.time)).font(10).monospaced().color("tertiary").fixedSize("horizontal")
+    keepWidth(Text(clock(item.time)).font(10).monospaced().color("tertiary"))
   ])
 ])).onTap(() => openTarget(item.target));
 var pinRow = ({ pin, project }) => listRow(HStack({ spacing: 6 }, [

@@ -17,10 +17,11 @@
 
 import { manager } from 'cmux-custom-manager/manager';
 import { agentPage } from './agent';
+import type { StartPage } from './data';
 import { scopedHome, type Pin } from './scope';
 import { tabIcon } from './style';
 
-type Tab = 'manager' | 'agents';
+type Tab = StartPage['tab'];
 
 const app = () => {
   const homes = Object.keys(DATA.homes);

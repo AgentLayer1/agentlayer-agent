@@ -10,11 +10,11 @@ import {
   foldTitle,
   groupTitle,
   hueColor,
+  keepWidth,
   note,
   ORANGE,
   progressBar,
   RED,
-  type ProjectTag,
   when
 } from './style';
 import { count, taskRow, today } from './tasks';
@@ -52,7 +52,7 @@ const AGENDA: Readonly<Partial<Record<DueBucket, string>>> = {
 
 interface Listed {
   task: TaskItem;
-  project: ProjectTag;
+  color: string;
 }
 
 interface AgendaGroup {
@@ -62,7 +62,7 @@ interface AgendaGroup {
 
 const listedTasks = (entry: HomeEntry): Listed[] => {
   const colorOf = projectColors(entry);
-  return entry.tasks.map((task) => ({ task, project: { slug: task.project, color: colorOf(task.project) } }));
+  return entry.tasks.map((task) => ({ task, color: colorOf(task.project) }));
 };
 
 // In flight leads and carries its own due words, so each task shows once, as on the dashboard's Tasks page.
@@ -78,11 +78,12 @@ const agenda = (listed: readonly Listed[], day: string): AgendaGroup[] => {
 };
 
 const dueTally = (amount: () => number, label: string, color: string) =>
-  Text(() => (amount() ? `${amount()} ${label}` : ''))
-    .font(10)
-    .weight('semibold')
-    .color(color)
-    .fixedSize('horizontal');
+  keepWidth(
+    Text(() => (amount() ? `${amount()} ${label}` : ''))
+      .font(10)
+      .weight('semibold')
+      .color(color)
+  );
 
 const tasksCard = (entry: HomeEntry, listed: readonly Listed[]) => {
   const [expanded, setExpanded] = signal(false);
@@ -119,7 +120,7 @@ const tasksCard = (entry: HomeEntry, listed: readonly Listed[]) => {
             dividedList(
               () => group().tasks,
               (item) => item.task.id,
-              (item) => taskRow(item.task, item.project)
+              (item) => taskRow(item.task, item.color)
             )
           ])
         )
@@ -189,15 +190,12 @@ const STATES = [
   { title: 'Quiet', holds: (project: ProjectCard) => !project.active && !project.blocked }
 ];
 
-const stateGroup = (title: string, projects: ProjectCard[], tasks: TaskItem[]) => {
+const stateGroup = (title: string, projects: ProjectCard[], tasksOf: ReadonlyMap<string, TaskItem[]>) => {
   const [expanded, setExpanded] = signal(true);
   return VStack({ spacing: 6 }, [
     foldTitle(title, projects.length, expanded, setExpanded),
     ForEach({ items: () => (expanded() ? projects : []), key: (project) => project.slug }, (item) =>
-      projectCard(
-        item(),
-        tasks.filter((task) => task.project === item().slug)
-      )
+      projectCard(item(), tasksOf.get(item().slug) ?? [])
     )
   ]);
 };
@@ -208,6 +206,10 @@ const stateGroup = (title: string, projects: ProjectCard[], tasks: TaskItem[]) =
 export const projectsBody = (entry: HomeEntry) => {
   const [query, setQuery] = signal('');
   const listed = listedTasks(entry);
+  const tasksOf = entry.tasks.reduce(
+    (byProject, task) => byProject.set(task.project, [...(byProject.get(task.project) ?? []), task]),
+    new Map<string, TaskItem[]>()
+  );
   const found = computed(() => listed.filter(({ task }) => matchesQuery(query(), task.title, task.id)));
   const searching = () => query().trim() !== '';
   return VStack({ spacing: 10 }, [
@@ -217,7 +219,7 @@ export const projectsBody = (entry: HomeEntry) => {
         dividedList(
           found,
           (item) => item.task.id,
-          (item) => taskRow(item.task, item.project)
+          (item) => taskRow(item.task, item.color)
         ),
         Text(() => (found().length ? '' : 'No matching tasks.'))
           .font(11)
@@ -232,7 +234,7 @@ export const projectsBody = (entry: HomeEntry) => {
           tasksCard(entry, listed),
           ...STATES.flatMap(({ title, holds }) => {
             const projects = entry.projects.filter(holds);
-            return projects.length ? [stateGroup(title, projects, entry.tasks)] : [];
+            return projects.length ? [stateGroup(title, projects, tasksOf)] : [];
           }),
           ...(entry.projects.length ? [] : [note('No projects yet.')])
         ])

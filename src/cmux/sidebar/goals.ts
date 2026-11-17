@@ -1,17 +1,6 @@
-import { goalPeriodHolds, shortDate } from '../../work/due';
+import { goalShelf } from '../../work/due';
 import type { GoalBlockItem, GoalItem, GoalsItem, HomeEntry } from './data';
-import {
-  ACCENT,
-  dividedList,
-  foldCard,
-  GREEN,
-  GREY,
-  ORANGE,
-  pill,
-  PURPLE,
-  TITLE_OPACITY,
-  when
-} from './style';
+import { ACCENT, dividedList, foldCard, GREEN, GREY, ORANGE, pill, PURPLE, TITLE_OPACITY, when } from './style';
 import { today } from './tasks';
 import { projectColors } from './view';
 
@@ -80,19 +69,15 @@ const shelfCard = (
 ) => {
   const [open, setOpen] = signal(shelf.open);
   const command = `goals ${shelf.horizon}`;
-  const live = () => block !== undefined && goalPeriodHolds(block.horizon, block.date, today());
-  // An earlier day's goals aren't today's; an earlier week's still show, marked as such.
-  const shown = () => (block && (shelf.horizon !== 'day' || live()) ? block.goals : []);
+  const view = computed(() => goalShelf(block, today()));
+  const live = () => view().current;
+  const shown = () => view().goals;
   const caption = (): string => {
-    if (!block) {
-      return '';
+    const { weekOf, current } = view();
+    if (!weekOf) {
+      return block?.caption ?? '';
     }
-    if (shelf.horizon === 'week' && block.date) {
-      return live()
-        ? `Week of ${shortDate(block.date) ?? block.date}`
-        : `Set for the week of ${shortDate(block.date) ?? block.date} · ask ${agent}: ${command}`;
-    }
-    return block.caption;
+    return current ? `Week of ${weekOf}` : `Set for the week of ${weekOf} · ask ${agent}: ${command}`;
   };
   return foldCard(
     {

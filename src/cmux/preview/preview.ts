@@ -4,15 +4,15 @@ import type { StartPage } from '../sidebar/data';
 import { CMUX_DATA, NOVA, NOVA_HOME, SCOUT, SCOUT_HOME } from './fixture';
 
 /**
- * The sidebar drawing the two invented homes and their invented sessions with a frozen clock, for screenshots.
- * Parameters shadow cmux's `data` and `cmux` globals, so it never shows real sessions and its taps go nowhere.
+ * The sidebar drawing the two invented homes and their invented sessions with a frozen clock, for screenshots, opened
+ * on `open`. Parameters shadow cmux's `data` and `cmux` globals, so it never shows real sessions and its taps go nowhere.
  */
 export const previewText = (own: SidebarCode, open?: StartPage): string =>
   renderSidebar({
     version: own.version,
-    open,
     homes: { [NOVA_HOME]: homeEntry(NOVA_HOME, NOVA), [SCOUT_HOME]: homeEntry(SCOUT_HOME, SCOUT) },
     bundle: [
+      ...(open ? [`DATA.open = ${JSON.stringify(open)};`] : []),
       `const MOCK = ${JSON.stringify(CMUX_DATA)};`,
       '((data, cmux) => {',
       own.bundle,

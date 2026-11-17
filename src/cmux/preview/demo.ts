@@ -6,7 +6,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cmux, windows, type Step } from './window';
+import { isRecord } from '@/shared/json-block';
+import { cmux, windowRows, type Step } from './window';
 
 interface DemoWorkspace {
   name: string;
@@ -17,15 +18,17 @@ interface DemoWorkspace {
   progress?: { value: number; label: string };
 }
 
-// The same story the preview sidebar tells: Nova's support sweep needs you, Scout is fixing the checkout.
-export const WORKSPACES: readonly DemoWorkspace[] = [
-  {
-    name: 'Nova',
-    description: 'Support sweep · Morning brief',
-    color: 'Indigo',
-    group: 'Nova',
-    status: { text: 'needs you', icon: 'bell', color: '#FF9F0A' }
-  },
+// The same story the preview sidebar tells: Nova's support sweep needs you, Scout is fixing the checkout. Nova's
+// workspace is the one the build runs in.
+const NOVA: DemoWorkspace = {
+  name: 'Nova',
+  description: 'Support sweep · Morning brief',
+  color: 'Indigo',
+  group: 'Nova',
+  status: { text: 'needs you', icon: 'bell', color: '#FF9F0A' }
+};
+
+const OTHERS: readonly DemoWorkspace[] = [
   {
     name: 'Morning brief',
     description: 'Ready since 8:30 AM',
@@ -50,6 +53,8 @@ export const WORKSPACES: readonly DemoWorkspace[] = [
   },
   { name: 'Downloads', description: 'Rename the photos', color: 'Charcoal', group: '' }
 ];
+
+export const WORKSPACES: readonly DemoWorkspace[] = [NOVA, ...OTHERS];
 
 const GROUPS = ['Nova', 'Scout'] as const;
 
@@ -130,10 +135,6 @@ const quote = (text: string): string => `'${text.replaceAll("'", "'\\''")}'`;
 export const buildDemo = async (window: string, homes: string): Promise<void> => {
   const starting = refsIn(cmux('list-workspaces', '--window', window));
   WORKSPACES.forEach(({ name }) => mkdirSync(join(homes, name), { recursive: true }));
-  const [nova] = WORKSPACES;
-  if (!nova) {
-    return;
-  }
   // The shell expands CMUX_WORKSPACE_ID to the workspace this command runs in, the build half's own.
   const script = [process.execPath, fileURLToPath(import.meta.url), 'build', window, homes].map(quote).join(' ');
   const build = `${script} "$CMUX_WORKSPACE_ID"`;
@@ -143,11 +144,11 @@ export const buildDemo = async (window: string, homes: string): Promise<void> =>
       '--window',
       window,
       '--name',
-      nova.name,
+      NOVA.name,
       '--description',
-      nova.description,
+      NOVA.description,
       '--cwd',
-      join(homes, nova.name),
+      join(homes, NOVA.name),
       '--command',
       build
     )
@@ -194,7 +195,7 @@ const buildInside = (window: string, homes: string, self: string): void => {
   if (!self || !demoWorkspaces.includes(self)) {
     throw new Error(`this terminal isn't in the demo window ${window}`);
   }
-  const created = WORKSPACES.slice(1).map((demo) => ({
+  const created = OTHERS.map((demo) => ({
     demo,
     ref: refIn(
       cmux(
@@ -210,29 +211,24 @@ const buildInside = (window: string, homes: string, self: string): void => {
       )
     )
   }));
-  const all = [{ demo: WORKSPACES[0], ref: self }, ...created].flatMap(({ demo, ref }) =>
-    demo ? [{ demo, ref }] : []
-  );
+  const all = [{ demo: NOVA, ref: self }, ...created];
   all.forEach(({ demo, ref }) => decorateSteps(window, ref, demo).forEach(({ args }) => cmux(...args)));
   GROUPS.forEach((group) => {
     const members = all.filter(({ demo }) => demo.group === group).map(({ ref }) => ref);
     cmux('workspace-group', 'create', '--name', group, '--from', members.join(','));
   });
   // The list is the calling window's groups, under that window's ref: the demo window's, here.
-  const ref = windows().find((row) => row.id === window)?.ref;
+  const ref = windowRows().find((row) => row.id === window)?.ref;
   const listed: unknown = JSON.parse(cmux('workspace-group', 'list', '--json'));
-  const inWindow = typeof listed === 'object' && listed !== null && 'window_ref' in listed ? listed.window_ref : '';
-  const groups =
-    typeof listed === 'object' && listed !== null && 'groups' in listed && Array.isArray(listed.groups)
-      ? listed.groups
-      : [];
-  const names = groups.flatMap((group: unknown) =>
-    typeof group === 'object' && group !== null && 'name' in group && typeof group.name === 'string' ? [group.name] : []
-  );
-  if (!ref || inWindow !== ref || !GROUPS.every((group) => names.includes(group))) {
-    throw new Error(
-      `the demo groups aren't in the demo window ${ref ?? window}; check cmux workspace-group list --json`
-    );
+  const groups = isRecord(listed) && Array.isArray(listed.groups) ? listed.groups : [];
+  const names = groups.map((group: unknown) => (isRecord(group) ? group.name : undefined));
+  if (
+    typeof ref !== 'string' ||
+    !isRecord(listed) ||
+    listed.window_ref !== ref ||
+    !GROUPS.every((group) => names.includes(group))
+  ) {
+    throw new Error(`the demo groups aren't in the demo window ${window}; check cmux workspace-group list --json`);
   }
 };
 

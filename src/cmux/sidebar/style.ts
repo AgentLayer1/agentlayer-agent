@@ -117,19 +117,24 @@ export interface ProjectTag {
 }
 
 /**
+ * A short text that keeps its own width: beside a Spacer, a text is offered only part of the row and wraps.
+ */
+export const keepWidth = (view: View) => view.lineLimit(1).fixedSize('horizontal');
+
+/**
  * A word on a tint of its own colour, for a project or a report's status. `color` is `#rrggbb`.
  */
 export const pill = (label: string, color: string) =>
-  Text(label)
-    .font(9)
-    .weight('semibold')
-    .color(color)
-    .paddingHorizontal(5)
-    .paddingVertical(1)
-    .background(`${color}26`)
-    .cornerRadius(4)
-    .lineLimit(1)
-    .fixedSize('horizontal');
+  keepWidth(
+    Text(label)
+      .font(9)
+      .weight('semibold')
+      .color(color)
+      .paddingHorizontal(5)
+      .paddingVertical(1)
+      .background(`${color}26`)
+      .cornerRadius(4)
+  );
 
 /**
  * A plain icon button for the top row; `help` names it on hover.

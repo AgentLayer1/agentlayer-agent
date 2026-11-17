@@ -316,8 +316,8 @@ h3.group.date { color: var(--accent); }
 .glabel { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); }
 .gcap { margin: 0 0 4px; font-size: 12px; color: var(--dim); }
 .gcap.warn { color: var(--amber); }
-.goal { padding: 10px 0; border-bottom: 1px solid var(--hairline); }
-.goal:last-of-type { border-bottom: none; }
+.goal { padding: 10px 0; }
+.goal + .goal { border-top: 1px solid var(--hairline); }
 .goal.past { opacity: 0.55; }
 .gmeta { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
 .gnum { font-size: 11px; font-weight: 600; color: var(--dim); font-variant-numeric: tabular-nums; }

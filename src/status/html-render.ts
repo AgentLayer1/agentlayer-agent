@@ -36,9 +36,8 @@ import { RUNTIME_DIR } from '@/shared/naming';
 import { DEFAULT_AGENT_EMOJI } from '@/shared/persona';
 import { THEME_BLOCK } from '@/shared/theme';
 import { issueLabel } from '@/tasks/issue';
-import { daysUntil, dueBucket, toneOf, type DueBucket, type DueTone } from '@/work/due';
+import { daysUntil, dueBucket, goalShelf, toneOf, type DueBucket, type DueTone } from '@/work/due';
 import { REPORT_CATEGORIES, reportKind } from '@/reports/kinds';
-import { goalPeriodHolds, shortDate } from '@/work/due';
 import type { GoalsView, GoalView, ProjectLoad } from '@/work/views';
 import type {
   ContextGroup,
@@ -497,15 +496,12 @@ const goalsSection = (goals: GoalsView, today: string, hues: Readonly<Record<str
     : '';
   const cards = GOAL_SHELVES.map(({ horizon, icon, title }) => {
     const block = goals.blocks.find((item) => item.horizon === horizon);
-    const holds = block !== undefined && goalPeriodHolds(horizon, block.date, today);
-    const shown = block && (horizon !== 'day' || holds) ? block.goals : [];
-    const week = block?.date ? (shortDate(block.date) ?? block.date) : '';
-    const caption =
-      horizon === 'week' && week
-        ? holds
-          ? `Week of ${week}`
-          : `Set for the week of ${week} · run goals week`
-        : (block?.caption ?? '');
+    const { goals: shown, current: holds, weekOf } = goalShelf(block, today);
+    const caption = weekOf
+      ? holds
+        ? `Week of ${weekOf}`
+        : `Set for the week of ${weekOf} · run goals week`
+      : (block?.caption ?? '');
     const notes =
       shown.length && block?.notes.length
         ? `<div class="gnotes">${block.notes.map((note) => `<p>${esc(note)}</p>`).join('')}</div>`

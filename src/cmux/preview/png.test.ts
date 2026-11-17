@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { decorateSteps, WORKSPACES } from './demo';
 import { crop, decodePng, encodePng, panelRect, type Image } from './png';
-import { setupSteps, shotStep } from './shot';
+import { setupSteps, shotSteps } from './shot';
 
 // A made-up window: a terminal on the left, the panel on the right with a mode bar across its top.
 const madeUpShot = (): Image => {
@@ -33,14 +33,16 @@ test('a shot with no clear panel edge is refused, not cropped somewhere', () => 
   expect(() => panelRect(flat)).toThrow('no panel edge found');
 });
 
-test('every step the shot and the demo take names the window they opened, and only it', () => {
+test('every step that acts on a window names the one the script opened, and only it', () => {
   const window = 'window-under-test';
   const steps = [
     ...setupSteps(window, 'agentlayer-preview'),
-    shotStep(window, '/tmp/full.png'),
+    ...shotSteps(window, 'agentlayer-preview', '/tmp/full.png'),
     ...WORKSPACES.flatMap((demo) => decorateSteps(window, 'workspace:1', demo))
   ];
-  expect(steps.length).toBeGreaterThan(WORKSPACES.length);
-  expect(steps.every(({ args }) => args[args.indexOf('--window') + 1] === window)).toBe(true);
-  expect(steps.every(({ args }) => args.filter((arg) => arg === '--window').length === 1)).toBe(true);
+  // Reloading the preview acts on that sidebar's file, wherever it's shown, not on a window.
+  const onWindows = steps.filter(({ args }) => args[0] !== 'sidebar');
+  expect(steps.length - onWindows.length).toBe(1);
+  expect(onWindows.every(({ args }) => args[args.indexOf('--window') + 1] === window)).toBe(true);
+  expect(onWindows.every(({ args }) => args.filter((arg) => arg === '--window').length === 1)).toBe(true);
 });

@@ -1,6 +1,6 @@
 import { chip } from 'cmux-custom-manager/components';
 import { agentHeader, type AgentOptions } from './agents';
-import type { HomeEntry } from './data';
+import type { HomeEntry, StartPage } from './data';
 import { goalsBody } from './goals';
 import { projectsBody } from './projects';
 import { reportsBody } from './reports';
@@ -8,7 +8,7 @@ import { toolIcon } from './style';
 import { scopedPage } from './view';
 
 interface Section {
-  id: 'projects' | 'reports' | 'goals';
+  id: NonNullable<StartPage['section']>;
   label: string;
   /**
    * The dashboard page its Dashboard icon opens.

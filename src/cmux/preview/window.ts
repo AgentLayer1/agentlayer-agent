@@ -3,6 +3,7 @@
  * script opens and always closes. Change both together.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
+import { isRecord } from '@/shared/json-block';
 import { crop, decodePng, encodePng, panelRect } from './png';
 
 export interface Step {
@@ -24,27 +25,16 @@ export const cmux = (...args: string[]): string => {
   return result.stdout.toString();
 };
 
-interface WindowRow {
-  id: string;
-  ref: string;
-}
-
-export const windows = (): WindowRow[] => {
+/**
+ * The open windows' rows from cmux's `window.list`, each an object with at least an `id`.
+ */
+export const windowRows = (): Record<string, unknown>[] => {
   const listed: unknown = JSON.parse(cmux('rpc', 'window.list', '{}'));
-  const rows = typeof listed === 'object' && listed !== null && 'windows' in listed ? listed.windows : [];
-  return Array.isArray(rows)
-    ? rows.flatMap((row: unknown) =>
-        typeof row === 'object' &&
-        row !== null &&
-        'id' in row &&
-        'ref' in row &&
-        typeof row.id === 'string' &&
-        typeof row.ref === 'string'
-          ? [{ id: row.id, ref: row.ref }]
-          : []
-      )
-    : [];
+  const rows = isRecord(listed) && Array.isArray(listed.windows) ? listed.windows : [];
+  return rows.filter((row): row is Record<string, unknown> => isRecord(row) && typeof row.id === 'string');
 };
+
+const windowIds = (): unknown[] => windowRows().map((row) => row.id);
 
 export const runSteps = async (steps: readonly Step[]): Promise<void> => {
   for (const { args, wait } of steps) {
@@ -60,12 +50,10 @@ export const runSteps = async (steps: readonly Step[]): Promise<void> => {
  * were already open: the new window is the one id that wasn't listed before, and every step names it.
  */
 export const inNewWindow = async <Result>(name: string, body: (window: string) => Promise<Result>): Promise<Result> => {
-  const before = new Set(windows().map((row) => row.id));
+  const before = new Set(windowIds());
   cmux('new-window', '--name', name);
   const opened = async (tries: number): Promise<string[]> => {
-    const fresh = windows()
-      .map((row) => row.id)
-      .filter((id) => !before.has(id));
+    const fresh = windowIds().filter((id): id is string => typeof id === 'string' && !before.has(id));
     if (fresh.length || tries === 0) {
       return fresh;
     }
