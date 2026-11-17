@@ -306,6 +306,14 @@ describe('home-baseline settings', () => {
     expect(global.settings.idleCompaction).toBe(false);
   });
 
+  test('enableArtifact turns Artifacts off unless either home file already sets it', () => {
+    expect(fresh.enableArtifact).toBe(false);
+    expect(run(scratchHome({ settings: { enableArtifact: true } })).settings.enableArtifact).toBeNull();
+    expect(run(scratchHome({ local: { enableArtifact: false } })).settings.enableArtifact).toBeNull();
+    const global = run(scratchHome(), ['--claude-dir', claudeDirWith({ enableArtifact: true })]);
+    expect(global.settings.enableArtifact).toBe(false);
+  });
+
   test('privacyEnvMissing lists the opt-outs neither home file sets, whatever their value', () => {
     const privacy = [
       'DISABLE_TELEMETRY',

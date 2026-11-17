@@ -2,7 +2,7 @@
 /**
  * The part of init's Step 7 baseline that no template merge reaches: the home's `.gitignore`
  * (reconciled against `templates/.gitignore`), the `permissions.allow` / `permissions.ask`
- * entries, the `permissions.deny` list, the sandbox, `plansDirectory`, `idleCompaction`, the
+ * entries, the `permissions.deny` list, the sandbox, `plansDirectory`, `idleCompaction`, `enableArtifact`, the
  * Haiku-tier model and the privacy opt-outs, and any retired skill's grant or traffic kill an older
  * release left behind. The home's two settings files are read as the one view Claude Code acts on, so an entry kept in
  * `settings.local.json` counts as present.
@@ -112,6 +112,10 @@ const idleCompaction = /`idleCompaction` = `(true|false)`/.exec(skill)?.[1];
 if (!idleCompaction) {
   throw new Error('init SKILL.md no longer names the idleCompaction baseline');
 }
+const enableArtifact = /`enableArtifact` = `(true|false)`/.exec(skill)?.[1];
+if (!enableArtifact) {
+  throw new Error('init SKILL.md no longer names the enableArtifact baseline');
+}
 const retiredHaikuModels = ['claude-sonnet-4-6'];
 const baselinePrivacyEnv = Object.keys(jsonBlockAfter<Record<string, string>>('Baseline privacy `env`'));
 const TRAFFIC_KILL = 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC';
@@ -121,6 +125,7 @@ interface HomeSettings {
   env?: Record<string, string>;
   plansDirectory?: string;
   idleCompaction?: boolean;
+  enableArtifact?: boolean;
   permissions?: Partial<Record<'allow' | 'ask' | 'deny', string[]>>;
   sandbox?: {
     enabled?: boolean;
@@ -182,6 +187,7 @@ process.stdout.write(
         ),
         plansDirectory: settings.plansDirectory === undefined ? defaultPlans : null,
         idleCompaction: settings.idleCompaction === undefined ? idleCompaction === 'true' : null,
+        enableArtifact: settings.enableArtifact === undefined ? enableArtifact === 'true' : null,
         haikuModel: !currentHaiku || retiredHaikuModels.includes(currentHaiku) ? haikuModel : null,
         privacyEnvMissing: baselinePrivacyEnv.filter((key) => settings.env?.[key] === undefined),
         trafficKill: {
