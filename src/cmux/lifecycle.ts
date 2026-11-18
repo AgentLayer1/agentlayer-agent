@@ -9,6 +9,7 @@ import { homeEntry } from './entry';
 import {
   mergeHomes,
   newerCode,
+  orderHomes,
   parseSidebar,
   renderSidebar,
   SIDEBAR_NAME,
@@ -138,6 +139,35 @@ export const installSidebar = (
   const shown = cmux.run(['right-sidebar', 'set', 'custom', SIDEBAR_NAME]);
   const hint = shown ? '' : ` Show it with: cmux right-sidebar set custom ${SIDEBAR_NAME}`;
   return { ok: true, message: `${entry.name} is in the AgentLayer sidebar.${hint}` };
+};
+
+export type SidebarOrder =
+  | { kind: 'not-installed' }
+  | { kind: 'unmatched'; unmatched: string[]; names: string[] }
+  | { kind: 'unchanged' | 'written'; names: string[] };
+
+const namesOf = (homes: Record<string, HomeEntry>): string[] => Object.values(homes).map((item) => item.name);
+
+/**
+ * Puts the agents `picks` name first on the sidebar, in that order; it's one list for the Mac, so any home can set it.
+ */
+export const orderSidebar = (picks: readonly string[], target: SidebarTarget): SidebarOrder => {
+  const path = sidebarFile(target.dir);
+  const text = existsSync(path) ? readFileSync(path, 'utf8') : '';
+  const current = parseSidebar(text);
+  if (!current) {
+    return { kind: 'not-installed' };
+  }
+  const ordered = orderHomes(current.homes, picks);
+  if (!ordered.ok) {
+    return { kind: 'unmatched', unmatched: ordered.unmatched, names: namesOf(current.homes) };
+  }
+  const next = renderSidebar({ ...current, homes: ordered.homes });
+  if (next === text) {
+    return { kind: 'unchanged', names: namesOf(ordered.homes) };
+  }
+  writeFileAtomic(path, next);
+  return { kind: 'written', names: namesOf(ordered.homes) };
 };
 
 type RemoveResult = Absent | 'removed' | 'removed-file';

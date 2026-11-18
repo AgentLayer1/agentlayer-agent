@@ -3,9 +3,16 @@ import { CLI_COMMAND } from '@/shared/naming';
 import { buildWork } from '@/work/build';
 import { cmuxVersion, runCmux } from './app';
 import { homeEntry } from './entry';
-import { defaultTarget, installSidebar, refreshSidebar, removeSidebar } from './lifecycle';
+import {
+  defaultTarget,
+  installSidebar,
+  orderSidebar,
+  refreshSidebar,
+  removeSidebar,
+  type SidebarOrder
+} from './lifecycle';
 
-const USAGE = `Usage: ${CLI_COMMAND} cmux sidebar <install|refresh|remove>`;
+const USAGE = `Usage: ${CLI_COMMAND} cmux sidebar <install|refresh|remove|order <agent>…>`;
 const INSTALL = `${CLI_COMMAND} cmux sidebar install`;
 
 const REFRESHED = {
@@ -22,11 +29,24 @@ const REMOVED = {
   'removed-file': `This was the sidebar's last home, so it's deleted. Pick another right sidebar with: cmux right-sidebar set files`
 } as const;
 
+const ORDERED = (result: SidebarOrder): string => {
+  switch (result.kind) {
+    case 'not-installed':
+      return `The AgentLayer sidebar isn’t installed. Add a home from a terminal inside cmux with: ${INSTALL}`;
+    case 'unmatched':
+      return `No single agent on the sidebar matches ${result.unmatched.join(', ')}. It shows ${result.names.join(', ')}; name an agent, or its home folder when two share a name.`;
+    case 'unchanged':
+      return `The sidebar already lists ${result.names.join(', ')}.`;
+    case 'written':
+      return `The sidebar now lists ${result.names.join(', ')}.`;
+  }
+};
+
 /**
  * `cmux sidebar …`: the cmux pack's verbs. Returns the process exit code.
  */
 export const runCmuxCommand = async (command: string | undefined, args: string[]): Promise<number> => {
-  const [verb] = args.filter((arg) => !arg.startsWith('--'));
+  const [verb, ...picks] = args.filter((arg) => !arg.startsWith('--'));
   const target = defaultTarget();
   if (command !== 'sidebar') {
     console.error(USAGE);
@@ -41,6 +61,12 @@ export const runCmuxCommand = async (command: string | undefined, args: string[]
     const result = installSidebar(FOLDERS.HOME, entry, target, { version: cmuxVersion(), run: runCmux });
     (result.ok ? console.log : console.error)(result.message);
     return result.ok ? 0 : 1;
+  }
+  if (verb === 'order' && picks.length) {
+    const result = orderSidebar(picks, target);
+    const failed = result.kind === 'unmatched' || result.kind === 'not-installed';
+    (failed ? console.error : console.log)(ORDERED(result));
+    return failed ? 1 : 0;
   }
   if (verb === 'remove') {
     console.log(REMOVED[removeSidebar(FOLDERS.HOME, target)]);

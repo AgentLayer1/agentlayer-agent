@@ -789,6 +789,8 @@ Show it:           cmux right-sidebar set custom agentlayer
 Refresh by hand:   bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar refresh --home="<HOME_DIR>"
 ```
 
+Agents show in the order they joined. When the operator wants another order, hand them `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar order <first> <second> …` (agent names, any case) to run in their own terminal; the agents it names go first, the rest keep their order, and the order holds through every home's refresh.
+
 ## Section B — Register an external remote MCP server
 
 For third-party **remote** MCP servers (an `https://…` endpoint authenticated by a bearer token) that aren't part of a first-party pack — e.g. a log platform's hosted MCP. The entry lands in `$MCP_FILE`, the token in `$SECRETS_ENV`, always via the hardened wrapper below. Never register a remote server bare or hand-roll a wrapper.

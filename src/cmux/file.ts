@@ -56,6 +56,7 @@ export const renderSidebar = ({ version, homes, bundle }: SidebarParts): string 
 
 /**
  * The installed homes with this one's entry put in (or taken out, for `null`), minus homes whose folder is gone.
+ * Every home keeps its place, so the order set by `orderHomes` holds whichever home writes; a new home joins last.
  */
 export const mergeHomes = (
   current: SidebarParts | null,
@@ -63,11 +64,33 @@ export const mergeHomes = (
   entry: HomeEntry | null,
   homeExists: (path: string) => boolean = existsSync
 ): Record<string, HomeEntry> => {
-  const others = Object.entries(current?.homes ?? {}).filter(([path]) => path !== home && homeExists(path));
-  // Sorted so the same homes always render the same bytes, whichever home wrote last.
-  return Object.fromEntries(
-    (entry ? [...others, [home, entry] as const] : others).sort(([a], [b]) => a.localeCompare(b))
+  const kept = Object.entries(current?.homes ?? {}).filter(([path]) => path === home || homeExists(path));
+  const updated = kept.flatMap(([path, item]) =>
+    path !== home ? [[path, item] as const] : entry ? [[path, entry] as const] : []
   );
+  const isNew = entry && !kept.some(([path]) => path === home);
+  return Object.fromEntries(isNew ? [...updated, [home, entry] as const] : updated);
+};
+
+export type OrderResult = { ok: true; homes: Record<string, HomeEntry> } | { ok: false; unmatched: string[] };
+
+/**
+ * The homes `picks` name, by agent name in any case or by folder, moved to the front in that order; the rest keep
+ * their order after them. A pick that names no home, or more than one, comes back unmatched.
+ */
+export const orderHomes = (homes: Record<string, HomeEntry>, picks: readonly string[]): OrderResult => {
+  const entries = Object.entries(homes);
+  const found = picks.map((pick) => ({
+    pick,
+    matches: entries.filter(([path, item]) => path === pick || item.name.toLowerCase() === pick.toLowerCase())
+  }));
+  const unmatched = found.filter(({ matches }) => matches.length !== 1).map(({ pick }) => pick);
+  if (unmatched.length) {
+    return { ok: false, unmatched };
+  }
+  const front = found.flatMap(({ matches }) => matches);
+  const first = new Map(front);
+  return { ok: true, homes: Object.fromEntries([...first, ...entries.filter(([path]) => !first.has(path))]) };
 };
 
 /**
