@@ -104,14 +104,24 @@ al_parse_args() {
 
 # --- The look -----------------------------------------------------------------
 
-# Oppi's colours: orchid #B456A8 leads, mint #3BAA70 is the accent. Each terminal gets the
-# closest it can draw: 24-bit, the 256-colour palette, or plain magenta and green.
+# Oppi's colors and banner, copies of the plugin's (src/shared/persona.ts, src/hooks/banner.ts): the guide runs
+# before any agent exists, so it wears the ones a new agent wakes up with.
+AL_COLOR_PRIMARY='#B456A8'
+AL_COLOR_ACCENT='#3BAA70'
+AL_WORDMARK=(' ╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗' ' ╠═╣ ║ ╦ ║╣  ║║║  ║ ' ' ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ ')
+
+al_rgb() {
+  local hex=${1#\#}
+  printf '\033[38;2;%d;%d;%dm' $((16#${hex:0:2})) $((16#${hex:2:2})) $((16#${hex:4:2}))
+}
+
+# Each terminal gets the closest it can draw: 24-bit, the 256-color palette, or plain magenta and green.
 al_style_init() {
   if [[ -t 1 && -z ${NO_COLOR:-} && ${TERM:-dumb} != dumb ]]; then
     C_RESET=$'\033[0m' C_BOLD=$'\033[1m' C_DIM=$'\033[2m'
     C_YELLOW=$'\033[33m' C_RED=$'\033[31m' C_CYAN=$'\033[36m'
     case "${COLORTERM:-}:${TERM:-}" in
-      truecolor:* | 24bit:*) AL_DEPTH=24 C_PRIMARY=$'\033[38;2;180;86;168m' C_ACCENT=$'\033[38;2;59;170;112m' ;;
+      truecolor:* | 24bit:*) AL_DEPTH=24 C_PRIMARY=$(al_rgb "$AL_COLOR_PRIMARY") C_ACCENT=$(al_rgb "$AL_COLOR_ACCENT") ;;
       *256color*) AL_DEPTH=8 C_PRIMARY=$'\033[38;5;133m' C_ACCENT=$'\033[38;5;72m' ;;
       *) AL_DEPTH=3 C_PRIMARY=$'\033[35m' C_ACCENT=$'\033[32m' ;;
     esac
@@ -139,27 +149,15 @@ al_style_init() {
   fi
 }
 
-# Letter i of n in the banner, shaded from orchid to a lighter pink.
+# Line i of the wordmark's three, shaded from orchid to a lighter pink.
 al_shade() {
-  local i=$1 last=$(($2 - 1)) codes
+  local codes=(133 170 212)
   case $AL_DEPTH in
-    24) printf '\033[38;2;%d;%d;%dm' $((180 + 52 * i / last)) $((86 + 35 * i / last)) $((168 + 30 * i / last)) ;;
-    8)
-      codes=(133 133 169 169 170 170 176 176 212 212)
-      printf '\033[38;5;%sm' "${codes[i]:-212}"
-      ;;
+    24) printf '\033[38;2;%d;%d;%dm' $((16#${AL_COLOR_PRIMARY:1:2} + 26 * $1)) $((16#${AL_COLOR_PRIMARY:3:2} + 18 * $1)) \
+      $((16#${AL_COLOR_PRIMARY:5:2} + 15 * $1)) ;;
+    8) printf '\033[38;5;%sm' "${codes[$1]}" ;;
     *) printf '%s' "$C_PRIMARY" ;;
   esac
-}
-
-al_banner_row() {
-  local i=0 letter
-  printf '   '
-  for letter in "$@"; do
-    printf '%s%s%s%s ' "$C_BOLD" "$(al_shade "$i" "$#")" "$letter" "$C_RESET"
-    i=$((i + 1))
-  done
-  printf '\n'
 }
 
 # A box with a title in its top edge, for what a reader should take in before anything else.
@@ -182,15 +180,16 @@ al_panel() {
 }
 
 al_header() {
+  local i
   if [[ $AL_MODE != guide ]]; then
     printf '\n  %s%s%sAgentLayer %s %s%s\n\n' "$C_BOLD" "$C_PRIMARY" "$G_LOGO" "$G_DOT" "$1" "$C_RESET"
     return
   fi
   printf '\n'
-  if [[ -n $G_LOGO ]] && ((AL_WIDTH >= 50)); then
-    al_banner_row '▄▀█' '█▀▀' '█▀▀' '█▄ █' '▀█▀' '█  ' '▄▀█' '█▄█' '█▀▀' '█▀█'
-    al_banner_row '█▀█' '█▄█' '██▄' '█ ▀█' ' █ ' '█▄▄' '█▀█' ' █ ' '██▄' '█▀▄'
-    printf '\n   %s%s%s%s  %s%sagentlayer.one%s\n\n' "$C_BOLD" "$G_LOGO" "$1" "$C_RESET" "$C_DIM" "$G_DOT " "$C_RESET"
+  if [[ -n $G_LOGO ]] && ((AL_WIDTH >= 40)); then
+    for i in 0 1 2; do printf '  %s%s%s%s\n' "$C_BOLD" "$(al_shade "$i")" "${AL_WORDMARK[i]}" "$C_RESET"; done
+    printf '   %s%s===%s=== %s%s\n\n' "$C_BOLD" "$C_ACCENT" "$(printf '%s' "$AL_DEFAULT_NAME" | tr '[:lower:]' '[:upper:]')" "${G_LOGO% }" "$C_RESET"
+    printf '   %s%s%s %s%s agentlayer.one%s\n\n' "$C_BOLD" "$1" "$C_RESET" "$C_DIM" "$G_DOT" "$C_RESET"
   else
     printf '  %s%sAgentLayer %s %s%s\n\n' "$C_BOLD" "$C_PRIMARY" "$G_DOT" "$1" "$C_RESET"
   fi

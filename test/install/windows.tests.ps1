@@ -232,6 +232,7 @@ Test-Case '-Prereqs ticks the apps and tools, then stops before any agent' {
   $run = Invoke-Scenario $machine $all '$Prereqs = $true; $Marketplace = $true'
   Assert-Equal $run.Code 0
   Assert-Contains $run.Out 'A guide, not an installer'
+  Assert-Contains $run.Out '===OPPI==='
   Assert-NotContains $run.Out 'What would you like to do?'
   Assert-Contains $run.Out 'Your PC is ready for an agent.'
   Assert-NotContains $run.Out 'Plugin for'

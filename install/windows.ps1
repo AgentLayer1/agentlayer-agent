@@ -35,28 +35,30 @@ $Script:PathFromHome = $false
 
 # --- The look ---
 
-# Oppi's colours: orchid #B456A8 leads, mint #3BAA70 is the accent. Plain when the output isn't a console.
+# Oppi's colors and banner, copies of the plugin's (src/shared/persona.ts, src/hooks/banner.ts): the guide runs
+# before any agent exists, so it wears the ones a new agent wakes up with. Plain when the output isn't a console.
+$Script:DefaultName = 'Oppi'
+$Script:ColorPrimary = '#B456A8'
+$Script:ColorAccent = '#3BAA70'
+$Script:Wordmark = @(' ╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗', ' ╠═╣ ║ ╦ ║╣  ║║║  ║ ', ' ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ ')
 $Script:Color = -not ([Console]::IsOutputRedirected -or $env:NO_COLOR)
 function Get-Rgb([int]$Red, [int]$Green, [int]$Blue) { if ($Script:Color) { "$([char]27)[38;2;$Red;$Green;$($Blue)m" } else { '' } }
-$Script:Accent = Get-Rgb 59 170 112
+function Get-Channels([string]$Hex) { 1, 3, 5 | ForEach-Object { [Convert]::ToInt32($Hex.Substring($_, 2), 16) } }
+$accentChannels = @(Get-Channels $Script:ColorAccent)
+$Script:Accent = Get-Rgb @accentChannels
 $Script:Bold = if ($Script:Color) { "$([char]27)[1m" } else { '' }
 $Script:Reset = if ($Script:Color) { "$([char]27)[0m" } else { '' }
 
+# The wordmark shades from orchid to a lighter pink, line by line.
 function Write-Banner([string]$Title) {
-  $rows = @(
-    @('▄▀█', '█▀▀', '█▀▀', '█▄ █', '▀█▀', '█  ', '▄▀█', '█▄█', '█▀▀', '█▀█'),
-    @('█▀█', '█▄█', '██▄', '█ ▀█', ' █ ', '█▄▄', '█▀█', ' █ ', '██▄', '█▀▄')
-  )
   Write-Host ''
-  foreach ($row in $rows) {
-    $line = '   '
-    for ($i = 0; $i -lt $row.Count; $i++) {
-      $line += "$($Script:Bold)$(Get-Rgb (180 + 52 * $i / 9) (86 + 35 * $i / 9) (168 + 30 * $i / 9))$($row[$i])$($Script:Reset) "
-    }
-    Write-Host $line
+  $red, $green, $blue = Get-Channels $Script:ColorPrimary
+  for ($i = 0; $i -lt $Script:Wordmark.Count; $i++) {
+    Write-Host "  $($Script:Bold)$(Get-Rgb ($red + 26 * $i) ($green + 18 * $i) ($blue + 15 * $i))$($Script:Wordmark[$i])$($Script:Reset)"
   }
+  Write-Host "   $($Script:Bold)$($Script:Accent)===$($Script:DefaultName.ToUpper())=== $([char]::ConvertFromUtf32(0x1F419))$($Script:Reset)"
   Write-Host ''
-  Write-Host "   $($Script:Bold)$([char]::ConvertFromUtf32(0x1F419)) $Title$($Script:Reset)  " -NoNewline
+  Write-Host "   $($Script:Bold)$Title$($Script:Reset) " -NoNewline
   Write-Host '· agentlayer.one' -ForegroundColor DarkGray
   Write-Host ''
 }
@@ -564,7 +566,7 @@ function Invoke-Guide {
     if ($HomeFolder) { $newHome = [IO.Path]::GetFullPath($HomeFolder) }
     else {
       if (-not $Name) {
-        do { $Name = Read-Answer 'What should your agent be called?' 'Oppi' } while ($Name -notmatch $Script:NamePattern)
+        do { $Name = Read-Answer 'What should your agent be called?' $Script:DefaultName } while ($Name -notmatch $Script:NamePattern)
       }
       $newHome = Join-Path $Script:AgentsDir $Name
     }

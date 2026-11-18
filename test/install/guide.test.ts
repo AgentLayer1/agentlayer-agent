@@ -4,7 +4,9 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MIN_CMUX } from '@/cmux/app';
+import { BANNER_LINES } from '@/hooks/banner';
 import { NAME_RE } from '@/shared/agent-name';
+import { DEFAULT_AGENT_COLORS, DEFAULT_AGENT_NAME } from '@/shared/persona';
 import { secretsReadBlocked } from '@/shared/sandbox-probe';
 import { HOST_FLOORS } from '@/upgrade/hosts';
 import {
@@ -485,7 +487,8 @@ const preparedMac = () => {
 describe('the welcome screen', () => {
   test.concurrent('opens with the banner, says nothing runs by itself, and offers the menu', async () => {
     const run = await guide(preparedMac(), [], 'q');
-    expect(run.out).toContain('█▀█ █▄█ ██▄');
+    expect(run.out).toContain(' ╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗');
+    expect(run.out).toContain('   ===OPPI=== 🐙\n');
     expect(run.out).toContain('A guide, not an installer');
     expect(run.out).toContain('Nothing here installs or changes anything by itself.');
     expect(run.out).toContain('2  Prepare this Mac');
@@ -715,6 +718,17 @@ describe('the guide’s copies of the plugin’s rules', () => {
     expect(script('MinClaude')).toBe(floor('claude'));
     expect(script('NamePattern')).toBe(NAME_RE.source);
     expect(script('MarketplaceRepo')).toBe(value('AL_MARKETPLACE_REPO'));
+  });
+
+  test.concurrent('the banner and colors match the plugin’s, in both guides', async () => {
+    const windows = readFileSync(join(ROOT, 'install', 'windows.ps1'), 'utf-8');
+    const script = (name: string): string => windows.match(new RegExp(`^\\$Script:${name} = '(.*)'$`, 'm'))?.[1] ?? '';
+    expect(LIB).toContain(`AL_WORDMARK=(${BANNER_LINES.map((line) => `'${line}'`).join(' ')})`);
+    expect(windows).toContain(`$Script:Wordmark = @(${BANNER_LINES.map((line) => `'${line}'`).join(', ')})`);
+    expect({ primary: value('AL_COLOR_PRIMARY'), accent: value('AL_COLOR_ACCENT') }).toEqual(DEFAULT_AGENT_COLORS);
+    expect({ primary: script('ColorPrimary'), accent: script('ColorAccent') }).toEqual(DEFAULT_AGENT_COLORS);
+    expect(value('AL_DEFAULT_NAME')).toBe(DEFAULT_AGENT_NAME);
+    expect(script('DefaultName')).toBe(DEFAULT_AGENT_NAME);
   });
 });
 
