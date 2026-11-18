@@ -24,6 +24,7 @@ Target: ~400–600 words, eight sections, a ranked list of first moves, agent-em
    - **Perplexity is optional.** When `web_search` fails because `PERPLEXITY_API_KEY` isn't set (or the tool isn't granted), run the same clusters through the host's built-in web search instead (Claude Code's `WebSearch`, Codex's built-in web search). It has no `recency` or `country` filter, so put the time window and the country in the query words ("this week", the month and year, the country name), and drop any result whose publish date you can't establish inside the window. Don't mention the missing key in the brief.
 8. **Prior briefings (novelty check)** — `Glob` `<HOME>/reports/briefings/*.md` and read the entries from the **last 7 days**. This is what you de-dupe today's signals against. Read it *before* deciding which web_search results to surface.
 9. **Sessions waiting on you** — the newest radar report, per [first moves](../first-moves.md#inputs).
+10. **CI on the main branch** — only when the GitHub pack is set up and `$AGENT_CODE_PATH` names a code repo: `mcp__plugin_agentlayer_agent__github_run_list` with `branch` set to that repo's default branch (`git -C "$AGENT_CODE_PATH" symbolic-ref --short refs/remotes/origin/HEAD`, without the `origin/`) and `limit: 3`. A failed latest run is a `🎯 Today` bullet naming the workflow and the commit; a passing one adds nothing. Skip silently without the pack or the repo. Open pull requests and owed reviews already arrive through attention's queue.
 
 ## Signal gate (novelty + relevance)
 

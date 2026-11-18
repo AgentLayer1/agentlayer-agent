@@ -7,7 +7,7 @@ description: >
   moves. The pulse: a 60-second scan for anything overdue, stale or blocked. Triggers on "brief me",
   "morning brief", "daily brief", "wrap up the day", "evening wrap", "what did I ship today", "how did
   today go", "quick pulse", "anything on fire", "status check", or /briefing.
-allowed-tools: mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_get, mcp__plugin_agentlayer_agent__task_scan, mcp__plugin_agentlayer_agent__attention_write, mcp__plugin_agentlayer_agent__web_search, mcp__plugin_agentlayer_agent__report_write, WebSearch, Read, Glob, Bash
+allowed-tools: mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_get, mcp__plugin_agentlayer_agent__task_scan, mcp__plugin_agentlayer_agent__attention_write, mcp__plugin_agentlayer_agent__web_search, mcp__plugin_agentlayer_agent__report_write, mcp__plugin_agentlayer_agent__github_run_list, WebSearch, Read, Glob, Bash
 ---
 
 # Briefing
