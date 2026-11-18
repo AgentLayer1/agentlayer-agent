@@ -4,6 +4,7 @@
  * Kept separate from the renderer so the rendering stays pure and testable without
  * touching the filesystem.
  */
+import type { RefreshResult } from '@/cmux/lifecycle';
 import { FILES, FOLDERS } from '@/config';
 import { writeFileAtomic } from '@/shared/utils';
 import { writeDashboard, type DashboardCounts } from '@/tasks/dashboard';
@@ -16,6 +17,7 @@ import { renderDashboardHtml } from './html-render';
 interface Written {
   path: string;
   bytes: number;
+  sidebar: RefreshResult | 'failed';
 }
 
 const writeNow = async (): Promise<Written> => {
@@ -27,8 +29,8 @@ const writeNow = async (): Promise<Written> => {
   writeFileAtomic(FILES.DASHBOARD, html);
   // The cmux pack is optional, so the dashboard loads it only here.
   const { refreshSidebarQuietly } = await import('@/cmux/lifecycle');
-  refreshSidebarQuietly(FOLDERS.HOME, work);
-  return { path: FILES.DASHBOARD, bytes: Buffer.byteLength(html) };
+  const sidebar = refreshSidebarQuietly(FOLDERS.HOME, work);
+  return { path: FILES.DASHBOARD, bytes: Buffer.byteLength(html), sidebar };
 };
 
 let previous: Promise<unknown> = Promise.resolve();
@@ -54,7 +56,7 @@ export const writeDashboardHtml = (): Promise<Written> => {
 
 /** Rebuild both derived views — TASKS.md first (best-effort), then the HTML
  *  snapshot (the contract). Shared by the `dashboard` MCP tool and the CLI. */
-export const rebuildDashboards = async (): Promise<{ path: string; bytes: number; tasks: DashboardCounts | null }> => {
+export const rebuildDashboards = async (): Promise<Written & { tasks: DashboardCounts | null }> => {
   let tasks: DashboardCounts | null = null;
   try {
     tasks = writeDashboard(readTasks());

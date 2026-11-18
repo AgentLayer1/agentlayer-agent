@@ -268,7 +268,7 @@ One call rebuilds both `<HOME>/dashboard.html` and `projects/TASKS.md` — call 
 mcp__plugin_agentlayer_agent__dashboard  { sync: true }
 ```
 
-Returns `{ path, bytes, tasks: { active, blocked, overdue, stale, closedRecent } }`. One call, no judgment needed.
+Returns `{ path, bytes, sidebar, tasks: { active, blocked, overdue, stale, closedRecent } }`. One call, no judgment needed.
 
 ### 12. Commit the brain history
 

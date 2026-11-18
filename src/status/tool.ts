@@ -13,8 +13,9 @@ export const tools: ToolDef[] = [
     description:
       'Rebuild both derived views in one pass: projects/TASKS.md (task dashboard from frontmatter — Active, Blocked, ' +
       'Overdue, Stale, Recently Closed; preserves the goals block) and <HOME>/dashboard.html (the static Agent OS ' +
-      'dashboard from a fresh status snapshot). Self-contained, no server, zero external requests. Task mutations ' +
-      'refresh both automatically; invoke explicitly to force a refresh.',
+      'dashboard from a fresh status snapshot), then this home in the cmux sidebar. Self-contained, no server, ' +
+      'zero external requests. Task mutations refresh all three automatically; invoke explicitly to force a refresh. ' +
+      'Returns `sidebar`: written, unchanged, not-installed, not-joined or failed.',
     inputSchema: {
       sync: z
         .boolean()

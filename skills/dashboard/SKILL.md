@@ -1,6 +1,6 @@
 ---
 name: dashboard
-description: Refresh and open the Agent OS dashboard — a static HTML mission-control page covering today's attention view and activity, work across projects, sessions, the agent's brain, reports, capabilities, and system internals. A refresh snapshots the latest Claude Code sessions and regenerates both dashboard.html and projects/TASKS.md from current state, without the heavy sync work (no compile, flywheel, or briefing). Use when the user says "refresh the dashboard", "update the dashboard", "open the dashboard", or wants the big picture of what the agent is and what's going on. Also "pin this report".
+description: Refresh and open the Agent OS dashboard — a static HTML mission-control page covering today's attention view and activity, work across projects, sessions, the agent's brain, reports, capabilities, and system internals. A refresh snapshots the latest sessions and regenerates dashboard.html and projects/TASKS.md, without the heavy sync work (no compile, flywheel, or briefing). Use when the user says "refresh the dashboard", "update the dashboard", "open the dashboard", or wants the big picture of what's going on. Also "refresh my sidebar" (the cmux sidebar) and "pin this report".
 allowed-tools: mcp__plugin_agentlayer_agent__dashboard, Skill(agentlayer:attention), Bash, Read, Edit, Write
 ---
 
@@ -19,6 +19,24 @@ radar (the latest Claude Code sessions), so a refresh runs the attention skill's
 freshen that, then regenerates. It deliberately skips the heavy `sync` work
 (compile, flywheel, briefing, prune, lint-fix) — `sync` owns those and finishes
 with these same two steps.
+
+## Refresh the sidebar only
+
+"Refresh my sidebar" or "update the sidebar" means the cmux sidebar alone. Skip the steps below and make one call:
+
+```
+mcp__plugin_agentlayer_agent__dashboard
+```
+
+The tool runs outside the shell's sandbox, so it can write the sidebar where the CLI run from Bash can't. The sidebar shows no session radar, so no `checkpoint all` first. Reply with one line from the result's `sidebar`:
+
+| `sidebar` | Reply |
+|---|---|
+| `written` | The sidebar now shows this home's latest projects, tasks, reports and goals. |
+| `unchanged` | The sidebar was already up to date. |
+| `not-installed` | The AgentLayer sidebar isn't installed; the cmux pack in configure-skills sets it up. |
+| `not-joined` | This home isn't in the sidebar yet; add it from a terminal inside cmux with `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar install`. |
+| `failed` | The refresh failed; the reason is in the plugin log. |
 
 ## Run
 
@@ -39,7 +57,7 @@ with these same two steps.
 mcp__plugin_agentlayer_agent__dashboard
 ```
 
-Returns `{ path, bytes, tasks }`.
+Returns `{ path, bytes, sidebar, tasks }`; a full refresh mentions `sidebar` only when it isn't `written` or `unchanged`.
 
 3. Open it for the user (macOS) — ONLY if this session's Bash tool runs
    commands unsandboxed. If the Bash tool description mentions a command

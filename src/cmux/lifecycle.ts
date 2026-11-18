@@ -82,7 +82,7 @@ const writeIfChanged = (path: string, text: string, next: string): 'unchanged' |
   return 'written';
 };
 
-type RefreshResult = Absent | 'unchanged' | 'written';
+export type RefreshResult = Absent | 'unchanged' | 'written';
 
 /**
  * Puts this home's latest entry into the installed sidebar, but only when the file exists and the home joined it.
@@ -98,11 +98,16 @@ export const refreshSidebar = (home: string, entry: HomeEntry, target: SidebarTa
 /**
  * The dashboard's hook: refreshes this home's entry, and never fails the dashboard over it.
  */
-export const refreshSidebarQuietly = (home: string, work: Work, target: SidebarTarget = defaultTarget()): void => {
+export const refreshSidebarQuietly = (
+  home: string,
+  work: Work,
+  target: SidebarTarget = defaultTarget()
+): RefreshResult | 'failed' => {
   try {
-    refreshSidebar(home, homeEntry(home, work), target);
+    return refreshSidebar(home, homeEntry(home, work), target);
   } catch (error) {
     log.with('cmux').warn(`sidebar refresh skipped: ${error instanceof Error ? error.message : String(error)}`);
+    return 'failed';
   }
 };
 

@@ -176,7 +176,7 @@ test('the dashboard’s refresh never throws, even when the write fails', () => 
       throw new Error('dist missing');
     }
   };
-  expect(() =>
-    refreshSidebarQuietly(NOVA_HOME, { ...NOVA, agent: { ...NOVA.agent, name: 'Changed' } }, broken)
-  ).not.toThrow();
+  expect(refreshSidebarQuietly(NOVA_HOME, { ...NOVA, agent: { ...NOVA.agent, name: 'Changed' } }, broken)).toBe(
+    'failed'
+  );
 });
