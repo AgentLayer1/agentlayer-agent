@@ -21,7 +21,7 @@ Support queues through the Helpdesk pack's tools, whichever helpdesk serves them
 Three layers decide how a queue is worked, each read in full before acting:
 
 1. **The playbooks below are the default workflow**, and [lifecycle](references/lifecycle.md) is the default bug lifecycle.
-2. **Org rules.** If `references/org.md` exists beside this file, read it next. It ships with an organisation's own plugin: org defaults, and boundaries that nothing below can loosen.
+2. **Org rules.** The home's helpdesk extension (`extensions/skills/helpdesk.md`, listed in the session context when the home has one), read next: org defaults, and boundaries that nothing below can loosen.
 3. **The queue profile** at `projects/<slug>/helpdesk.md`, the operator's own (the [setup](references/playbooks/setup.md) interview writes one). A slug in the ask (`/helpdesk pulse acme`) picks it; with exactly one profile in the home, use it; with several, ask which. Its frontmatter sets the call: `helpdesk` and `connection` pass straight to every tool, `statuses` filters the pulse, `appstore` (and `storefronts`, when pinned) adds the app's reviews to it and to the reviews playbook, and `schedule` is what sync nudges. Its body changes the workflow:
    - `## Pulse` extends the default pulse, or replaces it when its first line is `Replaces the default.`
    - `## Bug lifecycle` replaces the default lifecycle table.

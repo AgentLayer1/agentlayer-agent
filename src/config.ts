@@ -171,6 +171,9 @@ export const FOLDERS = {
   },
   get HOME_FLOWS() {
     return resolve(homeRoot(), 'scripts', 'browser');
+  },
+  get SKILL_EXTENSIONS() {
+    return resolve(homeRoot(), 'extensions', 'skills');
   }
 } as const;
 

@@ -66,6 +66,8 @@ The agent home directory is the single source of truth for memory.
 ├── assets/                          # {{AGENT_NAME}}'s avatar and other home-wide media (your picture lives in {{KNOWLEDGE_REL}}/user/assets/)
 ├── scripts/                         # your permanent scripts for ongoing tasks
 │   └── browser/<flow>/              # your browser flows, run by the `browser_flows` tool outside the sandbox (a flow's `.env` is gitignored)
+├── extensions/
+│   └── skills/<skill>.md            # how this home changes a plugin skill; listed every session, read before that skill runs, and wins where they disagree
 ├── {{KNOWLEDGE_REL}}/
 │   ├── index.md                     # master catalog
 │   ├── user/                        # evolving long-form knowledge about you

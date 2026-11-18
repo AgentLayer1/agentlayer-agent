@@ -148,6 +148,8 @@ describe('validateSeedPath', () => {
     expect(validateSeedPath('projects/acme/helpdesk.md')).toBeNull();
     expect(validateSeedPath('.claude/skills/acme-logs/SKILL.md')).toBeNull();
     expect(validateSeedPath('scripts/browser/acme-login/index.ts')).toBeNull();
+    expect(validateSeedPath('extensions/skills/briefing.md')).toBeNull();
+    expect(validateSeedPath('extensions/other.md')).toMatch(/outside allowed seed roots/);
   });
 
   test('refuses a credential file under any root', () => {

@@ -34,7 +34,7 @@ import { readCadence } from '@/shared/cadence';
 import { log as baseLog } from '@/shared/log';
 import { CLI_PATH } from '@/shared/naming';
 import { isInside } from '@/shared/paths';
-import { readText, readTextAsync } from '@/shared/text';
+import { listMarkdown, MARKDOWN_RE, readText, readTextAsync } from '@/shared/text';
 import { countOf } from '@/shared/utils';
 import { livePins } from '@/status/surfaces';
 import { statusLineDrift } from '@/statusline/setting';
@@ -250,6 +250,25 @@ export function pinnedReports(maxPins: number): ReportsResult {
   return { content: body, entry: { label: 'pinned reports', status: 'loaded', bytes: body.length, note: countOf(pins.length, 'pin') } };
 }
 
+/** The home's extensions to skills (`extensions/skills/<skill>.md`), one line each. Listed by name only, so a
+ *  skill reads its extension when it runs and the context stays small. */
+export function skillExtensions(): { content: string; entry: ManifestEntry } | null {
+  const names = listMarkdown(FOLDERS.SKILL_EXTENSIONS).map((file) => file.replace(MARKDOWN_RE, ''));
+  if (names.length === 0) {
+    return null;
+  }
+  const body = [
+    '## Skill Extensions',
+    '',
+    'This home extends these skills. Before running one, read its extension; where the two disagree, the extension wins.',
+    ...names.map((name) => `- ${name} — extensions/skills/${name}.md`)
+  ].join('\n');
+  return {
+    content: body,
+    entry: { label: 'skill extensions', status: 'loaded', bytes: body.length, note: countOf(names.length, 'skill') }
+  };
+}
+
 const formatKB = (bytes: number) => `${(bytes / 1024).toFixed(1)}KB`;
 
 const STATUS_ICON: Record<ManifestEntry['status'], string> = {
@@ -407,6 +426,7 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
   const tail = await lastSessionTail(CONTEXT.SESSION_TAIL_BYTES);
   const reports = await todaysReports(CONTEXT.REPORTS_BYTES);
   const pinned = pinnedReports(CONTEXT.MAX_PINS);
+  const extensions = skillExtensions();
 
   const dateStr = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -444,6 +464,7 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
     tail.entry,
     reports.entry,
     pinned.entry,
+    ...(extensions ? [extensions.entry] : []),
     ...(knowledgeGit ? [homeHistoryLane(knowledgeGit, restoredHistory)] : []),
     ...extraGit
   ];
@@ -538,7 +559,8 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
     ]);
   }
 
-  return { dateStr, entries, parts: [today, ...warnings, ...parts] };
+  // Extensions change how skills behave, so they sit ahead of the long lanes too and the size cap never cuts them.
+  return { dateStr, entries, parts: [today, ...warnings, ...(extensions ? [extensions.content] : []), ...parts] };
 }
 
 /** Join the parts under the hook's size cap; a cut inside a code fence closes the fence so what follows isn't swallowed. */

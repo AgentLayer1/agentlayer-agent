@@ -18,9 +18,10 @@ Call `seed_import` with `dryRun: true` and present the plan grouped:
   personal rules in IDENTITY.md and SOUL.md (an address rule, faith, family) are theirs and
   expected, never a leak. `teammate`, an unconfirmed `self`, or a bundle without the field means
   another person's persona: point out anything personal to its sender.
-- **Files to write** — by category (identity / knowledge / projects / skills / rules / browser
-  flows / scripts / surfaces). Show each browser flow's `index.ts` in full: the `browser_flows` tool runs it
-  outside the sandbox. Show each other script under `scripts/` in full too: it is code the operator will run.
+- **Files to write** — by category (identity / knowledge / projects / skills / skill extensions /
+  rules / browser flows / scripts / surfaces). Show each skill extension, each browser flow's `index.ts`
+  and each other script under `scripts/` in full: an extension changes how a plugin skill behaves here,
+  and the rest is code the operator will run (`browser_flows` runs a flow outside the sandbox).
 - **AGENTS.md overlay section** — appended to this home's scaffolded manual (never a
   replacement); re-importing the same bundle is skipped when the section is already there
 - **Conflicts** — existing files that differ from the bundle. For a fresh-after-init home

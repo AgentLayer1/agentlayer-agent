@@ -1,5 +1,5 @@
 import { FILES, FOLDERS, TIMEZONE } from '@/config';
-import { fitContext, pinnedReports, subscriptionIssue, tailOf, todaysReports } from '@/hooks/context';
+import { fitContext, pinnedReports, skillExtensions, subscriptionIssue, tailOf, todaysReports } from '@/hooks/context';
 import { describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -46,6 +46,23 @@ describe('pinned reports in the session context', () => {
     expect(entry).toMatchObject({ status: 'loaded', note: '1 pin' });
     expect(pinnedReports(0).content).toEndWith('\n…1 more in reports/pinned.md');
     [plan, pins].forEach((path) => rmSync(path, { force: true }));
+  });
+});
+
+describe('skill extensions in the session context', () => {
+  test('lists each extension by skill name and home-relative path, and adds nothing with none', () => {
+    expect(skillExtensions()).toBeNull();
+
+    mkdirSync(FOLDERS.SKILL_EXTENSIONS, { recursive: true });
+    const files = ['briefing.md', 'helpdesk.md', 'notes.txt'].map((name) => join(FOLDERS.SKILL_EXTENSIONS, name));
+    files.forEach((path) => writeFileSync(path, 'x'));
+
+    const extensions = skillExtensions();
+    expect(extensions?.content).toContain('- briefing — extensions/skills/briefing.md');
+    expect(extensions?.content).toContain('- helpdesk — extensions/skills/helpdesk.md');
+    expect(extensions?.content).not.toContain('notes');
+    expect(extensions?.entry).toMatchObject({ status: 'loaded', note: '2 skills' });
+    files.forEach((path) => rmSync(path, { force: true }));
   });
 });
 

@@ -18,7 +18,7 @@ Call `seed_scan`. It returns everything the interview needs: agent name (vs temp
 identity divergence, concepts (template-identical ones flagged — the recipient's own init
 seeds those), projects with README/roadmap/helpdesk queue profile, custom skills (symlinked skills.sh installs
 listed separately — they are NOT exportable; the recipient reinstalls from the registry),
-custom browser flows, custom scripts, rules, HOME `.mcp.json` servers with the env key names they
+custom browser flows, custom scripts, skill extensions, rules, HOME `.mcp.json` servers with the env key names they
 reference, active packs, classified permission entries, and settings.local.json env key
 names.
 
@@ -84,6 +84,8 @@ Present each detected item by name, per-item tick:
 - **Custom browser flows** (`scripts/browser/<name>`) — whole directories; a flow's
   `.env` is left out automatically and reported under `skippedEnvFiles`
 - **Custom scripts** (`scripts/<name>`, a file or a folder) — same `.env` rule as flows
+- **Skill extensions** (`extensions/skills/<skill>.md`) — how this home changes a plugin skill;
+  for a teammate, read each one for anything personal before it goes
 - **MCP servers** from `.mcp.json` — show each server's referenced env key names and say
   the recipient gets the entry + empty key placeholders, never values. Pass entries as they
   are: export replaces this home's path inside them with a placeholder the recipient's

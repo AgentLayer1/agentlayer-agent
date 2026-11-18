@@ -89,7 +89,8 @@ export const ALLOWED_ROOTS = [
   '.claude/skills/',
   '.claude/rules/',
   'assets/',
-  'scripts/'
+  'scripts/',
+  'extensions/skills/'
 ] as const;
 
 /** Within `projects/`, only READMEs, roadmaps and queue profiles travel — never tasks (clean slate). */

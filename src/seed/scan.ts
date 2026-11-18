@@ -63,6 +63,8 @@ export interface SeedScanResult {
   customFlows: string[];
   /** The home's other scripts (`scripts/<name>`, files or folders); a `.env` never travels. */
   customScripts: string[];
+  /** The home's skill extensions (`extensions/skills/<skill>.md`), by path. */
+  skillExtensions: string[];
   rules: FileCandidate[];
   mcpServers: McpServerCandidate[];
   /** Packs whose full grant set is present in permissions.allow, with the key names they carry. */
@@ -159,6 +161,8 @@ export const scanSeed = (): SeedScanResult => {
         .sort()
     : [];
 
+  const skillExtensions = listMarkdown(FOLDERS.SKILL_EXTENSIONS).map((name) => `extensions/skills/${name}`);
+
   const rulesDir = resolve(home, '.claude', 'rules');
   const rules: FileCandidate[] = listMarkdown(rulesDir).map((name) => ({
     path: `.claude/rules/${name}`,
@@ -202,6 +206,7 @@ export const scanSeed = (): SeedScanResult => {
     thirdPartySkills,
     customFlows,
     customScripts,
+    skillExtensions,
     rules,
     mcpServers,
     activePacks,
