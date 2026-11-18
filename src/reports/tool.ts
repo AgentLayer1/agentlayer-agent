@@ -1,4 +1,4 @@
-import { REPORT_CATEGORIES } from '@/reports/kinds';
+import { isReportCategory, REPORT_CATEGORIES } from '@/reports/kinds';
 import { writeReport, type ReportStatus } from '@/reports/reports';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { writeDashboardSafe } from '@/tasks/dashboard';
@@ -14,7 +14,12 @@ export const tools: ToolDef[] = [
     description:
       "Write a report file to reports/<category>/ AND insert a one-line entry into reports/index.md under today's date heading. Atomic — file and index are updated in the same call. Use this from every reporting skill (briefings, goals, plan-spec, self-review, flywheel, engineer's PR playbooks, adversarial-review, helpdesk pulses, slack pulses) so today's outputs surface in SessionStart context for the next session.",
     inputSchema: {
-      category: z.enum(REPORT_CATEGORIES).describe('Report category — maps to reports/<category>/ subdirectory.'),
+      category: z
+        .string()
+        .refine(isReportCategory, 'lowercase kebab-case, and not captures (that folder holds screenshots)')
+        .describe(
+          `Report category — maps to reports/<category>/ subdirectory. The plugin's: ${REPORT_CATEGORIES.join(', ')}. A skill of this home's own may use a folder of its own (e.g. "investigations").`
+        ),
       slug: z
         .string()
         .min(1)
@@ -40,9 +45,11 @@ export const tools: ToolDef[] = [
           'Skill-specific frontmatter keys appended after the standard ones. Values are flat: a string, number, boolean, null, or a list of those. Structured data goes in the body.'
         ),
       ext: z
-        .enum(['.md', '.plan-spec.md'])
+        .enum(['.md', '.plan-spec.md', '.html'])
         .optional()
-        .describe('File extension. Default .md; use .plan-spec.md for spec-shaped outputs.')
+        .describe(
+          'File extension. Default .md; .plan-spec.md for spec-shaped outputs; .html writes the body as it is, with no frontmatter (a self-contained HTML report).'
+        )
     },
     handler: async (args) => {
       const result = await writeReport(args);

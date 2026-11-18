@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FOLDERS } from '@/config';
+import { readReports } from '@/reports/read';
 import { writeReport } from '@/reports/reports';
 import { z } from 'zod';
 import { tools } from './tool';
@@ -69,5 +70,45 @@ describe('report_write', () => {
       .find((tool) => tool.name === 'report_write')
       ?.handler({ category: 'radar', slug: 'checkpoints', title: 'Checkpoints', skill: 'attention', body: 'Two sessions.' });
     expect(existsSync(tasksMd)).toBe(true);
+  });
+});
+
+describe("a home's own report categories", () => {
+  const category = tools.find((tool) => tool.name === 'report_write')?.inputSchema.category;
+  const acceptsCategory = (value: string): boolean => category !== undefined && z.safeParse(category, value).success;
+
+  test('a kebab-case folder of its own is accepted, while captures and paths are refused', () => {
+    expect(acceptsCategory('investigations')).toBe(true);
+    expect(acceptsCategory('briefings')).toBe(true);
+    expect(acceptsCategory('captures')).toBe(false);
+    expect(acceptsCategory('../secrets')).toBe(false);
+    expect(acceptsCategory('Health')).toBe(false);
+  });
+
+  test('a report written there, and one dropped there by hand, both reach the report list', async () => {
+    const { path } = await writeReport({ category: 'investigations', slug: 'acme-payout', title: 'Acme payout', skill: 'investigate', body: 'Body.' });
+    expect(path).toContain(join('reports', 'investigations'));
+    const orphan = join(FOLDERS.REPORTS, 'audits', '2026-01-02-0304-grants.md');
+    mkdirSync(join(FOLDERS.REPORTS, 'audits'), { recursive: true });
+    writeFileSync(orphan, '# Grants audit\n');
+    const shot = join(FOLDERS.REPORTS, 'captures', 'page.md');
+    mkdirSync(join(FOLDERS.REPORTS, 'captures'), { recursive: true });
+    writeFileSync(shot, '# Not a report\n');
+
+    const titles = readReports().map((report) => report.title);
+    expect(titles).toContain('Acme payout');
+    expect(titles).toContain('Grants audit');
+    expect(titles).not.toContain('Not a report');
+    [path, orphan, shot].forEach((file) => rmSync(file, { force: true }));
+  });
+});
+
+describe('an .html report', () => {
+  test('is written as it is, with no frontmatter', async () => {
+    const html = '<!doctype html><title>Health</title><p>ok</p>';
+    const { path } = await writeReport({ category: 'reviews', slug: 'health', title: 'Health', skill: 'acme', body: html, ext: '.html' });
+    expect(path.endsWith('.html')).toBe(true);
+    expect(readFileSync(path, 'utf-8')).toBe(`${html}\n`);
+    rmSync(path, { force: true });
   });
 });

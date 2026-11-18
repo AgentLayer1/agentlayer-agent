@@ -43,7 +43,7 @@ import {
   type RadarTaskRef
 } from './radar-refs';
 import { sanitizeHtml } from '@/status/sanitize-html';
-import { firstParagraph, listMarkdown, MARKDOWN_RE, readText, stripMarkdown } from '@/shared/text';
+import { firstParagraph, listDirs, listMarkdown, MARKDOWN_RE, readText, stripMarkdown } from '@/shared/text';
 import { buildWork } from '@/work/build';
 import type { Work, WorkReport, WorkTask } from '@/work/model';
 import { taskOrder } from '@/work/order';
@@ -503,16 +503,6 @@ const countDir = (dir: string, predicate: (name: string) => boolean): number => 
     return readdirSync(dir).filter(predicate).length;
   } catch {
     return 0;
-  }
-};
-
-const listDirs = (dir: string): string[] => {
-  try {
-    return readdirSync(dir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name);
-  } catch {
-    return [];
   }
 };
 

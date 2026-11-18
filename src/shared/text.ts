@@ -37,6 +37,19 @@ export const firstParagraph = (file: string): string => {
 export const MARKDOWN_RE = /\.md$/;
 
 /**
+ * The folders directly in `dir`; none when it can't be read.
+ */
+export const listDirs = (dir: string): string[] => {
+  try {
+    return readdirSync(dir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+  } catch {
+    return [];
+  }
+};
+
+/**
  * The markdown files directly in `dir`, sorted by name; none when it can't be read.
  */
 export const listMarkdown = (dir: string, exclude: (name: string) => boolean = () => false): string[] => {

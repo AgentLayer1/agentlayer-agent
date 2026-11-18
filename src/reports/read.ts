@@ -3,9 +3,9 @@ import { resolve } from 'node:path';
 import { FILES, FOLDERS } from '@/config';
 import { splitFrontmatter } from '@/knowledge/utils';
 import { nowTime, todayDate } from '@/shared/date';
-import { listMarkdown, MARKDOWN_RE, readText } from '@/shared/text';
+import { listDirs, listMarkdown, MARKDOWN_RE, readText } from '@/shared/text';
 import type { WorkReport } from '@/work/model';
-import { REPORT_CATEGORIES } from './kinds';
+import { isReportCategory } from './kinds';
 
 // A title's own brackets are written escaped (`\[draft\]`), so the link text runs to the first bare `]`. The status
 // is written as an emoji and its word (`· 🟠 findings`); the word is kept.
@@ -72,7 +72,7 @@ export const readReports = (): WorkReport[] => {
     // No index yet — the disk sweep below still surfaces any orphan files.
   }
 
-  for (const category of REPORT_CATEGORIES) {
+  for (const category of listDirs(FOLDERS.REPORTS).filter(isReportCategory)) {
     const dir = resolve(FOLDERS.REPORTS, category);
     for (const fileName of listMarkdown(dir)) {
       const path = `reports/${category}/${fileName}`;

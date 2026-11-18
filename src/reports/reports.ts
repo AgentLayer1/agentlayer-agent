@@ -22,7 +22,6 @@ import { writeFileAtomic } from '@/shared/utils';
 import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
-import type { ReportCategory } from './kinds';
 
 export type ReportStatus = 'clean' | 'findings' | 'critical' | 'draft';
 
@@ -34,7 +33,8 @@ export type FrontmatterScalar = string | number | boolean | null;
 export type FrontmatterValue = FrontmatterScalar | Array<Exclude<FrontmatterScalar, null>>;
 
 export interface WriteReportInput {
-  category: ReportCategory;
+  /** A folder under `reports/`, already checked by `report_write`. */
+  category: string;
   slug: string;
   title: string;
   skill: string;
@@ -44,8 +44,8 @@ export interface WriteReportInput {
   tags?: string[];
   /** Skill-specific frontmatter keys appended after the standard ones. */
   extra?: Record<string, FrontmatterValue>;
-  /** Defaults to `.md`. Use `.plan-spec.md` for spec-shaped outputs. */
-  ext?: '.md' | '.plan-spec.md';
+  /** Defaults to `.md`. Use `.plan-spec.md` for spec-shaped outputs. `.html` writes the body as it is, with no frontmatter. */
+  ext?: '.md' | '.plan-spec.md' | '.html';
 }
 
 export interface WriteReportResult {
@@ -129,6 +129,9 @@ async function resolveAvailablePath(
 }
 
 function renderReport(input: WriteReportInput, created: string): string {
+  if (input.ext === '.html') {
+    return input.body.endsWith('\n') ? input.body : `${input.body}\n`;
+  }
   const fmLines: string[] = ['---'];
   fmLines.push(`title: ${yamlScalar(input.title)}`);
   fmLines.push(`skill: ${yamlScalar(input.skill)}`);

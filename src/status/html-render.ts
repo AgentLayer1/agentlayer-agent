@@ -37,7 +37,7 @@ import { DEFAULT_AGENT_EMOJI } from '@/shared/persona';
 import { THEME_BLOCK } from '@/shared/theme';
 import { issueLabel } from '@/tasks/issue';
 import { daysUntil, dueBucket, goalShelf, toneOf, type DueBucket, type DueTone } from '@/work/due';
-import { REPORT_CATEGORIES, reportKind } from '@/reports/kinds';
+import { orderCategories, reportKind } from '@/reports/kinds';
 import type { GoalsView, GoalView, ProjectLoad } from '@/work/views';
 import type {
   ContextGroup,
@@ -356,7 +356,7 @@ const reportChips = (reports: ReportRef[], pinned: number): string => {
     if (report.category) acc[report.category] = (acc[report.category] ?? 0) + 1;
     return acc;
   }, {});
-  const present = REPORT_CATEGORIES.filter((category) => counts[category]);
+  const present = orderCategories(Object.keys(counts));
   if (present.length < 2 && pinned === 0) return ''; // nothing to filter between
   const chip = (filter: string, label: string, count: number, dotKey: string, active: boolean): string => {
     const dot = dotKey ? `<i style="background:${projectColor(dotKey)}"></i>` : '';
@@ -370,7 +370,7 @@ const reportChips = (reports: ReportRef[], pinned: number): string => {
         category,
         `${category[0].toUpperCase()}${category.slice(1)}`,
         counts[category],
-        CATEGORY_DOT[category],
+        CATEGORY_DOT[category] ?? '',
         false
       )
     )
