@@ -115,4 +115,18 @@ describe('move-check', () => {
   test('a home moved without a change list has nothing to check', () => {
     expect(run(movedHome(null)).log).toBeNull();
   });
+
+  test('a home moved in place keeps its own path, so no settings file is stale', () => {
+    const home = mkdtempSync(join(tmpdir(), 'move-check-'));
+    dirs.push(home);
+    mkdirSync(join(home, '.state', 'logs'), { recursive: true });
+    mkdirSync(join(home, '.claude'), { recursive: true });
+    writeFileSync(
+      join(home, '.state', 'version.json'),
+      JSON.stringify({ plugin: 'agentlayer', migratedFrom: { home, plugin: 'agent-scout', log: '.state/logs/move.json' } })
+    );
+    writeFileSync(join(home, '.state', 'logs', 'move.json'), JSON.stringify({ product: [] }));
+    writeFileSync(join(home, '.claude', 'settings.local.json'), JSON.stringify({ env: { AGENT_HOME: home } }));
+    expect(run(home).stale).toEqual([]);
+  });
 });

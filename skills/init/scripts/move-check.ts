@@ -127,7 +127,9 @@ const MACHINE_FILES = [
   join('.codex', 'config.toml'),
   join('.codex', 'hooks.json')
 ];
-const stale = MACHINE_FILES.flatMap((rel) => {
+// A move in place leaves the home where it was, so its own path in a settings file is current, not stale.
+const inPlace = oldHome !== '' && resolve(oldHome) === homeDir;
+const stale = (inPlace ? [] : MACHINE_FILES).flatMap((rel) => {
   const text = existsSync(join(homeDir, rel)) ? readFileSync(join(homeDir, rel), 'utf-8') : '';
   const named = spellings.filter((spelling) => text.includes(spelling));
   return named.length > 0 ? [{ file: rel, names: named }] : [];

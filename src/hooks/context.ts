@@ -303,7 +303,7 @@ const welcomePart = (): string => {
     ? [
         '## First Session Since the Move',
         '',
-        `This home was copied here from \`${moved.home}\`${moved.at ? ` on ${moved.at}` : ''}${moved.name ? `, where the agent was ${moved.name}` : ''}. On the operator's first message, read \`${guide}\` and follow its section for a moved home: it finishes the move, then offers the sessions to continue${moved.note ? ` from \`${moved.note}\`` : ''}.`
+        `${moved.inPlace ? `This home moved in place from the ${moved.plugin ?? 'previous'} plugin` : `This home was copied here from \`${moved.home}\``}${moved.at ? ` on ${moved.at}` : ''}${moved.name ? `, where the agent was ${moved.name}` : ''}. On the operator's first message, read \`${guide}\` and follow its section for a moved home: it finishes the move, then offers the sessions to continue${moved.note ? ` from \`${moved.note}\`` : ''}.`
       ]
     : [
         '## First Session Since Init',

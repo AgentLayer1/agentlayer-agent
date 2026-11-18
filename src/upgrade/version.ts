@@ -71,9 +71,13 @@ interface VersionFile {
   migratedFrom?: unknown;
 }
 
-/** Where a move copied this home from, as the move recorded it in `version.json`. */
+/** Where a move brought this home from, as the move recorded it in `version.json`. */
 export interface MigratedFrom {
   home: string;
+  /** The plugin the home ran before the move. */
+  plugin: string | null;
+  /** The move kept the home in its folder and changed only its plugin. */
+  inPlace: boolean;
   /** The agent's name there. */
   name: string | null;
   /** The day of the move, YYYY-MM-DD. */
@@ -94,7 +98,16 @@ export const readMigratedFrom = (): MigratedFrom | null => {
       return typeof value === 'string' && value ? value : null;
     };
     const home = field('home');
-    return home ? { home, name: field('name'), at: field('at'), note: field('note') } : null;
+    return home
+      ? {
+          home,
+          plugin: field('plugin'),
+          inPlace: resolve(home) === resolve(FOLDERS.HOME),
+          name: field('name'),
+          at: field('at'),
+          note: field('note')
+        }
+      : null;
   } catch {
     return null;
   }

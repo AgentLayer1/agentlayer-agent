@@ -6,11 +6,12 @@ Init can't ask what to do first: the operator has to exit and relaunch before th
 
 ## A moved home
 
-When `<HOME>/.state/version.json` has `migratedFrom`, this home was copied here from another folder by the previous plugin's move, and the session context says so. Follow this section instead of sections 2 and 4 (step 5 can fall back to section 2's options, which need section 1's reads); section 3 still clears the flag. A session that comes back after a restart (the `Moved` line from step 2 is already in `knowledge/memory/index.md`) goes straight to step 4.
+When `<HOME>/.state/version.json` has `migratedFrom`, this home came from the previous plugin's move, and the session context says so. Usually the move copied it here from another folder; when `migratedFrom.home` is this folder, it moved in place: same folder, a new plugin. Follow this section instead of sections 2 and 4 (step 5 can fall back to section 2's options, which need section 1's reads); section 3 still clears the flag. A session that comes back after a restart (the `Moved` line from step 2 is already in `knowledge/memory/index.md`) goes straight to step 4.
 
-1. **Greet as the agent.** One or two lines in IDENTITY's voice: the name, `Formerly:` when IDENTITY has it, that the home moved here from `migratedFrom.home` on `migratedFrom.at`, and that you'll finish the move first.
+1. **Greet as the agent.** One or two lines in IDENTITY's voice: the name, `Formerly:` when IDENTITY has it, that the home moved here from `migratedFrom.home` on `migratedFrom.at` (in place: that it moved from the `migratedFrom.plugin` plugin), and that you'll finish the move first.
 2. **Remember where it came from.** Add one line under `## Key Context` in `knowledge/memory/index.md`, unless one is already there:
    `- **Moved** — this home was copied from \`<migratedFrom.home>\` on <migratedFrom.at>, where the agent was <migratedFrom.name> on the <migratedFrom.plugin> plugin; session logs, reports and archives from before then use those names.`
+   In place, the line reads: `- **Moved** — this home moved in place from the <migratedFrom.plugin> plugin on <migratedFrom.at>, where the agent was <migratedFrom.name>; session logs, reports and archives from before then use that plugin's names.`
    The dated records keep the old names for good, so this line stays as long as they do.
 3. **Check the move, before the upgrade and the sync rewrite its lines.** The move saved its full change list in the copy, and `--restore` only puts back a line that still reads as the move left it, so read the list first, with the operator:
    ```bash
