@@ -111,7 +111,7 @@ runFlow(TARGETS, async ({ params, target, session }) => {
 });
 ```
 
-Add `auth: { loginPath, homePath }` to a target when the flow logs in (then `runFlow` pauses for a manual login). Put reusable units in sibling modules; `index.md` is the guidance. See `flows/hacker-news/` as the reference.
+Add `auth: { loginPath, homePath }` to a target when the flow logs in (then `runFlow` pauses for a manual login), and `args` for Chromium flags that target alone needs (a fake camera for a document-capture screen: `['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream']`). Put reusable units in sibling modules; `index.md` is the guidance. See `flows/hacker-news/` as the reference.
 
 ## Selector tuning
 

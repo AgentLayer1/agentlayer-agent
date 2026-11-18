@@ -19,6 +19,8 @@ export interface Target {
   /** When set, `ensureLoggedIn` blocks for a manual login; omit for flows that don't need auth.
    *  `homePath` is an authed route; `loginPath` is where an unauthenticated session is redirected. */
   auth?: { loginPath: string; homePath: string };
+  /** Extra Chromium flags for this target, after the shared ones (e.g. a fake camera for a KYC capture screen). */
+  args?: readonly string[];
 }
 
 export interface Session {
@@ -62,7 +64,7 @@ export const launch = async (target: Target, flowName: string, options: { headle
       timeout,
       viewport: headless ? { width: 1280, height: 900 } : null,
       permissions: ['clipboard-read', 'clipboard-write'],
-      args: [...BROWSER.INTERACTIVE_ARGS]
+      args: [...BROWSER.INTERACTIVE_ARGS, ...(target.args ?? [])]
     })
   );
 
