@@ -14,9 +14,10 @@ import {
 
 const USAGE = `Usage: ${CLI_COMMAND} cmux sidebar <install|refresh|remove|order <agent>…>`;
 const INSTALL = `${CLI_COMMAND} cmux sidebar install`;
+const NOT_INSTALLED = `The AgentLayer sidebar isn’t installed. Add this home from a terminal inside cmux with: ${INSTALL}`;
 
 const REFRESHED = {
-  'not-installed': `The AgentLayer sidebar isn’t installed. Add this home from a terminal inside cmux with: ${INSTALL}`,
+  'not-installed': NOT_INSTALLED,
   'not-joined': `This home isn’t in the AgentLayer sidebar. Add it from a terminal inside cmux with: ${INSTALL}`,
   unchanged: 'The sidebar is up to date.',
   written: 'The sidebar now shows this home’s latest projects and tasks.'
@@ -32,7 +33,7 @@ const REMOVED = {
 const ORDERED = (result: SidebarOrder): string => {
   switch (result.kind) {
     case 'not-installed':
-      return `The AgentLayer sidebar isn’t installed. Add a home from a terminal inside cmux with: ${INSTALL}`;
+      return NOT_INSTALLED;
     case 'unmatched':
       return `No single agent on the sidebar matches ${result.unmatched.join(', ')}. It shows ${result.names.join(', ')}; name an agent, or its home folder when two share a name.`;
     case 'unchanged':
@@ -64,9 +65,9 @@ export const runCmuxCommand = async (command: string | undefined, args: string[]
   }
   if (verb === 'order' && picks.length) {
     const result = orderSidebar(picks, target);
-    const failed = result.kind === 'unmatched' || result.kind === 'not-installed';
-    (failed ? console.error : console.log)(ORDERED(result));
-    return failed ? 1 : 0;
+    const ok = result.kind === 'written' || result.kind === 'unchanged';
+    (ok ? console.log : console.error)(ORDERED(result));
+    return ok ? 0 : 1;
   }
   if (verb === 'remove') {
     console.log(REMOVED[removeSidebar(FOLDERS.HOME, target)]);

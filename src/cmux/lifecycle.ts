@@ -44,21 +44,42 @@ const nextText = (current: SidebarParts | null, home: string, entry: HomeEntry, 
 
 type Absent = 'not-installed' | 'not-joined';
 
-interface Joined {
+interface Installed {
   path: string;
   text: string;
+  current: SidebarParts | null;
+}
+
+interface Joined extends Installed {
   current: SidebarParts;
 }
 
-// The installed sidebar when this home has joined it; why not, otherwise.
-const readJoined = (home: string, target: SidebarTarget): Joined | Absent => {
+// The sidebar file and what it parses to; `null` when there's no file.
+const readInstalled = (target: SidebarTarget): Installed | null => {
   const path = sidebarFile(target.dir);
   if (!existsSync(path)) {
-    return 'not-installed';
+    return null;
   }
   const text = readFileSync(path, 'utf8');
-  const current = parseSidebar(text);
-  return current?.homes[home] ? { path, text, current } : 'not-joined';
+  return { path, text, current: parseSidebar(text) };
+};
+
+// The installed sidebar when this home has joined it; why not, otherwise.
+const readJoined = (home: string, target: SidebarTarget): Joined | Absent => {
+  const installed = readInstalled(target);
+  if (!installed) {
+    return 'not-installed';
+  }
+  const { current } = installed;
+  return current?.homes[home] ? { ...installed, current } : 'not-joined';
+};
+
+const writeIfChanged = (path: string, text: string, next: string): 'unchanged' | 'written' => {
+  if (next === text) {
+    return 'unchanged';
+  }
+  writeFileAtomic(path, next);
+  return 'written';
 };
 
 type RefreshResult = Absent | 'unchanged' | 'written';
@@ -71,13 +92,7 @@ export const refreshSidebar = (home: string, entry: HomeEntry, target: SidebarTa
   if (typeof joined === 'string') {
     return joined;
   }
-  const { path, text, current } = joined;
-  const next = nextText(current, home, entry, target);
-  if (next === text) {
-    return 'unchanged';
-  }
-  writeFileAtomic(path, next);
-  return 'written';
+  return writeIfChanged(joined.path, joined.text, nextText(joined.current, home, entry, target));
 };
 
 /**
@@ -122,7 +137,7 @@ export const installSidebar = (
   }
   const live = sidebarFile(target.dir);
   const staged = sidebarFile(target.dir, STAGED);
-  const current = parseSidebar(existsSync(live) ? readFileSync(live, 'utf8') : '');
+  const current = readInstalled(target)?.current ?? null;
   try {
     writeFileAtomic(staged, nextText(current, home, entry, target));
     if (!cmux.run(['sidebar', 'validate', STAGED])) {
@@ -148,26 +163,36 @@ export type SidebarOrder =
 
 const namesOf = (homes: Record<string, HomeEntry>): string[] => Object.values(homes).map((item) => item.name);
 
+// The home each pick names, by its folder or its agent's name in any case; a pick naming none, or two, is unmatched.
+const matchHomes = (homes: Record<string, HomeEntry>, picks: readonly string[]) => {
+  const found = picks.map((pick) => ({
+    pick,
+    paths: Object.entries(homes)
+      .filter(([path, item]) => path === pick || item.name.toLowerCase() === pick.toLowerCase())
+      .map(([path]) => path)
+  }));
+  return {
+    paths: found.flatMap(({ paths }) => (paths.length === 1 ? paths : [])),
+    unmatched: found.filter(({ paths }) => paths.length !== 1).map(({ pick }) => pick)
+  };
+};
+
 /**
  * Puts the agents `picks` name first on the sidebar, in that order; it's one list for the Mac, so any home can set it.
  */
 export const orderSidebar = (picks: readonly string[], target: SidebarTarget): SidebarOrder => {
-  const path = sidebarFile(target.dir);
-  const text = existsSync(path) ? readFileSync(path, 'utf8') : '';
-  const current = parseSidebar(text);
-  if (!current) {
+  const installed = readInstalled(target);
+  const current = installed?.current;
+  if (!installed || !current) {
     return { kind: 'not-installed' };
   }
-  const ordered = orderHomes(current.homes, picks);
-  if (!ordered.ok) {
-    return { kind: 'unmatched', unmatched: ordered.unmatched, names: namesOf(current.homes) };
+  const { paths, unmatched } = matchHomes(current.homes, picks);
+  if (unmatched.length) {
+    return { kind: 'unmatched', unmatched, names: namesOf(current.homes) };
   }
-  const next = renderSidebar({ ...current, homes: ordered.homes });
-  if (next === text) {
-    return { kind: 'unchanged', names: namesOf(ordered.homes) };
-  }
-  writeFileAtomic(path, next);
-  return { kind: 'written', names: namesOf(ordered.homes) };
+  const homes = orderHomes(current.homes, paths);
+  const next = renderSidebar({ ...current, homes });
+  return { kind: writeIfChanged(installed.path, installed.text, next), names: namesOf(homes) };
 };
 
 type RemoveResult = Absent | 'removed' | 'removed-file';

@@ -6,8 +6,9 @@ import { homeLabel } from './view';
 const FIRST_LINE = 216;
 const LINE = 276;
 
-// Sized and filled to sit level with the tab pill beside it (the padding was matched by eye on cmux 0.65.2). The
-// lit chip wears its agent's primary color, the fill at a quarter strength.
+// Filled to sit level with the tab pill beside it (the vertical padding was matched by eye on cmux 0.65.2); the side
+// padding is what lets three short names fit beside the pill. The lit chip wears its agent's primary color, the fill
+// at a quarter strength.
 const agentButton = (label: string, tint: string | undefined, active: () => boolean, onTap: () => void) => {
   const lit = tint ? `${tint}3d` : '#7f7f7f3d';
   return Text(label)

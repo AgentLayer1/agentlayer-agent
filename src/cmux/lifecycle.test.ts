@@ -152,6 +152,21 @@ test('an order holds through every home’s refresh, and an order that names no 
   expect(readFileSync(sidebarFile(where.dir), 'utf8')).toBe(before);
 });
 
+test('an order names an agent by any case or by its folder, and a name two agents share matches neither', () => {
+  const where = target();
+  installSidebar(NOVA_HOME, nova, where, fakeCmux());
+  installSidebar(SCOUT_HOME, scout, where, fakeCmux());
+  expect(orderSidebar([SCOUT_HOME, 'NOVA'], where)).toEqual({ kind: 'written', names: ['Scout', 'Nova'] });
+  const twin = '/tmp/agents/Nova2';
+  installSidebar(twin, nova, where, fakeCmux());
+  expect(orderSidebar(['Nova', 'Bea'], where)).toEqual({
+    kind: 'unmatched',
+    unmatched: ['Nova', 'Bea'],
+    names: ['Scout', 'Nova', 'Nova']
+  });
+  expect(orderSidebar([twin], where)).toEqual({ kind: 'written', names: ['Nova', 'Scout', 'Nova'] });
+});
+
 test('the dashboard’s refresh never throws, even when the write fails', () => {
   const where = target();
   installSidebar(NOVA_HOME, nova, where, fakeCmux());

@@ -33,19 +33,13 @@ test('each home puts in only its own entry, a new home joins last, and a rewrite
   ]);
 });
 
-test('an order puts the named agents first, by name in any case or by folder, and the rest keep their order', () => {
+test('an order puts the given homes first, in that order, and the rest keep theirs', () => {
   const ADA_HOME = '/tmp/agents/Ada';
   const ada = { ...NOVA_ENTRY, name: 'Ada' };
   const homes = { [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY, [ADA_HOME]: ada };
-  const order = (picks: string[]) => {
-    const result = orderHomes(homes, picks);
-    return result.ok ? Object.keys(result.homes) : result.unmatched;
-  };
-  expect(order(['ada', 'Nova', 'Scout'])).toEqual([ADA_HOME, NOVA_HOME, SCOUT_HOME]);
-  expect(order([SCOUT_HOME])).toEqual([SCOUT_HOME, NOVA_HOME, ADA_HOME]);
-  expect(order(['Scout', 'scout'])).toEqual([SCOUT_HOME, NOVA_HOME, ADA_HOME]);
-  expect(order(['Scout', 'Bea'])).toEqual(['Bea']);
-  expect(orderHomes({ ...homes, '/tmp/agents/Ada2': ada }, ['Ada'])).toEqual({ ok: false, unmatched: ['Ada'] });
+  expect(Object.keys(orderHomes(homes, [ADA_HOME, NOVA_HOME]))).toEqual([ADA_HOME, NOVA_HOME, SCOUT_HOME]);
+  expect(Object.keys(orderHomes(homes, [SCOUT_HOME, SCOUT_HOME]))).toEqual([SCOUT_HOME, NOVA_HOME, ADA_HOME]);
+  expect(orderHomes(homes, [])).toEqual(homes);
 });
 
 test('a home whose folder is gone drops out, and a null entry takes the home out', () => {

@@ -64,33 +64,20 @@ export const mergeHomes = (
   entry: HomeEntry | null,
   homeExists: (path: string) => boolean = existsSync
 ): Record<string, HomeEntry> => {
-  const kept = Object.entries(current?.homes ?? {}).filter(([path]) => path === home || homeExists(path));
-  const updated = kept.flatMap(([path, item]) =>
-    path !== home ? [[path, item] as const] : entry ? [[path, entry] as const] : []
+  // Spreading over a key already there keeps its position.
+  const merged = Object.entries({ ...current?.homes, [home]: entry });
+  return Object.fromEntries(
+    merged.filter((pair): pair is [string, HomeEntry] => pair[1] !== null && (pair[0] === home || homeExists(pair[0])))
   );
-  const isNew = entry && !kept.some(([path]) => path === home);
-  return Object.fromEntries(isNew ? [...updated, [home, entry] as const] : updated);
 };
 
-export type OrderResult = { ok: true; homes: Record<string, HomeEntry> } | { ok: false; unmatched: string[] };
-
 /**
- * The homes `picks` name, by agent name in any case or by folder, moved to the front in that order; the rest keep
- * their order after them. A pick that names no home, or more than one, comes back unmatched.
+ * The homes at `first` moved to the front in that order; the rest keep their order after them.
  */
-export const orderHomes = (homes: Record<string, HomeEntry>, picks: readonly string[]): OrderResult => {
+export const orderHomes = (homes: Record<string, HomeEntry>, first: readonly string[]): Record<string, HomeEntry> => {
   const entries = Object.entries(homes);
-  const found = picks.map((pick) => ({
-    pick,
-    matches: entries.filter(([path, item]) => path === pick || item.name.toLowerCase() === pick.toLowerCase())
-  }));
-  const unmatched = found.filter(({ matches }) => matches.length !== 1).map(({ pick }) => pick);
-  if (unmatched.length) {
-    return { ok: false, unmatched };
-  }
-  const front = found.flatMap(({ matches }) => matches);
-  const first = new Map(front);
-  return { ok: true, homes: Object.fromEntries([...first, ...entries.filter(([path]) => !first.has(path))]) };
+  const picked = first.flatMap((home) => entries.filter(([path]) => path === home));
+  return Object.fromEntries([...picked, ...entries.filter(([path]) => !first.includes(path))]);
 };
 
 /**
