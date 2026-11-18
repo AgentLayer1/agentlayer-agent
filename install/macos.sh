@@ -8,6 +8,7 @@ AL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$AL_DIR/lib.sh"
 
 AL_OS_NAME=macOS
+AL_MACHINE=Mac
 AL_MIN_MACOS=26
 # The cmux pack looks for cmux in the first of these. Overridable so tests see only their own apps.
 AL_APP_DIRS=${AL_APP_DIRS:-"/Applications:$HOME/Applications"}
@@ -213,6 +214,7 @@ main() {
   al_parse_args "$@"
   al_style_init
   al_header "Mac setup guide"
+  al_menu
 
   al_step "This Mac" required check_macos show_macos || finish
 
@@ -241,6 +243,7 @@ main() {
   al_step "Obsidian" "$obsidian_kind" check_obsidian show_obsidian
   [[ $AL_PATH_CHOICE == dev ]] && al_step "VS Code" recommended check_vscode show_vscode
 
+  [[ $AL_GOAL == prereqs ]] && al_prereqs_finish
   al_agent_steps
 }
 

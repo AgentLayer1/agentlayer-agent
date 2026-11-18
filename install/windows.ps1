@@ -7,6 +7,7 @@ param(
   [switch]$Marketplace,
   [switch]$Dev,
   [string]$Clone = '',
+  [switch]$Prereqs,
   [switch]$Check,
   [switch]$List
 )
@@ -23,6 +24,8 @@ $Script:AgentsDir = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Age
 $Script:DefaultClone = Join-Path $HOME 'Developer' 'agentlayer-agent'
 
 $Script:Mode = 'guide'
+# agent (set one up) or prereqs (only the apps and tools); empty until a parameter or the welcome menu picks.
+$Script:Goal = ''
 $Script:Pending = 0
 $Script:PathChoice = ''
 $Script:CloneFolder = ''
@@ -32,9 +35,59 @@ $Script:PathFromHome = $false
 
 # --- The look ---
 
+# Oppi's colours: orchid #B456A8 leads, mint #3BAA70 is the accent. Plain when the output isn't a console.
+$Script:Color = -not ([Console]::IsOutputRedirected -or $env:NO_COLOR)
+function Get-Rgb([int]$Red, [int]$Green, [int]$Blue) { if ($Script:Color) { "$([char]27)[38;2;$Red;$Green;$($Blue)m" } else { '' } }
+$Script:Accent = Get-Rgb 59 170 112
+$Script:Bold = if ($Script:Color) { "$([char]27)[1m" } else { '' }
+$Script:Reset = if ($Script:Color) { "$([char]27)[0m" } else { '' }
+
+function Write-Banner([string]$Title) {
+  $rows = @(
+    @('▄▀█', '█▀▀', '█▀▀', '█▄ █', '▀█▀', '█  ', '▄▀█', '█▄█', '█▀▀', '█▀█'),
+    @('█▀█', '█▄█', '██▄', '█ ▀█', ' █ ', '█▄▄', '█▀█', ' █ ', '██▄', '█▀▄')
+  )
+  Write-Host ''
+  foreach ($row in $rows) {
+    $line = '   '
+    for ($i = 0; $i -lt $row.Count; $i++) {
+      $line += "$($Script:Bold)$(Get-Rgb (180 + 52 * $i / 9) (86 + 35 * $i / 9) (168 + 30 * $i / 9))$($row[$i])$($Script:Reset) "
+    }
+    Write-Host $line
+  }
+  Write-Host ''
+  Write-Host "   $($Script:Bold)$([char]::ConvertFromUtf32(0x1F419)) $Title$($Script:Reset)  " -NoNewline
+  Write-Host '· agentlayer.one' -ForegroundColor DarkGray
+  Write-Host ''
+}
+
+# A box with a title in its top edge, for what a reader should take in before anything else.
+function Write-Panel([string]$Title, [string[]]$Paragraphs) {
+  $width = 72
+  $inner = $width - 4
+  $edge = { param($Text) Write-Host "  $($Script:Accent)$Text$($Script:Reset)" }
+  & $edge ("╭─ $($Script:Reset)$($Script:Bold)$Title$($Script:Reset)$($Script:Accent) " + ('─' * ($width - $Title.Length - 5)) + '╮')
+  $first = $true
+  foreach ($paragraph in $Paragraphs) {
+    if (-not $first) { & $edge ('│' + (' ' * ($width - 2)) + '│') }
+    $first = $false
+    $lines = @()
+    $line = ''
+    foreach ($word in ($paragraph -split ' ')) {
+      if ($line -and ($line.Length + $word.Length + 1) -gt $inner) { $lines += $line; $line = $word }
+      else { $line = if ($line) { "$line $word" } else { $word } }
+    }
+    if ($line) { $lines += $line }
+    foreach ($text in $lines) {
+      Write-Host "  $($Script:Accent)│$($Script:Reset) $($text.PadRight($inner)) $($Script:Accent)│$($Script:Reset)"
+    }
+  }
+  & $edge ('╰' + ('─' * ($width - 2)) + '╯')
+}
+
 function Write-Done([string]$Title, [string]$Detail) {
   Write-Host '  ' -NoNewline
-  Write-Host ([char]0x2713) -ForegroundColor Green -NoNewline
+  Write-Host "$($Script:Accent)$([char]0x2713)$($Script:Reset)" -NoNewline
   Write-Host " $Title" -NoNewline
   if ($Detail) { Write-Host " · $Detail" -ForegroundColor DarkGray } else { Write-Host '' }
 }
@@ -167,6 +220,30 @@ function Read-Choice([string]$Question, [string]$First, [string]$Second) {
     $key = Read-GuideKey
     if ($null -eq $key -or $key -eq '' -or $key -eq '1') { Write-Host '1'; return 1 }
     if ($key -eq '2') { Write-Host '2'; return 2 }
+  }
+}
+
+# Asked only when the parameters haven't already said what to do. Returns agent, prereqs or check.
+function Read-Menu {
+  Write-Host ''
+  Write-Host '  What would you like to do?'
+  Write-Host ''
+  foreach ($option in @(
+      @('1', 'Set up an agent', "the tools, then the agent's folder and plugin"),
+      @('2', 'Prepare this PC', 'only the apps and tools, ready for an agent later'),
+      @('3', 'Check this PC', "a list of what's done and what's left"),
+      @('q', 'Quit', ''))) {
+    Write-Host "    $($Script:Bold)$($Script:Accent)$($option[0])$($Script:Reset)  $($Script:Bold)$($option[1].PadRight(20))$($Script:Reset) " -NoNewline
+    Write-Host $option[2] -ForegroundColor DarkGray
+  }
+  Write-Host ''
+  Write-Host '    Press 1, 2, 3 or q (Enter for 1): ' -ForegroundColor DarkGray -NoNewline
+  while ($true) {
+    $key = Read-GuideKey
+    if ($null -eq $key -or $key -eq '' -or $key -eq '1') { Write-Host '1'; return 'agent' }
+    if ($key -eq '2') { Write-Host '2'; return 'prereqs' }
+    if ($key -eq '3') { Write-Host '3'; return 'check' }
+    if ($key -eq 'q') { Write-Host 'q'; Stop-Guide }
   }
 }
 
@@ -389,13 +466,23 @@ function Invoke-Guide {
   }
   if ($Dev) { $Script:PathChoice = 'dev'; $Script:CloneFolder = $Clone } elseif ($Marketplace) { $Script:PathChoice = 'marketplace' }
 
-  Write-Host ''
-  Write-Host '  AgentLayer · Windows setup guide' -ForegroundColor Magenta
-  Write-Host ''
+  if ($Prereqs) { $Script:Goal = 'prereqs' }
   if ($Script:Mode -eq 'guide') {
-    Write-Para "This guide checks each step and shows what to do. It runs nothing itself: you run every command, and it ticks the step when it's done."
+    Write-Banner 'Windows setup guide'
+    Write-Panel 'A guide, not an installer' @(
+      "Nothing here installs or changes anything by itself. It checks this PC one step at a time and shows what to do: a link to the maker's own site, or a command for you to read, copy and run yourself. Nothing needs to run as administrator.",
+      'Run it again any time. Finished steps are simply ticked.'
+    )
+    if (-not $Script:Goal -and -not $Name -and -not $HomeFolder) {
+      $Script:Goal = Read-Menu
+      if ($Script:Goal -eq 'check') { $Script:Mode = 'check'; $Script:Goal = 'agent' }
+    }
+  } else {
     Write-Host ''
+    Write-Host "  $($Script:Bold)AgentLayer · Windows setup guide$($Script:Reset)"
   }
+  if (-not $Script:Goal) { $Script:Goal = 'agent' }
+  Write-Host ''
 
   $null = Invoke-Step 'This system' 'required' { $Script:Detail = 'Windows'; Test-Windows } {
     Write-Para 'This guide is for Windows. Elsewhere, run the curl line from the docs.'
@@ -470,6 +557,7 @@ function Invoke-Guide {
 
   Write-Host ''
   Write-Para "Windows has no sandbox for the agent's shell commands, so it asks before running them. WSL2 is the alternative: in it, the curl line from the docs sets up a Linux agent."
+  if ($Script:Goal -eq 'prereqs') { Complete-Prereqs }
 
   $newHome = ''
   if ($Name -or $HomeFolder -or $homes.Count -eq 0) {
@@ -568,6 +656,19 @@ function Invoke-Guide {
     }
   }
   Complete-Guide -NewHome $newHome -Homes $targets
+}
+
+function Complete-Prereqs {
+  Write-Host ''
+  if ($Script:Pending -gt 0) {
+    Write-Para "$($Script:Pending) required step(s) left. Run the same line again when they're done; finished steps are skipped."
+    Write-Host ''
+    exit 1
+  }
+  Write-Para 'Your PC is ready for an agent.'
+  Write-Para "To set one up, run the guide again and choose Set up an agent. An agent from another plugin moves over with that plugin's own move command instead."
+  Write-Host ''
+  exit 0
 }
 
 function Complete-Guide([string]$NewHome = '', [string[]]$Homes = @()) {

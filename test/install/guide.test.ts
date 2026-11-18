@@ -113,8 +113,8 @@ describe('a bare Mac', () => {
   });
 
   test.concurrent('the guide waits on a required step and quits cleanly, having changed nothing', async () => {
-    // 1 picks "use the agent"; s skips CotEditor and Homebrew; the keys run out at the Command Line Tools.
-    const run = await guide(bareMac(), [], '1ss');
+    // 1 picks "set up an agent", then "use the agent"; s skips CotEditor and Homebrew; the keys run out at the Command Line Tools.
+    const run = await guide(bareMac(), [], '11ss');
     expect(run.code).toBe(0);
     expect(run.out).toContain('Command Line Tools');
     expect(run.out).toContain('xcode-select --install');
@@ -123,7 +123,7 @@ describe('a bare Mac', () => {
   });
 
   test.concurrent('a required step can’t be skipped', async () => {
-    const run = await guide(bareMac(), [], '1sss');
+    const run = await guide(bareMac(), [], '11sss');
     expect(run.out).toContain('This one is required');
   });
 
@@ -160,7 +160,7 @@ describe('tools', () => {
     rmSync(join(made.bin, 'bun'));
     const spare = join(made.base, 'spare');
     bun(made, spare);
-    const run = await guide(made, [], '1t', { STUB_SHELL_DOES: `cp "${join(spare, 'bun')}" "${join(made.bin, 'bun')}"` });
+    const run = await guide(made, [], '11t', { STUB_SHELL_DOES: `cp "${join(spare, 'bun')}" "${join(made.bin, 'bun')}"` });
     expect(run.out).toContain('Your shell, here.');
     expect(run.out).toContain('✓ Done · 1.4.4');
     expect(run.code).toBe(0);
@@ -180,7 +180,7 @@ describe('cmux', () => {
   test.concurrent('choosing cmux on a Mac without it starts with Ghostty', async () => {
     const { made } = setUpMac();
     ['Ghostty', 'cmux'].forEach((name) => rmSync(join(made.apps, `${name}.app`), { recursive: true }));
-    const run = await guide(made, [], '1');
+    const run = await guide(made, [], '11');
     expect(run.out).toContain('✓ Workspace · cmux');
     expect(run.out).toContain('https://ghostty.org');
     expect(changingCalls(run)).toEqual([]);
@@ -299,7 +299,7 @@ describe('round 2 fixes', () => {
     writeFileSync(made.settings, JSON.stringify(create));
     const next = join(made.base, 'next.json');
     writeFileSync(next, JSON.stringify(missing));
-    const run = await guide(made, [], 't', { STUB_SHELL_DOES: `cp "${next}" "${made.settings}"` });
+    const run = await guide(made, [], '1t', { STUB_SHELL_DOES: `cp "${next}" "${made.settings}"` });
     const afterRecheck = run.out.slice(run.out.indexOf('Not yet'));
     expect(afterRecheck).toContain('pbpaste >> ~/.config/ghostty/config');
     expect(afterRecheck).not.toContain('pbpaste > ~/.config/ghostty/config');
@@ -472,6 +472,93 @@ describe('a new agent', () => {
     const run = await guide(machine(), ['--name', 'Ada;x']);
     expect(run.code).toBe(2);
     expect(run.out).toContain("won't work as a name");
+  });
+});
+
+// The tools and apps a Mac has before any agent: Bun and Claude Code come from the machine's stubs.
+const preparedMac = () => {
+  const made = machine();
+  everything(made);
+  return made;
+};
+
+describe('the welcome screen', () => {
+  test.concurrent('opens with the banner, says nothing runs by itself, and offers the menu', async () => {
+    const run = await guide(preparedMac(), [], 'q');
+    expect(run.out).toContain('█▀█ █▄█ ██▄');
+    expect(run.out).toContain('A guide, not an installer');
+    expect(run.out).toContain('Nothing here installs or changes anything by itself.');
+    expect(run.out).toContain('2  Prepare this Mac');
+    expect(run.out).toContain('Stopped here.');
+    expect(run.out).not.toContain('This Mac ·');
+    expect(run.code).toBe(0);
+    expect(changingCalls(run)).toEqual([]);
+  });
+
+  test.concurrent('is left out when the output is a checklist', async () => {
+    const run = await guide(preparedMac(), ['--list']);
+    expect(run.out).not.toContain('A guide, not an installer');
+    expect(run.out).not.toContain('What would you like to do?');
+  });
+
+  test.concurrent('a name on the command line skips the menu', async () => {
+    const run = await guide(preparedMac(), ['--name', 'Ada', '--marketplace'], 'q');
+    expect(run.out).not.toContain('What would you like to do?');
+  });
+
+  test.concurrent('3 checks the Mac instead of guiding', async () => {
+    const run = await guide(bareMac(), [], '3');
+    expect(run.code).toBe(1);
+    expect(run.out).toContain('○ Command Line Tools');
+    expect(run.out).not.toContain('[Enter] check');
+  });
+});
+
+describe('preparing a Mac', () => {
+  test.concurrent('--prereqs ticks the apps and tools, then stops before any agent', async () => {
+    const run = await guide(preparedMac(), ['--prereqs', '--marketplace']);
+    expect(run.code).toBe(0);
+    expect(run.out).not.toContain('What would you like to do?');
+    expect(run.out).toContain('✓ Obsidian');
+    expect(run.out).toContain('Your Mac is ready for an agent.');
+    expect(run.out).not.toContain('What should your agent be called?');
+    expect(run.out).not.toContain('Plugin for');
+    expect(run.out).not.toContain('Ghostty settings ');
+    expect(run.out).not.toContain('○');
+    expect(changingCalls(run)).toEqual([]);
+  });
+
+  test.concurrent('2 in the menu does the same', async () => {
+    const run = await guide(preparedMac(), [], '21');
+    expect(run.code).toBe(0);
+    expect(run.out).toContain('Your Mac is ready for an agent.');
+    expect(run.out).not.toContain('What should your agent be called?');
+  });
+
+  test.concurrent('an existing home is never touched while preparing', async () => {
+    const { made } = setUpMac();
+    const run = await guide(made, ['--prereqs']);
+    expect(run.out).toContain('Your Mac is ready for an agent.');
+    expect(run.out).not.toContain('Plugin for Oppi');
+    expect(changingCalls(run)).toEqual([]);
+  });
+
+  test.concurrent('--prereqs --check counts what is left and stops before any agent', async () => {
+    const run = await guide(bareMac(), ['--prereqs', '--check']);
+    expect(run.code).toBe(1);
+    expect(run.out).toContain('○ Bun');
+    expect(run.out).toContain('required step(s) left');
+    expect(run.out).not.toContain('Plugin for');
+  });
+
+  test.concurrent('on Linux too', async () => {
+    const made = preparedMac();
+    stub(made, 'uname', '[ "$1" = -sr ] && echo "Linux 6.8.0" || echo Linux');
+    stub(made, 'obsidian', 'exit 0');
+    const run = await guide(made, ['--prereqs', '--marketplace'], '', {}, LINUX_GUIDE);
+    expect(run.code).toBe(0);
+    expect(run.out).toContain('Your machine is ready for an agent.');
+    expect(run.out).not.toContain('Browser libraries');
   });
 });
 

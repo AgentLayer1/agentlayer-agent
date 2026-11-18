@@ -227,6 +227,33 @@ Test-Case 'a home with its own Claude subscription starts with agent' {
   Assert-Contains $run.Out "; agent"
 }
 
+Test-Case '-Prereqs ticks the apps and tools, then stops before any agent' {
+  $machine = New-SetUpMachine
+  $run = Invoke-Scenario $machine $all '$Prereqs = $true; $Marketplace = $true'
+  Assert-Equal $run.Code 0
+  Assert-Contains $run.Out 'A guide, not an installer'
+  Assert-NotContains $run.Out 'What would you like to do?'
+  Assert-Contains $run.Out 'Your PC is ready for an agent.'
+  Assert-NotContains $run.Out 'Plugin for'
+  Assert-Equal (Get-ChangingCalls $run).Count 0
+}
+
+Test-Case '2 in the menu prepares the PC only' {
+  $machine = New-SetUpMachine
+  $run = Invoke-Scenario $machine $all '' '2'
+  Assert-Contains $run.Out 'What would you like to do?'
+  Assert-Contains $run.Out 'Your PC is ready for an agent.'
+  Assert-NotContains $run.Out 'Plugin for'
+}
+
+Test-Case 'q in the menu quits before any step' {
+  $machine = New-Machine
+  $run = Invoke-Scenario $machine $all '' 'q'
+  Assert-Equal $run.Code 0
+  Assert-Contains $run.Out 'Stopped here.'
+  Assert-NotContains $run.Out 'This system'
+}
+
 Test-Case 'the guide ends with the line the front door checks it arrived whole by' {
   Assert-Equal (Get-Content $guide -Tail 1) '# agentlayer:end'
 }
