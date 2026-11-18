@@ -5,15 +5,13 @@
 # AgentLayer
 
 **AgentLayer turns Claude Code or Codex into an agent that remembers your work, in a folder you own.**
-One markdown folder, one plugin, a brain that learns who you are session after session.
 
 <p>
   <a href="https://agentlayer.one/docs"><img src="https://img.shields.io/badge/Docs-agentlayer.one-5EFFA1.svg" alt="Documentation"/></a>&nbsp;
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"/></a>&nbsp;
   <a href="https://docs.claude.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-plugin-orange.svg" alt="Claude Code plugin"/></a>&nbsp;
   <a href="https://developers.openai.com/codex"><img src="https://img.shields.io/badge/Codex-plugin-black.svg" alt="Codex plugin"/></a>&nbsp;
-  <a href="https://agentlayer.one/docs/about/platforms"><img src="https://img.shields.io/badge/macOS_·_Linux_·_Windows-supported-success.svg" alt="macOS, Linux and Windows"/></a>&nbsp;
-  <a href="https://agentlayer.one"><img src="https://img.shields.io/badge/Made_by-AgentLayer-blueviolet.svg" alt="Made by AgentLayer"/></a>
+  <a href="https://agentlayer.one/docs/about/platforms"><img src="https://img.shields.io/badge/macOS_·_Linux_·_Windows-supported-success.svg" alt="macOS, Linux and Windows"/></a>
 </p>
 
 **[Read the docs →](https://agentlayer.one/docs)**
@@ -22,103 +20,103 @@ One markdown folder, one plugin, a brain that learns who you are session after s
 
 ---
 
+It installs as a plugin into the agent CLI you already use, [Claude Code](https://docs.claude.com/en/docs/claude-code) or [Codex](https://developers.openai.com/codex). Everything that makes the agent yours (its character, what it knows about you, your projects and tasks) lives in one folder of plain markdown on your disk. Any model can read it. You can browse it in Obsidian, keep it in git, and take it with you.
+
 ## Meet Oppi
 
-Meet Oppi 🐙, or Ops to its friends, which is also what it's for. An octopus keeps eight arms busy at once, and each arm does some of its own thinking: about two-thirds of its neurons sit in the arms. Its central brain still holds it all together. That's the agent: many jobs in flight, each handled with some independence, and one brain that remembers all of it. Octopuses are also among the cleverest animals around: they solve puzzles and use tools. Call your agent whatever you like; Oppi is just who shows up first.
+Your agent wakes up as Oppi 🐙. An octopus keeps many arms busy at once with one brain behind them, and that is how it works for you: several jobs in flight, one memory of all of them. Call it whatever you like; Oppi is just who shows up first. See [why an octopus](https://agentlayer.one/docs/run/naming#why-an-octopus).
 
-## What is it?
+<div align="center">
+<img src="assets/cmux-workstation.png" alt="cmux with three agents, Oppi, Nova and Scout: their sessions on the left, Oppi working in the middle, and the AgentLayer sidebar on the right" width="900" />
+</div>
 
-AgentLayer is a free, open-source plugin for the agent CLI you already use, [Claude Code](https://docs.claude.com/en/docs/claude-code) or [OpenAI Codex](https://developers.openai.com/codex). Everything that makes your agent yours (personality, memory, knowledge, projects, tasks) lives in your own directory as plain markdown. Any AI can read it. You can browse it in Obsidian or Finder. If you ever want to leave, you take the folder and go.
+On a Mac, your agents live in [cmux](https://cmux.com), and the [AgentLayer sidebar](https://agentlayer.one/docs/workstation/cmux#the-agentlayer-sidebar) sits beside your terminals:
 
-What's in it:
+- **Manager:** every Claude Code and Codex session, the ones waiting on you on top.
+- **Agents:** a chip per agent, and for the one you pick, its **Projects** (what's due and each project's next task), **Reports** (pinned, then newest by day) and **Goals** (today to this year).
 
-- An **83-tool MCP server** for tasks, knowledge compilation, reports, home history, worktrees, database queries, GitHub review, search, page speed, a bundled browser, and Google Search Console.
-- A **34-skill library**, related work grouped into one skill with playbooks (briefing, goals, SEO, attention, engineering), covering onboarding, version history, project lifecycle, a daily attention view with standup and a session radar, goals from the day to the year, morning and evening briefings, tax deadlines and bookkeeping, a support queue pulse and reply drafts, trip planning, worktree setup, API-request drafting, read-only SEO auditing, and audio and video transcripts and summaries.
-- A **knowledge pipeline** that turns every conversation into structured, queryable memory.
-- **Opt-in packs** (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, Slack) and a bridge to community skill libraries via [skills.sh](https://skills.sh).
-- **You drive.** Ask in plain words and your agent picks the skill and playbook; nothing runs unasked, and you never have to remember a command.
+The workspace you're in picks the agent. Tasks, reports, the dashboard and the roadmap open as cmux tabs. Setup offers the sidebar when you run it in cmux.
 
-```mermaid
-graph LR
-    A[Sessions] -->|capture| B[Knowledge]
-    B -->|informs| C[Projects]
-    C -->|generate| D[Results]
-    D -->|feed back into| A
-```
+## Install
 
-Every session is captured on exit. Captured sessions compile into a wiki. The wiki loads before you type a word in the next session. Everything else is built around that loop.
+One line starts a setup guide. It checks your machine and shows each step with its link or exact command; you run every command, and it ticks the step when it's done. It never uses sudo.
 
-## Quick start
-
-You need **Bun ≥ 1.4.4**, **Git**, and a host: **Claude Code** or **Codex**. Full prerequisites, the local clone install, and Windows notes are in [Install by hand](https://agentlayer.one/docs/getting-started/install).
-
-Pick a home for the brain, then install the plugin from it:
+**macOS or Linux:**
 
 ```bash
-mkdir -p ~/Documents/Agents/Oppi && cd ~/Documents/Agents/Oppi
+curl -fsSL https://agentlayer.one/install.sh | bash
 ```
 
-| Claude Code | Codex |
+**Windows** (PowerShell 7):
+
+```powershell
+irm https://agentlayer.one/install.ps1 | iex
+```
+
+It walks through git, Bun and Claude Code, cmux on a Mac, your agent's folder (`~/Documents/Agents/Oppi` by default) and the plugin, then hands you the line that starts setup. You can [read the guide first](install/). Flags and details: [Quickstart](https://agentlayer.one/docs/getting-started/quickstart).
+
+**Rather do it yourself, or starting with Codex?** [Install by hand](https://agentlayer.one/docs/getting-started/install) has every step, one at a time.
+
+## Who it's for
+
+Anyone who would use an agent that remembers, not only engineers. Pick the path that fits you:
+
+| You | Start with |
 |---|---|
-| `claude`, then `/plugin install agentlayer --marketplace AgentLayer1/agentlayer-agent-marketplace` | `codex plugin marketplace add AgentLayer1/agentlayer-agent-marketplace` then `codex plugin add agentlayer@agentlayer` |
-| Relaunch and run `/agentlayer:init` | Create the home from Claude Code, then open it with `codex` and run `$upgrade` once |
-| Skills: `/agentlayer:<skill>` | Skills: `$<skill>` |
+| **Lead a team** | [Daily rhythm](https://agentlayer.one/docs/use/daily-rhythm) for briefings and goals, then [Seed bundles](https://agentlayer.one/docs/run/seed-bundles) to hand the agent to your team |
+| **Write code** | [The engineer skill](https://agentlayer.one/docs/engineering/engineer), then [Pull requests](https://agentlayer.one/docs/engineering/pull-requests), [Worktrees](https://agentlayer.one/docs/engineering/worktrees) and [cmux](https://agentlayer.one/docs/workstation/cmux) to watch every session at once |
+| **Run support** | [Helpdesk](https://agentlayer.one/docs/packs/helpdesk) for the ticket queue, then [Slack](https://agentlayer.one/docs/packs/slack) and [Attention](https://agentlayer.one/docs/use/attention) to see who is waiting on you |
+| **Want a personal assistant** | [Your first ten minutes](https://agentlayer.one/docs/getting-started/first-ten-minutes), then [Daily rhythm](https://agentlayer.one/docs/use/daily-rhythm) and [Capture](https://agentlayer.one/docs/use/capture) |
 
-Five minutes of questions later you have a home. See [What setup asks](https://agentlayer.one/docs/getting-started/onboarding) and [Hosts](https://agentlayer.one/docs/run/hosts).
+## The loop
 
-**On a plugin version from before 1.0?** Your home moves to a new folder rather than updating in place: see [Updating](https://agentlayer.one/docs/run/updating).
+```mermaid
+flowchart LR
+    S["<b>Sessions</b><br/>Every conversation,<br/>saved when it ends"]
+    K["<b>Knowledge</b><br/>Compiled into notes it<br/>reads before you type"]
+    P["<b>Projects</b><br/>Tasks and plans<br/>it keeps current"]
+    R["<b>Results</b><br/>Briefs, reviews<br/>and shipped work"]
+    S -->|capture| K
+    K -->|informs| P
+    P -->|generate| R
+    R -->|feeds the next session| S
+```
 
-**Want a head start?** A teammate's `seed export` turns their agent's persona and setup into a zip; hand it to `init` and your agent wakes up named, characterised, and briefed. → [Seed bundles](https://agentlayer.one/docs/run/seed-bundles)
+Every session is saved when you exit. Saved sessions are compiled into notes the agent keeps. Those notes load before you type a word in the next session. Everything else is built around that loop: skills and tools feed it and act on what it knows. → [How the brain works](https://agentlayer.one/docs/reference/the-brain)
 
-**Always launch from the agent home.** The plugin loads only for sessions started there, and that is also what keeps several agents on one machine apart. Reach your code through `permissions.additionalDirectories` in the home's `.claude/settings.local.json` (init writes it there, since the path is this machine's), not by launching from a repo.
+## How it behaves
 
----
+- **You drive.** It never starts a session on its own. Ask in plain words and it picks the skill; you never have to remember a command.
+- **No metered API key.** Its tools return prompts and [your own session does the thinking](https://agentlayer.one/docs/run/hosts#billing), on the plan you already have.
+- **Local by default.** No cloud sync unless you put the folder somewhere that syncs. Keys sit in a store the agent's own tools cannot read. See [Privacy](https://agentlayer.one/docs/run/privacy).
+- **One plugin, many agents.** A personal agent and a work agent share one install and keep [separate folders](https://agentlayer.one/docs/run/another-agent). Always launch from the agent's folder: that's what loads the plugin and keeps agents apart.
+
+## What's in it
+
+- **34 [skills](https://agentlayer.one/docs/reference/skills)** with 74 playbooks: briefings, goals, attention and standup, engineering and PR review, sync, tax, helpdesk, trips, SEO, and more.
+- **83 [MCP tools](https://agentlayer.one/docs/reference/mcp-tools)** for tasks, knowledge, reports, history, worktrees, GitHub, databases, a bundled browser and search.
+- **Four [hooks](https://agentlayer.one/docs/reference/hooks)** that load the brain at session start and capture the session at the end.
+- **Opt-in [packs](https://agentlayer.one/docs/packs):** SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, Slack and cmux.
+- **A [dashboard](https://agentlayer.one/docs/dashboard)**, one static HTML page of your agent's day, work and brain, regenerated on every sync.
 
 ## Documentation
 
-This README is the short version. Everything lives at **[agentlayer.one/docs](https://agentlayer.one/docs)**, also served as [llms-full.txt](https://agentlayer.one/llms-full.txt) for models.
+Everything lives at **[agentlayer.one/docs](https://agentlayer.one/docs)**, also served as [llms-full.txt](https://agentlayer.one/llms-full.txt) for models.
 
 | Section | Start with |
 |---|---|
 | [Start here](https://agentlayer.one/docs/getting-started/quickstart) | Quickstart · Your first ten minutes · How it works · What setup asks · Install by hand |
-| [Use it](https://agentlayer.one/docs/use/daily-rhythm) | Daily rhythm · Plan and run · Build and ship · Reach and see · Brain and memory · Attention · Tasks · Capture · Sync |
-| [Dashboard](https://agentlayer.one/docs/dashboard) | Today · Tasks and projects · Sessions · Brain · Reports and scheduler · Capabilities |
-| [Engineering](https://agentlayer.one/docs/engineering) | The engineer skill · Principles · Pull requests · Second-model review · Worktrees · Verification · Releases |
-| [Connect it](https://agentlayer.one/docs/packs) | GitHub · Database · Browser · SEO · Slack · Helpdesk · App Store · Xcode · API · Accounts and costs |
-| [Run it](https://agentlayer.one/docs/run/updating) | Updating · Hosts · Claude Code · Codex · Configuration · Adding another agent · Billing per agent · History · Naming your agent · Privacy |
-| [Reference](https://agentlayer.one/docs/reference/the-brain) | How the brain works · Agent home · Architecture · Skills · MCP tools · CLI · Hooks · Upgrades and releases · [Changelog](https://agentlayer.one/docs/changelog) |
+| [Use it](https://agentlayer.one/docs/use/daily-rhythm) | Daily rhythm · Attention · Tasks · Capture · Sync |
 | [Workstation](https://agentlayer.one/docs/workstation) | The rig · Terminal · cmux · Editor and tools |
-| [About](https://agentlayer.one/docs/about/faq) | FAQ · Platforms and limits · Before the plugin · Contributing |
-
----
-
-## Highlights
-
-<div align="center">
-<img src="assets/dashboard.png" alt="The AgentLayer dashboard" width="720" />
-</div>
-
-- **Memory that compounds.** Hooks capture every session; the `knowledge-compile` skill distils them into user facets, concept articles, and active memory that load next launch. → [How the brain works](https://agentlayer.one/docs/reference/the-brain)
-- **Projects, not just chats.** One markdown file per task with frontmatter, threads, and a generated dashboard. → [Tasks](https://agentlayer.one/docs/use/tasks)
-- **An attention page for the day.** The `attention` skill keeps today to three, shows what carried over and what the roadmap has in flight, and the `goals` skill sets the day, week, month and year with you; one page for all your work and one per project. → [Daily rhythm](https://agentlayer.one/docs/use/daily-rhythm)
-- **One pass to bring everything current.** The `sync` skill runs compile → lint → flywheel → dashboards and ends with a next move. → [Sync](https://agentlayer.one/docs/use/sync)
-- **Every change can be undone.** The `history` skill turns on local version history for the home in one question, no git knowledge needed; sync saves a snapshot each run. A home in iCloud, Dropbox or OneDrive keeps its history in `~/.local/state` (`%LOCALAPPDATA%` on Windows), where syncing can't damage it. → [History](https://agentlayer.one/docs/run/history)
-- **One dashboard page** regenerated on every sync, self-contained, zero external requests. → [Dashboard](https://agentlayer.one/docs/dashboard)
-- **Engineering by playbook.** The `engineer` skill routes code work to a playbook (bug fix, feature, refactor, performance, forensics, prototype, and more) backed by 23 named principles, proves the result on the running artifact, and strips comments before you see the diff. → [Engineering](https://agentlayer.one/docs/engineering)
-- **Pull requests, three ways.** Review a teammate's PR with verified findings and paste-ready comments, prep to present your own, or brief a second model on your branch and have its findings verified, fixed, and committed on one dossier. → [Pull requests](https://agentlayer.one/docs/engineering/pull-requests)
-- **A sidebar in cmux, for every agent on your Mac.** If you use cmux, one native panel in its right sidebar has two tabs: **Manager**, every agent session sorted by what needs you ([cmux Manager](https://github.com/AgentLayer1/cmux-custom-manager)), and **Agents**, a chip per agent and, for the one you pick, its **Projects** (a search over its tasks, an all-tasks card with its agenda, and its projects grouped at work, blocked and quiet) and its **Reports** (its pins, then its newest reports by day). The dashboard, the roadmap, every task and every report open as full tabs. The workspace you're in picks the agent. Optional: tick cmux when init offers packs, or later with `/agentlayer:configure-skills` → cmux.
-- **Multiple homes, multiple personas.** One plugin install, separate brains, told apart by the launch folder. → [Adding another agent](https://agentlayer.one/docs/run/another-agent)
-- **Hand an agent to a teammate.** A seed bundle carries persona, curated knowledge, and setup as its own copy; credentials travel as names only. → [Seed bundles](https://agentlayer.one/docs/run/seed-bundles)
-- **Subscription-billed.** The MCP server returns prompts; your session does the thinking on your host's plan. → [Hosts](https://agentlayer.one/docs/run/hosts#billing)
-- **Private by construction.** Secrets in a deny-gated store the agent cannot read, transcripts redacted before they persist. → [Privacy](https://agentlayer.one/docs/run/privacy)
-
----
+| [Engineering](https://agentlayer.one/docs/engineering) | The engineer skill · Pull requests · Second-model review · Worktrees · Releases |
+| [Connect it](https://agentlayer.one/docs/packs) | GitHub · Database · Browser · SEO · Slack · Helpdesk · App Store · Xcode · API |
+| [Run it](https://agentlayer.one/docs/run/updating) | Updating · Hosts · Configuration · Adding another agent · History · Privacy |
+| [Reference](https://agentlayer.one/docs/reference/the-brain) | How the brain works · Agent home · Skills · MCP tools · CLI · Hooks · [Changelog](https://agentlayer.one/docs/changelog) |
+| [About](https://agentlayer.one/docs/about/faq) | FAQ · Platforms and limits · Contributing |
 
 ## Updating
 
-Pull the new plugin version on your host (`/plugin update agentlayer@agentlayer` in Claude Code; remove and re-add in Codex), then run the `upgrade` skill. The plugin update refreshes code; `upgrade` reconciles your home from the CHANGELOG's Upgrade blocks, backing up first. → [Updating](https://agentlayer.one/docs/run/updating) · [Upgrades and releases](https://agentlayer.one/docs/reference/upgrades)
-
----
+Pull the new plugin version on your host (`/plugin update agentlayer@agentlayer` in Claude Code; remove and re-add in Codex), then run the `upgrade` skill. The plugin update refreshes code; `upgrade` brings your folder in line, backing up first. On a version from before 1.0, your home moves to a new folder instead. → [Updating](https://agentlayer.one/docs/run/updating)
 
 ## Contributing
 
