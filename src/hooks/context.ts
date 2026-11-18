@@ -27,8 +27,8 @@ import { followMove, historyStatus, restorePointer } from '@/home/history';
 import { checkHosts, hostIssues, requiredHosts, type HostName } from '@/upgrade/hosts';
 import type { Notice, NoticeFact, NoticeLevel } from '@/notices/notices';
 import { collectNotices } from '@/notices/notices';
-import { agentDisplayName } from '@/shared/agent-name';
-import { ANSI, paint } from '@/hooks/banner';
+import { agentColors, agentDisplayName } from '@/shared/agent-name';
+import { ANSI, paint, rgbEscape } from '@/shared/ansi';
 import { env } from '@/shared/env';
 import { readCadence } from '@/shared/cadence';
 import { log as baseLog } from '@/shared/log';
@@ -313,7 +313,7 @@ function renderBanner(
     return `    ${STATUS_ICON[e.status]} ${label}  ${size}${note}`;
   });
   const head = [
-    `  🤖 Agent:     ${agentDisplayName()} · v${PLUGIN_VERSION}`,
+    `  🤖 Agent:     ${paint(agentDisplayName(), ANSI.bold, rgbEscape(agentColors().primary))} · v${PLUGIN_VERSION}`,
     `  🧠 Knowledge: ${FOLDERS.KNOWLEDGE}`,
     `  📁 Projects:  ${FOLDERS.PROJECTS}`,
     `  📚 Context  · ${formatKB(contextBytes)}`

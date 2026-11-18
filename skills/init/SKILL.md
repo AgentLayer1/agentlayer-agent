@@ -260,6 +260,19 @@ Then, only when the answer is NOT the default:
 
 > **An emoji for it?** (default `🐙`) — shows up in the banner and the dashboard header.
 >
+> **Its colors?** First print the choices, each drawn in its own colors (the chat
+> renders them):
+>
+> ```bash
+> bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" colors
+> ```
+>
+> Then ask with `AskUserQuestion`, one option per pair, labelled with its squares:
+> `🟪🟩 Orchid & mint` (recommended, Oppi's), `🟦🟧 Ocean & coral`, `🟥🟨 Crimson & gold`,
+> `🟧🟦 Amber & teal`. **Other** takes two hex codes, primary then accent
+> (`#RRGGBB #RRGGBB`). The banner, the dashboard and the session banner draw the agent in
+> these.
+>
 > **An avatar?** Paste a local path or URL, or `skip`. The plugin ships Oppi's avatar;
 > a differently-named agent has none, so `skip` is a fine answer and leaves the image
 > out of `IDENTITY.md` entirely.
@@ -268,6 +281,10 @@ Stage three values for Steps 2, 3 and 7:
 
 - `AGENT_NAME` — the answer, or `Oppi`
 - `AGENT_EMOJI` — the answer, or `🐙`
+- `AGENT_COLORS` — the line `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" colors --line=<choice>`
+  prints: the pair's number (1–4), or the two codes quoted (`--line="#RRGGBB #RRGGBB"`). Exit
+  2 means the codes didn't parse: ask again. Default name: `--line=1`, unasked. On a
+  re-init, the current `- **Colors:**` line's value, read like the name.
 - `AGENT_AVATAR` — the home-relative path the image will land at, which Step 7 then
   copies to. Default name: `assets/oppi-avatar.png`. Renamed with an image:
   `assets/<name-lowercased>-avatar.<ext>`. Renamed without one: empty.
@@ -370,8 +387,8 @@ Summarize: *"Default: AI assistant for learning, planning, research, coding."* T
 
 Adjust the staged IDENTITY's `## Core Role` to match. Leave `## Operational Pattern` empty (the agent grows it over time).
 
-Resolve the identity tokens from Step 1b: `{{AGENT_NAME}}`, `{{AGENT_EMOJI}}`, and
-`{{AGENT_AVATAR}}`. **When no avatar was staged, delete the whole `![...]({{AGENT_AVATAR}})`
+Resolve the identity tokens from Step 1b: `{{AGENT_NAME}}`, `{{AGENT_EMOJI}}`,
+`{{AGENT_COLORS}}`, and `{{AGENT_AVATAR}}`. **When no avatar was staged, delete the whole `![...]({{AGENT_AVATAR}})`
 line and the `- **Avatar:**` line** rather than leaving an empty link — the dashboard
 takes the first image in the file as the avatar, and a dangling one renders broken.
 With the default name, add `- **Nickname:** Ops` under the `- **Name:**` line (the README's

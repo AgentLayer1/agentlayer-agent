@@ -181,6 +181,26 @@ run('with two agents joined, a chip per agent picks the other one', () => {
   expect(sidebar.visibleTexts()).not.toContain('acme-app');
 });
 
+run('the agent the sidebar shows lights its chip in its own color; the others stay grey', () => {
+  const sidebar = onProjects({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: homeEntry(SCOUT_HOME, SCOUT) });
+  expect(sidebar.propsOf('🦉 Nova')).toMatchObject({ color: '#2F7FC1', background: '#2F7FC13d' });
+  expect(sidebar.propsOf('🐢 Scout')).toMatchObject({
+    color: 'secondary',
+    background: '#7f7f7f1f',
+    hoverBackground: '#C7354B3d'
+  });
+  sidebar.tap('🐢 Scout');
+  expect(sidebar.propsOf('🐢 Scout')).toMatchObject({ color: '#C7354B', background: '#C7354B3d' });
+  expect(sidebar.propsOf('🦉 Nova')).toMatchObject({ color: 'secondary' });
+});
+
+run('an entry from before agents had colors lights its chip grey', () => {
+  expect(onProjects({ [NOVA_HOME]: { ...NOVA_ENTRY, colors: undefined } }).propsOf('🦉 Nova')).toMatchObject({
+    color: 'primary',
+    background: '#7f7f7f3d'
+  });
+});
+
 run('with one agent joined, its chip stands beside the tabs where the title was', () => {
   const texts = onProjects().visibleTexts();
   expect(texts[0]).toBe('🦉 Nova');

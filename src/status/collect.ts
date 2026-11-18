@@ -29,7 +29,8 @@ import { readLedger } from '@/notices/ledger';
 import { type ChangelogEntry, getUpgradeStatus, parseChangelog, type UpgradeState } from '@/upgrade/version';
 import { readCadence } from '@/shared/cadence';
 import { nowISO, nowTime, todayDate } from '@/shared/date';
-import { agentDisplayName, agentEmoji } from '@/shared/agent-name';
+import { agentColors, agentDisplayName, agentEmoji } from '@/shared/agent-name';
+import type { AgentColors } from '@/shared/persona';
 import { CLI_PATH } from '@/shared/naming';
 import { routerPlaybooks } from '@/status/playbooks';
 import { env } from '@/shared/env';
@@ -223,6 +224,7 @@ export interface Persona {
   kind: string;
   vibe: string;
   emoji: string;
+  colors: AgentColors;
   /** Avatar path relative to <HOME>; '' when the file doesn't exist. */
   avatar: string;
   bio: string;
@@ -1085,6 +1087,7 @@ const collectPersona = (): Persona => ({
   // Forks word the tagline field differently (Vibe, Register, ...).
   vibe: stripMarkdown(boldField(FILES.IDENTITY, 'Vibe') || boldField(FILES.IDENTITY, 'Register')),
   emoji: agentEmoji(),
+  colors: agentColors(),
   avatar: firstImage(FILES.IDENTITY),
   bio: sectionText(FILES.IDENTITY, 'Short Bio'),
   identitySections: mdSections(FILES.IDENTITY).filter((section) => !PERSONA_HEAD_SECTIONS.has(section.title)),

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FILES, FOLDERS } from '@/config';
 import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
+import { DEFAULT_AGENT_COLORS } from '@/shared/persona';
 import { serializeTask } from '@/tasks/schema';
 import type { TaskFrontmatter } from '@/tasks/types';
 import { buildWork } from './build';
@@ -120,7 +121,7 @@ describe('buildWork', () => {
   test('reads every task file once, archived ones flagged, ordered by path', () => {
     const work = buildWork();
     expect(work.schema).toBe(WORK_SCHEMA);
-    expect(work.agent).toEqual({ name: 'Nova', emoji: '🦉' });
+    expect(work.agent).toEqual({ name: 'Nova', emoji: '🦉', colors: DEFAULT_AGENT_COLORS });
     expect(work.roadmap).toBe('');
     expect(work.tasks.map((task) => [task.id, task.archived])).toEqual([
       ['ac-001', false],
@@ -176,7 +177,7 @@ describe('the store', () => {
     expect(writeWork(work)).toBe(false);
     expect(statSync(FILES.WORK).mtimeMs).toBe(written);
     expect(readWork()).toEqual(work);
-    expect(writeWork({ ...work, agent: { name: 'Nova II', emoji: '🦉' } })).toBe(true);
+    expect(writeWork({ ...work, agent: { ...work.agent, name: 'Nova II' } })).toBe(true);
   });
 
   test('a file of another version, or one that does not parse, reads as none', () => {
@@ -232,7 +233,7 @@ describe('views', () => {
 test('a model that holds nothing for a home with no projects', () => {
   const empty: Work = {
     schema: WORK_SCHEMA,
-    agent: { name: 'Scout', emoji: '' },
+    agent: { name: 'Scout', emoji: '', colors: DEFAULT_AGENT_COLORS },
     roadmap: '',
     projects: [],
     tasks: [],

@@ -15,6 +15,7 @@ test('a home’s projects, at work first, and every live task in one list by pri
     schema: SCHEMA,
     name: 'Nova',
     emoji: '🦉',
+    colors: { primary: '#2F7FC1', accent: '#E0664A' },
     dashboard: url(NOVA_HOME, 'dashboard.html'),
     roadmap: url(NOVA_HOME, 'roadmap.html')
   });

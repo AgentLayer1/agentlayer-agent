@@ -7,7 +7,7 @@ import { AGENT_SLUG, FILES, FOLDERS, PLUGIN_VERSION, staticContextFiles } from '
 import { CLI_FILE, HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
 import { sessionStart, sessionStartCodex } from '@/hooks/session-start';
 import { recordOutcome } from '@/notices/ledger';
-import { ANSI, stripAnsi } from '@/hooks/banner';
+import { ANSI, stripAnsi } from '@/shared/ansi';
 import { stampSync } from '@/shared/cadence';
 import { nowISO, todayDate } from '@/shared/date';
 import { statusLineSetting } from '@/statusline/setting';
@@ -385,7 +385,9 @@ describe('sessionStart', () => {
       .split('\n')
       .find((text) => text.includes('Sync:'));
     expect(line ?? null).toEqual(title === null ? null : expect.stringContaining(title));
-    expect(banner.includes('\x1b[')).toBe(isColored && title !== null);
+    const raw = (label: string): string => banner.split('\n').find((text) => stripAnsi(text).includes(label)) ?? '';
+    expect(raw('Sync:').includes('\x1b[')).toBe(isColored && title !== null);
+    expect(raw('Agent:').includes('\x1b[')).toBe(isColored);
   });
 
   test('sync: a snooze from any surface hides the banner line for the day', async () => {

@@ -270,7 +270,7 @@ var packLines = (items, label, firstWidth, width) => items.reduce(({ lines, used
 }, { lines: [[]], used: 0 }).lines;
 
 // src/cmux/sidebar/data.ts
-var SCHEMA = 6;
+var SCHEMA = 7;
 
 // src/cmux/sidebar/style.ts
 var hueColor = (hue) => {
@@ -372,9 +372,12 @@ var scopedPage = (home, ready) => {
 // src/cmux/sidebar/agents.ts
 var FIRST_LINE = 216;
 var LINE = 276;
-var agentButton = (label, active, onTap) => Text(label).font(11).weight("semibold").paddingHorizontal(9).paddingVertical(6).cornerRadius(8).color(() => active() ? "primary" : "secondary").background(() => active() ? "#7f7f7f3d" : "#7f7f7f1f").hoverBackground("#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(onTap);
+var agentButton = (label, tint, active, onTap) => {
+  const lit = tint ? `${tint}3d` : "#7f7f7f3d";
+  return Text(label).font(11).weight("semibold").paddingHorizontal(9).paddingVertical(6).cornerRadius(8).color(() => active() ? tint ?? "primary" : "secondary").background(() => active() ? lit : "#7f7f7f1f").hoverBackground(lit).cursor("pointer").fixedSize("horizontal").onTap(onTap);
+};
 var agentHeader = ({ pill, homes, home, pick }) => {
-  const agentChip = (path) => agentButton(homeLabel(path), () => home() === path, () => pick(path));
+  const agentChip = (path) => agentButton(homeLabel(path), DATA.homes[path]?.colors?.primary, () => home() === path, () => pick(path));
   const [first = [], ...rest] = packLines(homes, homeLabel, FIRST_LINE, LINE);
   return VStack({ spacing: 4, alignment: "leading" }, [
     HStack({ spacing: 8 }, [pill, HStack({ spacing: 4 }, first.map(agentChip)), Spacer({ minLength: 0 })]),

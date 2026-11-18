@@ -1,7 +1,9 @@
+import type { AgentColors } from '../../shared/persona';
+
 /**
  * The entry format's version. A sidebar shows an entry with another schema as "update this agent".
  */
-export const SCHEMA = 6;
+export const SCHEMA = 7;
 
 export interface TaskItem {
   id: string;
@@ -133,6 +135,11 @@ export interface HomeEntry {
   schema: number;
   name: string;
   emoji: string;
+  /**
+   * The agent's `#RRGGBB` pair from its IDENTITY.md; its chip is drawn in the primary. Absent in an entry an older
+   * plugin wrote, which still gets a chip.
+   */
+  colors?: AgentColors;
   /**
    * `file://` URL of the home's dashboard.html, which deep-links a page by its hash.
    */
