@@ -50,7 +50,9 @@ import type { Work, WorkReport, WorkTask } from '@/work/model';
 import { taskOrder } from '@/work/order';
 import { stripFrontmatter } from '@/knowledge/utils';
 import {
+  byLastUpdate,
   goalsView,
+  lastUpdate,
   overdue,
   projectLoads,
   queue,
@@ -107,6 +109,8 @@ export interface ReportRef {
   status: string;
   /** Category derived from the href path: `briefings` | `plans` | `radar` | `api` | ''. */
   category: string;
+  /** When it last changed: filed, or edited since; the Reports page groups by it. */
+  updated: { date: string; time: string };
 }
 
 /** The most recent radar digest, pre-rendered to HTML for the
@@ -1591,15 +1595,10 @@ const collectPinned = (work: Work): SurfaceLink[] =>
     surfaceAt(resolve(FOLDERS.HOME, pin.path), { title: pin.title, icon: pin.icon, appTab: true })
   );
 
-const toReportRef = ({ date, time, title, path, skill, status, category }: WorkReport): ReportRef => ({
-  date,
-  time,
-  title,
-  href: path,
-  skill,
-  status,
-  category
-});
+const toReportRef = (report: WorkReport): ReportRef => {
+  const { date, time, title, path, skill, status, category } = report;
+  return { date, time, title, href: path, skill, status, category, updated: lastUpdate(report) };
+};
 
 const MAX_REPORTS = 60;
 
@@ -1638,7 +1637,7 @@ export const collectStatus = async (work: Work = buildWork()): Promise<StatusSna
     context: await collectContext(),
     settings: collectSettings(),
     logs: collectLogs(),
-    reports: allReports.slice(0, MAX_REPORTS),
+    reports: byLastUpdate(work.reports).slice(0, MAX_REPORTS).map(toReportRef),
     reportsTotal: allReports.length,
     radarLatest: await collectRadarLatest(allReports, work),
     attention: collectAttentionView('', work),

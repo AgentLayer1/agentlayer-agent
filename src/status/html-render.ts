@@ -337,14 +337,14 @@ const radarSessionRow = (session: RadarSession): string => {
 
 // ── pages ─────────────────────────────────────────────────────────────
 
-const reportRow = (report: ReportRef, snap: StatusSnapshot): string => {
+const reportRow = (report: ReportRef, snap: StatusSnapshot, time: string): string => {
   const title = report.href ? mdLink(snap, report.href, report.title) : esc(report.title);
   // Skill chip when there is one (briefings, radar); fall back to the category
   // so chip-less rows (plan-mode exports have no skill) still carry a tag.
   const kind = reportKind(report);
   const chip = kind ? projChip(kind) : '';
   const status = report.status ? `<span class="chip status ${esc(report.status)}">${esc(report.status)}</span>` : '';
-  return `<div class="row" data-row data-cat="${esc(report.category)}"><span class="dim" style="flex:none">${esc(report.time)}</span><span class="grow">${title}</span>${status}${chip}</div>`;
+  return `<div class="row" data-row data-cat="${esc(report.category)}"><span class="dim" style="flex:none">${esc(time)}</span><span class="grow">${title}</span>${status}${chip}</div>`;
 };
 
 /** Category filter chips for the Reports page — All + one per category that
@@ -558,7 +558,7 @@ const pageToday = (snap: StatusSnapshot): string => {
         ref.id
       )}</span><span class="grow">${esc(ref.title)}</span><span class="chip">${esc(ref.status)}</span>${projChip(ref.project)}</div>`
   );
-  const outputRows = todaysReports.map((report) => reportRow(report, snap));
+  const outputRows = todaysReports.map((report) => reportRow(report, snap, report.time));
   const activity =
     radarRows.length + commandRows.length + touchedRows.length + outputRows.length
       ? [
@@ -1108,12 +1108,12 @@ const pageBrain = (snap: StatusSnapshot): string => {
 const pageReports = (snap: StatusSnapshot): string => {
   const byDate = new Map<string, ReportRef[]>();
   for (const report of snap.reports) {
-    byDate.set(report.date, [...(byDate.get(report.date) ?? []), report]);
+    byDate.set(report.updated.date, [...(byDate.get(report.updated.date) ?? []), report]);
   }
   const groups = [...byDate.entries()]
     .map(
       ([date, reports]) =>
-        `<h3 class="group date">${esc(date || 'undated')}</h3>${reports.map((report) => reportRow(report, snap)).join('')}`
+        `<h3 class="group date">${esc(date || 'undated')}</h3>${reports.map((report) => reportRow(report, snap, report.updated.time)).join('')}`
     )
     .join('');
   // Pins lead the page as their own group, so the Pinned chip shows every pin, not only those in the latest reports.

@@ -105,7 +105,7 @@ test('the newest reports, each with the kind and hue the dashboard gives it, and
 test('reports past the limit are counted, not carried, and an HTML report opens as a page', () => {
   const many = Array.from({ length: REPORT_LIMIT + 3 }, (_unused, index) => ({
     date: '2026-10-01',
-    time: String(index).padStart(2, '0') + ':00',
+    time: String(REPORT_LIMIT + 3 - index).padStart(2, '0') + ':00',
     title: `Report ${index}`,
     path: join('reports', 'plans', `r-${index}.html`),
     skill: '',

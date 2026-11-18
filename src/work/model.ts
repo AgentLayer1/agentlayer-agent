@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * The model's version. A reader treats a file with another version as missing, and the next rebuild rewrites it.
  */
-export const WORK_SCHEMA = 3;
+export const WORK_SCHEMA = 4;
 
 const PinSchema = z.object({ title: z.string(), icon: z.string(), path: z.string() });
 
@@ -75,7 +75,11 @@ const ReportSchema = z.object({
   /**
    * Its folder under reports/: briefings, plans, radar, api, reviews, helpdesk or slack.
    */
-  category: z.string()
+  category: z.string(),
+  /**
+   * When its file last changed (mtime); absent when there is no file to read.
+   */
+  changed: z.object({ date: z.string(), time: z.string() }).optional()
 });
 
 const GoalSchema = z.object({

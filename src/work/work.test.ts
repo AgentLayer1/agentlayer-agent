@@ -11,7 +11,18 @@ import { buildWork } from './build';
 import { WORK_SCHEMA, type Work, type WorkTask } from './model';
 import { readWork, writeWork } from './store';
 import { taskOrder } from './order';
-import { closedSince, isDueSoon, isOverdue, isStale, projectLoads, queue, touchedRecently, withStatus } from './views';
+import {
+  byLastUpdate,
+  closedSince,
+  isDueSoon,
+  isOverdue,
+  isStale,
+  lastUpdate,
+  projectLoads,
+  queue,
+  touchedRecently,
+  withStatus
+} from './views';
 
 const previousHome = process.env.AGENT_HOME;
 let home = '';
@@ -103,9 +114,14 @@ beforeAll(() => {
   writeFileSync(join(FOLDERS.REPORTS, 'plans', 'loose-notes.md'), '---\ntitle: "Loose notes"\n---\n');
   const looseDay = new Date('2026-11-01T12:00:00Z');
   utimesSync(join(FOLDERS.REPORTS, 'plans', 'loose-notes.md'), looseDay, looseDay);
+  utimesSync(join(FOLDERS.REPORTS, 'plans', '2026-11-08-0900-launch.md'), looseDay, looseDay);
+  mkdirSync(join(FOLDERS.REPORTS, 'reviews'), { recursive: true });
+  writeFileSync(join(FOLDERS.REPORTS, 'reviews', '2026-11-02-1000-audit.md'), '# Audit\n');
+  const editedDay = new Date('2026-11-10T12:00:00Z');
+  utimesSync(join(FOLDERS.REPORTS, 'reviews', '2026-11-02-1000-audit.md'), editedDay, editedDay);
   writeFileSync(
     FILES.REPORTS_INDEX,
-    '# Reports\n\n## 2026-11-09\n\n- 08:30 · [Morning brief \\[draft\\]](briefings/2026-11-09-0830-morning.md) · `briefing` · 🟠 findings\n'
+    '# Reports\n\n## 2026-11-09\n\n- 08:30 · [Morning brief \\[draft\\]](briefings/2026-11-09-0830-morning.md) · `briefing` · 🟠 findings\n\n## 2026-11-02\n\n- 10:00 · [Audit](reviews/2026-11-02-1000-audit.md) · `engineer`\n'
   );
   writeFileSync(FILES.REPORTS_PINNED, '# Pinned\n\n- 🗺️ [Launch plan](plans/2026-11-08-0900-launch.md)\n');
 });
@@ -143,7 +159,7 @@ describe('buildWork', () => {
     expect(work.projects[2]?.roadmap).toBe(join('projects', 'quiet', 'roadmap.html'));
   });
 
-  test('reports from the index and unindexed files, newest first, and the live home pins', () => {
+  test('reports from the index and unindexed files, newest filed first, and the live home pins', () => {
     const work = buildWork();
     expect(work.reports.map((report) => [report.date, report.title, report.path, report.skill, report.status])).toEqual(
       [
@@ -155,6 +171,7 @@ describe('buildWork', () => {
           'findings'
         ],
         ['2026-11-08', 'Launch plan', join('reports', 'plans', '2026-11-08-0900-launch.md'), '', ''],
+        ['2026-11-02', 'Audit', join('reports', 'reviews', '2026-11-02-1000-audit.md'), 'engineer', ''],
         ['2026-11-01', 'Loose notes', join('reports', 'plans', 'loose-notes.md'), '', '']
       ]
     );
@@ -189,6 +206,16 @@ describe('the store', () => {
 });
 
 describe('views', () => {
+  test('a report lists under its last update: the filed moment, or a later edit to its file', () => {
+    const reports = buildWork().reports;
+    expect(byLastUpdate(reports).map((report) => [lastUpdate(report).date, report.title])).toEqual([
+      ['2026-11-10', 'Audit'],
+      ['2026-11-09', 'Morning brief [draft]'],
+      ['2026-11-08', 'Launch plan'],
+      ['2026-11-01', 'Loose notes']
+    ]);
+  });
+
   const task = { status: 'open', due: '2026-11-08', updated: '2026-11-01' };
 
   test('overdue, due soon and stale read against the day they are given', () => {

@@ -4,7 +4,7 @@ import { reportKind } from '@/reports/kinds';
 import { nameHue } from '@/status/html-primitives';
 import type { Work, WorkProject, WorkReport } from '@/work/model';
 import { taskOrderById } from '@/work/order';
-import { goalsView, live, projectLoad } from '@/work/views';
+import { byLastUpdate, goalsView, lastUpdate, live, projectLoad } from '@/work/views';
 import {
   SCHEMA,
   type HomeEntry,
@@ -41,8 +41,8 @@ const pinItem = (home: string, { title, icon, path }: WorkProject['pins'][number
 
 const reportItem = (home: string, report: WorkReport): ReportItem => {
   const kind = reportKind(report);
-  const { title, date, time, status, path } = report;
-  return { title, kind, hue: nameHue(kind), date, time, status, target: targetOf(home, path) };
+  const { title, status, path } = report;
+  return { title, kind, hue: nameHue(kind), ...lastUpdate(report), status, target: targetOf(home, path) };
 };
 
 /**
@@ -51,7 +51,7 @@ const reportItem = (home: string, report: WorkReport): ReportItem => {
  */
 export const homeEntry = (home: string, work: Work): HomeEntry => {
   // An index line without a link names a report nothing can open.
-  const openable = work.reports.filter((report) => report.path !== '');
+  const openable = byLastUpdate(work.reports.filter((report) => report.path !== ''));
   const tasks = live(work)
     .toSorted(taskOrderById)
     .map(

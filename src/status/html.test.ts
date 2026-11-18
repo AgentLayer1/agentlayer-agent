@@ -345,7 +345,8 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
       href: 'reports/briefings/2026-06-11-0904-morning.md',
       skill: 'briefing',
       status: 'findings',
-      category: 'briefings'
+      category: 'briefings',
+      updated: { date: '2026-06-11', time: '09:04' }
     }
   ],
   reportsTotal: 12,

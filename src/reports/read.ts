@@ -1,8 +1,7 @@
 import { statSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FILES, FOLDERS } from '@/config';
+import { FILES, FOLDERS, TIMEZONE } from '@/config';
 import { splitFrontmatter } from '@/knowledge/utils';
-import { nowTime, todayDate } from '@/shared/date';
 import { listDirs, listMarkdown, MARKDOWN_RE, readText } from '@/shared/text';
 import type { WorkReport } from '@/work/model';
 import { isReportCategory } from './kinds';
@@ -27,11 +26,15 @@ const orphanTitle = (content: string, fileName: string): string => {
   return body.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? fileName.replace(MARKDOWN_RE, '');
 };
 
-const safeMtime = (path: string): Date => {
+type Moment = Pick<WorkReport, 'date' | 'time'>;
+
+// The caller builds one formatter per read: an Intl formatter per report is the slow part of this read.
+const changedAt = (format: Intl.DateTimeFormat, path: string): Moment | undefined => {
   try {
-    return statSync(path).mtime;
+    const stamp = format.format(statSync(resolve(FOLDERS.HOME, path)).mtime);
+    return { date: stamp.slice(0, 10), time: stamp.slice(11, 16) };
   } catch {
-    return new Date(0);
+    return undefined;
   }
 };
 
@@ -44,6 +47,7 @@ const safeMtime = (path: string): Date => {
 export const readReports = (): WorkReport[] => {
   const refs: WorkReport[] = [];
   const seen = new Set<string>();
+  const format = new Intl.DateTimeFormat('sv-SE', { timeZone: TIMEZONE, dateStyle: 'short', timeStyle: 'short' });
 
   try {
     let day = '';
@@ -65,7 +69,8 @@ export const readReports = (): WorkReport[] => {
         path,
         skill: entry[4] ?? '',
         status: entry[5] ?? '',
-        category: categoryOf(path)
+        category: categoryOf(path),
+        changed: path ? changedAt(format, path) : undefined
       });
     }
   } catch {
@@ -87,15 +92,15 @@ export const readReports = (): WorkReport[] => {
       }
       // A filename's YYYY-MM-DD-HHMM stamp gives its day and time; a file without one goes by when it last changed.
       const stamp = fileName.match(/^(\d{4}-\d{2}-\d{2})-(\d{2})(\d{2})/);
-      const changed = safeMtime(full);
+      const changed = changedAt(format, path);
       refs.push({
-        date: stamp?.[1] ?? todayDate(changed),
-        time: stamp ? `${stamp[2]}:${stamp[3]}` : nowTime(changed),
+        ...(stamp ? { date: stamp[1], time: `${stamp[2]}:${stamp[3]}` } : (changed ?? { date: '', time: '' })),
         title: orphanTitle(body, fileName),
         path,
         skill: '',
         status: '',
-        category
+        category,
+        changed
       });
     }
   }

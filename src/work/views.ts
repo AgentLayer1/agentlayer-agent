@@ -1,5 +1,5 @@
 import { shiftDate } from '@/shared/date';
-import type { Work, WorkGoal, WorkGoalBlock, WorkProject, WorkTask } from './model';
+import type { Work, WorkGoal, WorkGoalBlock, WorkProject, WorkReport, WorkTask } from './model';
 import { taskOrder } from './order';
 
 // What the task rules read; TASKS.md hands them tasks alone, without the rest of the model.
@@ -171,3 +171,21 @@ export const projectLoads = (work: Work): ProjectLoad[] =>
     .toSorted(
       (a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.total - a.total || a.project.localeCompare(b.project)
     );
+
+type Moment = Pick<WorkReport, 'date' | 'time'>;
+
+const momentKey = ({ date, time }: Moment): string => `${date} ${time}`;
+
+/**
+ * When a report last changed: when it was filed, or when its file was edited after that.
+ */
+export const lastUpdate = (report: WorkReport): Moment =>
+  report.changed && momentKey(report.changed) > momentKey(report)
+    ? report.changed
+    : { date: report.date, time: report.time };
+
+/**
+ * Reports by their last update, newest first.
+ */
+export const byLastUpdate = (reports: readonly WorkReport[]): WorkReport[] =>
+  reports.toSorted((a, b) => momentKey(lastUpdate(b)).localeCompare(momentKey(lastUpdate(a))));
