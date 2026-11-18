@@ -114,13 +114,17 @@ half-done rename, but it has no memory of the first run's keeps, so treat it as 
 rename: run its dry run, review it, and pass the keeps again. Line numbers below the Name
 in `IDENTITY.md` move down by one once `Formerly` is added.
 
-## Step 4 — Emoji and avatar
+## Step 4 — Emoji, colors and avatar
 
 Edit these in `IDENTITY.md` with `Edit`, not the script. The dashboard takes its persona
 header from the `Name`, `Kind`, `Vibe` (or `Register`) and `Emoji` fields and the first
 image in the file; the session banner shows the `Name`, the status line and `/today` the `Emoji`.
 
 - `- **Emoji:** <new>` if they want a different one.
+- `- **Colors:** <new>` if they want different colors: print the choices with
+  `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" colors` (the current pair comes first when it's a
+  custom one), then write the line `colors --line=<choice>` prints for the pair they pick
+  (as init's Step 1b does). An IDENTITY.md without the line uses Oppi's colors.
 - **Keeping the old image:** if its filename carries the old name (`vega-avatar.jpg`),
   rename the file with plain `mv` (never `git mv`, which stages in the operator's repo) to
   `assets/<newname-lowercased>-avatar.<ext>` and repoint both the `![...](path)`

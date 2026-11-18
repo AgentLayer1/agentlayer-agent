@@ -83,6 +83,7 @@ export const homeEntry = (home: string, work: Work): HomeEntry => {
     schema: SCHEMA,
     name: work.agent.name,
     emoji: work.agent.emoji,
+    colors: work.agent.colors,
     dashboard: fileUrl(join(home, 'dashboard.html')),
     roadmap: pageUrl(home, work.roadmap),
     projects: work.projects.map(card).toSorted(byWork),

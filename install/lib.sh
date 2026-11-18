@@ -19,6 +19,11 @@ AL_DEFAULT_CLONE="$HOME/Developer/agentlayer-agent"
 AL_TOOL_DIRS=${AL_TOOL_DIRS:-"$HOME/.bun/bin:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin"}
 
 AL_MODE=guide
+# agent (set one up) or prereqs (only the apps and tools); empty until a flag or the welcome menu picks.
+AL_GOAL=""
+# What the guide calls this computer: "this Mac", "your Mac". A guide sets its own.
+AL_MACHINE=machine
+AL_KEY=""
 AL_NAME=""
 AL_HOME=""
 AL_CMUX=""
@@ -32,8 +37,10 @@ AL_COMMAND=""
 
 al_usage() {
   cat <<EOF
-AgentLayer setup guide. It checks this machine and shows each step to do; it runs nothing itself.
+AgentLayer setup guide. It checks this machine and shows each step to do: a link to the maker's site,
+or a command for you to read, copy and run. It installs and changes nothing itself.
 
+  --prereqs           only the apps and tools, to get a machine ready before any agent is set up
   --name <name>       set up a new agent called <name> (its folder: ~/Documents/Agents/<name>)
   --home <folder>     set up a new agent in this folder
   --marketplace       get the plugin from the marketplace (to use the agent)
@@ -79,6 +86,7 @@ al_parse_args() {
         ;;
       --cmux) AL_CMUX=yes ;;
       --no-cmux) AL_CMUX=no ;;
+      --prereqs | --prerequisites) AL_GOAL=prereqs ;;
       --check) AL_MODE=check ;;
       --list) [[ $AL_MODE == check ]] || AL_MODE=list ;;
       --help | -h)
@@ -96,21 +104,41 @@ al_parse_args() {
 
 # --- The look -----------------------------------------------------------------
 
+# Oppi's colors and banner, copies of the plugin's (src/shared/persona.ts, src/hooks/banner.ts): the guide runs
+# before any agent exists, so it wears the ones a new agent wakes up with.
+AL_COLOR_PRIMARY='#B456A8'
+AL_COLOR_ACCENT='#3BAA70'
+AL_WORDMARK=(' ╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗' ' ╠═╣ ║ ╦ ║╣  ║║║  ║ ' ' ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ ')
+
+al_rgb() {
+  local hex=${1#\#}
+  printf '\033[38;2;%d;%d;%dm' $((16#${hex:0:2})) $((16#${hex:2:2})) $((16#${hex:4:2}))
+}
+
+# Each terminal gets the closest it can draw: 24-bit, the 256-color palette, or plain magenta and green.
 al_style_init() {
   if [[ -t 1 && -z ${NO_COLOR:-} && ${TERM:-dumb} != dumb ]]; then
-    C_RESET=$'\033[0m' C_BOLD=$'\033[1m' C_DIM=$'\033[2m' C_GREEN=$'\033[32m'
-    C_YELLOW=$'\033[33m' C_RED=$'\033[31m' C_CYAN=$'\033[36m' C_MAGENTA=$'\033[35m'
+    C_RESET=$'\033[0m' C_BOLD=$'\033[1m' C_DIM=$'\033[2m'
+    C_YELLOW=$'\033[33m' C_RED=$'\033[31m' C_CYAN=$'\033[36m'
+    case "${COLORTERM:-}:${TERM:-}" in
+      truecolor:* | 24bit:*) AL_DEPTH=24 C_PRIMARY=$(al_rgb "$AL_COLOR_PRIMARY") C_ACCENT=$(al_rgb "$AL_COLOR_ACCENT") ;;
+      *256color*) AL_DEPTH=8 C_PRIMARY=$'\033[38;5;133m' C_ACCENT=$'\033[38;5;72m' ;;
+      *) AL_DEPTH=3 C_PRIMARY=$'\033[35m' C_ACCENT=$'\033[32m' ;;
+    esac
   else
-    C_RESET='' C_BOLD='' C_DIM='' C_GREEN='' C_YELLOW='' C_RED='' C_CYAN='' C_MAGENTA=''
+    AL_DEPTH=0 C_RESET='' C_BOLD='' C_DIM='' C_YELLOW='' C_RED='' C_CYAN='' C_PRIMARY='' C_ACCENT=''
   fi
+  C_GREEN=$C_ACCENT
   case "${LC_ALL:-${LC_CTYPE:-${LANG:-}}}" in
     *[Uu][Tt][Ff]-8* | *[Uu][Tt][Ff]8*)
       G_DONE='✓' G_TODO='○' G_FAIL='✗' G_ARROW='→' G_DOT='·' G_LOGO='🐙 '
       B_TL='┌' B_TR='┐' B_BL='└' B_BR='┘' B_H='─' B_V='│'
+      R_TL='╭' R_TR='╮' R_BL='╰' R_BR='╯'
       ;;
     *)
       G_DONE='ok' G_TODO='..' G_FAIL='!!' G_ARROW='->' G_DOT='-' G_LOGO=''
       B_TL='+' B_TR='+' B_BL='+' B_BR='+' B_H='-' B_V='|'
+      R_TL='+' R_TR='+' R_BL='+' R_BR='+'
       ;;
   esac
   AL_WIDTH=78
@@ -121,12 +149,83 @@ al_style_init() {
   fi
 }
 
+# Line i of the wordmark's three, shaded from orchid to a lighter pink.
+al_shade() {
+  local codes=(133 170 212)
+  case $AL_DEPTH in
+    24) printf '\033[38;2;%d;%d;%dm' $((16#${AL_COLOR_PRIMARY:1:2} + 26 * $1)) $((16#${AL_COLOR_PRIMARY:3:2} + 18 * $1)) \
+      $((16#${AL_COLOR_PRIMARY:5:2} + 15 * $1)) ;;
+    8) printf '\033[38;5;%sm' "${codes[$1]}" ;;
+    *) printf '%s' "$C_PRIMARY" ;;
+  esac
+}
+
+# A box with a title in its top edge, for what a reader should take in before anything else.
+al_panel() {
+  local title=$1 width=$((AL_WIDTH - 6)) text line first=1
+  local inner=$((width - 4))
+  shift
+  printf '  %s%s%s %s%s%s %s%s%s\n' "$C_ACCENT" "$R_TL$B_H" "$C_RESET" "$C_BOLD" "$title" "$C_RESET" \
+    "$C_ACCENT" "$(al_repeat "$B_H" $((width - ${#title} - 5)))$R_TR" "$C_RESET"
+  for text in "$@"; do
+    [[ -n $first ]] || printf '  %s%s%s%s%s%s\n' "$C_ACCENT" "$B_V" "$(al_repeat ' ' $((width - 2)))" "$B_V" "$C_RESET"
+    first=""
+    while IFS= read -r line; do
+      line=${line% }
+      printf '  %s%s%s %s%s %s%s%s\n' "$C_ACCENT" "$B_V" "$C_RESET" "$line" "$(al_repeat ' ' $((inner - ${#line})))" \
+        "$C_ACCENT" "$B_V" "$C_RESET"
+    done <<<"$(printf '%s\n' "$text" | fold -s -w "$inner")"
+  done
+  printf '  %s%s%s\n' "$C_ACCENT" "$R_BL$(al_repeat "$B_H" $((width - 2)))$R_BR" "$C_RESET"
+}
+
 al_header() {
-  printf '\n  %s%s%sAgentLayer %s %s%s\n\n' "$C_BOLD" "$C_MAGENTA" "$G_LOGO" "$G_DOT" "$1" "$C_RESET"
-  if [[ $AL_MODE == guide ]]; then
-    al_note "This guide checks each step and shows what to do. It runs nothing itself: you run every command, and it ticks the step when it's done."
-    printf '\n'
+  local i
+  if [[ $AL_MODE != guide ]]; then
+    printf '\n  %s%s%sAgentLayer %s %s%s\n\n' "$C_BOLD" "$C_PRIMARY" "$G_LOGO" "$G_DOT" "$1" "$C_RESET"
+    return
   fi
+  printf '\n'
+  if [[ -n $G_LOGO ]] && ((AL_WIDTH >= 40)); then
+    for i in 0 1 2; do printf '  %s%s%s%s\n' "$C_BOLD" "$(al_shade "$i")" "${AL_WORDMARK[i]}" "$C_RESET"; done
+    printf '   %s%s===%s=== %s%s\n\n' "$C_BOLD" "$C_ACCENT" "$(printf '%s' "$AL_DEFAULT_NAME" | tr '[:lower:]' '[:upper:]')" "${G_LOGO% }" "$C_RESET"
+    printf '   %s%s%s %s%s agentlayer.one%s\n\n' "$C_BOLD" "$1" "$C_RESET" "$C_DIM" "$G_DOT" "$C_RESET"
+  else
+    printf '  %s%sAgentLayer %s %s%s\n\n' "$C_BOLD" "$C_PRIMARY" "$G_DOT" "$1" "$C_RESET"
+  fi
+  al_panel "A guide, not an installer" \
+    "Nothing here installs or changes anything by itself. It checks this $AL_MACHINE one step at a time and shows what to do: a link to the maker's own site, or a command for you to read, copy and run yourself. Nothing needs sudo." \
+    "Run it again any time. Finished steps are simply ticked."
+  printf '\n'
+}
+
+al_menu_line() {
+  printf '    %s%s%s%s  %s%-20s%s %s%s%s\n' "$C_BOLD" "$C_ACCENT" "$1" "$C_RESET" "$C_BOLD" "$2" "$C_RESET" "$C_DIM" "$3" "$C_RESET"
+}
+
+# Asked only when the command line hasn't already said what to do, and only with someone at the keyboard.
+al_menu() {
+  if [[ $AL_MODE != guide || -n $AL_GOAL || -n $AL_NAME || -n $AL_HOME ]]; then
+    AL_GOAL=${AL_GOAL:-agent}
+    return 0
+  fi
+  AL_GOAL=agent
+  printf '  %sWhat would you like to do?%s\n\n' "$C_BOLD" "$C_RESET"
+  al_menu_line 1 "Set up an agent" "the tools, then the agent's folder and plugin"
+  al_menu_line 2 "Prepare this $AL_MACHINE" "only the apps and tools, ready for an agent later"
+  al_menu_line 3 "Check this $AL_MACHINE" "a list of what's done and what's left"
+  al_menu_line q "Quit" ""
+  printf '\n    %sPress 1, 2, 3 or q (Enter for 1):%s ' "$C_DIM" "$C_RESET"
+  AL_KEY=""
+  while al_read_key; do
+    case "$AL_KEY" in
+      "" | 1) break ;;
+      2) AL_GOAL=prereqs && break ;;
+      3) AL_MODE=check && break ;;
+      q | Q) printf 'q\n' && al_quit ;;
+    esac
+  done
+  printf '%s\n' "${AL_KEY:-1}"
 }
 
 al_done() {
@@ -682,6 +781,21 @@ show_vscode() {
 show_uv() {
   al_para "uv runs the agent's Python scripts in a throwaway environment each time, so nothing on this machine gets Python packages installed. Follow the standalone install on its page."
   al_link https://docs.astral.sh/uv/getting-started/installation/
+}
+
+# --- Prepare only ---
+
+al_prereqs_finish() {
+  printf '\n'
+  if ((AL_PENDING > 0)); then
+    al_para "$AL_PENDING required step(s) left. Run the same line again when they're done; finished steps are skipped."
+    printf '\n'
+    exit 1
+  fi
+  al_para "Your $AL_MACHINE is ready for an agent."
+  al_note "To set one up, run the guide again and choose Set up an agent$([[ ${AL_CMUX:-} == yes ]] && printf ', which also checks the Ghostty and cmux settings'). An agent from another plugin moves over with that plugin's own move command instead."
+  printf '\n'
+  exit 0
 }
 
 # --- The agent's folder ---

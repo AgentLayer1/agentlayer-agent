@@ -6,6 +6,7 @@
  */
 import { join } from 'node:path';
 import { parseGoals } from '@/work/goals';
+import { DEFAULT_AGENT_COLORS } from '@/shared/persona';
 import { WORK_SCHEMA, type Work } from '@/work/model';
 import { closed, NOVA_GOALS, NOVA_HOME, NOW, project, report, SCOUT_HOME, task } from './fixture';
 
@@ -344,7 +345,7 @@ const pin = (title: string, icon: string, ...path: string[]) => ({ title, icon, 
  */
 export const SHOWCASE_OPPI: Work = {
   schema: WORK_SCHEMA,
-  agent: { name: 'Oppi', emoji: agentNamed('Oppi').emoji },
+  agent: { name: 'Oppi', emoji: agentNamed('Oppi').emoji, colors: DEFAULT_AGENT_COLORS },
   roadmap: 'roadmap.html',
   projects: [
     project('acme-app', 210, {
@@ -398,7 +399,7 @@ export const SHOWCASE_OPPI: Work = {
 
 const quietHome = (name: string, projects: Work['projects'], tasks: Work['tasks']): Work => ({
   schema: WORK_SCHEMA,
-  agent: { name, emoji: agentNamed(name).emoji },
+  agent: { name, emoji: agentNamed(name).emoji, colors: { primary: '#2F7FC1', accent: '#E0664A' } },
   roadmap: '',
   projects,
   tasks,

@@ -116,5 +116,10 @@ export const mount = (script: string, data: Record<string, unknown> = {}) => {
     }
     context.__dispatch(field, 'edit', JSON.stringify({ text }));
   };
-  return { visibleTexts, tap, type, setData, actions };
+  /**
+   * The props of the first text view showing `text`, as cmux was sent them.
+   */
+  const propsOf = (text: string): Record<string, unknown> | undefined =>
+    nodes.get(walk(scene.root).find((id) => nodes.get(id)?.props.text === text) ?? '')?.props;
+  return { visibleTexts, tap, type, setData, actions, propsOf };
 };

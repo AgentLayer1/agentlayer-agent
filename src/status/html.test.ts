@@ -66,6 +66,7 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
     kind: 'AI assistant (Claude Code plugin)',
     vibe: 'Sharp but approachable, slightly funny.',
     emoji: '🍌',
+    colors: { primary: '#B456A8', accent: '#3BAA70' },
     avatar: 'assets/oppi-avatar.png',
     bio: 'A personal AI assistant that runs as a Claude Code plugin.',
     identitySections: [{ title: 'Core Role', lines: ['General-purpose personal assistant'] }],
@@ -570,6 +571,16 @@ describe('renderDashboardHtml', () => {
       persona: { ...base.persona, name: 'Scout', emoji: '{{AGENT_EMOJI}}' }
     });
     expect(unfilled).toContain('===SCOUT=== 🐙');
+  });
+
+  test('the sidebar banner wears the agent’s colors', () => {
+    const base = makeSnapshot();
+    const html = renderDashboardHtml({
+      ...base,
+      persona: { ...base.persona, colors: { primary: '#2F7FC1', accent: '#E0664A' } }
+    });
+    expect(html).toContain('<pre class="wordmark" style="color: #2F7FC1">');
+    expect(html).toContain('<div class="tagline" style="color: #E0664A">');
   });
 
   test('persona page renders Kevin from IDENTITY/SOUL, not file names', () => {

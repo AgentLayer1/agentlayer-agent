@@ -8,6 +8,7 @@ AL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$AL_DIR/lib.sh"
 
 AL_OS_NAME=macOS
+AL_MACHINE=Mac
 AL_MIN_MACOS=26
 # The cmux pack looks for cmux in the first of these. Overridable so tests see only their own apps.
 AL_APP_DIRS=${AL_APP_DIRS:-"/Applications:$HOME/Applications"}
@@ -169,7 +170,7 @@ MAC_SETTINGS_PASTE=""
 # One read of the plugin's checker: the missing count and summary first, then the parts a card shows.
 check_settings() {
   local parsed status
-  parsed=$(AGENT_LOG_FILE=off bun "$AL_ROOT/src/cli.ts" cmux settings --file="$MAC_SETTINGS_FILE" --json </dev/null 2>/dev/null | bun -e '
+  parsed=$(AGENT_LOG_FILE=off bun "$AL_ROOT/src/cli.ts" cmux settings --file="$MAC_SETTINGS_FILE" --launcher="$MAC_LAUNCHER" --json </dev/null 2>/dev/null | bun -e '
     const report = JSON.parse(await Bun.stdin.text());
     process.stdout.write([report.status, report.summary, report.report.join("\n"), report.command, report.paste].join("\x1e"));
   ' 2>/dev/null)
@@ -192,9 +193,16 @@ show_settings() {
 }
 
 # Machine-wide, so checked once, with the first plugin folder's checker.
+MAC_LAUNCHER=claude
+
 os_after_agents() {
+  local home
   [[ $AL_CMUX == yes && -n $AL_FIRST_ROOT ]] || return 0
   AL_ROOT=$AL_FIRST_ROOT
+  # Any home with its own subscription makes agent the button's launcher; it runs plain claude everywhere else.
+  for home in ${AL_HOMES[@]+"${AL_HOMES[@]}"}; do
+    [[ -f $home/.state/secrets/.env.claude.json ]] && MAC_LAUNCHER=agent
+  done
   MAC_SETTINGS_FILE=ghostty
   al_step "Ghostty settings" recommended check_settings show_settings
   MAC_SETTINGS_FILE=cmux
@@ -206,6 +214,7 @@ main() {
   al_parse_args "$@"
   al_style_init
   al_header "Mac setup guide"
+  al_menu
 
   al_step "This Mac" required check_macos show_macos || finish
 
@@ -234,6 +243,7 @@ main() {
   al_step "Obsidian" "$obsidian_kind" check_obsidian show_obsidian
   [[ $AL_PATH_CHOICE == dev ]] && al_step "VS Code" recommended check_vscode show_vscode
 
+  [[ $AL_GOAL == prereqs ]] && al_prereqs_finish
   al_agent_steps
 }
 

@@ -260,6 +260,19 @@ Then, only when the answer is NOT the default:
 
 > **An emoji for it?** (default `🐙`) — shows up in the banner and the dashboard header.
 >
+> **Its colors?** First print the choices, each drawn in its own colors (the chat
+> renders them):
+>
+> ```bash
+> bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" colors
+> ```
+>
+> Then ask with `AskUserQuestion`, one option per pair, labelled with its squares:
+> `🟪🟩 Orchid & mint` (recommended, Oppi's), `🟦🟧 Ocean & coral`, `🟥🟨 Crimson & gold`,
+> `🟧🟦 Amber & teal`. **Other** takes two hex codes, primary then accent
+> (`#RRGGBB #RRGGBB`). The banner, the dashboard and the session banner draw the agent in
+> these.
+>
 > **An avatar?** Paste a local path or URL, or `skip`. The plugin ships Oppi's avatar;
 > a differently-named agent has none, so `skip` is a fine answer and leaves the image
 > out of `IDENTITY.md` entirely.
@@ -268,6 +281,10 @@ Stage three values for Steps 2, 3 and 7:
 
 - `AGENT_NAME` — the answer, or `Oppi`
 - `AGENT_EMOJI` — the answer, or `🐙`
+- `AGENT_COLORS` — the line `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" colors --line=<choice>`
+  prints: the pair's number (1–4), or the two codes quoted (`--line="#RRGGBB #RRGGBB"`). Exit
+  2 means the codes didn't parse: ask again. Default name: `--line=1`, unasked. On a
+  re-init, the current `- **Colors:**` line's value, read like the name.
 - `AGENT_AVATAR` — the home-relative path the image will land at, which Step 7 then
   copies to. Default name: `assets/oppi-avatar.png`. Renamed with an image:
   `assets/<name-lowercased>-avatar.<ext>`. Renamed without one: empty.
@@ -370,8 +387,8 @@ Summarize: *"Default: AI assistant for learning, planning, research, coding."* T
 
 Adjust the staged IDENTITY's `## Core Role` to match. Leave `## Operational Pattern` empty (the agent grows it over time).
 
-Resolve the identity tokens from Step 1b: `{{AGENT_NAME}}`, `{{AGENT_EMOJI}}`, and
-`{{AGENT_AVATAR}}`. **When no avatar was staged, delete the whole `![...]({{AGENT_AVATAR}})`
+Resolve the identity tokens from Step 1b: `{{AGENT_NAME}}`, `{{AGENT_EMOJI}}`,
+`{{AGENT_COLORS}}`, and `{{AGENT_AVATAR}}`. **When no avatar was staged, delete the whole `![...]({{AGENT_AVATAR}})`
 line and the `- **Avatar:**` line** rather than leaving an empty link — the dashboard
 takes the first image in the file as the avatar, and a dangling one renders broken.
 With the default name, add `- **Nickname:** Ops` under the `- **Name:**` line (the README's
@@ -617,7 +634,7 @@ Parse the next message: if `looks good` → keep the proposal; if edits/addition
 
 ## Step 6c — Model
 
-For Codex, the shipped default is **Sol High** (`gpt-6.1-sol`, reasoning effort `high`). Step 7c writes this pair into the home's `.codex/config.toml`, filling each missing key and preserving existing home-level choices. Tell the operator that these home settings take precedence over their global Codex model and effort; they can change either locally. Model and effort are not part of the user-global paste note.
+For Codex, the shipped default is **Sol High** (`gpt-6.2-sol`, reasoning effort `high`). Step 7c writes this pair into the home's `.codex/config.toml`, filling each missing key and preserving existing home-level choices. Tell the operator that these home settings take precedence over their global Codex model and effort; they can change either locally. Model and effort are not part of the user-global paste note, except that a user config still set to a past home default (`gpt-6.1-sol`, `gpt-6-astra`) is shown the line that replaces it.
 
 The agent's project settings pin which Claude model powers this home. `AskUserQuestion`:
 
@@ -1638,7 +1655,7 @@ Idempotent by file, same as the concept seeding above: an existing rule file is 
 
 ## Step 7c — Codex wiring (when the harness is Codex, or the operator also runs Codex here)
 
-The generator adds `model = "gpt-6.1-sol"` and `model_reasoning_effort = "high"` when those keys are absent from the home config, including when the user-global config selects something else. Existing home-level values survive every regeneration. Report the resulting pair in Step 9; if the operator cannot access Sol, help them choose an available model and set it in the home config.
+The generator adds `model = "gpt-6.2-sol"` and `model_reasoning_effort = "high"` when those keys are absent from the home config, including when the user-global config selects something else. Existing home-level values survive every regeneration. Report the resulting pair in Step 9; if the operator cannot access Sol, help them choose an available model and set it in the home config.
 
 Codex reads `AGENTS.md` natively but has no `@-import`, and as of Codex 0.153 a plugin can bundle neither hooks nor an MCP server that knows which home it serves (the server is launched inside the plugin cache, and Codex exports no workspace variable and advertises no MCP roots). So under Codex it lives per home: hooks in `$HOME_DIR/.codex/hooks.json`, the `agentlayer` MCP server plus the home's permission posture in `$HOME_DIR/.codex/config.toml`, and the command rules in `$HOME_DIR/.codex/rules/agentlayer.rules`, each pinned to this plugin checkout and this home. Generate them with the `codex_setup` MCP tool; never hand-write these files. The tool runs the generator outside the shell sandbox, which matters under Codex, where the workspace's `.codex/` directory is read-only to the model's shell. If the tool is unavailable (a session whose server has not started), the same generator runs from the shell:
 

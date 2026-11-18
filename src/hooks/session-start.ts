@@ -27,7 +27,8 @@
 import { AGENT_SLUG, FILES, FOLDERS, isInitialized, PLUGIN_NAME, staticContextFiles } from '@/config';
 import { assembleContext } from '@/hooks/context';
 import { drainDeferredCaptures } from '@/knowledge/session-capture';
-import { BANNER, BANNER_LINES, BANNER_TAG, stripAnsi } from '@/hooks/banner';
+import { BANNER, BANNER_LINES, BANNER_TAG } from '@/hooks/banner';
+import { stripAnsi } from '@/shared/ansi';
 import { log as baseLog } from '@/shared/log';
 import { RUNTIME_DIR } from '@/shared/naming';
 import { readText } from '@/shared/text';

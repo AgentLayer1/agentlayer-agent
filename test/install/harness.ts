@@ -229,7 +229,7 @@ const READ_ONLY = [
   /^pdftoppm -v$/,
   /^claude plugin list --json$/,
   /^bun -e /,
-  /^bun \S+\/src\/cli\.ts cmux settings --file=(ghostty|cmux) --json$/,
+  /^bun \S+\/src\/cli\.ts cmux settings --file=(ghostty|cmux) --launcher=(claude|agent) --json$/,
   /^shell -l$/,
   /^pbcopy $/,
   /^open https?:\/\/\S+$/,

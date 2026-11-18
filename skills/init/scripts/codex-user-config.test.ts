@@ -126,6 +126,29 @@ describe('codex-user-config', () => {
     expect(set.json.missing.map((m: { key: string }) => m.key)).not.toContain('model_auto_compact_token_limit');
   });
 
+  test('a user config pinned to a past home default is told to replace its model line, sized for the new model', () => {
+    const dir = scratch();
+    const cache = join(dir, 'models_cache.json');
+    writeFileSync(
+      cache,
+      JSON.stringify({
+        models: [
+          { slug: 'gpt-6.2-sol', visibility: 'list', priority: 1, context_window: 500000, max_context_window: 900000 },
+          { slug: 'gpt-6.1-sol', visibility: 'list', priority: 2, context_window: 500000, max_context_window: 872000 }
+        ]
+      })
+    );
+    const config = join(dir, 'config.toml');
+    writeFileSync(config, 'model = "gpt-6.1-sol"\nmodel_context_window = 872000\n');
+    const retired = run('--config', config, '--claude-settings', join(dir, 'none.json'), '--models-cache', cache);
+    expect(retired.json.missing).toContainEqual(expect.objectContaining({ key: 'model', value: 'gpt-6.2-sol' }));
+    expect(retired.json.block).toContain('model = "gpt-6.2-sol"   # replaces your model = "gpt-6.1-sol"');
+    expect(retired.json.block).toContain('model_context_window = 900000   # replaces your model_context_window = 872000');
+    writeFileSync(config, 'model = "gpt-6.2-astra"\n');
+    const chosen = run('--config', config, '--claude-settings', join(dir, 'none.json'), '--models-cache', cache);
+    expect(chosen.json.missing.map((m: { key: string }) => m.key)).not.toContain('model');
+  });
+
   test("the trust key is the home's resolved path, whatever spelling --home was given", () => {
     const dir = scratch();
     const proc = spawnSync(

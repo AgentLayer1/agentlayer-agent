@@ -103,7 +103,7 @@ _Foundations: the books closed every month._
  */
 export const NOVA: Work = {
   schema: WORK_SCHEMA,
-  agent: { name: 'Nova', emoji: '🦉' },
+  agent: { name: 'Nova', emoji: '🦉', colors: { primary: '#2F7FC1', accent: '#E0664A' } },
   roadmap: 'roadmap.html',
   projects: [
     project('acme-app', 210, {
@@ -143,7 +143,7 @@ export const NOVA: Work = {
  */
 export const SCOUT: Work = {
   schema: WORK_SCHEMA,
-  agent: { name: 'Scout', emoji: '🐢' },
+  agent: { name: 'Scout', emoji: '🐢', colors: { primary: '#C7354B', accent: '#C99A2E' } },
   roadmap: '',
   projects: [],
   tasks: [],

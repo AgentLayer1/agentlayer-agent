@@ -11,6 +11,7 @@
  */
 import { basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { ANSI, paint } from '@/shared/ansi';
 
 export interface StatusLinePayload {
   model?: { display_name?: string };
@@ -49,19 +50,6 @@ export interface StatusLineOptions {
   now?: number;
 }
 
-const ESC = '\x1b[';
-const RESET = `${ESC}0m`;
-const DIM = `${ESC}2m`;
-const WHITE = `${ESC}37m`;
-const DEFAULT_FOREGROUND = `${ESC}39m`;
-const GREEN = `${ESC}32m`;
-const YELLOW = `${ESC}33m`;
-const RED = `${ESC}31m`;
-const BLUE = `${ESC}34m`;
-const CYAN = `${ESC}36m`;
-const BRIGHT_BLUE = `${ESC}94m`;
-const BRIGHT_CYAN = `${ESC}96m`;
-
 interface Palette {
   text: string;
   folder: string;
@@ -70,20 +58,18 @@ interface Palette {
 
 /** White and the bright hues wash out on a light background; the rest read on both. */
 const PALETTES: Record<Theme, Palette> = {
-  dark: { text: WHITE, folder: BRIGHT_BLUE, branch: BRIGHT_CYAN },
-  light: { text: DEFAULT_FOREGROUND, folder: BLUE, branch: CYAN }
+  dark: { text: ANSI.white, folder: ANSI.brightBlue, branch: ANSI.brightCyan },
+  light: { text: ANSI.defaultForeground, folder: ANSI.blue, branch: ANSI.cyan }
 };
-const SEP = `${DIM}│${RESET}`;
+const SEP = paint('│', ANSI.dim);
 const BAR_WIDTH = 12;
 
-const paint = (color: string, text: string): string => `${color}${text}${RESET}`;
-
 /** Green under half, yellow to 79%, red from 80%: the same scale for context and rate limits. */
-const usageColor = (percent: number): string => (percent < 50 ? GREEN : percent < 80 ? YELLOW : RED);
+const usageColor = (percent: number): string => (percent < 50 ? ANSI.green : percent < 80 ? ANSI.yellow : ANSI.red);
 
 export const contextBar = (percent: number): string => {
   const filled = percent > 0 ? Math.max(1, Math.floor((percent * BAR_WIDTH) / 100)) : 0;
-  return `${usageColor(percent)}${'█'.repeat(filled)}${DIM}${'⣿'.repeat(BAR_WIDTH - filled)}${RESET}`;
+  return `${usageColor(percent)}${'█'.repeat(filled)}${ANSI.dim}${'⣿'.repeat(BAR_WIDTH - filled)}${ANSI.reset}`;
 };
 
 /** "Claude 3.5 Opus" and "Claude Opus" both read as "Opus". */
@@ -137,16 +123,17 @@ export const renderStatusLine = (payload: StatusLinePayload, options: StatusLine
   const context = contextPercent(payload.context_window);
   const palette = PALETTES[options.theme ?? 'dark'];
 
-  const effort = payload.effort?.level ? ` ${paint(DIM, payload.effort.level)}` : '';
+  const effort = payload.effort?.level ? ` ${paint(payload.effort.level, ANSI.dim)}` : '';
 
   const first = [
-    `${options.emoji ?? '🤖'} ${paint(palette.text, model)}${effort}`,
-    paint(palette.folder, `📁 ${folderLink(dir)}`),
-    ...(options.branch ? [paint(palette.branch, `🌿 ${options.branch}`)] : [])
+    `${options.emoji ?? '🤖'} ${paint(model, palette.text)}${effort}`,
+    paint(`📁 ${folderLink(dir)}`, palette.folder),
+    ...(options.branch ? [paint(`🌿 ${options.branch}`, palette.branch)] : [])
   ];
 
-  const usage = context === null ? [] : [`${contextBar(context)} ${paint(palette.text, `${context}%`)}`];
-  const hourly = durationMs > 0 ? ` ${paint(DIM, `($${((cost / (durationMs / 1000)) * 3600).toFixed(2)}/hr)`)}` : '';
+  const usage = context === null ? [] : [`${contextBar(context)} ${paint(`${context}%`, palette.text)}`];
+  const hourly =
+    durationMs > 0 ? ` ${paint(`($${((cost / (durationMs / 1000)) * 3600).toFixed(2)}/hr)`, ANSI.dim)}` : '';
   const now = options.now ?? Date.now();
   const limit = (label: string, window: RateLimitWindow | undefined): string[] => {
     const used = percentOrNull(window?.used_percentage);
@@ -156,13 +143,13 @@ export const renderStatusLine = (payload: StatusLinePayload, options: StatusLine
     const resetsAt = window?.resets_at;
     const text =
       typeof resetsAt === 'number' ? `${used}% ↻ ${formatCountdown(resetsAt * 1000 - now)}` : `${label} ${used}%`;
-    return [paint(usageColor(used), text)];
+    return [paint(text, usageColor(used))];
   };
   const limits = [...limit('5h', payload.rate_limits?.five_hour), ...limit('7d', payload.rate_limits?.seven_day)];
   const second = [
     ...usage,
-    `${paint(YELLOW, `$${cost.toFixed(2)}`)}${hourly}`,
-    ...(durationMs > 0 ? [paint(CYAN, `⏱ ${formatDuration(durationMs)}`)] : []),
+    `${paint(`$${cost.toFixed(2)}`, ANSI.yellow)}${hourly}`,
+    ...(durationMs > 0 ? [paint(`⏱ ${formatDuration(durationMs)}`, ANSI.cyan)] : []),
     ...(limits.length > 0 ? [`⏳ ${limits.join(' · ')}`] : [])
   ];
 

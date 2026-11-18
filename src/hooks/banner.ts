@@ -6,10 +6,8 @@
  * whole block would only color line 1.
  */
 
-import { DEFAULT_AGENT_EMOJI, DEFAULT_AGENT_NAME } from '@/shared/persona';
-
-const ESC = '\x1b[';
-const RESET = `${ESC}0m`;
+import { ANSI, paint, rgbEscape } from '@/shared/ansi';
+import { DEFAULT_AGENT_COLORS, DEFAULT_AGENT_EMOJI, DEFAULT_AGENT_NAME } from '@/shared/persona';
 
 /** Raw (uncolored) wordmark lines + tagline. Exported so other surfaces (e.g.
  *  the `status` screen) can re-colorize them under their own color policy
@@ -21,24 +19,8 @@ export const bannerTag = (name: string, emoji: string): string =>
 
 export const BANNER_TAG = bannerTag(DEFAULT_AGENT_NAME, DEFAULT_AGENT_EMOJI);
 
-export const ANSI = {
-  bold: `${ESC}1m`,
-  dim: `${ESC}2m`,
-  red: `${ESC}31m`,
-  yellow: `${ESC}33m`,
-  cyan: `${ESC}36m`
-} as const;
-
-/**
- * One colored fragment, reset at its end so fragments compose within a line.
- */
-export const paint = (text: string, ...codes: string[]): string =>
-  codes.length ? `${codes.join('')}${text}${RESET}` : text;
-
+// Before init there's no agent yet, so the banner wears the colors a new one wakes up with.
 export const BANNER = [
-  ...BANNER_LINES.map((line) => paint(line, ANSI.bold, ANSI.yellow)),
-  paint(BANNER_TAG, ANSI.bold, ANSI.cyan)
+  ...BANNER_LINES.map((line) => paint(line, ANSI.bold, rgbEscape(DEFAULT_AGENT_COLORS.primary))),
+  paint(BANNER_TAG, ANSI.bold, rgbEscape(DEFAULT_AGENT_COLORS.accent))
 ].join('\n');
-
-// Codex's ratatui renderer prints escapes as raw bytes, and log files read better without them.
-export const stripAnsi = (text: string): string => text.replace(/\x1b\[[0-9;]*m/g, '');

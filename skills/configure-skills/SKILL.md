@@ -766,7 +766,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux settings --file=ghostty
 bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux settings --file=cmux
 ```
 
-Each prints how many recommended settings are already set, what's missing, and what the operator set differently (theirs are kept, never flagged as wrong). When something is missing it also prints the command to run and, under **To paste**, the text to copy. Show the operator both, in that order: they copy the text, then run the command themselves in a terminal. Don't write either file. For cmux's JSON the command backs the file up and opens it in CotEditor, where they merge the fragment by hand. Exit 0 means nothing is missing, so say so in one line and move on.
+In a session started with `agent` (this agent has its own Claude subscription), the cmux check recommends `agent` for the Claude Code button; pass `--launcher=claude` or `--launcher=agent` to choose. Each prints how many recommended settings are already set, what's missing, and what the operator set differently (theirs are kept, never flagged as wrong). When something is missing it also prints the command to run and, under **To paste**, the text to copy. Show the operator both, in that order: they copy the text, then run the command themselves in a terminal. Don't write either file. For cmux's JSON the command backs the file up and opens it in CotEditor, where they merge the fragment by hand. Exit 0 means nothing is missing, so say so in one line and move on.
 
 **(3) Install.** The sandbox can't write `~/.config/cmux/`, and cmux's CLI only answers from a terminal inside cmux, so hand the operator this line to run in a cmux terminal:
 

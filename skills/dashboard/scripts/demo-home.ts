@@ -125,6 +125,7 @@ ${AVATAR ? '![Ace](assets/ace-avatar.jpg)\n' : ''}
 - **Kind:** Company agent (agent-acme, forked from ${plugin.name})
 - **Vibe:** Sharp but approachable. Gets things done. Knows the codebase and the company.
 - **Emoji:** 🤖
+- **Colors:** ocean \`#2F7FC1\` (primary) · coral \`#E0664A\` (accent)
 
 ## Short Bio
 

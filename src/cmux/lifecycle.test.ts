@@ -146,6 +146,6 @@ test('the dashboard’s refresh never throws, even when the write fails', () => 
     }
   };
   expect(() =>
-    refreshSidebarQuietly(NOVA_HOME, { ...NOVA, agent: { name: 'Changed', emoji: '🦉' } }, broken)
+    refreshSidebarQuietly(NOVA_HOME, { ...NOVA, agent: { ...NOVA.agent, name: 'Changed' } }, broken)
   ).not.toThrow();
 });

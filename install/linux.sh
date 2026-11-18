@@ -114,6 +114,7 @@ main() {
   al_style_init
   linux_manager
   al_header "Linux setup guide"
+  al_menu
 
   al_step "This system" required check_system show_system || finish
 
@@ -131,6 +132,7 @@ main() {
   al_step "Obsidian" recommended check_obsidian show_obsidian
   [[ $AL_PATH_CHOICE == dev ]] && al_step "VS Code" recommended check_vscode show_vscode
 
+  [[ $AL_GOAL == prereqs ]] && al_prereqs_finish
   al_agent_steps
 }
 

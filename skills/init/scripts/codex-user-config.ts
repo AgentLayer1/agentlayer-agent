@@ -6,6 +6,7 @@
  * file on either host, so this prints what is missing and, with `--out`, saves a note the
  * operator can open after the session. Print-only: the operator's files are never edited.
  * The home's own footer status line is written by `codex-setup.ts`, not recommended here.
+ * The model is the home's to choose, so it is recommended only to move off a past home default.
  * The context window is recommended from Codex's own model catalog cache: the default window
  * is well under the `max_context_window` the catalog serves, and a larger request is clamped to
  * that cap, so the note asks for exactly the cap (a cost choice, hence user-level).
@@ -21,6 +22,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
+import { CODEX_MODEL, RETIRED_CODEX_MODELS } from './codex-model';
 
 const args = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -77,8 +79,10 @@ interface CatalogModel {
 }
 const catalog = (readJson(modelsCachePath).models as unknown[] | undefined) ?? [];
 const models = catalog.filter((item): item is CatalogModel => isRecord(item) && typeof item.slug === 'string');
-const configuredModel = models.find((item) => item.slug === config.model);
-/** The model Codex runs: the configured one, else the listed model the catalog ranks first. */
+const retiredModel =
+  typeof config.model === 'string' && RETIRED_CODEX_MODELS.includes(config.model) ? config.model : undefined;
+const configuredModel = models.find((item) => item.slug === (retiredModel ? CODEX_MODEL : config.model));
+/** The model Codex runs: the configured one (or its recommended replacement), else the catalog's first listed. */
 const activeModel =
   configuredModel ??
   models
@@ -96,6 +100,15 @@ interface Recommendation {
   why: string;
 }
 const recommendations: Recommendation[] = [
+  ...(retiredModel
+    ? [
+        {
+          path: ['model'],
+          value: CODEX_MODEL,
+          why: `${retiredModel} was an earlier agent-home default; homes now run ${CODEX_MODEL}, and this matches Codex everywhere else`
+        }
+      ]
+    : []),
   ...(largerWindow
     ? [
         {
@@ -144,10 +157,16 @@ const keyLabel = (item: Recommendation): string =>
 const missing = recommendations.filter((item) => lookup(config, item.path) !== item.value);
 const tomlValue = (value: string | number | boolean): string =>
   typeof value === 'string' ? JSON.stringify(value) : String(value);
+/** `key = value`, marked when the key is already set, since TOML refuses a second one. */
+const assignment = (item: Recommendation, key: string): string => {
+  const current = lookup(config, item.path);
+  const line = `${key} = ${tomlValue(item.value)}`;
+  return typeof current === 'string' || typeof current === 'number' || typeof current === 'boolean'
+    ? `${line}   # replaces your ${key} = ${tomlValue(current)}`
+    : line;
+};
 const block = (): string => {
-  const top = missing
-    .filter((item) => item.path.length === 1)
-    .map((item) => `${item.path[0]} = ${tomlValue(item.value)}`);
+  const top = missing.filter((item) => item.path.length === 1).map((item) => assignment(item, item.path[0]));
   const tables = [...new Set(missing.filter((item) => item.path.length === 2).map((item) => item.path[0]))].map(
     (table) =>
       [
@@ -155,7 +174,7 @@ const block = (): string => {
         isRecord(config[table]) ? `# inside your existing [${table}] table:` : `[${table}]`,
         ...missing
           .filter((item) => item.path[0] === table && item.path.length === 2)
-          .map((item) => `${item.path[1]} = ${tomlValue(item.value)}`)
+          .map((item) => assignment(item, item.path[1]))
       ].join('\n')
   );
   const nested = [...new Set(missing.filter((item) => item.path.length === 3).map((item) => tableOf(item.path)))].map(
@@ -164,7 +183,7 @@ const block = (): string => {
       const present = rows.some((item) => isRecord(lookup(config, item.path.slice(0, 2))));
       return [
         present ? `# inside your existing [${table}] table:` : `[${table}]`,
-        ...rows.map((item) => `${item.path[2]} = ${tomlValue(item.value)}`)
+        ...rows.map((item) => assignment(item, item.path[2]))
       ].join('\n');
     }
   );
@@ -259,7 +278,8 @@ const note = (): string => {
     lines.push(
       `**Keys: ${missing.length} of ${recommendations.length} recommended keys are missing or differ.**`,
       'Top-level keys go above the first `[table]` in the file. A table you already have is marked below: put',
-      'those keys inside it, since TOML refuses a second header for the same table.',
+      'those keys inside it, since TOML refuses a second header for the same table. A line marked `# replaces`',
+      'changes a key you already have: edit that line in place rather than adding a second one.',
       '',
       '```toml',
       report.block,

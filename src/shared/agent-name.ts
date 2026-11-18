@@ -1,5 +1,5 @@
 import { FILES } from '@/config';
-import { DEFAULT_AGENT_NAME, emojiIn } from '@/shared/persona';
+import { type AgentColors, colorsIn, DEFAULT_AGENT_NAME, emojiIn } from '@/shared/persona';
 import { readText } from '@/shared/text';
 
 /**
@@ -32,6 +32,9 @@ export const agentFormerNames = (): string[] => formerNamesIn(readIdentity());
 
 /** The emoji IDENTITY.md's `**Emoji:**` field gives the agent, or '' when it has none. */
 export const agentEmoji = (): string => emojiIn(readIdentity());
+
+/** The primary and accent colors IDENTITY.md's `**Colors:**` field gives the agent, or Oppi's. */
+export const agentColors = (): AgentColors => colorsIn(readIdentity());
 
 /** The allowlist init enforces: a name sits inside markdown link text and line parsers read it back. */
 export const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9 -]*$/;

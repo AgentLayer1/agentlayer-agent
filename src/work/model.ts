@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * The model's version. A reader treats a file with another version as missing, and the next rebuild rewrites it.
  */
-export const WORK_SCHEMA = 2;
+export const WORK_SCHEMA = 3;
 
 const PinSchema = z.object({ title: z.string(), icon: z.string(), path: z.string() });
 
@@ -126,7 +126,11 @@ const GoalBlockSchema = z.object({
  */
 export const WorkSchema = z.object({
   schema: z.literal(WORK_SCHEMA),
-  agent: z.object({ name: z.string(), emoji: z.string() }),
+  agent: z.object({
+    name: z.string(),
+    emoji: z.string(),
+    colors: z.object({ primary: z.string(), accent: z.string() })
+  }),
   /**
    * HOME-relative path of the home's roadmap.html, '' when it has none.
    */

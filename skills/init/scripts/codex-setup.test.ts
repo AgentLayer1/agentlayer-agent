@@ -176,9 +176,9 @@ describe('codex-setup hooks', () => {
 
 describe('codex-setup mcp registration', () => {
   test.each([
-    { config: '', model: 'gpt-6.1-sol', effort: 'high' },
+    { config: '', model: 'gpt-6.2-sol', effort: 'high' },
     { config: 'model = "gpt-6-astra"\n', model: 'gpt-6-astra', effort: 'high' },
-    { config: 'model_reasoning_effort = "low"\n', model: 'gpt-6.1-sol', effort: 'low' },
+    { config: 'model_reasoning_effort = "low"\n', model: 'gpt-6.2-sol', effort: 'low' },
     {
       config: 'model = "gpt-6-astra"\nmodel_reasoning_effort = "medium"\n',
       model: 'gpt-6-astra',
@@ -218,7 +218,7 @@ describe('codex-setup mcp registration', () => {
     );
     expect(result.code).toBe(0);
     expect(Bun.TOML.parse(readFileSync(result.json.mcp.path, 'utf-8'))).toMatchObject({
-      model: 'gpt-6.1-sol',
+      model: 'gpt-6.2-sol',
       model_reasoning_effort: 'high',
       tui: { animations: false }
     });

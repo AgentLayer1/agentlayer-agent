@@ -2114,8 +2114,8 @@ const pageStatus = (snap: StatusSnapshot): string => {
 // the timezone — the banner only needs identity plus a Finder-able home path.
 const sidebarBanner = (snap: StatusSnapshot): string =>
   [
-    `<pre class="wordmark">${esc(BANNER_LINES.join('\n'))}</pre>`,
-    `<div class="tagline">${esc(bannerTag(snap.persona.name, snap.persona.emoji))} <span class="ver">v${esc(snap.runtime.version)}</span></div>`,
+    `<pre class="wordmark" style="color: ${esc(snap.persona.colors.primary)}">${esc(BANNER_LINES.join('\n'))}</pre>`,
+    `<div class="tagline" style="color: ${esc(snap.persona.colors.accent)}">${esc(bannerTag(snap.persona.name, snap.persona.emoji))} <span class="ver">v${esc(snap.runtime.version)}</span></div>`,
     `<div class="dateline">${pathLink(snap.runtime.home)}</div>`
   ].join('\n');
 

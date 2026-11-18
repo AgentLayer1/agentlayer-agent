@@ -142,3 +142,14 @@ test('every section of the cmux template is one the checker compares', () => {
   expect(Object.keys(JSON.parse(CMUX_TEMPLATE)).sort()).toEqual(['$schema', 'actions', 'computerUse', 'schemaVersion', 'shortcuts', 'ui']);
   expect(Object.keys(JSON.parse(CMUX_TEMPLATE).ui)).toEqual(['surfaceTabBar']);
 });
+
+test('with the agent launcher, the Claude Code button is recommended to run agent', () => {
+  const fresh = checkSettings('cmux', home, apps(), 'agent');
+  expect(JSON.parse(fresh.paste).actions.claude.command).toBe('agent');
+  const custom = JSON.parse(CMUX_TEMPLATE);
+  custom.actions.claude.command = 'agent';
+  write(CMUX, JSON.stringify(custom));
+  expect(checkSettings('cmux', home, apps(), 'agent').different).toEqual([]);
+  expect(checkSettings('cmux', home, apps(), 'claude').different).toEqual([{ key: 'claude button', yours: 'agent', ours: 'claude' }]);
+});
+

@@ -77,6 +77,9 @@ Usage:
 
 Groups:
   ping                              Print resolved paths + timezone (sanity check)
+  colors [--line=<1-4 | "#RRGGBB #RRGGBB">]
+                                    Show the color pairs an agent can take, each in its own colors; --line prints a choice's
+                                    IDENTITY.md Colors value (exit 2 when it isn't a pair number or two codes). Read-only
   hosts                             Check the installed Claude Code / Codex CLIs against the plugin's version floors (--codex: require Codex); exit 1 below a floor
   capture                           Capture text / a file / stdin into raw/inbox/ (or feedback.md) for the next compile
   session-capture                   Ingest a session transcript into raw/sessions/<today>.md (called by Claude Code hooks)
@@ -179,7 +182,7 @@ Sidebar commands for cmux (this CLI's, not the cmux app's own; run them from a t
   cmux sidebar install              Add this home to the AgentLayer sidebar (starting it if it's the first), have cmux check it, and show it
   cmux sidebar refresh              Put this home's latest projects and tasks into the sidebar (every dashboard refresh also does this)
   cmux sidebar remove               Take this home out of the sidebar; the last home out deletes it
-  cmux settings --file=<ghostty|cmux> [--json]
+  cmux settings --file=<ghostty|cmux> [--launcher=<claude|agent>] [--json]
                                     Compare a Mac's Ghostty or cmux settings with the recommended ones (read-only;
                                     prints what to paste and the command to run; without --json, exit 3 unless the file is complete)
 
@@ -227,7 +230,30 @@ async function run(): Promise<void> {
   // before the invocation log below, which writes into the home it runs in.
   if (group === 'cmux' && command === 'settings') {
     const { runSettingsCommand } = await import('@/cmux/settings');
-    process.exit(runSettingsCommand(flag('file'), bool('json')));
+    process.exit(runSettingsCommand(flag('file'), bool('json'), flag('launcher')));
+  }
+
+  // Read-only: init shows the choices with it while it names a new agent, then writes the line --line prints.
+  if (group === 'colors') {
+    const [{ colorChoices, colorsLineFor }, { agentColors }, { env }, { stripAnsi }] = await Promise.all([
+      import('@/home/colors'),
+      import('@/shared/agent-name'),
+      import('@/shared/env'),
+      import('@/shared/ansi')
+    ]);
+    const choice = flag('line');
+    if (choice !== undefined) {
+      const line = colorsLineFor(choice);
+      if (!line) {
+        console.error('Usage: colors --line=<1-4 | "#RRGGBB #RRGGBB">');
+        process.exit(2);
+      }
+      console.log(line);
+      return;
+    }
+    const rows = colorChoices(agentColors()).join('\n');
+    console.log(env('NO_COLOR') ? stripAnsi(rows) : rows);
+    return;
   }
 
   // One info line per CLI invocation so file logs reveal user-invoked vs
