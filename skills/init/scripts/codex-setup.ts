@@ -34,6 +34,7 @@ import { homedir } from 'node:os';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { CLI_FILE, PLUGIN_SOURCE_ROOT, RUNTIME_DIR } from '../../../src/shared/naming';
 import { readTextIfExists } from '../../../src/shared/text';
+import { CODEX_EFFORT, CODEX_MODEL } from './codex-model';
 
 interface HookItem {
   type: string;
@@ -311,8 +312,8 @@ const OWNED_KEYS: Record<string, string> = {
   default_permissions: pluginName,
   approval_policy: 'on-request',
   approvals_reviewer: 'user',
-  model: 'gpt-6.1-sol',
-  model_reasoning_effort: 'high'
+  model: CODEX_MODEL,
+  model_reasoning_effort: CODEX_EFFORT
 };
 interface OwnedTableKeys {
   label: string;
