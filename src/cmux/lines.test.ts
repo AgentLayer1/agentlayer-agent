@@ -20,6 +20,11 @@ test('one agent stays on the first line, and a chip wider than a line gets one o
 
 test('the gaps between chips count toward a line, so chips that fit with them stay together', () => {
   const labels = ['🦄 Nova', '🦀 Scout', '🦊 Atlas'];
-  expect(packLines(labels, same, 214, 276)).toEqual([labels]);
-  expect(packLines(labels, same, 213, 276)).toEqual([['🦄 Nova', '🦀 Scout'], ['🦊 Atlas']]);
+  expect(packLines(labels, same, 202, 276)).toEqual([labels]);
+  expect(packLines(labels, same, 201, 276)).toEqual([['🦄 Nova', '🦀 Scout'], ['🦊 Atlas']]);
+});
+
+test('three agents with short names share the first line beside the pill', () => {
+  const labels = ['🐙 Oppi', '🦊 Vikram', '🦉 Scout'];
+  expect(packLines(labels, same, 216, 276)).toEqual([labels]);
 });

@@ -1,4 +1,4 @@
-import { packLines } from './lines';
+import { CHIP_PADDING, packLines } from './lines';
 import { homeLabel } from './view';
 
 // Points across the sidebar for chips, as measured on cmux 0.65.2's panel: about 280 inside its padding, less the tab
@@ -13,7 +13,7 @@ const agentButton = (label: string, tint: string | undefined, active: () => bool
   return Text(label)
     .font(11)
     .weight('semibold')
-    .paddingHorizontal(9)
+    .paddingHorizontal(CHIP_PADDING)
     .paddingVertical(6)
     .cornerRadius(8)
     .color(() => (active() ? (tint ?? 'primary') : 'secondary'))

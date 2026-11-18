@@ -3,8 +3,9 @@
  * width. This file is plain logic (no runtime globals) so it can be tested on its own.
  */
 
+export const CHIP_PADDING = 7;
 const CHAR_WIDTH = 7;
-const CHIP_EXTRA = 22;
+const CHIP_EXTRA = CHIP_PADDING * 2 + 4;
 // The spacing between chips on a line.
 const GAP = 4;
 
