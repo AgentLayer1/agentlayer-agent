@@ -157,6 +157,16 @@ describe('sessionStart', () => {
     expect(result.additionalContext).not.toContain('Agent:');
   });
 
+  test('the banner’s Agent line leads with the agent’s own emoji, or the robot without one', async () => {
+    const banner = (identity: Record<string, string>) =>
+      withHome(
+        (home) => markedHome(home, { 'SOUL.md': '# Soul\n', ...identity }),
+        () => sessionStartCodex()
+      ).then((result) => result.systemMessage);
+    expect(await banner({ 'IDENTITY.md': '# Identity\n\n- **Name:** Scout\n- **Emoji:** 🦉\n' })).toContain('  🦉 Agent:     Scout');
+    expect(await banner({})).toContain('  🤖 Agent:');
+  });
+
   test('the Codex stack is exactly what the Claude bridge template imports after the manual', () => {
     const template = readFileSync(resolve(import.meta.dir, '..', '..', 'templates', 'CLAUDE.md'), 'utf-8');
     const imported = template
