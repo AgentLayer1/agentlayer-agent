@@ -47,6 +47,70 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.0.3] - 2026-11-18
+
+The guided installer, an agent's own colors, skill extensions, and homes that keep their pages as files.
+
+### Added
+- A guided installer for macOS, Linux and Windows: `curl -fsSL https://agentlayer.one/install.sh | bash`
+  (`irm https://agentlayer.one/install.ps1 | iex` on Windows). It only looks: it runs read-only checks,
+  shows each step with the vendor's page or the exact command, waits while you run it, and ticks it on
+  the re-check, so on a machine that's set up a run is a column of ticks. It opens with Oppi's banner
+  and a menu (set up an agent, prepare this machine, check it); `--prereqs` (`-Prereqs` on Windows)
+  prepares a machine without setting up an agent. Two paths are asked first: use the agent from the
+  marketplace, or develop the plugin from a local clone.
+- Every agent has its own colors: a primary and an accent on a `Colors` line in IDENTITY.md, chosen
+  at init from four pairs (or changed with rename-agent) and drawn in the session banner, the
+  dashboard's wordmark and the cmux sidebar's agent chip. A home without the line keeps Oppi's
+  orchid and mint. The `colors` CLI verb shows the pairs; `--line` prints the exact line.
+- A home extends a plugin skill from `extensions/skills/<skill>.md`: session start lists each one,
+  the skill reads it before it runs, and the extension wins where the two disagree. A home with
+  none adds nothing to the context. Seed export and import carry the folder.
+- A home's own report categories: `report_write` takes any kebab-case folder except `captures`,
+  and the dashboard lists the plugin's categories first, then the home's. An `.html` report is
+  written as it is, with no frontmatter.
+- The morning brief flags a red CI run on the code repo's default branch (with the GitHub pack and
+  a code repo set up; a passing run adds nothing).
+- A browser flow's target can carry its own Chromium flags, added after the shared ones.
+- The read-only `cmux settings` verb compares a Mac's Ghostty and cmux configs with the recommended
+  ones and prints what's missing, without writing either file; the installer and configure-skills'
+  cmux step use it.
+
+### Changed
+- Homes keep their pages as files: init writes `"enableArtifact": false` to the home's
+  `settings.json`, so Claude Code's Artifact tool no longer publishes the home's pages and plans
+  to claude.ai. The manual's routing table says where a page asked for outside a skill goes.
+  Set the value to `true` to have Artifacts back (project settings can only turn them off).
+- Codex homes default to `gpt-6.2-sol` at high effort. A user-global Codex config still on a past
+  home default is shown the line that replaces it, marked `# replaces`.
+- Helpdesk's org rules come from the home's `extensions/skills/helpdesk.md` instead of a
+  `references/org.md` beside the skill.
+- Per-agent billing and `agent`: the installer's closing start line says `agent` for a home with
+  its own Claude subscription and `claude` for the others; the cmux settings check recommends
+  `agent` for the Claude Code button when a home has one; init's billing step says to switch the
+  button too.
+- The session banner's Agent line leads with the agent's emoji.
+- A home moved in place (same folder, new plugin) reads as moved from that plugin, not copied,
+  and the move check skips its stale-path scan.
+- The seed wizard on agentlayer.one is retired; a seed bundle comes from a teammate's export. A
+  bundle the wizard made still imports.
+- The work model and the cmux sidebar entry carry the agent's colors, so both schemas move up one;
+  each home rewrites its own on its next refresh.
+
+### Fixed
+- Pack pickers in init and configure-skills listed up to eleven packs in one question, so packs got
+  merged into shared options; each picker now asks three questions with every pack its own option.
+- The Windows installer names a tool by its full path when the window you started it in can't find
+  it yet, for every command it shows, not only the last one.
+
+### Upgrade
+- `script: required` — run skills/upgrade/scripts/1.0.3.ts (a Codex home whose `.codex/config.toml` sets `model = "gpt-6.1-sol"` moves to `gpt-6.2-sol`; any other model, and a home with no Codex config, is left as it is).
+- `template/AGENTS.md: mandatory` — a routing row for a page or document asked for outside a skill, and `extensions/skills/` in the home's tree.
+- `settings: mandatory` — upgrade's baseline reconcile adds `"enableArtifact": false` to `settings.json` when neither home settings file sets `enableArtifact`. Applied automatically; set it to `true` to keep Artifacts.
+- `manual: optional` — a home whose agent isn't Oppi shows Oppi's colors until IDENTITY.md has a `Colors` line under `## Who`. To pick a pair, ask the agent to "show me the color pairs and set mine": it shows the four with the plugin's `colors` verb and writes the line `colors --line=<choice>` prints below the `Emoji` line.
+- `manual: optional` — with the cmux pack, every other home in the sidebar shows "needs its agent updated to show here" until that home runs `/agentlayer:upgrade` (or a dashboard refresh) on this version.
+- `manual: optional` — an organisation plugin that ships helpdesk org rules at `skills/helpdesk/references/org.md` no longer has them read: move that file's text into each home's `extensions/skills/helpdesk.md`.
+
 ## [1.0.2] - 2026-11-17
 
 The cmux pack: an AgentLayer sidebar in cmux, fed by one model of the home's projects and tasks
