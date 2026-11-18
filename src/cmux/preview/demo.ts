@@ -6,6 +6,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ANSI } from '@/shared/ansi';
 import { isRecord } from '@/shared/json-block';
 import { AGENTS } from './showcase';
 import { cmux, windowRows, type Step } from './window';
@@ -150,8 +151,7 @@ export const buildDemo = async (window: string, homes: string): Promise<void> =>
   cmux('select-workspace', '--workspace', self, '--window', window);
 };
 
-const [DIM, BOLD, RESET] = ['\x1b[2m', '\x1b[1m', '\x1b[0m'];
-const [GREEN, ORANGE, PINK, BLUE] = ['\x1b[32m', '\x1b[33m', '\x1b[35m', '\x1b[34m'];
+const { dim: DIM, bold: BOLD, reset: RESET, green: GREEN, yellow: ORANGE, magenta: PINK, blue: BLUE } = ANSI;
 
 const CONVERSATION = [
   '',
