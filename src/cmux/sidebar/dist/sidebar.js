@@ -2,7 +2,7 @@
  * AgentLayer · cmux sidebar
  * Every agent on this Mac, and the work each one keeps.
  *
- *   Manager   every session, sorted by what needs you (cmux Manager)
+ *   Manager   what each agent proposes, then every session, sorted by what needs you (cmux Manager)
  *   Agents    a chip per agent, then the chosen agent's Projects (its tasks and projects by state), Reports (its pins
  *             and newest reports by day) and Goals (the year's theme, then today, this week, this month and this
  *             year), with its dashboard and roadmap a tap away
@@ -354,7 +354,7 @@ var packLines = (items, label, firstWidth, width) => items.reduce(({ lines, used
 }, { lines: [[]], used: 0 }).lines;
 
 // src/cmux/sidebar/data.ts
-var SCHEMA = 7;
+var SCHEMA = 8;
 
 // src/cmux/sidebar/style.ts
 var hueColor = (hue) => {
@@ -897,6 +897,71 @@ var agentPage = (options) => {
   ]).paddingHorizontal(6);
 };
 
+// src/proposals/shown.ts
+var isShown = (laterUntil, nowMs) => laterUntil === "" || Date.parse(laterUntil) <= nowMs;
+
+// src/cmux/sidebar/proposals.ts
+var nowMs = computed(() => {
+  const clock = data.clock();
+  return clock ? clock.epoch * 1000 : Date.now();
+});
+var reachable = (place) => place && (data.workspaces() ?? []).some((workspace) => workspace.tabs.some((tab) => tab.surfaceId === place.surfaceId)) ? place : null;
+var choiceButton = (label, onTap, tint) => Text(label).font(11).weight("semibold").color(tint ? "#ffffff" : "secondary").paddingHorizontal(tint ? 14 : 9).paddingVertical(5).background(tint ?? null).cornerRadius(8).hoverBackground(tint ?? "#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(onTap);
+var body = ({ entry, item }, decide) => {
+  const place = () => reachable(entry.heartbeat);
+  const choose = (choice) => () => {
+    const target = place();
+    if (target) {
+      decide(choice, target);
+    }
+  };
+  return VStack({ spacing: 5, alignment: "leading" }, [
+    Text(item.trigger).font(11).color("tertiary"),
+    ...item.quote ? [Text(`“${item.quote}”`).font(11).italic().color("secondary")] : [],
+    Text(item.detail).font(11).color("secondary"),
+    Text(item.reach).font(10).color("tertiary"),
+    when2(() => place() !== null, () => HStack({ spacing: 4 }, [
+      choiceButton("Start", choose("start"), entry.colors?.primary ?? PURPLE),
+      choiceButton("Later", choose("later")),
+      choiceButton("Skip", choose("skip")),
+      Spacer({ minLength: 0 })
+    ]).paddingTop(3)),
+    when2(() => place() === null, () => Text(`Run /heartbeat in one of ${entry.name}’s sessions to start these.`).font(10).color("tertiary").paddingTop(3))
+  ]);
+};
+var proposalsSection = () => {
+  const [decided, setDecided] = signal([]);
+  const waiting = computed(() => Object.entries(DATA.homes).filter(([, entry]) => entry.schema === SCHEMA).flatMap(([home, entry]) => entry.proposals.map((item) => ({ key: `${home}#${item.id}`, entry, item }))).filter(({ key, item }) => !decided().includes(key) && isShown(item.laterUntil, nowMs())));
+  const card = (proposal) => {
+    const { entry, item, key } = proposal;
+    return {
+      key,
+      title: item.title,
+      ...item.estimate ? { span: `~${item.estimate}` } : {},
+      badges: [
+        { text: entry.name, color: entry.colors?.primary ?? PURPLE },
+        ...item.due ? [{ text: item.due, color: ORANGE, icon: "calendar" }] : []
+      ],
+      searchText: `${item.trigger} ${item.detail}`,
+      body: () => body(proposal, (choice, place) => {
+        cmux("surface.send_text", {
+          surface_id: place.surfaceId,
+          workspace_id: place.workspaceId,
+          text: `/propose ${choice} ${item.id}
+`
+        });
+        setDecided([...decided(), key]);
+      })
+    };
+  };
+  return {
+    label: "PROPOSED",
+    icon: "tray.full.fill",
+    color: PURPLE,
+    cards: computed(() => waiting().map(card))
+  };
+};
+
 // src/cmux/sidebar/scope.ts
 var homeOf = (homes, path) => path ? homes.filter((home) => path === home || path.startsWith(`${home}/`)).toSorted((a, b) => b.length - a.length)[0] : undefined;
 var newestHome = (homes, agents = []) => agents.toSorted((a, b) => b.lastActivityAt - a.lastActivityAt).map((agent) => homeOf(homes, agent.directory)).find((home) => home !== undefined);
@@ -920,12 +985,16 @@ var app = () => {
     }
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
+  const proposed = proposalsSection();
   const pill = () => HStack({ spacing: 2 }, [
     tabIcon("square.grid.2x2", "Manager", () => tab() === "manager", () => setTab("manager")),
     tabIcon("square.stack.3d.up.fill", "Agents", () => tab() === "agents", () => setTab("agents"))
   ]).padding(2).background("#7f7f7f1f").cornerRadius(8).fixedSize();
   return VStack({ spacing: 8 }, [
-    ForEach({ items: () => [tab()], key: (name) => name }, (name) => name() === "manager" ? manager({ header: HStack({ spacing: 8 }, [pill(), Text("Manager").font(13).weight("semibold")]).fixedSize() }) : agentPage({
+    ForEach({ items: () => [tab()], key: (name) => name }, (name) => name() === "manager" ? manager({
+      header: HStack({ spacing: 8 }, [pill(), Text("Manager").font(13).weight("semibold")]).fixedSize(),
+      sections: [proposed]
+    }) : agentPage({
       pill: pill(),
       home: current,
       homes,

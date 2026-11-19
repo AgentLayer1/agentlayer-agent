@@ -32,3 +32,24 @@ export const runCmux = (args: string[]): boolean => {
     return false;
   }
 };
+
+export interface CmuxCall {
+  ok: boolean;
+  /**
+   * What cmux printed, both streams.
+   */
+  output: string;
+}
+
+/**
+ * Runs the cmux CLI with its output kept, for a caller whose own output is the reply.
+ */
+export const callCmux = (args: string[]): CmuxCall => {
+  try {
+    // A cmux that stops answering mustn't hang the /propose that called it.
+    const result = Bun.spawnSync([CMUX_BIN, ...args], { stdout: 'pipe', stderr: 'pipe', timeout: 30_000 });
+    return { ok: result.exitCode === 0, output: `${result.stdout}${result.stderr}`.trim() };
+  } catch (error) {
+    return { ok: false, output: error instanceof Error ? error.message : String(error) };
+  }
+};

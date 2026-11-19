@@ -3,7 +3,7 @@ import type { AgentColors } from '../../shared/persona';
 /**
  * The entry format's version. A sidebar shows an entry with another schema as "update this agent".
  */
-export const SCHEMA = 7;
+export const SCHEMA = 8;
 
 export interface TaskItem {
   id: string;
@@ -129,7 +129,49 @@ export interface GoalsItem {
 }
 
 /**
- * What the sidebar knows about one home, rewritten whenever its projects, tasks, pins, reports or goals change.
+ * A proposal as the sidebar shows it: never its prompt, which stays in the home.
+ */
+export interface ProposalItem {
+  id: string;
+  title: string;
+  /**
+   * What happened that made the agent propose it.
+   */
+  trigger: string;
+  /**
+   * The source's own words, '' when none help.
+   */
+  quote: string;
+  detail: string;
+  /**
+   * What the session may touch.
+   */
+  reach: string;
+  /**
+   * How long it should take (`5m`).
+   */
+  estimate: string;
+  /**
+   * When it presses (`due Sat`), '' when nothing does.
+   */
+  due: string;
+  /**
+   * When a proposal put off with Later shows again, an ISO time with an offset; '' when it shows now.
+   */
+  laterUntil: string;
+}
+
+/**
+ * The cmux tab of the home's heartbeat session, where the sidebar's buttons type their choice.
+ */
+export interface HeartbeatPlace {
+  surfaceId: string;
+  workspaceId: string;
+}
+
+/**
+ * What the sidebar knows about one home, rewritten whenever its projects, tasks, pins, reports, goals or proposals
+ * change.
  */
 export interface HomeEntry {
   schema: number;
@@ -166,6 +208,11 @@ export interface HomeEntry {
    */
   olderReports: number;
   goals: GoalsItem;
+  /**
+   * Every proposal still to decide, oldest first, those put off included; the sidebar hides those against its clock.
+   */
+  proposals: ProposalItem[];
+  heartbeat: HeartbeatPlace | null;
 }
 
 export interface StartPage {

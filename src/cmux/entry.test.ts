@@ -3,14 +3,14 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { nameHue } from '@/status/html-primitives';
 import { homeEntry, REPORT_LIMIT } from './entry';
-import { NOVA, NOVA_HOME, SCOUT, SCOUT_HOME } from './preview/fixture';
+import { LATER_UNTIL, NOVA, NOVA_HOME, NOVA_LEDGER, SCOUT, SCOUT_HOME, SCOUT_LEDGER } from './preview/fixture';
 import { SCHEMA } from './sidebar/data';
 
 const url = (...parts: string[]) => pathToFileURL(join(...parts)).href;
 const taskPath = (project: string, id: string) => join(NOVA_HOME, 'projects', project, 'tasks', `${id}.md`);
 
 test('a home’s projects, at work first, and every live task in one list by priority, then due date', () => {
-  const entry = homeEntry(NOVA_HOME, NOVA);
+  const entry = homeEntry(NOVA_HOME, NOVA, NOVA_LEDGER);
   expect(entry).toMatchObject({
     schema: SCHEMA,
     name: 'Nova',
@@ -59,29 +59,29 @@ test('a home’s projects, at work first, and every live task in one list by pri
 });
 
 test('a home with no projects or roadmap', () => {
-  expect(homeEntry(SCOUT_HOME, SCOUT)).toMatchObject({ name: 'Scout', roadmap: null, projects: [] });
+  expect(homeEntry(SCOUT_HOME, SCOUT, SCOUT_LEDGER)).toMatchObject({ name: 'Scout', roadmap: null, projects: [] });
 });
 
 test('the same projects and tasks in another order give the same entry', () => {
   const shuffled = { ...NOVA, projects: NOVA.projects.toReversed(), tasks: NOVA.tasks.toReversed() };
-  expect(homeEntry(NOVA_HOME, shuffled)).toEqual(homeEntry(NOVA_HOME, NOVA));
+  expect(homeEntry(NOVA_HOME, shuffled, NOVA_LEDGER)).toEqual(homeEntry(NOVA_HOME, NOVA, NOVA_LEDGER));
 });
 
 test('closed and archived tasks count as done and never show as rows', () => {
   const archived = { ...NOVA.tasks[0], id: 'ac-099', status: 'done', archived: true };
-  const entry = homeEntry(NOVA_HOME, { ...NOVA, tasks: [...NOVA.tasks, archived] });
+  const entry = homeEntry(NOVA_HOME, { ...NOVA, tasks: [...NOVA.tasks, archived] }, NOVA_LEDGER);
   expect(entry.projects[0]?.done).toBe(6);
   expect(entry.tasks.map((task) => task.id)).not.toContain('ac-099');
 });
 
 test('a path with a space becomes a URL a browser can open', () => {
-  expect(homeEntry(join('/Users', 'ada', 'My Agents', 'Nova'), NOVA).dashboard).toBe(
+  expect(homeEntry(join('/Users', 'ada', 'My Agents', 'Nova'), NOVA, NOVA_LEDGER).dashboard).toBe(
     'file:///Users/ada/My%20Agents/Nova/dashboard.html'
   );
 });
 
 test('the newest reports, each with the kind and hue the dashboard gives it, and the home pins', () => {
-  const entry = homeEntry(NOVA_HOME, NOVA);
+  const entry = homeEntry(NOVA_HOME, NOVA, NOVA_LEDGER);
   expect(entry.reports.map((item) => [item.date, item.time, item.kind, item.status])).toEqual([
     ['2026-11-09', '08:30', 'briefing', 'findings'],
     ['2026-11-09', '07:10', 'attention', ''],
@@ -112,14 +112,14 @@ test('reports past the limit are counted, not carried, and an HTML report opens 
     status: '',
     category: 'plans'
   }));
-  const entry = homeEntry(NOVA_HOME, { ...NOVA, reports: many });
+  const entry = homeEntry(NOVA_HOME, { ...NOVA, reports: many }, NOVA_LEDGER);
   expect(entry.reports).toHaveLength(REPORT_LIMIT);
   expect(entry.olderReports).toBe(3);
   expect(entry.reports[0]?.target).toEqual({ kind: 'page', url: url(NOVA_HOME, 'reports', 'plans', 'r-0.html') });
 });
 
 test('the goals carry the year’s theme, each block’s date or month, and a project pill where a goal names one', () => {
-  const { goals } = homeEntry(NOVA_HOME, NOVA);
+  const { goals } = homeEntry(NOVA_HOME, NOVA, NOVA_LEDGER);
   expect(goals.theme).toEqual({ label: '2026 theme', text: 'Make the shop run itself' });
   expect(goals.blocks.map(({ horizon, date, caption }) => [horizon, date, caption])).toEqual([
     ['day', '2026-11-09', ''],
@@ -138,4 +138,29 @@ test('the goals carry the year’s theme, each block’s date or month, and a pr
   });
   expect(goals.blocks[2]?.notes).toEqual(['set 2026-11-01', 'acme first', 'Not doing in November: the blog redesign.']);
   expect(goals.blocks[3]?.notes).toEqual(['planned 2026-01-05', 'Foundations: the books closed every month.']);
+});
+
+test('the proposals still to decide, put-off ones included, carry what a card shows and never the prompt or source', () => {
+  const { proposals, heartbeat } = homeEntry(NOVA_HOME, NOVA, NOVA_LEDGER);
+  expect(proposals.map((item) => item.id)).toEqual(['p-a1', 'p-a2', 'p-a3']);
+  expect(proposals[0]).toEqual({
+    id: 'p-a1',
+    title: 'Reply to the supplier',
+    trigger: 'The supplier wrote two hours ago',
+    quote: 'Can you confirm the spring order by Friday?',
+    detail: 'Drafts the reply with the quantities from the price list.',
+    reach: 'Drafts the email and sends nothing.',
+    estimate: '5m',
+    due: 'due Fri',
+    laterUntil: ''
+  });
+  expect(proposals[2]?.laterUntil).toBe(LATER_UNTIL);
+  expect(JSON.stringify(proposals)).not.toContain('Touch nothing outside the home');
+  expect(heartbeat).toEqual({ surfaceId: 'w-nova-s2-surface', workspaceId: 'w-nova' });
+});
+
+test('a home with no heartbeat, or none in cmux, has no place for the buttons', () => {
+  expect(homeEntry(SCOUT_HOME, SCOUT, SCOUT_LEDGER).heartbeat).toBeNull();
+  const elsewhere = { ...NOVA_LEDGER, heartbeat: { sessionId: 's', everyMinutes: 55, places: [] } };
+  expect(homeEntry(NOVA_HOME, NOVA, elsewhere).heartbeat).toBeNull();
 });

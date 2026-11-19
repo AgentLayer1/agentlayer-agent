@@ -5,10 +5,11 @@
  * groups and workspaces both come from AGENTS, so the two sides of a screenshot tell one story.
  */
 import { join } from 'node:path';
+import type { ProposalLedger } from '@/proposals/ledger';
 import { parseGoals } from '@/work/goals';
 import { DEFAULT_AGENT_COLORS } from '@/shared/persona';
 import { WORK_SCHEMA, type Work } from '@/work/model';
-import { closed, NOVA_GOALS, NOVA_HOME, NOW, project, report, SCOUT_HOME, task } from './fixture';
+import { closed, NOVA_GOALS, NOVA_HOME, NOW, project, proposal, report, SCOUT_HOME, task } from './fixture';
 
 export const OPPI_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Oppi');
 
@@ -429,3 +430,54 @@ export const SHOWCASE_NOVA = quietHome(
     ...closed('month-end', 8)
   ]
 );
+
+/**
+ * What Oppi has ready, its heartbeat the Morning brief tab in its own workspace.
+ */
+export const SHOWCASE_OPPI_LEDGER: ProposalLedger = {
+  heartbeat: {
+    sessionId: 'oppi-heartbeat',
+    everyMinutes: 55,
+    places: [{ adapter: 'cmux', surfaceId: 'w-oppi-morning-brief-surface', workspaceId: 'w-oppi' }]
+  },
+  proposals: [
+    proposal('p-o1', 'Finish the reply to the accountant', {
+      trigger: 'The accountant wrote two hours ago',
+      quote: 'Was the October transfer a loan or salary?',
+      detail: 'The draft answers the other question. This one is yours, so the session asks you first.',
+      reach: 'Drafts the email and sends nothing.',
+      due: 'due Sat'
+    }),
+    proposal('p-o2', 'Reproduce the silent alarm', {
+      trigger: 'A new issue came in this afternoon',
+      quote: 'The time is right but no sound plays.',
+      detail: 'Runs it on the simulator and drafts a reply on the issue. No fix yet.',
+      reach: 'Reads the repo and posts nothing.',
+      estimate: '15m'
+    }),
+    proposal('p-o3', 'Run the sync', {
+      trigger: 'The last sync was three days ago',
+      detail: 'Nine sessions haven’t been compiled into the brain yet.',
+      reach: 'Writes to the brain.',
+      estimate: '4m'
+    })
+  ]
+};
+
+/**
+ * What Nova has ready, its heartbeat the month-end tab.
+ */
+export const SHOWCASE_NOVA_LEDGER: ProposalLedger = {
+  heartbeat: {
+    sessionId: 'nova-heartbeat',
+    everyMinutes: 55,
+    places: [{ adapter: 'cmux', surfaceId: 'w-nova-month-end-surface', workspaceId: 'w-nova' }]
+  },
+  proposals: [
+    proposal('p-n1', 'Put tomorrow’s call on one page', {
+      trigger: 'You have a call tomorrow at 10:30',
+      detail: 'What’s still open, today’s email, and three questions to ask.',
+      reach: 'Writes one report.'
+    })
+  ]
+};

@@ -1,8 +1,17 @@
+import { EMPTY_LEDGER } from '@/proposals/ledger';
 import { homeEntry } from '../entry';
 import { renderSidebar, type SidebarCode } from '../file';
 import type { StartPage } from '../sidebar/data';
 import { NOVA_HOME, SCOUT_HOME } from './fixture';
-import { OPPI_HOME, SHOWCASE_CMUX_DATA, SHOWCASE_NOVA, SHOWCASE_OPPI, SHOWCASE_SCOUT } from './showcase';
+import {
+  OPPI_HOME,
+  SHOWCASE_CMUX_DATA,
+  SHOWCASE_NOVA,
+  SHOWCASE_NOVA_LEDGER,
+  SHOWCASE_OPPI,
+  SHOWCASE_OPPI_LEDGER,
+  SHOWCASE_SCOUT
+} from './showcase';
 
 /**
  * The sidebar drawing the showcase's invented homes and sessions with a frozen clock, for screenshots, opened
@@ -12,9 +21,9 @@ export const previewText = (own: SidebarCode, open?: StartPage): string =>
   renderSidebar({
     version: own.version,
     homes: {
-      [OPPI_HOME]: homeEntry(OPPI_HOME, SHOWCASE_OPPI),
-      [NOVA_HOME]: homeEntry(NOVA_HOME, SHOWCASE_NOVA),
-      [SCOUT_HOME]: homeEntry(SCOUT_HOME, SHOWCASE_SCOUT)
+      [OPPI_HOME]: homeEntry(OPPI_HOME, SHOWCASE_OPPI, SHOWCASE_OPPI_LEDGER),
+      [NOVA_HOME]: homeEntry(NOVA_HOME, SHOWCASE_NOVA, SHOWCASE_NOVA_LEDGER),
+      [SCOUT_HOME]: homeEntry(SCOUT_HOME, SHOWCASE_SCOUT, EMPTY_LEDGER)
     },
     bundle: [
       ...(open ? [`DATA.open = ${JSON.stringify(open)};`] : []),

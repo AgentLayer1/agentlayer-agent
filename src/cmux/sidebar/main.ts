@@ -2,7 +2,7 @@
  * AgentLayer · cmux sidebar
  * Every agent on this Mac, and the work each one keeps.
  *
- *   Manager   every session, sorted by what needs you (cmux Manager)
+ *   Manager   what each agent proposes, then every session, sorted by what needs you (cmux Manager)
  *   Agents    a chip per agent, then the chosen agent's Projects (its tasks and projects by state), Reports (its pins
  *             and newest reports by day) and Goals (the year's theme, then today, this week, this month and this
  *             year), with its dashboard and roadmap a tap away
@@ -18,6 +18,7 @@
 import { manager } from 'cmux-custom-manager/manager';
 import { agentPage } from './agent';
 import type { StartPage } from './data';
+import { proposalsSection } from './proposals';
 import { scopedHome, type Pin } from './scope';
 import { tabIcon } from './style';
 
@@ -37,6 +38,8 @@ const app = () => {
     }
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
+  // Built once, so a choice already made stays hidden across a switch of tab.
+  const proposed = proposalsSection();
 
   const pill = () =>
     HStack({ spacing: 2 }, [
@@ -62,7 +65,10 @@ const app = () => {
   return VStack({ spacing: 8 }, [
     ForEach({ items: () => [tab()], key: (name) => name }, (name) =>
       name() === 'manager'
-        ? manager({ header: HStack({ spacing: 8 }, [pill(), Text('Manager').font(13).weight('semibold')]).fixedSize() })
+        ? manager({
+            header: HStack({ spacing: 8 }, [pill(), Text('Manager').font(13).weight('semibold')]).fixedSize(),
+            sections: [proposed]
+          })
         : agentPage({
             pill: pill(),
             home: current,

@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import type { Proposal, ProposalLedger } from '@/proposals/ledger';
 import { parseGoals } from '@/work/goals';
 import { WORK_SCHEMA, type Work, type WorkReport, type WorkTask } from '@/work/model';
 
@@ -154,6 +155,77 @@ export const SCOUT: Work = {
 };
 
 export const NOW = 1_794_218_400;
+
+export const proposal = (id: string, title: string, fields: Partial<Proposal> = {}): Proposal => ({
+  id,
+  source: `test:${id}`,
+  title,
+  trigger: '',
+  quote: '',
+  detail: '',
+  reach: '',
+  estimate: '5m',
+  due: '',
+  prompt: `Work on: ${title}. Touch nothing outside the home.`,
+  createdAt: '2026-11-09T08:00:00Z',
+  state: 'waiting',
+  laterUntil: '',
+  decidedAt: '',
+  ...fields
+});
+
+// An hour after the fixture's clock, so a Later card shows once the clock moves past it.
+export const LATER_UNTIL = new Date((NOW + 60 * 60) * 1000).toISOString();
+
+/**
+ * Nova's proposals: two waiting, one put off until after the clock, one already started; its heartbeat is the Morning
+ * brief tab in its own workspace.
+ */
+export const NOVA_LEDGER: ProposalLedger = {
+  heartbeat: {
+    sessionId: 'nova-heartbeat',
+    everyMinutes: 55,
+    places: [{ adapter: 'cmux', surfaceId: 'w-nova-s2-surface', workspaceId: 'w-nova' }]
+  },
+  proposals: [
+    proposal('p-a1', 'Reply to the supplier', {
+      trigger: 'The supplier wrote two hours ago',
+      quote: 'Can you confirm the spring order by Friday?',
+      detail: 'Drafts the reply with the quantities from the price list.',
+      reach: 'Drafts the email and sends nothing.',
+      due: 'due Fri'
+    }),
+    proposal('p-a2', 'Reproduce the rounding bug', {
+      trigger: 'A new issue came in this morning',
+      detail: 'Runs the checkout with the totals from the issue.',
+      reach: 'Reads the repo and posts nothing.',
+      estimate: '15m'
+    }),
+    proposal('p-a3', 'Tidy the release notes', {
+      trigger: 'The release is next week',
+      detail: 'Groups the changes by area.',
+      reach: 'Edits one draft.',
+      state: 'later',
+      laterUntil: LATER_UNTIL,
+      decidedAt: '2026-11-08T20:00:00Z'
+    }),
+    proposal('p-a4', 'Run the sync', { state: 'started', decidedAt: '2026-11-09T09:00:00Z' })
+  ]
+};
+
+/**
+ * Scout's one proposal, with no heartbeat to start it from.
+ */
+export const SCOUT_LEDGER: ProposalLedger = {
+  heartbeat: null,
+  proposals: [
+    proposal('p-b1', 'Audit the dark mode colours', {
+      trigger: 'Two screens failed the contrast check',
+      detail: 'Lists each failing colour pair.',
+      reach: 'Writes one report.'
+    })
+  ]
+};
 
 const session = (
   workspace: string,

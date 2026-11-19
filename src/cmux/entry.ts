@@ -1,5 +1,7 @@
 import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import type { ProposalLedger } from '@/proposals/ledger';
+import { proposalCards } from '@/proposals/rules';
 import { reportKind } from '@/reports/kinds';
 import { nameHue } from '@/status/html-primitives';
 import type { Work, WorkProject, WorkReport } from '@/work/model';
@@ -7,6 +9,7 @@ import { taskOrderById } from '@/work/order';
 import { byLastUpdate, goalsView, lastUpdate, live, projectLoad } from '@/work/views';
 import {
   SCHEMA,
+  type HeartbeatPlace,
   type HomeEntry,
   type PinItem,
   type PinTarget,
@@ -45,11 +48,17 @@ const reportItem = (home: string, report: WorkReport): ReportItem => {
   return { title, kind, hue: nameHue(kind), ...lastUpdate(report), status, target: targetOf(home, path) };
 };
 
+// The heartbeat's cmux tab, where the sidebar's buttons type; null when it isn't a cmux session.
+const heartbeatPlace = ({ heartbeat }: ProposalLedger): HeartbeatPlace | null => {
+  const place = heartbeat?.places.find((item) => item.adapter === 'cmux');
+  return place ? { surfaceId: place.surfaceId, workspaceId: place.workspaceId } : null;
+};
+
 /**
  * What the sidebar shows of the home at `home`: its agent, pages, each project's counts and live tasks, its pins, its
- * newest reports and its goals.
+ * newest reports, its goals, and the proposals waiting with the heartbeat that decides them.
  */
-export const homeEntry = (home: string, work: Work): HomeEntry => {
+export const homeEntry = (home: string, work: Work, ledger: ProposalLedger): HomeEntry => {
   // An index line without a link names a report nothing can open.
   const openable = byLastUpdate(work.reports.filter((report) => report.path !== ''));
   const tasks = live(work)
@@ -91,6 +100,8 @@ export const homeEntry = (home: string, work: Work): HomeEntry => {
     pins: work.pins.map((pin) => pinItem(home, pin)),
     reports: openable.slice(0, REPORT_LIMIT).map((report) => reportItem(home, report)),
     olderReports: Math.max(0, openable.length - REPORT_LIMIT),
-    goals: goalsView(work)
+    goals: goalsView(work),
+    proposals: proposalCards(ledger),
+    heartbeat: heartbeatPlace(ledger)
   };
 };

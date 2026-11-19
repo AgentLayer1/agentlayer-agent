@@ -13,7 +13,7 @@ import {
   type CmuxHost,
   type SidebarTarget
 } from './lifecycle';
-import { NOVA, NOVA_HOME, SCOUT, SCOUT_HOME } from './preview/fixture';
+import { NOVA, NOVA_HOME, NOVA_LEDGER, SCOUT, SCOUT_HOME, SCOUT_LEDGER } from './preview/fixture';
 
 const dirs: string[] = [];
 afterEach(() => dirs.splice(0).forEach((dir) => rmSync(dir, { recursive: true, force: true })));
@@ -36,8 +36,8 @@ const fakeCmux = (accepts = true): CmuxHost & { calls: string[][] } => {
   };
 };
 
-const nova = homeEntry(NOVA_HOME, NOVA);
-const scout = homeEntry(SCOUT_HOME, SCOUT);
+const nova = homeEntry(NOVA_HOME, NOVA, NOVA_LEDGER);
+const scout = homeEntry(SCOUT_HOME, SCOUT, SCOUT_LEDGER);
 const installed = (where: SidebarTarget) => parseSidebar(readFileSync(sidebarFile(where.dir), 'utf8'));
 
 test('install starts the file, has cmux check it under a staging name, then selects it', () => {

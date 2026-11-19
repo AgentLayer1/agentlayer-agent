@@ -5,13 +5,13 @@ import { pathToFileURL } from 'node:url';
 import { bundleSidebar, DIST } from './build';
 import { homeEntry } from './entry';
 import { renderSidebar } from './file';
-import { CMUX_DATA, NOVA, NOVA_HOME, SCOUT, SCOUT_HOME } from './preview/fixture';
+import { CMUX_DATA, NOVA, NOVA_HOME, NOVA_LEDGER, SCOUT, SCOUT_HOME, SCOUT_LEDGER } from './preview/fixture';
 import { previewText } from './preview/preview';
 import { hasRuntime, mount } from './runtime-harness';
 import type { HomeEntry } from './sidebar/data';
 
 const run = test.skipIf(!hasRuntime);
-const NOVA_ENTRY = homeEntry(NOVA_HOME, NOVA);
+const NOVA_ENTRY = homeEntry(NOVA_HOME, NOVA, NOVA_LEDGER);
 
 const installed = (homes: Record<string, HomeEntry> = { [NOVA_HOME]: NOVA_ENTRY }) =>
   renderSidebar({ version: '1.1.0', homes, bundle: readFileSync(DIST, 'utf8') });
@@ -30,6 +30,81 @@ run('it opens on the Manager, with its tabs beside the Manager’s title', () =>
   const texts = mount(installed(), CMUX_DATA).visibleTexts();
   expect(texts[0]).toBe('Manager');
   expect(texts).toEqual(expect.arrayContaining(['Support sweep', 'Fix the checkout total']));
+});
+
+const SCOUT_ENTRY = homeEntry(SCOUT_HOME, SCOUT, SCOUT_LEDGER);
+
+run('PROPOSED leads the Manager above NEEDS YOU, its first card open and its put-off and started ones hidden', () => {
+  const texts = mount(installed(), CMUX_DATA).visibleTexts();
+  expect(texts.indexOf('PROPOSED')).toBeGreaterThan(-1);
+  expect(texts.indexOf('PROPOSED')).toBeLessThan(texts.indexOf('NEEDS YOU'));
+  expect(between(texts, 'Reply to the supplier', 'Reproduce the rounding bug')).toEqual([
+    'Reply to the supplier',
+    '~5m',
+    'Nova',
+    'due Fri',
+    'The supplier wrote two hours ago',
+    '“Can you confirm the spring order by Friday?”',
+    'Drafts the reply with the quantities from the price list.',
+    'Drafts the email and sends nothing.',
+    'Start',
+    'Later',
+    'Skip'
+  ]);
+  expect(texts, 'the second card starts closed').not.toContain('A new issue came in this morning');
+  expect(texts).not.toContain('Tidy the release notes');
+  expect(texts).not.toContain('Run the sync');
+});
+
+run('Start types the choice into the agent’s heartbeat and hides the card at once', () => {
+  const sidebar = mount(installed(), CMUX_DATA);
+  expect(sidebar.tap('Start')).toEqual({
+    kind: 'cmux',
+    method: 'surface.send_text',
+    params: { surface_id: 'w-nova-s2-surface', workspace_id: 'w-nova', text: '/propose start p-a1\n' }
+  });
+  const texts = sidebar.visibleTexts();
+  expect(texts).not.toContain('Reply to the supplier');
+  expect(texts, 'the next card opens').toContain('A new issue came in this morning');
+  expect(sidebar.tap('Skip')?.params).toMatchObject({ text: '/propose skip p-a2\n' });
+  expect(sidebar.visibleTexts()).not.toContain('PROPOSED');
+});
+
+run('a card put off with Later shows once the clock passes its time', () => {
+  const sidebar = mount(installed(), CMUX_DATA);
+  expect(sidebar.visibleTexts()).not.toContain('Tidy the release notes');
+  sidebar.setData({ clock: { ...CMUX_DATA.clock, epoch: CMUX_DATA.clock.epoch + 2 * 60 * 60 } });
+  expect(sidebar.visibleTexts()).toContain('Tidy the release notes');
+});
+
+run('a home whose heartbeat isn’t open in cmux says how to start one, with no buttons', () => {
+  const gone = { ...NOVA_ENTRY, heartbeat: { surfaceId: 'closed-surface', workspaceId: 'w-nova' } };
+  const texts = mount(installed({ [NOVA_HOME]: gone }), CMUX_DATA).visibleTexts();
+  expect(texts).toContain('Run /heartbeat in one of Nova’s sessions to start these.');
+  expect(texts).not.toContain('Start');
+  const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
+  expect(sidebar.visibleTexts()).toEqual(
+    expect.arrayContaining(['Audit the dark mode colours', 'Run /heartbeat in one of Scout’s sessions to start these.'])
+  );
+  expect(() => sidebar.tap('Start')).toThrow();
+});
+
+run('every joined agent’s proposals share the section, each wearing its agent', () => {
+  const texts = mount(installed({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA).visibleTexts();
+  expect(texts).toEqual(
+    expect.arrayContaining([
+      'Reply to the supplier',
+      'Reproduce the rounding bug',
+      'Audit the dark mode colours',
+      'Scout'
+    ])
+  );
+});
+
+run('an entry from an older plugin adds nothing to PROPOSED', () => {
+  const texts = mount(installed({ [NOVA_HOME]: { ...NOVA_ENTRY, schema: 7 } }), CMUX_DATA).visibleTexts();
+  expect(texts).not.toContain('PROPOSED');
+  expect(texts).toContain('NEEDS YOU');
 });
 
 run('Projects opens the dashboard and the roadmap as full tabs', () => {
@@ -174,7 +249,7 @@ run('a card opens into its roadmap, its pins, then its tasks with id, priority, 
 });
 
 run('with two agents joined, a chip per agent picks the other one', () => {
-  const sidebar = onProjects({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: homeEntry(SCOUT_HOME, SCOUT) });
+  const sidebar = onProjects({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY });
   expect(sidebar.visibleTexts()).toEqual(expect.arrayContaining(['🦉 Nova', '🐢 Scout']));
   sidebar.tap('🐢 Scout');
   expect(sidebar.visibleTexts()).toContain('No projects yet.');
@@ -182,7 +257,7 @@ run('with two agents joined, a chip per agent picks the other one', () => {
 });
 
 run('the agent the sidebar shows lights its chip in its own color; the others stay grey', () => {
-  const sidebar = onProjects({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: homeEntry(SCOUT_HOME, SCOUT) });
+  const sidebar = onProjects({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY });
   expect(sidebar.propsOf('🦉 Nova')).toMatchObject({ color: '#2F7FC1', background: '#2F7FC13d' });
   expect(sidebar.propsOf('🐢 Scout')).toMatchObject({
     color: 'secondary',

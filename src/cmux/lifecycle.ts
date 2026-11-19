@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
+import { readProposalLedger } from '@/proposals/ledger';
 import { log } from '@/shared/log';
 import { pluginVersion } from '@/shared/naming';
 import { writeFileAtomic } from '@/shared/utils';
@@ -104,7 +105,7 @@ export const refreshSidebarQuietly = (
   target: SidebarTarget = defaultTarget()
 ): RefreshResult | 'failed' => {
   try {
-    return refreshSidebar(home, homeEntry(home, work), target);
+    return refreshSidebar(home, homeEntry(home, work, readProposalLedger()), target);
   } catch (error) {
     log.with('cmux').warn(`sidebar refresh skipped: ${error instanceof Error ? error.message : String(error)}`);
     return 'failed';
