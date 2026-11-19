@@ -156,7 +156,7 @@ export const proposalsSection = (): HostSection => {
     label: 'PROPOSED',
     icon: 'tray.full.fill',
     color: PURPLE,
-    folded: !homes.some(live),
+    folded: () => !homes.some(live),
     cards
   };
 };

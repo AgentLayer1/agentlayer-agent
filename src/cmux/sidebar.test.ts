@@ -184,6 +184,13 @@ run('with no heartbeat reachable, PROPOSED starts folded, and the header opens i
   expect(sidebar.visibleTexts()).toEqual(expect.arrayContaining(['Start Nova’s heartbeat', 'Start Scout’s heartbeat']));
 });
 
+run('PROPOSED opens once cmux’s sessions arrive with a live heartbeat, even after mounting without them', () => {
+  const sidebar = mount(installed(), { clock: CMUX_DATA.clock });
+  expect(sidebar.visibleTexts()).not.toContain('Reply to the supplier');
+  sidebar.setData({ workspaces: CMUX_DATA.workspaces });
+  expect(sidebar.visibleTexts()).toContain('Reply to the supplier');
+});
+
 run('a reachable heartbeat leaves PROPOSED open with no card to start it', () => {
   const texts = mount(installed({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA).visibleTexts();
   expect(texts).toContain('Reply to the supplier');
