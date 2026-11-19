@@ -32,6 +32,22 @@ run('it opens on the Manager, with its tabs beside the Manager’s title', () =>
   expect(texts).toEqual(expect.arrayContaining(['Support sweep', 'Fix the checkout total']));
 });
 
+run('the Manager leaves out the heartbeat’s own tab until it needs you', () => {
+  expect(mount(installed(), CMUX_DATA).visibleTexts()).not.toContain('Morning brief');
+  const asking = {
+    ...CMUX_DATA,
+    workspaces: CMUX_DATA.workspaces.map((item) => ({
+      ...item,
+      agents: item.agents.map((agent) =>
+        agent.title === 'Morning brief' ? { ...agent, status: 'needs_input' as const } : agent
+      )
+    }))
+  };
+  expect(mount(installed(), asking).visibleTexts()).toContain('Morning brief');
+  const noHeartbeat = { [NOVA_HOME]: { ...NOVA_ENTRY, heartbeat: null } };
+  expect(mount(installed(noHeartbeat), CMUX_DATA).visibleTexts()).toContain('Morning brief');
+});
+
 const SCOUT_ENTRY = homeEntry(SCOUT_HOME, SCOUT, SCOUT_LEDGER);
 
 run('PROPOSED leads the Manager above NEEDS YOU, its first card open and its put-off and started ones hidden', () => {

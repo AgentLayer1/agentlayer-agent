@@ -250,19 +250,20 @@ var hostSection = (section, query) => {
 };
 
 // node_modules/cmux-custom-manager/src/manager.ts
-var manager = ({ header, trailing, sections: hosted = [] } = {}) => {
+var manager = ({ header, trailing, sections: hosted = [], exclude } = {}) => {
   const [query, setQuery] = signal("");
   const [groupFilter, setGroupFilter] = signal("");
   const [collapsed, setCollapsed] = signal(["ended"]);
   const toggleSection = (section) => setCollapsed(collapsed().includes(section) ? collapsed().filter((name) => name !== section) : [...collapsed(), section]);
+  const kept = computed(() => exclude ? agentCards().filter((card) => !exclude(card)) : agentCards());
   const groupChips = computed(() => {
-    const withAgents = new Set(agentCards().map((card) => card.groupId));
+    const withAgents = new Set(kept().map((card) => card.groupId));
     return (data.groups() ?? []).filter((group) => withAgents.has(group.id));
   });
   const effectiveGroupFilter = computed(() => groupChips().some((group) => group.id === groupFilter()) ? groupFilter() : "");
   const cards = computed(() => {
     const tokens = query().trim().toLowerCase().split(/\s+/).filter(Boolean);
-    return agentCards().filter((card) => !effectiveGroupFilter() || card.groupId === effectiveGroupFilter()).filter((card) => {
+    return kept().filter((card) => !effectiveGroupFilter() || card.groupId === effectiveGroupFilter()).filter((card) => {
       const haystack = [card.title, card.searchText, card.workspaceTitle, card.group, card.folder, card.branch].join(" ").toLowerCase();
       return tokens.every((token) => haystack.includes(token));
     });
@@ -1016,6 +1017,8 @@ var app = () => {
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
   const proposed = proposalsSection();
+  const heartbeats = new Set(homes.flatMap((home) => DATA.homes[home]?.heartbeat?.surfaceId ?? []));
+  const isQuietHeartbeat = (card) => card.focusId !== undefined && heartbeats.has(card.focusId) && card.agent.status !== "needs_input";
   const pill = () => HStack({ spacing: 2 }, [
     tabIcon("square.grid.2x2", "Manager", () => tab() === "manager", () => setTab("manager")),
     tabIcon("square.stack.3d.up.fill", "Agents", () => tab() === "agents", () => setTab("agents"))
@@ -1023,7 +1026,8 @@ var app = () => {
   return VStack({ spacing: 8 }, [
     ForEach({ items: () => [tab()], key: (name) => name }, (name) => name() === "manager" ? manager({
       header: HStack({ spacing: 8 }, [pill(), Text("Manager").font(13).weight("semibold")]).fixedSize(),
-      sections: [proposed]
+      sections: [proposed],
+      exclude: isQuietHeartbeat
     }) : agentPage({
       pill: pill(),
       home: current,

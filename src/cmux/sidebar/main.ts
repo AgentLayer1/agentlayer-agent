@@ -16,6 +16,7 @@
  */
 
 import { manager } from 'cmux-custom-manager/manager';
+import type { Card } from 'cmux-custom-manager/model';
 import { agentPage } from './agent';
 import type { StartPage } from './data';
 import { proposalsSection } from './proposals';
@@ -40,6 +41,10 @@ const app = () => {
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
   // Built once, so a choice already made stays hidden across a switch of tab.
   const proposed = proposalsSection();
+  const heartbeats = new Set(homes.flatMap((home) => DATA.homes[home]?.heartbeat?.surfaceId ?? []));
+  // The heartbeat waits in its tab all day; the Manager lists it only when it needs you.
+  const isQuietHeartbeat = (card: Card) =>
+    card.focusId !== undefined && heartbeats.has(card.focusId) && card.agent.status !== 'needs_input';
 
   const pill = () =>
     HStack({ spacing: 2 }, [
@@ -67,7 +72,8 @@ const app = () => {
       name() === 'manager'
         ? manager({
             header: HStack({ spacing: 8 }, [pill(), Text('Manager').font(13).weight('semibold')]).fixedSize(),
-            sections: [proposed]
+            sections: [proposed],
+            exclude: isQuietHeartbeat
           })
         : agentPage({
             pill: pill(),
