@@ -349,7 +349,7 @@ export interface SurfaceLink {
    *  navigation; absolute when appTab is set. */
   href: string;
   icon: string;
-  /** Open through the markdownUrl app template (a new Obsidian tab in Obsidian) instead
+  /** Open in a new tab (through the markdownUrl app template when one is set) instead
    *  of navigating the dashboard frame. */
   appTab: boolean;
 }
@@ -1335,13 +1335,6 @@ const collectCli = (): CliSection[] => {
   return sections.filter((section) => section.entries.length);
 };
 
-/** Opener URL template from the MARKDOWN_URL env var; must be a custom scheme carrying a `{path}` placeholder,
- *  else empty, for plain `file://` links. */
-const collectMarkdownUrl = (): string => {
-  const valid = /^[a-z][a-z0-9.+-]*:\/\//i.test(MARKDOWN_URL) && MARKDOWN_URL.includes('{path}');
-  return valid ? MARKDOWN_URL : '';
-};
-
 const runtimeHistory = (): StatusSnapshot['runtime']['history'] => {
   const { state, gitDir, lastCommit } = historyStatus(FOLDERS.HOME);
   return { state, gitDir, lastCommit };
@@ -1453,13 +1446,12 @@ const collectRadarLatest = async (reports: ReportRef[], work: Work): Promise<Rad
   const planTitles = new Map<string, string>(
     reports.filter((report) => report.category === 'plans' && report.href).map((report) => [report.href, report.title])
   );
-  const markdownUrl = collectMarkdownUrl();
   // Read each transcript at most once; both feeds reuse the same meta rows.
   const metaCache = new Map<string, string>();
   const metaFor = (sessionId: string): string => {
     const cached = metaCache.get(sessionId);
     if (cached !== undefined) return cached;
-    const rows = sessionMetaRows(sessionId, taskIndex, planTitles, markdownUrl);
+    const rows = sessionMetaRows(sessionId, taskIndex, planTitles, MARKDOWN_URL);
     metaCache.set(sessionId, rows);
     return rows;
   };
@@ -1470,16 +1462,16 @@ const collectRadarLatest = async (reports: ReportRef[], work: Work): Promise<Rad
   // block sibling (a <div> can't live inside the <p> marked emits) and a single
   // pass — no double-wrapping.
   // `breaks` keeps each checklist line on its own line instead of one run-on paragraph.
-  const rendered = (await marked.parse(normalized, { breaks: true })).replace(
+  // The report is sanitized before the boxes go in: they hold our own escaped links, which the sanitizer's defaults
+  // would strip.
+  const rendered = (await sanitizeHtml(await marked.parse(normalized, { breaks: true }))).replace(
     /<p>↳\s*<code>claude --resume ([0-9a-fA-F-]+)<\/code><\/p>/g,
     (_full, sessionId: string) => composeMetaBox(metaFor(sessionId), `claude --resume ${sessionId}`)
   );
   // Wrap each session run (its `<strong>N. …</strong>` title paragraph through
   // its summary and meta box) in a `data-row` div so the Recent tab's filterbox
-  // can show/hide whole sessions by matching title + summary text. Allow the
-  // opener scheme so the injected task/plan links keep their href.
-  const scheme = markdownUrl ? markdownUrl.match(/^([a-z][a-z0-9.+-]*):/i)?.[1] : 'file';
-  const html = wrapRadarSessions(await sanitizeHtml(rendered, scheme ? { allowSchemes: [scheme] } : undefined));
+  // can show/hide whole sessions by matching title + summary text.
+  const html = wrapRadarSessions(rendered);
   // Enrich the Today-feed rows with the same per-session meta (tasks + plans).
   const sessions = parseRadarSessions(raw).map((session) => {
     const sessionId = session.resume.match(/claude --resume ([0-9a-fA-F-]+)/)?.[1];
@@ -1608,7 +1600,7 @@ export const collectStatus = async (work: Work = buildWork()): Promise<StatusSna
     runtime: collectRuntime(),
     persona: collectPersona(),
     operator: collectOperatorInfo(knowledge.facets),
-    markdownUrl: collectMarkdownUrl(),
+    markdownUrl: MARKDOWN_URL,
     projectHues: projectHues(),
     surfaces: collectSurfaces(),
     pinned: collectPinned(work),

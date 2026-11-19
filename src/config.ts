@@ -84,9 +84,13 @@ export const HOME_TIMEZONE = env('AGENT_HOME_TIMEZONE') || '';
  */
 export const SUBSCRIPTION_MARKER = 'AGENT_SUBSCRIPTION';
 
+const openerTemplate = (template: string): string =>
+  /^[a-z][a-z0-9.+-]*:\/\//i.test(template) && template.includes('{path}') ? template : '';
+
 /** URL template the dashboard uses to open files in an app, `{path}` being the URL-encoded absolute path. Set via
- *  the `MARKDOWN_URL` env var (e.g. in `.claude/settings.local.json` `env`); empty means plain `file://` links. */
-export const MARKDOWN_URL = env('MARKDOWN_URL') || '';
+ *  the `MARKDOWN_URL` env var (e.g. in `.claude/settings.local.json` `env`); empty, or a value without a scheme and
+ *  `{path}`, means plain `file://` links. */
+export const MARKDOWN_URL = openerTemplate(env('MARKDOWN_URL') ?? '');
 
 /** This plugin's name, from its manifest. */
 export const PLUGIN_NAME = pluginName();

@@ -22,7 +22,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { extname, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import type { ManifestEntry } from '@/hooks/context';
 import type { HistoryState } from '@/home/history';
 import { BANNER_LINES, bannerTag } from '@/hooks/banner';
@@ -78,15 +78,10 @@ const esc = escapeHtml;
 
 const opensInObsidian = (snap: StatusSnapshot): boolean => snap.markdownUrl.startsWith('obsidian://');
 
-/** Obsidian opens an HTML page through its own link, like a note; every other viewer gets the page itself in a new
- *  tab, which a browser (cmux's included) renders. Notes go through the opener app when one is set. */
-const fileHref = (snap: StatusSnapshot, absPath: string): string =>
-  openerAttrs(!opensInObsidian(snap) && extname(absPath) === '.html' ? '' : snap.markdownUrl, absPath);
-
-/** Link a file (absolute path) the way fileHref does.
+/** Link a file (absolute path) through openerAttrs.
  *  `cls: 'plink'` keeps the surrounding text color, underlining on hover. */
 const mdLinkAbs = (snap: StatusSnapshot, absPath: string, text: string, cls = ''): string =>
-  `<a${cls ? ` class="${cls}"` : ''} ${fileHref(snap, absPath)}>${esc(text)}</a>`;
+  `<a${cls ? ` class="${cls}"` : ''} ${openerAttrs(snap.markdownUrl, absPath)}>${esc(text)}</a>`;
 
 /** Same, for a path relative to <HOME> (`~/...` resolves to the OS home). */
 const mdLink = (snap: StatusSnapshot, rel: string, text: string, cls = ''): string =>
@@ -2139,7 +2134,7 @@ const sidebarLinks = (snap: StatusSnapshot, label: string, links: SurfaceLink[])
       const inner = `<span class="ico">${esc(surface.icon)}</span>${esc(surface.title)}<span class="out">↗</span>`;
       const absPath = resolve(snap.runtime.home, surface.href);
       return surface.appTab || !opensInObsidian(snap)
-        ? `<a class="nav-item" ${fileHref(snap, absPath)}>${inner}</a>`
+        ? `<a class="nav-item" ${openerAttrs(snap.markdownUrl, absPath)}>${inner}</a>`
         : `<div class="nav-item" data-href="${esc(surface.href)}">${inner}</div>`;
     })
     .join('\n');

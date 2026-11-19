@@ -9,42 +9,24 @@
  * the life of the process.
  */
 
-import type { Config, WindowLike } from 'dompurify';
+import type { WindowLike } from 'dompurify';
 
-type Sanitizer = (dirty: string, config?: Config) => string;
+type Sanitizer = (dirty: string) => string;
 
 let sanitizerPromise: Promise<Sanitizer> | null = null;
 
 const buildSanitizer = async (): Promise<Sanitizer> => {
   const [{ default: createDOMPurify }, { JSDOM }] = await Promise.all([import('dompurify'), import('jsdom')]);
   const purify = createDOMPurify(new JSDOM('').window as unknown as WindowLike);
-  return (dirty, config) => purify.sanitize(dirty, config);
-};
-
-/** DOMPurify's default allowed-URI matcher, with extra schemes (e.g. the
- *  dashboard's `file://` links or an `obsidian://`/`markedit://` opener) spliced into the alternation.
- *  Defaults block such schemes, so injected file-opener links get their href
- *  stripped without this. */
-const uriRegexpAllowing = (schemes: readonly string[]): RegExp => {
-  const extra = schemes.map((scheme) => scheme.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-  return new RegExp(
-    `^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp${extra ? `|${extra}` : ''}):|[^a-z]|[a-z+.\\-]+(?:[^a-z+.\\-:]|$))`,
-    'i'
-  );
+  return (dirty) => purify.sanitize(dirty);
 };
 
 /**
  * Strip scripts, event-handler attributes, and dangerous URLs from untrusted
  * HTML. Safe presentational markup (headings, links, code, lists, emphasis) is
  * preserved. Async because the DOM backing loads lazily on first use.
- *
- * `allowSchemes` whitelists otherwise-blocked URL schemes (e.g. `obsidian`, `file`) so
- * opener links survive, along with their `target`; omit it for byte-identical default behaviour.
  */
-export const sanitizeHtml = async (dirty: string, opts?: { allowSchemes?: string[] }): Promise<string> => {
+export const sanitizeHtml = async (dirty: string): Promise<string> => {
   sanitizerPromise ??= buildSanitizer();
-  const config = opts?.allowSchemes?.length
-    ? { ALLOWED_URI_REGEXP: uriRegexpAllowing(opts.allowSchemes), ADD_ATTR: ['target'] }
-    : undefined;
-  return (await sanitizerPromise)(dirty, config);
+  return (await sanitizerPromise)(dirty);
 };

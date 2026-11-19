@@ -15,7 +15,7 @@
  */
 import { resolve } from 'node:path';
 import { TASK_REF } from '@/tasks/prefix';
-import { openerAttrs } from './html-primitives';
+import { escapeHtml, openerAttrs } from './html-primitives';
 
 export interface RadarTaskRef {
   title: string;
@@ -94,15 +94,6 @@ export const extractSessionRefs = (text: string, taskIndex: Map<string, RadarTas
   const planHrefs = [...new Set(text.match(PLAN_HREF_RE) ?? [])];
   return { taskIds, planHrefs };
 };
-
-/** Minimal HTML-entity escape for text/attribute values spliced as raw HTML. */
-export const escapeHtml = (text: string): string =>
-  text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 
 /** A link to an absolute path, through the opener app when one is set. */
 export const openerAnchor = (label: string, absPath: string, markdownUrl: string): string =>

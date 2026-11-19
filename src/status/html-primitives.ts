@@ -1,3 +1,4 @@
+import { extname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 /**
@@ -11,10 +12,10 @@ export const escapeHtml = (text: string): string =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-/** The link attributes for a file: a `file://` link in a new tab when no opener app is set (empty `markdownUrl`),
- *  else the opener's `{path}` template with the encoded path. */
+/** Link attributes for a file: the opener app's `{path}` template when one is set (for an HTML page, only Obsidian's),
+ *  else the `file://` link itself in a new tab. */
 export const openerAttrs = (markdownUrl: string, absPath: string): string =>
-  markdownUrl
+  markdownUrl && (markdownUrl.startsWith('obsidian://') || extname(absPath) !== '.html')
     ? `href="${escapeHtml(markdownUrl.replace('{path}', encodeURIComponent(absPath)))}"`
     : `href="${escapeHtml(pathToFileURL(absPath).href)}" target="_blank"`;
 
