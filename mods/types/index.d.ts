@@ -130,6 +130,11 @@ export interface ReportRow {
   title?: string;
 }
 
+/** The heartbeat session's own bookkeeping: the local day it last woke. */
+export interface HeartbeatClock {
+  wokeOn: string;
+}
+
 export interface Queue {
   pending: string[];
   isBusy: boolean;
@@ -166,6 +171,7 @@ declare module 'claude-code' {
       notices: Notice[];
       noticeActing: NoticeActing | null;
       queue: Queue;
+      heartbeat: HeartbeatClock;
       needsSetup: boolean;
       taskCard: TaskCard | null;
     };

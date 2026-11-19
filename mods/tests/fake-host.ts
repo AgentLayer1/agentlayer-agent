@@ -2,6 +2,7 @@ import { mock } from 'claude-code/testing';
 import type { Engine, MockClock } from 'claude-code/testing';
 import type { AgentInfo, FsStat, On, ProcessRunResult } from 'claude-code';
 
+import type { ProposalList } from '../proposals/beat';
 import type { Notice } from '../types';
 
 /**
@@ -51,6 +52,8 @@ export interface FakeMachine {
   toolText: Record<string, string>;
   fsCalls: string[];
   notices: Notice[];
+  /** What `proposals list --json` prints: the target, what's waiting, and the heartbeat. */
+  proposals: { target: number; waiting: ProposalList['waiting'][number][]; heartbeat: ProposalList['heartbeat'] };
   toasts: string[];
   /** What `$.ui.copy` put on the clipboard. */
   copied: string[];
@@ -90,6 +93,7 @@ export const machine = (overrides: Partial<FakeMachine> = {}): FakeMachine => ({
   toolText: {},
   fsCalls: [],
   notices: [],
+  proposals: { target: 5, waiting: [], heartbeat: null },
   toasts: [],
   copied: [],
   suggestions: [],
@@ -171,6 +175,12 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
         dueSoon: items(host.taskScan.dueSoon)
       })
     );
+  }
+  if (args === 'proposals list --json') {
+    return ran(0, JSON.stringify(host.proposals));
+  }
+  if (args.startsWith('proposals ')) {
+    return ran(0, `ran ${args}`);
   }
   if (args.startsWith('notices')) {
     return ran(0, JSON.stringify(host.notices));

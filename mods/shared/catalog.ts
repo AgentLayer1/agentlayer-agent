@@ -132,6 +132,29 @@ export const SETUP_FEATURE = {
   tools: []
 } as const satisfies ModFeature;
 
+export const PROPOSALS_FEATURE = {
+  id: 'proposals',
+  title: 'Proposals and the heartbeat',
+  summary:
+    'Start, put off or skip the sessions the agent proposes, and make one long session the heartbeat that keeps proposals coming, with no model turn for either.',
+  where: 'slash commands · the heartbeat wakes on its own clock',
+  commands: [
+    {
+      name: 'propose',
+      description: 'Start a proposed session, put it off until morning, or skip it (no Claude turn)',
+      argumentHint: '<start|later|skip> <id>',
+      immediate: true
+    },
+    {
+      name: 'heartbeat',
+      description: 'Make this session the heartbeat that looks for proposals (every 55m unless set), or off, now, status',
+      argumentHint: '[15m | 2h | off | now | status]',
+      immediate: true
+    }
+  ],
+  tools: []
+} as const satisfies ModFeature;
+
 export const AGENTS_FEATURE = {
   id: 'agents',
   title: 'Agent rows',
@@ -149,6 +172,7 @@ export const MOD_FEATURES: readonly ModFeature[] = [
   SYNC_FEATURE,
   NOTICES_FEATURE,
   QUEUE_FEATURE,
+  PROPOSALS_FEATURE,
   SETUP_FEATURE,
   AGENTS_FEATURE
 ];
