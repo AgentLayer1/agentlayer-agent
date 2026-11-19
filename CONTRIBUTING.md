@@ -93,7 +93,7 @@ It renders in isolation (its own `HOME`, environment, and working directory), re
 
 ## Proposals and the heartbeat
 
-Proposals are sessions the agent prepared and waits on a yes for: Start opens a fresh session that runs the proposal's prompt, Later brings it back at 08:00, Skip drops it. One long-running session per home, the heartbeat, tops them back up to five on its own clock.
+Proposals are sessions the agent prepared and waits on a yes for: Start opens a fresh session that runs the proposal's prompt (in cmux, a new tab in the heartbeat's workspace), Later brings it back at 08:00, Skip drops it. One long-running session per home, the heartbeat, tops them back up to five on its own clock.
 
 | Piece | Lives in |
 | --- | --- |
@@ -101,11 +101,11 @@ Proposals are sessions the agent prepared and waits on a yes for: Start opens a 
 | The adapter contract (`ProposalAdapter`: `locate`, `start`, `publish`) and the list of adapters | `src/proposals/adapter.ts`, `src/adapters.ts` |
 | `/propose <start\|later\|skip> <id>`, `/heartbeat [15m\|2h\|off\|now\|status]`, the wake clock | `mods/proposals/` |
 | What a wake looks at (the `proposals` skill, slash-only), and the heartbeat-source contract | `skills/proposals/` |
-| The cmux adapter: Start as a cmux workspace, the Manager's PROPOSED section | `src/cmux/proposals.ts`, `src/cmux/sidebar/proposals.ts` |
+| The cmux adapter: Start as a new tab beside the heartbeat, the Manager's PROPOSED section | `src/cmux/proposals.ts`, `src/cmux/sidebar/proposals.ts` |
 
 The core never imports an adapter (a test fails if it does); `proposal_add` and the CLI take `ADAPTERS` from `src/adapters.ts`. With no adapter that can reach the session, Start prints the command to run by hand.
 
-**Adding an adapter** (a terminal multiplexer, an editor, a hosted page): add its place to the `SessionPlace` union and its parser in `ledger.ts`, write a `ProposalAdapter` in its own pack (`locate` from the environment the CLI inherits, `start` from the prompt file without putting the prompt or a path in a shell string, `publish` to redraw), and add one line to `ADAPTERS`.
+**Adding an adapter** (a terminal multiplexer, an editor, a hosted page): add its place to the `SessionPlace` union and its parser in `ledger.ts`, write a `ProposalAdapter` in its own pack (`locate` from the environment the CLI inherits, `start` beside the place `locate` returned, from the prompt file without putting the prompt or the home's path in a shell string, `publish` to redraw), and add one line to `ADAPTERS`.
 
 **The wake** costs nothing until it runs: each tick reads `proposals list --json` and wakes only when this session is the heartbeat (by Claude session id), no main-loop turn runs (the queue feature's `isBusy`), it's outside 23:00–07:00 in the home's timezone, and fewer than five wait. The day's first wake runs `/clear` first. The interval is 55 minutes unless `/heartbeat <duration>` sets another, so a wake reads the prompt cache instead of rewriting it.
 
@@ -113,7 +113,7 @@ The core never imports an adapter (a test fails if it does); `proposal_add` and 
 
 ## The cmux sidebar
 
-The optional cmux pack lives in `src/cmux/`. The Bun side (`entry.ts`, `file.ts`, `lifecycle.ts`, `command.ts`) builds this home's entry from the work model (`src/work/`) and writes it into `~/.config/cmux/sidebars/agentlayer.js`, the one sidebar every home on the Mac joins. The sidebar's own code in `src/cmux/sidebar/` runs inside cmux, not Bun: its `tsconfig.json` has no Bun or Node types, so a call to either fails the typecheck, and it never builds a path (every path and URL arrives ready-made in its data). Its Manager tab is [cmux Manager](https://github.com/AgentLayer1/cmux-custom-manager) (`cmux-custom-manager`, a devDependency bundled into `dist/`); the Agents tab is `sidebar/agent.ts`, which puts the agent chips (`agents.ts`, packed into lines by `lines.ts`) over the Projects (`projects.ts`), Reports (`reports.ts`) and Goals (`goals.ts`) sub-tabs. The Manager's PROPOSED section (`proposals.ts`) lists every home's proposals; its buttons type `/propose <choice> <id>` into that home's heartbeat tab.
+The optional cmux pack lives in `src/cmux/`. The Bun side (`entry.ts`, `file.ts`, `lifecycle.ts`, `command.ts`) builds this home's entry from the work model (`src/work/`) and writes it into `~/.config/cmux/sidebars/agentlayer.js`, the one sidebar every home on the Mac joins. The sidebar's own code in `src/cmux/sidebar/` runs inside cmux, not Bun: its `tsconfig.json` has no Bun or Node types, so a call to either fails the typecheck, and it never builds a path (every path and URL arrives ready-made in its data). Its Manager tab is [cmux Manager](https://github.com/AgentLayer1/cmux-custom-manager) (`cmux-custom-manager`, a devDependency bundled into `dist/`); the Agents tab is `sidebar/agent.ts`, which puts the agent chips (`agents.ts`, packed into lines by `lines.ts`) over the Projects (`projects.ts`), Reports (`reports.ts`) and Goals (`goals.ts`) sub-tabs. The Manager's PROPOSED section (`proposals.ts`) lists every home's proposals; its buttons type `/propose <choice> <id>` into that home's heartbeat tab, and a home without a heartbeat gets a card that starts one in a new tab of the selected workspace (a new workspace in the home when none is selected).
 
 | Command | Does |
 | --- | --- |

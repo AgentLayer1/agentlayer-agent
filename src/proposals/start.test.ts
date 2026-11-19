@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { readdirSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FILES, FOLDERS } from '@/config';
-import type { ProposalAdapter, StartInput } from './adapter';
+import type { ProposalAdapter, SessionPlace, StartInput } from './adapter';
 import { EMPTY_LEDGER, readProposalLedger, writeProposalLedger } from './ledger';
 import { addProposals, type ProposalInput } from './rules';
 import { decideProposal, type DecideContext } from './start';
@@ -28,22 +28,26 @@ const seed = (): string => {
   return added[0]?.id ?? '';
 };
 
+const PLACE: SessionPlace = { adapter: 'cmux', surfaceId: 's', workspaceId: 'w' };
+
 const fakeAdapter = (reachable: boolean, fail = false) => {
   const started: StartInput[] = [];
+  const places: SessionPlace[] = [];
   const published: string[] = [];
   const adapter: ProposalAdapter = {
     name: 'cmux',
-    locate: () => (reachable ? { adapter: 'cmux', surfaceId: 's', workspaceId: 'w' } : null),
-    start: (input) => {
+    locate: () => (reachable ? PLACE : null),
+    start: (input, place) => {
       if (fail) {
         throw new Error('cmux is not running');
       }
       started.push(input);
+      places.push(place);
       return 'Opened a workspace.';
     },
     publish: (home) => published.push(home)
   };
-  return { adapter, started, published };
+  return { adapter, started, places, published };
 };
 
 const context = (adapters: readonly ProposalAdapter[]): DecideContext => ({
@@ -53,11 +57,12 @@ const context = (adapters: readonly ProposalAdapter[]): DecideContext => ({
   now: NOW
 });
 
-test('Start hands the prompt to the adapter that can reach this session, as a file, then publishes', () => {
+test('Start hands the prompt as a file to the adapter that can reach this session, with its place, then publishes', () => {
   const id = seed();
-  const { adapter, started, published } = fakeAdapter(true);
+  const { adapter, started, places, published } = fakeAdapter(true);
   expect(decideProposal(id, 'start', context([adapter]))).toBe('Started: Reply to the review. Opened a workspace.');
   expect(started).toHaveLength(1);
+  expect(places).toEqual([PLACE]);
   expect(readFileSync(started[0]?.promptFile ?? '', 'utf-8')).toBe(input.prompt);
   expect(published).toEqual([FOLDERS.HOME]);
   expect(readProposalLedger().proposals[0]?.state).toBe('started');

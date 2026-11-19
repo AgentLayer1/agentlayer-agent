@@ -2,7 +2,7 @@ import { FILES, FOLDERS } from '@/config';
 import { log } from '@/shared/log';
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { Launcher, ProposalAdapter, StartInput } from './adapter';
+import type { Launcher, ProposalAdapter, SessionPlace, StartInput } from './adapter';
 import { readProposalLedger, writeProposalLedger, type Proposal } from './ledger';
 import { decide, reopen, type Choice } from './rules';
 
@@ -43,6 +43,17 @@ export const publishTo = (adapters: readonly ProposalAdapter[], home: string): v
     }
   });
 
+interface Located {
+  adapter: ProposalAdapter;
+  place: SessionPlace;
+}
+
+const locateIn = (adapters: readonly ProposalAdapter[], env: DecideContext['env']): Located | undefined =>
+  adapters.flatMap((adapter): Located[] => {
+    const place = adapter.locate(env);
+    return place ? [{ adapter, place }] : [];
+  })[0];
+
 export interface DecideContext {
   home: string;
   adapters: readonly ProposalAdapter[];
@@ -75,10 +86,10 @@ export const decideProposal = (id: string, choice: Choice, context: DecideContex
     launcher: launcher()
   };
   writeProposalLedger(decision.ledger);
-  const adapter = context.adapters.find((candidate) => candidate.locate(context.env) !== null);
+  const located = locateIn(context.adapters, context.env);
   const opened = ((): { where: string } | { error: string } => {
     try {
-      return { where: adapter ? adapter.start(input) : manualStart(input) };
+      return { where: located ? located.adapter.start(input, located.place) : manualStart(input) };
     } catch (error) {
       return { error: error instanceof Error ? error.message : String(error) };
     }

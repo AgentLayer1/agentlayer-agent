@@ -3,7 +3,7 @@ import { readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { ADAPTERS } from '@/adapters';
 import { FILES, FOLDERS } from '@/config';
-import type { StartInput } from '@/proposals/adapter';
+import type { SessionPlace, StartInput } from '@/proposals/adapter';
 import { EMPTY_LEDGER, readProposalLedger, writeProposalLedger } from '@/proposals/ledger';
 import { addProposals } from '@/proposals/rules';
 import { decideProposal } from '@/proposals/start';
@@ -41,39 +41,41 @@ test('a process inside cmux is located by its surface and workspace; one outside
   expect(cmuxAdapter.locate({})).toBeNull();
 });
 
-test('Start opens a workspace in the home whose command names neither the home nor the prompt file', () => {
+const PLACE: SessionPlace = { adapter: 'cmux', surfaceId: 'surface-1', workspaceId: 'workspace-1' };
+
+const startInput = (promptFile: string = PROMPT_FILE): StartInput => ({
+  home: HOME,
+  proposal: { id: 'p-a1', title: 'Reply to the supplier' },
+  promptFile,
+  launcher: 'agent'
+});
+
+test('Start opens a tab in the heartbeat’s workspace whose command names neither the home nor the prompt', () => {
   const { adapter, calls } = recorder();
-  const said = adapter.start({
-    home: HOME,
-    proposal: { id: 'p-a1', title: 'Reply to the supplier' },
-    promptFile: PROMPT_FILE,
-    launcher: 'agent'
-  });
-  expect(said).toBe('Opened it in a new cmux workspace.');
+  expect(adapter.start(startInput(), PLACE)).toBe('Opened it in a new tab beside the heartbeat.');
   expect(calls).toEqual([
     [
-      'new-workspace',
-      '--cwd',
+      'new-surface',
+      '--workspace',
+      'workspace-1',
+      '--working-directory',
       HOME,
-      '--name',
-      'Reply to the supplier',
-      '--env',
-      `AGENT_PROPOSAL_PROMPT=${PROMPT_FILE}`,
       '--command',
-      'agent "$(cat "$AGENT_PROPOSAL_PROMPT")"'
+      `agent "$(cat '${join('.state', 'proposals', 'p-a1.prompt')}')"`
     ]
   ]);
 });
 
+test('a prompt file outside the home, or with a quote in its path, opens nothing', () => {
+  const { adapter, calls } = recorder();
+  expect(() => adapter.start(startInput(join('/Users', 'ada', 'p-a1.prompt')), PLACE)).toThrow('inside the home');
+  expect(() => adapter.start(startInput(join(HOME, '.state', "it's.prompt")), PLACE)).toThrow('inside the home');
+  expect(calls).toEqual([]);
+});
+
 test('a cmux that refuses throws its own words, so the core puts the proposal back', () => {
   const { adapter } = recorder({ ok: false, output: 'Error: not running inside cmux' });
-  const input: StartInput = {
-    home: HOME,
-    proposal: { id: 'p-a1', title: 'Reply' },
-    promptFile: PROMPT_FILE,
-    launcher: 'claude'
-  };
-  expect(() => adapter.start(input)).toThrow('Error: not running inside cmux');
+  expect(() => adapter.start(startInput(), PLACE)).toThrow('Error: not running inside cmux');
 });
 
 test('a Start through the core passes the prompt only as a file the new shell reads', () => {
@@ -101,12 +103,15 @@ test('a Start through the core passes the prompt only as a file the new shell re
   const { adapter, calls } = recorder();
   const env = { CMUX_SURFACE_ID: 'surface-1', CMUX_WORKSPACE_ID: 'workspace-1' };
   const said = decideProposal(id, 'start', { home: FOLDERS.HOME, adapters: [adapter], env, now: new Date() });
-  expect(said).toBe('Started: Reply to the review. Opened it in a new cmux workspace.');
+  expect(said).toBe('Started: Reply to the review. Opened it in a new tab beside the heartbeat.');
   const [args = []] = calls;
-  const file = valueOf(args, '--env').replace('AGENT_PROPOSAL_PROMPT=', '');
+  expect(valueOf(args, '--workspace')).toBe('workspace-1');
+  expect(valueOf(args, '--working-directory')).toBe(FOLDERS.HOME);
+  const command = valueOf(args, '--command');
+  const file = join(FOLDERS.HOME, command.match(/cat '([^']+)'/)?.[1] ?? '');
   expect(readFileSync(file, 'utf-8')).toBe(prompt);
   expect(args.join('\n')).not.toContain('whoami');
-  expect(valueOf(args, '--command')).not.toContain(FOLDERS.HOME);
+  expect(command).not.toContain(FOLDERS.HOME);
   expect(readProposalLedger().proposals[0]?.state).toBe('started');
   rmSync(FILES.PROPOSALS, { force: true });
   rmSync(file, { force: true });

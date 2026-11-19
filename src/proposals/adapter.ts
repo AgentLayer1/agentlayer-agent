@@ -35,9 +35,9 @@ export interface ProposalAdapter {
    */
   locate: (env: Readonly<Record<string, string | undefined>>) => SessionPlace | null;
   /**
-   * Opens a session running the proposal's prompt, and says where it opened.
+   * Opens a session running the proposal's prompt beside `place`, the one `locate` returned, and says where it opened.
    */
-  start: (input: StartInput) => string;
+  start: (input: StartInput, place: SessionPlace) => string;
   /**
    * Redraws wherever this adapter shows proposals.
    */

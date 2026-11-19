@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { bundleSidebar, DIST } from './build';
 import { homeEntry } from './entry';
 import { renderSidebar } from './file';
-import { CMUX_DATA, NOVA, NOVA_HOME, NOVA_LEDGER, SCOUT, SCOUT_HOME, SCOUT_LEDGER } from './preview/fixture';
+import { CMUX_DATA, NOVA, NOVA_HOME, NOVA_LEDGER, SCOUT, SCOUT_HOME, SCOUT_LEDGER, selecting } from './preview/fixture';
 import { previewText } from './preview/preview';
 import { hasRuntime, mount } from './runtime-harness';
 import type { HomeEntry } from './sidebar/data';
@@ -95,7 +95,7 @@ run('a home whose heartbeat isn’t open in cmux shows its proposals with how to
 const HEARTBEAT_LINE =
   'Opens a session in Scout’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five wait.';
 
-run('a home without a heartbeat gets a card that opens one in a new workspace in its home', () => {
+run('a home without a heartbeat gets a card that opens one in a tab of the selected workspace', () => {
   const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
   sidebar.tap('PROPOSED');
   expect(between(sidebar.visibleTexts(), 'Start Scout’s heartbeat', 'Audit the dark mode colours')).toEqual([
@@ -106,13 +106,36 @@ run('a home without a heartbeat gets a card that opens one in a new workspace in
   ]);
   expect(sidebar.tap('Start heartbeat')).toEqual({
     kind: 'cmux',
+    method: 'surface.create',
+    params: { workspace_id: 'w-nova', initial_input: `cd '${SCOUT_HOME}' && claude "/heartbeat"\r` }
+  });
+  expect(sidebar.visibleTexts(), 'the card stays until the rewrite drops it').toContain('Start Scout’s heartbeat');
+  const billed = mount(installed({ [SCOUT_HOME]: { ...SCOUT_ENTRY, launcher: 'agent' } }), selecting('w-code'));
+  billed.tap('PROPOSED');
+  expect(billed.tap('Start heartbeat')?.params).toEqual({
+    workspace_id: 'w-code',
+    initial_input: `cd '${SCOUT_HOME}' && agent "/heartbeat"\r`
+  });
+});
+
+run('a home path with an apostrophe reaches the shell as one quoted word', () => {
+  const home = join('/Users', 'ada', "Ada's Agents", 'Scout');
+  const sidebar = mount(installed({ [home]: SCOUT_ENTRY }), CMUX_DATA);
+  sidebar.tap('PROPOSED');
+  expect(sidebar.tap('Start heartbeat')?.params).toEqual({
+    workspace_id: 'w-nova',
+    initial_input: `cd '/Users/ada/Ada'\\''s Agents/Scout' && claude "/heartbeat"\r`
+  });
+});
+
+run('with no workspace selected, the heartbeat opens in a new workspace in its home', () => {
+  const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), selecting('none'));
+  sidebar.tap('PROPOSED');
+  expect(sidebar.tap('Start heartbeat')).toEqual({
+    kind: 'cmux',
     method: 'workspace.create',
     params: { cwd: SCOUT_HOME, initial_input: 'claude "/heartbeat"\r' }
   });
-  expect(sidebar.visibleTexts(), 'the card stays until the rewrite drops it').toContain('Start Scout’s heartbeat');
-  const billed = mount(installed({ [SCOUT_HOME]: { ...SCOUT_ENTRY, launcher: 'agent' } }), CMUX_DATA);
-  billed.tap('PROPOSED');
-  expect(billed.tap('Start heartbeat')?.params).toEqual({ cwd: SCOUT_HOME, initial_input: 'agent "/heartbeat"\r' });
 });
 
 run('with no heartbeat reachable, PROPOSED starts folded, and the header opens it', () => {

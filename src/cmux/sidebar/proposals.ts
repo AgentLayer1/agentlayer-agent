@@ -71,6 +71,19 @@ const body = ({ entry, item }: Waiting, decide: (choice: Choice, place: Heartbea
   ]);
 };
 
+// surface.create takes no folder, so the tab's first line moves into the home.
+const shellQuoted = (text: string): string => `'${text.replaceAll("'", "'\\''")}'`;
+
+const startHeartbeat = (home: string, entry: HomeEntry): void => {
+  const selected = (data.workspaces() ?? []).find((workspace) => workspace.selected);
+  const launch = `${entry.launcher} "/heartbeat"\r`;
+  if (selected) {
+    cmux('surface.create', { workspace_id: selected.id, initial_input: `cd ${shellQuoted(home)} && ${launch}` });
+  } else {
+    cmux('workspace.create', { cwd: home, initial_input: launch });
+  }
+};
+
 const heartbeatBody = (home: string, entry: HomeEntry) =>
   VStack({ spacing: 5, alignment: 'leading' }, [
     Text(
@@ -81,7 +94,7 @@ const heartbeatBody = (home: string, entry: HomeEntry) =>
     HStack({ spacing: 4 }, [
       choiceButton(
         'Start heartbeat',
-        () => cmux('workspace.create', { cwd: home, initial_input: `${entry.launcher} "/heartbeat"\r` }),
+        () => startHeartbeat(home, entry),
         entry.colors?.primary ?? PURPLE
       ),
       Spacer({ minLength: 0 })

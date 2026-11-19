@@ -929,10 +929,20 @@ var body = ({ entry, item }, decide) => {
     when2(() => place() === null, () => Text(`Run /heartbeat in one of ${entry.name}’s sessions to start these.`).font(10).color("tertiary").paddingTop(3))
   ]);
 };
+var shellQuoted = (text) => `'${text.replaceAll("'", "'\\''")}'`;
+var startHeartbeat = (home, entry) => {
+  const selected = (data.workspaces() ?? []).find((workspace) => workspace.selected);
+  const launch = `${entry.launcher} "/heartbeat"\r`;
+  if (selected) {
+    cmux("surface.create", { workspace_id: selected.id, initial_input: `cd ${shellQuoted(home)} && ${launch}` });
+  } else {
+    cmux("workspace.create", { cwd: home, initial_input: launch });
+  }
+};
 var heartbeatBody = (home, entry) => VStack({ spacing: 5, alignment: "leading" }, [
   Text(`Opens a session in ${entry.name}’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five wait.`).font(11).color("secondary"),
   HStack({ spacing: 4 }, [
-    choiceButton("Start heartbeat", () => cmux("workspace.create", { cwd: home, initial_input: `${entry.launcher} "/heartbeat"\r` }), entry.colors?.primary ?? PURPLE),
+    choiceButton("Start heartbeat", () => startHeartbeat(home, entry), entry.colors?.primary ?? PURPLE),
     Spacer({ minLength: 0 })
   ]).paddingTop(3)
 ]);
