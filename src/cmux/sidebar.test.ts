@@ -72,18 +72,18 @@ run('PROPOSED leads the Manager above NEEDS YOU, its first card open and its put
   expect(texts).not.toContain('Run the sync');
 });
 
-run('Start types the choice into the agent’s heartbeat and hides the card at once', () => {
+run('Start types the choice into the agent’s heartbeat, and the card stays until the published ledger drops it', () => {
   const sidebar = mount(installed(), CMUX_DATA);
   expect(sidebar.tap('Start')).toEqual({
     kind: 'cmux',
     method: 'surface.send_text',
     params: { surface_id: 'w-nova-s2-surface', workspace_id: 'w-nova', text: '/propose start p-a1\n' }
   });
-  const texts = sidebar.visibleTexts();
-  expect(texts).not.toContain('Reply to the supplier');
-  expect(texts, 'the next card opens').toContain('A new issue came in this morning');
-  expect(sidebar.tap('Skip')?.params).toMatchObject({ text: '/propose skip p-a2\n' });
-  expect(sidebar.visibleTexts()).not.toContain('PROPOSED');
+  expect(sidebar.visibleTexts(), 'a Start that fails leaves the card where it was').toContain('Reply to the supplier');
+  const decided = { ...NOVA_ENTRY, proposals: NOVA_ENTRY.proposals.filter(({ id }) => id !== 'p-a1') };
+  const redrawn = mount(installed({ [NOVA_HOME]: decided }), CMUX_DATA).visibleTexts();
+  expect(redrawn).not.toContain('Reply to the supplier');
+  expect(redrawn, 'the next card opens').toContain('A new issue came in this morning');
 });
 
 run('a card put off with Later shows once the clock passes its time', () => {
@@ -91,6 +91,25 @@ run('a card put off with Later shows once the clock passes its time', () => {
   expect(sidebar.visibleTexts()).not.toContain('Tidy the release notes');
   sidebar.setData({ clock: { ...CMUX_DATA.clock, epoch: CMUX_DATA.clock.epoch + 2 * 60 * 60 } });
   expect(sidebar.visibleTexts()).toContain('Tidy the release notes');
+});
+
+const novaHeartbeatAgents = (change: (agents: (typeof CMUX_DATA.workspaces)[number]['agents']) => (typeof CMUX_DATA.workspaces)[number]['agents']) => ({
+  ...CMUX_DATA,
+  workspaces: CMUX_DATA.workspaces.map((item) => (item.id === 'w-nova' ? { ...item, agents: change(item.agents) } : item))
+});
+
+run('a heartbeat tab whose Claude has ended or gone offers a new heartbeat, and no buttons', () => {
+  const ended = novaHeartbeatAgents((agents) =>
+    agents.map((agent) => (agent.panelId === 'w-nova-s2-panel' ? { ...agent, status: 'ended' as const } : agent))
+  );
+  const gone = novaHeartbeatAgents((agents) => agents.filter((agent) => agent.panelId !== 'w-nova-s2-panel'));
+  [ended, gone].forEach((data) => {
+    const sidebar = mount(installed(), data);
+    sidebar.tap('PROPOSED');
+    const texts = sidebar.visibleTexts();
+    expect(texts).toContain('Start Nova’s heartbeat');
+    expect(texts).not.toContain('Start');
+  });
 });
 
 run('a home whose heartbeat isn’t open in cmux shows its proposals with how to start them, and no buttons', () => {

@@ -39,7 +39,6 @@ const app = () => {
     }
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
-  // Built once, so a choice already made stays hidden across a switch of tab.
   const proposed = proposalsSection();
   const heartbeats = new Set(homes.flatMap((home) => DATA.homes[home]?.heartbeat?.surfaceId ?? []));
   // The heartbeat waits in its tab all day; the Manager lists it only when it needs you.

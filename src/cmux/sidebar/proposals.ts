@@ -16,10 +16,17 @@ const nowMs = computed(() => {
   return clock ? clock.epoch * 1000 : Date.now();
 });
 
-// The heartbeat's place while its tab is still open in cmux; a closed tab can't take the choice.
+// The heartbeat's place while Claude still runs in its tab: a closed tab, or the shell Claude exited to, can't take
+// the choice.
 const reachable = (place: HeartbeatPlace | null): HeartbeatPlace | null =>
   place &&
-  (data.workspaces() ?? []).some((workspace) => workspace.tabs.some((tab) => tab.surfaceId === place.surfaceId))
+  (data.workspaces() ?? []).some((workspace) =>
+    workspace.tabs.some(
+      (tab) =>
+        tab.surfaceId === place.surfaceId &&
+        (workspace.agents ?? []).some((agent) => agent.panelId === tab.id && agent.status !== 'ended')
+    )
+  )
     ? place
     : null;
 
@@ -104,17 +111,16 @@ const heartbeatBody = (home: string, entry: HomeEntry) =>
 /**
  * The Manager's PROPOSED section: every joined agent's proposals as cards, those put off hidden until their time.
  * Proposals a reachable heartbeat can decide come first; each agent without one follows as a card that starts its
- * heartbeat, then its proposals. A proposal's button types `/propose <choice> <id>` into that agent's heartbeat and
- * hides the card until the refresh lands.
+ * heartbeat, then its proposals. A proposal's button types `/propose <choice> <id>` into that agent's heartbeat; the card
+ * leaves when the decision is published and the sidebar redrawn, and stays when it was refused.
  */
 export const proposalsSection = (): HostSection => {
-  const [decided, setDecided] = signal<readonly string[]>([]);
   const homes = Object.entries(DATA.homes).filter(([, entry]) => entry.schema === SCHEMA);
   const live = ([, entry]: [string, HomeEntry]) => reachable(entry.heartbeat) !== null;
   const waiting = ([home, entry]: [string, HomeEntry]) =>
     entry.proposals
       .map((item): Waiting => ({ key: `${home}#${item.id}`, entry, item }))
-      .filter(({ key, item }) => !decided().includes(key) && isShown(item.laterUntil, nowMs()));
+      .filter(({ item }) => isShown(item.laterUntil, nowMs()));
   const card = (proposal: Waiting): SectionCard => {
     const { entry, item, key } = proposal;
     return {
@@ -127,14 +133,13 @@ export const proposalsSection = (): HostSection => {
       ],
       searchText: `${item.trigger} ${item.detail}`,
       body: () =>
-        body(proposal, (choice, place) => {
+        body(proposal, (choice, place) =>
           cmux('surface.send_text', {
             surface_id: place.surfaceId,
             workspace_id: place.workspaceId,
             text: `/propose ${choice} ${item.id}\n`
-          });
-          setDecided([...decided(), key]);
-        })
+          })
+        )
     };
   };
   const heartbeatCard = (home: string, entry: HomeEntry): SectionCard => ({

@@ -906,7 +906,7 @@ var nowMs = computed(() => {
   const clock = data.clock();
   return clock ? clock.epoch * 1000 : Date.now();
 });
-var reachable = (place) => place && (data.workspaces() ?? []).some((workspace) => workspace.tabs.some((tab) => tab.surfaceId === place.surfaceId)) ? place : null;
+var reachable = (place) => place && (data.workspaces() ?? []).some((workspace) => workspace.tabs.some((tab) => tab.surfaceId === place.surfaceId && (workspace.agents ?? []).some((agent) => agent.panelId === tab.id && agent.status !== "ended"))) ? place : null;
 var choiceButton = (label, onTap, tint) => Text(label).font(11).weight("semibold").color(tint ? "#ffffff" : "secondary").paddingHorizontal(tint ? 14 : 9).paddingVertical(5).background(tint ?? null).cornerRadius(8).hoverBackground(tint ?? "#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(onTap);
 var body = ({ entry, item }, decide) => {
   const place = () => reachable(entry.heartbeat);
@@ -948,10 +948,9 @@ var heartbeatBody = (home, entry) => VStack({ spacing: 5, alignment: "leading" }
   ]).paddingTop(3)
 ]);
 var proposalsSection = () => {
-  const [decided, setDecided] = signal([]);
   const homes = Object.entries(DATA.homes).filter(([, entry]) => entry.schema === SCHEMA);
   const live = ([, entry]) => reachable(entry.heartbeat) !== null;
-  const waiting = ([home, entry]) => entry.proposals.map((item) => ({ key: `${home}#${item.id}`, entry, item })).filter(({ key, item }) => !decided().includes(key) && isShown(item.laterUntil, nowMs()));
+  const waiting = ([home, entry]) => entry.proposals.map((item) => ({ key: `${home}#${item.id}`, entry, item })).filter(({ item }) => isShown(item.laterUntil, nowMs()));
   const card = (proposal) => {
     const { entry, item, key } = proposal;
     return {
@@ -963,15 +962,12 @@ var proposalsSection = () => {
         ...item.due ? [{ text: item.due, color: ORANGE, icon: "calendar" }] : []
       ],
       searchText: `${item.trigger} ${item.detail}`,
-      body: () => body(proposal, (choice, place) => {
-        cmux("surface.send_text", {
-          surface_id: place.surfaceId,
-          workspace_id: place.workspaceId,
-          text: `/propose ${choice} ${item.id}
+      body: () => body(proposal, (choice, place) => cmux("surface.send_text", {
+        surface_id: place.surfaceId,
+        workspace_id: place.workspaceId,
+        text: `/propose ${choice} ${item.id}
 `
-        });
-        setDecided([...decided(), key]);
-      })
+      }))
     };
   };
   const heartbeatCard = (home, entry) => ({
