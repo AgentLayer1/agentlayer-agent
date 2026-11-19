@@ -104,7 +104,7 @@ async function tick($: EngineInterface): Promise<void> {
     return;
   }
   const [now, zone] = await Promise.all([$.clock.now(), zoneOf($)]);
-  if (isBusy || isQuiet(now, zone) || list.waiting.length >= list.target) {
+  if (isBusy || isQuiet(now, zone) || list.room === 0) {
     return;
   }
   await wake($);

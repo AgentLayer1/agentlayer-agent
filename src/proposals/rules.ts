@@ -197,6 +197,12 @@ export const proposalCards = (ledger: ProposalLedger): ProposalCard[] =>
 export const waitingNow = (ledger: ProposalLedger, now: Date): ProposalCard[] =>
   proposalCards(ledger).filter((card) => isShown(card.laterUntil, now.getTime()));
 
+/**
+ * How many proposals can be added now: enough to show five, and never past the backlog, which counts the ones put off.
+ */
+export const roomFor = (ledger: ProposalLedger, now: Date): number =>
+  Math.max(0, Math.min(TARGET - waitingNow(ledger, now).length, BACKLOG - ledger.proposals.filter(isOpen).length));
+
 const DURATION = /^(\d+)\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours)$/i;
 
 /**

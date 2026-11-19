@@ -52,8 +52,13 @@ export interface FakeMachine {
   toolText: Record<string, string>;
   fsCalls: string[];
   notices: Notice[];
-  /** What `proposals list --json` prints: the target, what's waiting, and the heartbeat. */
-  proposals: { target: number; waiting: ProposalList['waiting'][number][]; heartbeat: ProposalList['heartbeat'] };
+  /** What `proposals list --json` prints: the target, what's waiting, and the heartbeat; room is what's left of five unless set. */
+  proposals: {
+    target: number;
+    room?: number;
+    waiting: ProposalList['waiting'][number][];
+    heartbeat: ProposalList['heartbeat'];
+  };
   toasts: string[];
   /** What `$.ui.copy` put on the clipboard. */
   copied: string[];
@@ -177,7 +182,8 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
     );
   }
   if (args === 'proposals list --json') {
-    return ran(0, JSON.stringify(host.proposals));
+    const room = host.proposals.room ?? Math.max(0, host.proposals.target - host.proposals.waiting.length);
+    return ran(0, JSON.stringify({ ...host.proposals, room }));
   }
   // The CLI's heartbeat binding, kept so a test sees the owner and interval it was given.
   const binding = /^proposals heartbeat --owner=(\S+)(?: --every=(\d+)\s*(h|m))?/.exec(args);

@@ -60,6 +60,8 @@ export const dayIn = (epochMs: number, timeZone: string | undefined): string =>
  */
 export interface ProposalList {
   target: number;
+  /** How many can be added now; 0 also when put-off proposals fill the backlog. */
+  room: number;
   waiting: readonly { id: string; title: string }[];
   heartbeat: { owner: string; everyMinutes: number } | null;
 }
@@ -71,6 +73,7 @@ export const parseList = (stdout: string): ProposalList | null => {
       return null;
     }
     const { target, waiting } = data;
+    const room = 'room' in data ? data.room : undefined;
     const heartbeat = 'heartbeat' in data ? data.heartbeat : null;
     const beat =
       typeof heartbeat === 'object' &&
@@ -81,7 +84,9 @@ export const parseList = (stdout: string): ProposalList | null => {
       typeof heartbeat.everyMinutes === 'number'
         ? { owner: heartbeat.owner, everyMinutes: heartbeat.everyMinutes }
         : null;
-    return typeof target === 'number' && Array.isArray(waiting) ? { target, waiting, heartbeat: beat } : null;
+    return typeof target === 'number' && typeof room === 'number' && Array.isArray(waiting)
+      ? { target, room, waiting, heartbeat: beat }
+      : null;
   } catch {
     return null;
   }

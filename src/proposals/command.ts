@@ -8,6 +8,7 @@ import {
   DEFAULT_EVERY_MINUTES,
   parseEvery,
   removeProposals,
+  roomFor,
   setHeartbeat,
   TARGET,
   waitingNow
@@ -30,14 +31,16 @@ const publish = (): void => publishTo(ADAPTERS, FOLDERS.HOME);
 
 const list = (args: readonly string[]): number => {
   const ledger = readProposalLedger();
-  const waiting = waitingNow(ledger, new Date());
+  const now = new Date();
+  const waiting = waitingNow(ledger, now);
+  const room = roomFor(ledger, now);
   if (args.includes('--json')) {
-    console.log(JSON.stringify({ target: TARGET, waiting, heartbeat: ledger.heartbeat }));
+    console.log(JSON.stringify({ target: TARGET, room, waiting, heartbeat: ledger.heartbeat }));
     return 0;
   }
   const lines = waiting.map(({ id, title, estimate }) => `${id}  ${title}${estimate ? ` (${estimate})` : ''}`);
   const beat = ledger.heartbeat ? `every ${ledger.heartbeat.everyMinutes}m` : 'off';
-  console.log([`${waiting.length} of ${TARGET} waiting · heartbeat ${beat}`, ...lines].join('\n'));
+  console.log([`${waiting.length} of ${TARGET} waiting · room for ${room} · heartbeat ${beat}`, ...lines].join('\n'));
   return 0;
 };
 

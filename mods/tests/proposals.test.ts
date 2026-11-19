@@ -133,6 +133,16 @@ describe('proposals', () => {
     expect(host.commands).toEqual([WAKE]);
   });
 
+  test('a backlog filled by proposals put off holds the wake, though none show', async ($, on) => {
+    const { host } = await bound($, on);
+    host.proposals.room = 0;
+    await host.clock.advance(2 * 55 * MINUTE);
+    expect(host.commands).toEqual([]);
+    host.proposals.room = undefined;
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands).toEqual([WAKE]);
+  });
+
   test('quiet hours hold the wake until morning', async ($, on) => {
     const { host } = heartbeatHost(on);
     await host.clock.set(Date.parse('2026-03-10T23:10:00+08:00'));

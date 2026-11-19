@@ -15,11 +15,11 @@ Proposals are sessions waiting for the operator's yes: Start opens a fresh sessi
 bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" proposals list
 ```
 
-It prints how many are waiting out of five. At five or more, say "Proposals full, nothing new" and stop. If session start listed `extensions/skills/proposals.md`, read it now: the operator's own rules for what to propose, and they win where they disagree with this file.
+It prints how many are waiting out of five and the room for new ones. With no room, say "Proposals full, nothing new" and stop. If session start listed `extensions/skills/proposals.md`, read it now: the operator's own rules for what to propose, and they win where they disagree with this file.
 
 ## 2. Gather candidates
 
-Look in this order, and stop looking once you hold a few more candidates than the free slots:
+Look in this order, and stop looking once you hold a few more candidates than the room:
 
 1. **Tasks** (`task_query`): overdue and due-this-week P0/P1 tasks first, then the next unchecked step of an active P1 task (`task_get` for its checklist). Source key `task:<id>`.
 2. **The brain**: a sync last run three or more days ago, or a compile backlog (`compile_status`). Source key `sync` or `compile`.
@@ -28,7 +28,7 @@ Look in this order, and stop looking once you hold a few more candidates than th
 
 ## 3. Propose the best few
 
-Pick the candidates worth the operator's yes, most pressing first, up to the free slots, and add them in one `proposal_add` call. Each one is a session a stranger could run:
+Pick the candidates worth the operator's yes, most pressing first, up to the room, and add them in one `proposal_add` call. Each one is a session a stranger could run:
 
 - **title**: what the session does, as an imperative, under 60 characters ("Draft the reply to your accountant").
 - **trigger**: what happened, in the operator's terms ("Your accountant wrote two hours ago").

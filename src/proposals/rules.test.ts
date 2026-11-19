@@ -10,6 +10,7 @@ import {
   proposalCards,
   type ProposalInput,
   removeProposals,
+  roomFor,
   waitingNow
 } from './rules';
 
@@ -77,6 +78,18 @@ test(`refuses past ${BACKLOG} waiting`, () => {
   const { added, refused } = addProposals(EMPTY_LEDGER, many, NOW);
   expect(added).toHaveLength(BACKLOG);
   expect(refused.map(({ reason }) => reason)).toEqual([`${BACKLOG} are already waiting`, `${BACKLOG} are already waiting`]);
+});
+
+test('room is what fills five, and none once put-off proposals fill the backlog', () => {
+  expect(roomFor(withTwo(), NOW)).toBe(3);
+  const many = Array.from({ length: BACKLOG }, (_, index) => input(`task:aa-${index}`));
+  const full = addProposals(EMPTY_LEDGER, many, NOW, counter()).ledger;
+  const putOff = full.proposals.reduce((ledger, { id }) => {
+    const later = decide(ledger, id, 'later', NOW);
+    return later.outcome === 'decided' ? later.ledger : ledger;
+  }, full);
+  expect(waitingNow(putOff, NOW)).toEqual([]);
+  expect(roomFor(putOff, NOW)).toBe(0);
 });
 
 test('a proposal is decided once, so a second Start changes nothing', () => {
