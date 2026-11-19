@@ -122,9 +122,9 @@ and the attention pages follow.
   written by the attention skill's `checkpoint all` (step 1) — and that step is skipped when a
   fresh one already exists.
 - Secrets are redacted at the source (`••••`); never un-redact them.
-- Markdown links open via the configured opener app: set the `MARKDOWN_URL`
-  env var in `.claude/settings.local.json` (`{path}` placeholder, e.g.
-  `markedit://open?path={path}`); defaults to
-  `obsidian://open?path={path}&paneType=tab` (new Obsidian tab, dashboard stays put).
+- File links open the file itself in a new tab by default (a note shows as raw text in a browser).
+  To route them through an app, set the `MARKDOWN_URL` env var in `.claude/settings.local.json`
+  (`{path}` placeholder): `markedit://open?path={path}`, or
+  `obsidian://open?path={path}&paneType=tab` (a new Obsidian tab, the dashboard stays put).
 - Every `/agentlayer:sync` also refreshes the dashboard; `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" dashboard`
   does the same from a terminal.

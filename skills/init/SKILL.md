@@ -505,7 +505,7 @@ Sort URLs by their inferred type — the agent decides which facet each lands in
 
 Plain chat (NOT `AskUserQuestion`, since the answer is freeform):
 
-> **Optional — paste a path or URL for your avatar.** If you give a local path, the agent copies it to `<HOME>/knowledge/user/assets/avatar.<ext>`. If you give a URL, the agent downloads it the same place. Either way, the agent adds an `Avatar:` field to your staged `knowledge/user/profile.md` pointing at the local copy so it shows up in Obsidian. Reply with the path/URL or `skip`.
+> **Optional — paste a path or URL for your avatar.** If you give a local path, the agent copies it to `<HOME>/knowledge/user/assets/avatar.<ext>`. If you give a URL, the agent downloads it the same place. Either way, the agent adds an `Avatar:` field to your staged `knowledge/user/profile.md` pointing at the local copy. Reply with the path/URL or `skip`.
 
 Parse the next user message:
 - `skip` (case-insensitive) → no-op, jump to Step 5c.
@@ -1820,7 +1820,7 @@ Blank line, then the **Next** heading (same style as Ready), then the relaunch p
 >
 > **Your first session opens with a welcome.** Say hi and <AGENT_NAME> suggests where to start, beginning with your roadmap.
 >
-> `/agentlayer:dashboard` opens the Agent OS dashboard, your whole setup on one page. Open `<HOME_DIR>` in Obsidian to view/edit your wiki.
+> `/agentlayer:dashboard` opens the Agent OS dashboard, your whole setup on one page. Everything <AGENT_NAME> knows is plain markdown in `<HOME_DIR>`, so any markdown editor opens it.
 
 ---
 
