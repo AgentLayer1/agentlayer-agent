@@ -47,6 +47,40 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.0.5] - 2026-11-19
+
+Files open in your own apps: dashboard links go to the file itself, and the installer sets up the editors.
+
+### Added
+- The installer checks for Node.js before Bun, on Mac, Linux and Windows. Any Node on PATH passes,
+  and so does fnm's default Node; otherwise the step links to fnm and shows `fnm install --lts`.
+- The Mac guide recommends MarkEdit for the agent's notes, right after CotEditor.
+- A Default apps step in the Mac guide checks that CotEditor opens `.txt` and `.json` and MarkEdit
+  opens `.md`, asks only about the editors that are installed, and lists the Get Info steps for each
+  missing kind.
+
+### Changed
+- Dashboard file links open the file itself in a new tab by default, on the dashboard, the
+  attention pages and the radar's session rows. `MARKDOWN_URL` no longer defaults to Obsidian;
+  set it (`obsidian://…`, `markedit://…`) to route links through an app. A value without a scheme
+  and `{path}` falls back to plain file links.
+- The manual tells the agent to show you a file with `! open <absolute path>`, so your system's
+  default app opens it, never an app's link scheme or `open -a` unless you named the app. The init
+  and dashboard skills stop naming Obsidian as the way to read the home.
+- The radar report is sanitized before its task and plan links go in, so the report's own app or
+  file links are stripped while the dashboard's links stay.
+
+### Fixed
+- The demo dashboard's week starts on its own Monday, not a day early when the machine's clock is
+  already on the next day.
+
+### Upgrade
+- `template/AGENTS.md: mandatory` — Platform's "Keep the live home out of harm's way" paragraph
+  gains the rule to show a file with `! open <absolute path>`.
+- `manual: optional` — Dashboard links now open the file itself instead of Obsidian. To keep
+  opening notes in Obsidian, add `"MARKDOWN_URL": "obsidian://open?path={path}&paneType=tab"` to the
+  `env` block of `.claude/settings.local.json`, then refresh the dashboard.
+
 ## [1.0.4] - 2026-11-19
 
 The cmux sidebar in the order you choose, refreshed on request, and reports by their last edit.
