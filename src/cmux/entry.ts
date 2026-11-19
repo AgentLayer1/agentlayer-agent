@@ -2,6 +2,7 @@ import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { ProposalLedger } from '@/proposals/ledger';
 import { proposalCards } from '@/proposals/rules';
+import { launcher } from '@/proposals/start';
 import { reportKind } from '@/reports/kinds';
 import { nameHue } from '@/status/html-primitives';
 import type { Work, WorkProject, WorkReport } from '@/work/model';
@@ -102,6 +103,7 @@ export const homeEntry = (home: string, work: Work, ledger: ProposalLedger): Hom
     olderReports: Math.max(0, openable.length - REPORT_LIMIT),
     goals: goalsView(work),
     proposals: proposalCards(ledger),
-    heartbeat: heartbeatPlace(ledger)
+    heartbeat: heartbeatPlace(ledger),
+    launcher: launcher()
   };
 };

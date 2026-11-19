@@ -1,6 +1,10 @@
 import { expect, test } from 'bun:test';
-import { join } from 'node:path';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { FILES } from '@/config';
+import { secretsReadBlocked } from '@/shared/sandbox-probe';
 import { nameHue } from '@/status/html-primitives';
 import { homeEntry, REPORT_LIMIT } from './entry';
 import { LATER_UNTIL, NOVA, NOVA_HOME, NOVA_LEDGER, SCOUT, SCOUT_HOME, SCOUT_LEDGER } from './preview/fixture';
@@ -163,4 +167,29 @@ test('a home with no heartbeat, or none in cmux, has no place for the buttons', 
   expect(homeEntry(SCOUT_HOME, SCOUT, SCOUT_LEDGER).heartbeat).toBeNull();
   const elsewhere = { ...NOVA_LEDGER, heartbeat: { sessionId: 's', everyMinutes: 55, places: [] } };
   expect(homeEntry(NOVA_HOME, NOVA, elsewhere).heartbeat).toBeNull();
+});
+
+// The launcher reads the current home's secrets, so each case gets a home of its own.
+const launcherIn = (subscribed: boolean) => {
+  const original = process.env.AGENT_HOME;
+  const home = mkdtempSync(join(tmpdir(), 'agentlayer-launcher-'));
+  process.env.AGENT_HOME = home;
+  try {
+    if (subscribed) {
+      mkdirSync(dirname(FILES.CLAUDE_SUBSCRIPTION), { recursive: true });
+      writeFileSync(FILES.CLAUDE_SUBSCRIPTION, '{}');
+    }
+    return homeEntry(SCOUT_HOME, SCOUT, SCOUT_LEDGER).launcher;
+  } finally {
+    process.env.AGENT_HOME = original;
+    rmSync(home, { recursive: true, force: true });
+  }
+};
+
+test('a home without its own subscription starts Claude with claude', () => {
+  expect(launcherIn(false)).toBe('claude');
+});
+
+test.skipIf(secretsReadBlocked())('a home billing its own subscription starts Claude with agent', () => {
+  expect(launcherIn(true)).toBe('agent');
 });

@@ -3,7 +3,7 @@ import type { AgentColors } from '../../shared/persona';
 /**
  * The entry format's version. A sidebar shows an entry with another schema as "update this agent".
  */
-export const SCHEMA = 8;
+export const SCHEMA = 9;
 
 export interface TaskItem {
   id: string;
@@ -213,6 +213,10 @@ export interface HomeEntry {
    */
   proposals: ProposalItem[];
   heartbeat: HeartbeatPlace | null;
+  /**
+   * What starts Claude in this home: `agent` when it bills its own subscription, else `claude`.
+   */
+  launcher: 'agent' | 'claude';
 }
 
 export interface StartPage {

@@ -354,7 +354,7 @@ var packLines = (items, label, firstWidth, width) => items.reduce(({ lines, used
 }, { lines: [[]], used: 0 }).lines;
 
 // src/cmux/sidebar/data.ts
-var SCHEMA = 8;
+var SCHEMA = 9;
 
 // src/cmux/sidebar/style.ts
 var hueColor = (hue) => {
@@ -929,9 +929,18 @@ var body = ({ entry, item }, decide) => {
     when2(() => place() === null, () => Text(`Run /heartbeat in one of ${entry.name}’s sessions to start these.`).font(10).color("tertiary").paddingTop(3))
   ]);
 };
+var heartbeatBody = (home, entry) => VStack({ spacing: 5, alignment: "leading" }, [
+  Text(`Opens a session in ${entry.name}’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five wait.`).font(11).color("secondary"),
+  HStack({ spacing: 4 }, [
+    choiceButton("Start heartbeat", () => cmux("workspace.create", { cwd: home, initial_input: `${entry.launcher} "/heartbeat"\r` }), entry.colors?.primary ?? PURPLE),
+    Spacer({ minLength: 0 })
+  ]).paddingTop(3)
+]);
 var proposalsSection = () => {
   const [decided, setDecided] = signal([]);
-  const waiting = computed(() => Object.entries(DATA.homes).filter(([, entry]) => entry.schema === SCHEMA).flatMap(([home, entry]) => entry.proposals.map((item) => ({ key: `${home}#${item.id}`, entry, item }))).filter(({ key, item }) => !decided().includes(key) && isShown(item.laterUntil, nowMs())));
+  const homes = Object.entries(DATA.homes).filter(([, entry]) => entry.schema === SCHEMA);
+  const live = ([, entry]) => reachable(entry.heartbeat) !== null;
+  const waiting = ([home, entry]) => entry.proposals.map((item) => ({ key: `${home}#${item.id}`, entry, item })).filter(({ key, item }) => !decided().includes(key) && isShown(item.laterUntil, nowMs()));
   const card = (proposal) => {
     const { entry, item, key } = proposal;
     return {
@@ -954,11 +963,22 @@ var proposalsSection = () => {
       })
     };
   };
+  const heartbeatCard = (home, entry) => ({
+    key: `${home}#heartbeat`,
+    title: `Start ${entry.name}’s heartbeat`,
+    badges: [{ text: entry.name, color: entry.colors?.primary ?? PURPLE }],
+    body: () => heartbeatBody(home, entry)
+  });
+  const cards = computed(() => [
+    ...homes.filter(live).flatMap((home) => waiting(home).map(card)),
+    ...homes.filter((home) => !live(home)).flatMap((home) => [heartbeatCard(...home), ...waiting(home).map(card)])
+  ]);
   return {
     label: "PROPOSED",
     icon: "tray.full.fill",
     color: PURPLE,
-    cards: computed(() => waiting().map(card))
+    folded: !homes.some(live),
+    cards
   };
 };
 

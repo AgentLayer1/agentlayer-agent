@@ -9,8 +9,10 @@ import { decide, reopen, type Choice } from './rules';
 // A started session reads its prompt as it opens; a day later the file has done its job.
 const PROMPT_KEEP_MS = 24 * 60 * 60 * 1000;
 
-// `agent` when this home bills its own Claude subscription (the shell launcher passes it as `--settings`).
-const launcher = (): Launcher => (existsSync(FILES.CLAUDE_SUBSCRIPTION) ? 'agent' : 'claude');
+/**
+ * `agent` when this home bills its own Claude subscription (the shell launcher passes it as `--settings`).
+ */
+export const launcher = (): Launcher => (existsSync(FILES.CLAUDE_SUBSCRIPTION) ? 'agent' : 'claude');
 
 const writePromptFile = (proposal: Proposal, now: Date): string => {
   const dir = FOLDERS.PROPOSAL_PROMPTS;
@@ -35,7 +37,9 @@ export const publishTo = (adapters: readonly ProposalAdapter[], home: string): v
     try {
       adapter.publish(home);
     } catch (error) {
-      log.with('proposals').warn(`${adapter.name} didn't redraw: ${error instanceof Error ? error.message : String(error)}`);
+      log
+        .with('proposals')
+        .warn(`${adapter.name} didn't redraw: ${error instanceof Error ? error.message : String(error)}`);
     }
   });
 

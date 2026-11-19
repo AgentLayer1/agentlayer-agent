@@ -71,18 +71,37 @@ const body = ({ entry, item }: Waiting, decide: (choice: Choice, place: Heartbea
   ]);
 };
 
+const heartbeatBody = (home: string, entry: HomeEntry) =>
+  VStack({ spacing: 5, alignment: 'leading' }, [
+    Text(
+      `Opens a session in ${entry.name}’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five wait.`
+    )
+      .font(11)
+      .color('secondary'),
+    HStack({ spacing: 4 }, [
+      choiceButton(
+        'Start heartbeat',
+        () => cmux('workspace.create', { cwd: home, initial_input: `${entry.launcher} "/heartbeat"\r` }),
+        entry.colors?.primary ?? PURPLE
+      ),
+      Spacer({ minLength: 0 })
+    ]).paddingTop(3)
+  ]);
+
 /**
- * The Manager's PROPOSED section: every joined agent's proposals as cards, those put off hidden until their time. A
- * button types `/propose <choice> <id>` into that agent's heartbeat and hides the card until the refresh lands.
+ * The Manager's PROPOSED section: every joined agent's proposals as cards, those put off hidden until their time.
+ * Proposals a reachable heartbeat can decide come first; each agent without one follows as a card that starts its
+ * heartbeat, then its proposals. A proposal's button types `/propose <choice> <id>` into that agent's heartbeat and
+ * hides the card until the refresh lands.
  */
 export const proposalsSection = (): HostSection => {
   const [decided, setDecided] = signal<readonly string[]>([]);
-  const waiting = computed(() =>
-    Object.entries(DATA.homes)
-      .filter(([, entry]) => entry.schema === SCHEMA)
-      .flatMap(([home, entry]) => entry.proposals.map((item): Waiting => ({ key: `${home}#${item.id}`, entry, item })))
-      .filter(({ key, item }) => !decided().includes(key) && isShown(item.laterUntil, nowMs()))
-  );
+  const homes = Object.entries(DATA.homes).filter(([, entry]) => entry.schema === SCHEMA);
+  const live = ([, entry]: [string, HomeEntry]) => reachable(entry.heartbeat) !== null;
+  const waiting = ([home, entry]: [string, HomeEntry]) =>
+    entry.proposals
+      .map((item): Waiting => ({ key: `${home}#${item.id}`, entry, item }))
+      .filter(({ key, item }) => !decided().includes(key) && isShown(item.laterUntil, nowMs()));
   const card = (proposal: Waiting): SectionCard => {
     const { entry, item, key } = proposal;
     return {
@@ -105,10 +124,21 @@ export const proposalsSection = (): HostSection => {
         })
     };
   };
+  const heartbeatCard = (home: string, entry: HomeEntry): SectionCard => ({
+    key: `${home}#heartbeat`,
+    title: `Start ${entry.name}’s heartbeat`,
+    badges: [{ text: entry.name, color: entry.colors?.primary ?? PURPLE }],
+    body: () => heartbeatBody(home, entry)
+  });
+  const cards = computed(() => [
+    ...homes.filter(live).flatMap((home) => waiting(home).map(card)),
+    ...homes.filter((home) => !live(home)).flatMap((home) => [heartbeatCard(...home), ...waiting(home).map(card)])
+  ]);
   return {
     label: 'PROPOSED',
     icon: 'tray.full.fill',
     color: PURPLE,
-    cards: computed(() => waiting().map(card))
+    folded: !homes.some(live),
+    cards
   };
 };

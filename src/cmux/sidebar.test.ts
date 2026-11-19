@@ -77,28 +77,81 @@ run('a card put off with Later shows once the clock passes its time', () => {
   expect(sidebar.visibleTexts()).toContain('Tidy the release notes');
 });
 
-run('a home whose heartbeat isn’t open in cmux says how to start one, with no buttons', () => {
+run('a home whose heartbeat isn’t open in cmux shows its proposals with how to start them, and no buttons', () => {
   const gone = { ...NOVA_ENTRY, heartbeat: { surfaceId: 'closed-surface', workspaceId: 'w-nova' } };
-  const texts = mount(installed({ [NOVA_HOME]: gone }), CMUX_DATA).visibleTexts();
+  const sidebar = mount(installed({ [NOVA_HOME]: gone }), CMUX_DATA);
+  sidebar.tap('PROPOSED');
+  sidebar.tap('Reply to the supplier');
+  const texts = sidebar.visibleTexts();
   expect(texts).toContain('Run /heartbeat in one of Nova’s sessions to start these.');
   expect(texts).not.toContain('Start');
-  const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
-  expect(sidebar.visibleTexts()).toEqual(
-    expect.arrayContaining(['Audit the dark mode colours', 'Run /heartbeat in one of Scout’s sessions to start these.'])
-  );
-  expect(() => sidebar.tap('Start')).toThrow();
+  const scout = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
+  scout.tap('PROPOSED');
+  scout.tap('Audit the dark mode colours');
+  expect(scout.visibleTexts()).toContain('Run /heartbeat in one of Scout’s sessions to start these.');
+  expect(() => scout.tap('Start')).toThrow();
 });
 
-run('every joined agent’s proposals share the section, each wearing its agent', () => {
+const HEARTBEAT_LINE =
+  'Opens a session in Scout’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five wait.';
+
+run('a home without a heartbeat gets a card that opens one in a new workspace in its home', () => {
+  const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
+  sidebar.tap('PROPOSED');
+  expect(between(sidebar.visibleTexts(), 'Start Scout’s heartbeat', 'Audit the dark mode colours')).toEqual([
+    'Start Scout’s heartbeat',
+    'Scout',
+    HEARTBEAT_LINE,
+    'Start heartbeat'
+  ]);
+  expect(sidebar.tap('Start heartbeat')).toEqual({
+    kind: 'cmux',
+    method: 'workspace.create',
+    params: { cwd: SCOUT_HOME, initial_input: 'claude "/heartbeat"\r' }
+  });
+  expect(sidebar.visibleTexts(), 'the card stays until the rewrite drops it').toContain('Start Scout’s heartbeat');
+  const billed = mount(installed({ [SCOUT_HOME]: { ...SCOUT_ENTRY, launcher: 'agent' } }), CMUX_DATA);
+  billed.tap('PROPOSED');
+  expect(billed.tap('Start heartbeat')?.params).toEqual({ cwd: SCOUT_HOME, initial_input: 'agent "/heartbeat"\r' });
+});
+
+run('with no heartbeat reachable, PROPOSED starts folded, and the header opens it', () => {
+  const gone = { ...NOVA_ENTRY, heartbeat: null };
+  const sidebar = mount(installed({ [NOVA_HOME]: gone, [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
+  const texts = sidebar.visibleTexts();
+  expect(texts).toContain('PROPOSED');
+  expect(texts).not.toContain('Start Scout’s heartbeat');
+  expect(texts).not.toContain('Reply to the supplier');
+  sidebar.tap('PROPOSED');
+  expect(sidebar.visibleTexts()).toEqual(expect.arrayContaining(['Start Nova’s heartbeat', 'Start Scout’s heartbeat']));
+});
+
+run('a reachable heartbeat leaves PROPOSED open with no card to start it', () => {
   const texts = mount(installed({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA).visibleTexts();
-  expect(texts).toEqual(
-    expect.arrayContaining([
-      'Reply to the supplier',
-      'Reproduce the rounding bug',
-      'Audit the dark mode colours',
-      'Scout'
-    ])
-  );
+  expect(texts).toContain('Reply to the supplier');
+  expect(texts).not.toContain('Start Nova’s heartbeat');
+});
+
+run('PROPOSED shows with no proposals anywhere while a home has no heartbeat', () => {
+  const sidebar = mount(installed({ [SCOUT_HOME]: { ...SCOUT_ENTRY, proposals: [] } }), CMUX_DATA);
+  expect(sidebar.visibleTexts()).toContain('PROPOSED');
+  sidebar.tap('PROPOSED');
+  expect(sidebar.visibleTexts()).toContain('Start Scout’s heartbeat');
+});
+
+run('every joined agent’s proposals share the section, the ones a heartbeat can decide first', () => {
+  const texts = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY, [NOVA_HOME]: NOVA_ENTRY }), CMUX_DATA).visibleTexts();
+  const titles = [
+    'Reply to the supplier',
+    'Reproduce the rounding bug',
+    'Start Scout’s heartbeat',
+    'Audit the dark mode colours'
+  ];
+  expect(
+    texts.filter((text) => titles.includes(text)),
+    'Nova’s first, then Scout’s heartbeat card and its proposal'
+  ).toEqual(titles);
+  expect(texts).toContain('Scout');
 });
 
 run('an entry from an older plugin adds nothing to PROPOSED', () => {
