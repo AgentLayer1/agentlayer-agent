@@ -56,7 +56,7 @@ export interface FakeMachine {
   proposals: {
     target: number;
     room?: number;
-    waiting: ProposalList['waiting'][number][];
+    showing: ProposalList['showing'][number][];
     heartbeat: ProposalList['heartbeat'];
   };
   toasts: string[];
@@ -98,7 +98,7 @@ export const machine = (overrides: Partial<FakeMachine> = {}): FakeMachine => ({
   toolText: {},
   fsCalls: [],
   notices: [],
-  proposals: { target: 5, waiting: [], heartbeat: null },
+  proposals: { target: 5, showing: [], heartbeat: null },
   toasts: [],
   copied: [],
   suggestions: [],
@@ -182,7 +182,7 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
     );
   }
   if (args === 'proposals list --json') {
-    const room = host.proposals.room ?? Math.max(0, host.proposals.target - host.proposals.waiting.length);
+    const room = host.proposals.room ?? Math.max(0, host.proposals.target - host.proposals.showing.length);
     return ran(0, JSON.stringify({ ...host.proposals, room }));
   }
   // The CLI's heartbeat binding, kept so a test sees the owner and interval it was given.

@@ -124,13 +124,13 @@ async function status($: EngineInterface): Promise<string> {
   if (!list) {
     return "Couldn't read the proposals.";
   }
-  const waiting = `${list.waiting.length} of ${list.target} proposals waiting`;
+  const showing = `${list.showing.length} of ${list.target} proposals showing`;
   if (!list.heartbeat) {
-    return `No heartbeat. ${waiting}. /heartbeat makes this session the one.`;
+    return `No heartbeat. ${showing}. /heartbeat makes this session the one.`;
   }
   const who = isOwner(list, owner) ? 'This session' : 'Another session';
   const quiet = isQuiet(now, zone) ? `quiet now (${QUIET_HOURS})` : `quiet ${QUIET_HOURS}`;
-  return `${who} is the heartbeat, every ${list.heartbeat.everyMinutes}m, ${quiet}. ${waiting}.`;
+  return `${who} is the heartbeat, every ${list.heartbeat.everyMinutes}m, ${quiet}. ${showing}.`;
 }
 
 async function heartbeat($: EngineInterface, args: string): Promise<string> {

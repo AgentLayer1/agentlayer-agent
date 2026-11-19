@@ -7,19 +7,17 @@ import {
   clearHeartbeat,
   DEFAULT_EVERY_MINUTES,
   parseEvery,
-  removeProposals,
   roomFor,
   setHeartbeat,
   TARGET,
-  waitingNow
+  showingNow
 } from './rules';
 import { decideProposal, publishTo } from './start';
 
 const USAGE = [
   `Usage: ${CLI_COMMAND} proposals <command>`,
-  `  list [--json]                                   What's waiting, and the heartbeat`,
+  `  list [--json]                                   What's showing, the room for more, and the heartbeat`,
   `  decide <${CHOICES.join('|')}> <id>                    Start, put off until morning, or drop a proposal`,
-  `  remove <id>…                                    Take proposals out`,
   `  heartbeat --owner=<token> [--every=<duration>]  Make that session the heartbeat (every 55m unless set)`,
   `  heartbeat --off                                 No heartbeat`
 ].join('\n');
@@ -32,15 +30,15 @@ const publish = (): void => publishTo(ADAPTERS, FOLDERS.HOME);
 const list = (args: readonly string[]): number => {
   const ledger = readProposalLedger();
   const now = new Date();
-  const waiting = waitingNow(ledger, now);
+  const showing = showingNow(ledger, now);
   const room = roomFor(ledger, now);
   if (args.includes('--json')) {
-    console.log(JSON.stringify({ target: TARGET, room, waiting, heartbeat: ledger.heartbeat }));
+    console.log(JSON.stringify({ target: TARGET, room, showing, heartbeat: ledger.heartbeat }));
     return 0;
   }
-  const lines = waiting.map(({ id, title, estimate }) => `${id}  ${title}${estimate ? ` (${estimate})` : ''}`);
+  const lines = showing.map(({ id, title, estimate }) => `${id}  ${title}${estimate ? ` (${estimate})` : ''}`);
   const beat = ledger.heartbeat ? `every ${ledger.heartbeat.everyMinutes}m` : 'off';
-  console.log([`${waiting.length} of ${TARGET} waiting · room for ${room} · heartbeat ${beat}`, ...lines].join('\n'));
+  console.log([`${showing.length} of ${TARGET} showing · room for ${room} · heartbeat ${beat}`, ...lines].join('\n'));
   return 0;
 };
 
@@ -76,12 +74,6 @@ export const runProposalsCommand = (command: string | undefined, args: readonly 
   }
   if (command === 'heartbeat') {
     return heartbeat(args);
-  }
-  if (command === 'remove' && words.length) {
-    writeProposalLedger(removeProposals(readProposalLedger(), words));
-    publish();
-    console.log(`Removed ${words.join(', ')}.`);
-    return 0;
   }
   const choice = CHOICES.find((known) => known === words[0]);
   const id = words[1];

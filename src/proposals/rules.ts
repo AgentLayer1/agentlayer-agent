@@ -5,11 +5,11 @@ import type { Proposal, ProposalLedger } from './ledger';
 import { isShown } from './shown';
 
 /**
- * How many proposals the heartbeat keeps waiting.
+ * How many proposals the heartbeat keeps showing.
  */
 export const TARGET = 5;
 /**
- * The most proposals waiting or put off at once; more are refused.
+ * The most proposals waiting at once, those put off included; more are refused.
  */
 export const BACKLOG = 20;
 /**
@@ -47,7 +47,7 @@ export type ProposalCard = Omit<Proposal, 'prompt' | 'state' | 'createdAt' | 'de
 
 const ms = (iso: string): number => Date.parse(iso) || 0;
 
-const isOpen = (proposal: Proposal): boolean => proposal.state === 'waiting' || proposal.state === 'later';
+const isWaiting = (proposal: Proposal): boolean => proposal.state === 'waiting';
 
 const randomId = (): string => `p-${Math.random().toString(36).slice(2, 6)}`;
 
@@ -59,7 +59,7 @@ const freshId = (taken: ReadonlySet<string>, makeId: () => string): string => {
 // Why a source can't be proposed now, or '' when it can.
 const blockedBy = (proposals: readonly Proposal[], source: string, nowMs: number): string => {
   const same = proposals.filter((proposal) => proposal.source === source);
-  if (same.some(isOpen)) {
+  if (same.some(isWaiting)) {
     return 'already proposed';
   }
   if (same.some((proposal) => proposal.state === 'started' && nowMs - ms(proposal.decidedAt) < STARTED_QUIET_MS)) {
@@ -72,7 +72,7 @@ const blockedBy = (proposals: readonly Proposal[], source: string, nowMs: number
 };
 
 const prune = (proposals: readonly Proposal[], nowMs: number): Proposal[] =>
-  proposals.filter((proposal) => isOpen(proposal) || nowMs - ms(proposal.decidedAt) < KEEP_DECIDED_MS);
+  proposals.filter((proposal) => isWaiting(proposal) || nowMs - ms(proposal.decidedAt) < KEEP_DECIDED_MS);
 
 interface Added {
   ledger: ProposalLedger;
@@ -95,7 +95,7 @@ export const addProposals = (
       const { proposals } = result.ledger;
       const reason =
         blockedBy(proposals, input.source, nowMs) ||
-        (proposals.filter(isOpen).length >= BACKLOG ? `${BACKLOG} are already waiting` : '');
+        (proposals.filter(isWaiting).length >= BACKLOG ? `${BACKLOG} are already waiting` : '');
       if (reason) {
         return { ...result, refused: [...result.refused, { source: input.source, title: input.title, reason }] };
       }
@@ -117,11 +117,6 @@ export const addProposals = (
   );
 };
 
-export const removeProposals = (ledger: ProposalLedger, ids: readonly string[]): ProposalLedger => ({
-  ...ledger,
-  proposals: ledger.proposals.filter(({ id }) => !ids.includes(id))
-});
-
 /**
  * The next 08:00 in the home's timezone, as an ISO time with that day's offset.
  */
@@ -140,18 +135,19 @@ type Decision =
   | { outcome: 'unknown' }
   | { outcome: 'already'; proposal: Proposal };
 
-const STATE_OF: Record<Choice, Proposal['state']> = { start: 'started', later: 'later', skip: 'skipped' };
+// Later leaves a proposal waiting, with the time it shows again.
+const STATE_OF: Record<Choice, Proposal['state']> = { start: 'started', later: 'waiting', skip: 'skipped' };
 
 /**
- * Records the operator's choice. A proposal is decided once: a second Start on it changes nothing, so a double click
- * can't open two sessions.
+ * Records the operator's choice. Start and Skip are final: a second Start changes nothing, so a double click can't
+ * open two sessions. Later can be chosen again.
  */
 export const decide = (ledger: ProposalLedger, id: string, choice: Choice, now: Date): Decision => {
   const found = ledger.proposals.find((proposal) => proposal.id === id);
   if (!found) {
     return { outcome: 'unknown' };
   }
-  if (!isOpen(found)) {
+  if (!isWaiting(found)) {
     return { outcome: 'already', proposal: found };
   }
   const proposal: Proposal = {
@@ -182,7 +178,7 @@ export const reopen = (ledger: ProposalLedger, id: string): ProposalLedger => ({
  * `isShown` against its own clock.
  */
 export const proposalCards = (ledger: ProposalLedger): ProposalCard[] =>
-  ledger.proposals.filter(isOpen).map(({ id, title, trigger, quote, detail, reach, estimate, due, laterUntil }) => ({
+  ledger.proposals.filter(isWaiting).map(({ id, title, trigger, quote, detail, reach, estimate, due, laterUntil }) => ({
     id,
     title,
     trigger,
@@ -194,14 +190,14 @@ export const proposalCards = (ledger: ProposalLedger): ProposalCard[] =>
     laterUntil
   }));
 
-export const waitingNow = (ledger: ProposalLedger, now: Date): ProposalCard[] =>
+export const showingNow = (ledger: ProposalLedger, now: Date): ProposalCard[] =>
   proposalCards(ledger).filter((card) => isShown(card.laterUntil, now.getTime()));
 
 /**
  * How many proposals can be added now: enough to show five, and never past the backlog, which counts the ones put off.
  */
 export const roomFor = (ledger: ProposalLedger, now: Date): number =>
-  Math.max(0, Math.min(TARGET - waitingNow(ledger, now).length, BACKLOG - ledger.proposals.filter(isOpen).length));
+  Math.max(0, Math.min(TARGET - showingNow(ledger, now).length, BACKLOG - ledger.proposals.filter(isWaiting).length));
 
 const DURATION = /^(\d+)\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours)$/i;
 

@@ -89,7 +89,7 @@ Groups:
   compile                           Knowledge-compile state (synthesis runs in Claude Code, not here)
   knowledge                         Wiki maintenance (lint)
   notices                           What to nudge the operator about (upgrade, sync) as JSON; \`notices record <id> --outcome=acted|snoozed\` logs what they did
-  proposals                         Sessions the agent proposes and the heartbeat that keeps them coming: list, decide, remove, heartbeat
+  proposals                         Sessions the agent proposes and the heartbeat that keeps them coming: list, decide, heartbeat
   prune                             Delete memory/YYYY-MM-DD*.md older than 14 days
   links                             Rewrite bare task IDs + shorthand into [[wikilinks]]
   dashboard                         Rebuild the Agent OS dashboard at <HOME>/dashboard.html + projects/TASKS.md (open in any browser)
@@ -189,10 +189,9 @@ Sidebar commands for cmux (this CLI's, not the cmux app's own; run them from a t
                                     prints what to paste and the command to run; without --json, exit 3 unless the file is complete)
 
 Proposals commands:
-  proposals list [--json]           What's waiting to be started, and the heartbeat's interval
+  proposals list [--json]           What's showing, the room for more, and the heartbeat's interval
   proposals decide <start|later|skip> <id>
                                     Start it (a fresh session runs its prompt), put it off until morning, or drop it
-  proposals remove <id>…            Take proposals out
   proposals heartbeat --owner=<token> [--every=<duration>]
                                     Make the session holding that token the heartbeat (/heartbeat passes its own), looking every 55m unless set (15m, 2h); --off for none
 

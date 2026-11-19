@@ -15,7 +15,7 @@ Proposals are sessions waiting for the operator's yes: Start opens a fresh sessi
 bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" proposals list
 ```
 
-It prints how many are waiting out of five and the room for new ones. With no room, say "Proposals full, nothing new" and stop. If session start listed `extensions/skills/proposals.md`, read it now: the operator's own rules for what to propose, and they win where they disagree with this file.
+It prints how many are showing out of five and the room for new ones. With no room, say "Proposals full, nothing new" and stop. If session start listed `extensions/skills/proposals.md`, read it now: the operator's own rules for what to propose, and they win where they disagree with this file.
 
 ## 2. Gather candidates
 

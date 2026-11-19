@@ -205,7 +205,7 @@ export const NOVA_LEDGER: ProposalLedger = {
       trigger: 'The release is next week',
       detail: 'Groups the changes by area.',
       reach: 'Edits one draft.',
-      state: 'later',
+      state: 'waiting',
       laterUntil: LATER_UNTIL,
       decidedAt: '2026-11-08T20:00:00Z'
     }),

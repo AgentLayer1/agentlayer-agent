@@ -9,9 +9,8 @@ import {
   parseEvery,
   proposalCards,
   type ProposalInput,
-  removeProposals,
   roomFor,
-  waitingNow
+  showingNow
 } from './rules';
 
 const NOW = new Date('2026-11-20T10:00:00+08:00');
@@ -88,7 +87,7 @@ test('room is what fills five, and none once put-off proposals fill the backlog'
     const later = decide(ledger, id, 'later', NOW);
     return later.outcome === 'decided' ? later.ledger : ledger;
   }, full);
-  expect(waitingNow(putOff, NOW)).toEqual([]);
+  expect(showingNow(putOff, NOW)).toEqual([]);
   expect(roomFor(putOff, NOW)).toBe(0);
 });
 
@@ -115,9 +114,9 @@ test('Later puts a proposal off until the next 08:00 in the home timezone', () =
   if (later.outcome !== 'decided') {
     throw new Error('expected Later to land');
   }
-  expect(waitingNow(later.ledger, NOW).map(({ id }) => id)).toEqual(['p-1']);
+  expect(showingNow(later.ledger, NOW).map(({ id }) => id)).toEqual(['p-1']);
   const back = new Date(Date.parse(later.proposal.laterUntil));
-  expect(waitingNow(later.ledger, back).map(({ id }) => id)).toEqual(['p-0', 'p-1']);
+  expect(showingNow(later.ledger, back).map(({ id }) => id)).toEqual(['p-0', 'p-1']);
 });
 
 test('what a surface is given never carries a prompt or a source', () => {
@@ -125,10 +124,6 @@ test('what a surface is given never carries a prompt or a source', () => {
   expect(cards).toHaveLength(2);
   expect(JSON.stringify(cards)).not.toContain('Secret prompt');
   expect(cards.every((card) => !('source' in card) && !('prompt' in card))).toBe(true);
-});
-
-test('remove takes proposals out by id', () => {
-  expect(removeProposals(withTwo(), ['p-0']).proposals.map(({ id }) => id)).toEqual(['p-1']);
 });
 
 test('intervals read as minutes, within 5 minutes and a day', () => {

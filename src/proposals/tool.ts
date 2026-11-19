@@ -3,7 +3,7 @@ import { FOLDERS } from '@/config';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { z } from 'zod';
 import { readProposalLedger, writeProposalLedger } from './ledger';
-import { addProposals, BACKLOG, TARGET, waitingNow } from './rules';
+import { addProposals, BACKLOG, showingNow, TARGET } from './rules';
 import { publishTo } from './start';
 
 const text = (max: number) => z.string().trim().max(max);
@@ -35,7 +35,7 @@ const PROPOSAL = z.object({
 export const tools: ToolDef[] = [
   defineTool({
     name: 'proposal_add',
-    description: `Propose sessions for the operator to start later. Each waits in Proposals until they choose Start (a fresh session runs its prompt), Later (back tomorrow morning) or Skip. A source already waiting, started in the last day or skipped in the last week is refused, as is anything past ${BACKLOG} waiting. Returns what was added, what was refused and why, and what's waiting (the heartbeat keeps ${TARGET}).`,
+    description: `Propose sessions for the operator to start later. Each waits in Proposals until they choose Start (a fresh session runs its prompt), Later (back tomorrow morning) or Skip. A source already waiting, started in the last day or skipped in the last week is refused, as is anything past ${BACKLOG} waiting. Returns what was added, what was refused and why, and what's showing (the heartbeat keeps ${TARGET}).`,
     inputSchema: {
       proposals: z.array(PROPOSAL).min(1).max(10).describe('The sessions to propose, best first.')
     },
@@ -49,7 +49,7 @@ export const tools: ToolDef[] = [
       return {
         added: added.map(({ id, title }) => ({ id, title })),
         refused,
-        waiting: waitingNow(ledger, now).map(({ id, title }) => ({ id, title }))
+        showing: showingNow(ledger, now).map(({ id, title }) => ({ id, title }))
       };
     }
   })

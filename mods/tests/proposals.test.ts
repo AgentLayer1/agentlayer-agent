@@ -9,7 +9,7 @@ const MINUTE = 60_000;
 const WAKE = `${PLUGIN}:proposals`;
 
 const heartbeatHost = (on: On, heartbeat: FakeHost['proposals']['heartbeat'] = null) => {
-  const host = fakeHost(on, machine({ proposals: { target: 5, waiting: [], heartbeat } }));
+  const host = fakeHost(on, machine({ proposals: { target: 5, showing: [], heartbeat } }));
   const submitted: string[] = [];
   const filled: string[] = [];
   on('prompt.submit', (_$, e) => {
@@ -125,10 +125,10 @@ describe('proposals', () => {
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([]);
     await $.turn.complete({ answer: '', durationMs: 0, isAborted: false, turnId: 't1', reason: 'answer' });
-    host.proposals.waiting = Array.from({ length: 5 }, (_, index) => ({ id: `p-${index}`, title: 'x' }));
+    host.proposals.showing = Array.from({ length: 5 }, (_, index) => ({ id: `p-${index}`, title: 'x' }));
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([]);
-    host.proposals.waiting = [];
+    host.proposals.showing = [];
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE]);
   });
@@ -158,9 +158,9 @@ describe('proposals', () => {
     const { host } = await bound($, on);
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE]);
-    host.proposals.waiting = Array.from({ length: 5 }, (_, index) => ({ id: `p-${index}`, title: 'x' }));
+    host.proposals.showing = Array.from({ length: 5 }, (_, index) => ({ id: `p-${index}`, title: 'x' }));
     await host.clock.set(NOW + 24 * 60 * MINUTE);
-    host.proposals.waiting = [];
+    host.proposals.showing = [];
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE, 'clear', WAKE]);
     await host.clock.advance(55 * MINUTE);
@@ -180,9 +180,9 @@ describe('proposals', () => {
     const { host } = await bound($, on);
     cleared.host = host;
     await host.clock.advance(55 * MINUTE);
-    host.proposals.waiting = Array.from({ length: 5 }, (_, index) => ({ id: `p-${index}`, title: 'x' }));
+    host.proposals.showing = Array.from({ length: 5 }, (_, index) => ({ id: `p-${index}`, title: 'x' }));
     await host.clock.set(NOW + 24 * 60 * MINUTE);
-    host.proposals.waiting = [];
+    host.proposals.showing = [];
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE, 'clear', WAKE]);
     await host.clock.advance(55 * MINUTE);
@@ -228,7 +228,7 @@ describe('proposals', () => {
     await host.clock.settle();
     expect(host.commands).toEqual([WAKE]);
     expect((await run($, 'heartbeat', 'status')).text).toBe(
-      'This session is the heartbeat, every 55m, quiet 23:00–07:00. 0 of 5 proposals waiting.'
+      'This session is the heartbeat, every 55m, quiet 23:00–07:00. 0 of 5 proposals showing.'
     );
   });
 });

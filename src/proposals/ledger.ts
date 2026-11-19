@@ -4,7 +4,7 @@ import { writeJsonAtomic } from '@/shared/utils';
 import { readFileSync } from 'node:fs';
 import type { SessionPlace } from './adapter';
 
-const STATES = ['waiting', 'later', 'started', 'skipped'] as const;
+const STATES = ['waiting', 'started', 'skipped'] as const;
 type ProposalState = (typeof STATES)[number];
 
 /**
@@ -42,7 +42,7 @@ export interface Proposal {
   createdAt: string;
   state: ProposalState;
   /**
-   * When a proposal put off with Later shows again, an ISO time with an offset; '' otherwise.
+   * When a waiting proposal put off with Later shows again, an ISO time with an offset; '' when it shows now.
    */
   laterUntil: string;
   decidedAt: string;
