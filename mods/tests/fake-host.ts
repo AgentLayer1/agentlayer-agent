@@ -179,6 +179,15 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
   if (args === 'proposals list --json') {
     return ran(0, JSON.stringify(host.proposals));
   }
+  // The CLI's heartbeat binding, kept so a test sees the session and interval it was given.
+  const binding = /^proposals heartbeat --session=(\S+)(?: --every=(\d+)\s*(h|m))?/.exec(args);
+  if (binding) {
+    const minutes = Number(binding[2] ?? 55) * (binding[3] === 'h' ? 60 : 1);
+    host.proposals.heartbeat = { sessionId: binding[1] ?? '', everyMinutes: minutes };
+  }
+  if (args === 'proposals heartbeat --off') {
+    host.proposals.heartbeat = null;
+  }
   if (args.startsWith('proposals ')) {
     return ran(0, `ran ${args}`);
   }

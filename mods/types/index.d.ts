@@ -130,9 +130,10 @@ export interface ReportRow {
   title?: string;
 }
 
-/** The heartbeat session's own bookkeeping: the local day it last woke. */
+/** The heartbeat session's own bookkeeping: the local day it last woke, and the conversation id it last bound as. */
 export interface HeartbeatClock {
   wokeOn: string;
+  boundId: string;
 }
 
 export interface Queue {

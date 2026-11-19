@@ -82,13 +82,12 @@ describe('proposals', () => {
     expect(host.commands).toEqual([WAKE]);
   });
 
-  test('a new interval re-arms the clock', async ($, on) => {
+  test('a new interval replaces the old clock rather than adding one', async ($, on) => {
     const { host } = heartbeatHost(on, { sessionId: 'session-1', everyMinutes: 55 });
     await start($, host);
-    host.proposals.heartbeat = { sessionId: 'session-1', everyMinutes: 15 };
     await run($, 'heartbeat', '15m');
-    await host.clock.advance(15 * MINUTE);
-    expect(host.commands).toEqual([WAKE]);
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands, 'three 15-minute wakes; a leftover 55-minute clock would add a fourth').toEqual([WAKE, WAKE, WAKE]);
   });
 
   test('another session that is the heartbeat costs this one nothing', async ($, on) => {
@@ -137,7 +136,7 @@ describe('proposals', () => {
     expect(host.commands).toEqual([WAKE, 'clear', WAKE, WAKE]);
   });
 
-  test('a clear gives the conversation a new id, and the heartbeat moves to it at the same interval', async ($, on) => {
+  test("the day's clear gives the conversation a new id, and the heartbeat moves to it and keeps waking", async ($, on) => {
     // Registered first, so it answers above the fake host's catch-all command hook.
     const cleared: { host?: FakeHost } = {};
     on('command.run', { command: 'clear' }, () => {
@@ -155,10 +154,24 @@ describe('proposals', () => {
     await host.clock.set(NOW + 24 * 60 * MINUTE);
     host.proposals.waiting = [];
     await host.clock.advance(55 * MINUTE);
+    expect(host.commands).toEqual([WAKE, 'clear', WAKE]);
+    await host.clock.advance(55 * MINUTE);
     expect(cliCalls(host).filter((args) => args.startsWith('proposals heartbeat'))).toEqual([
       'proposals heartbeat --session=session-2 --every=55m'
     ]);
-    expect(host.commands.slice(-2)).toEqual(['clear', WAKE]);
+    expect(host.proposals.heartbeat?.sessionId).toBe('session-2');
+    expect(host.commands).toEqual([WAKE, 'clear', WAKE, WAKE]);
+  });
+
+  test("the operator's own /clear or /resume in the heartbeat's tab moves the heartbeat with it", async ($, on) => {
+    const { host } = heartbeatHost(on, { sessionId: 'session-1', everyMinutes: 55 });
+    await start($, host);
+    await host.clock.advance(55 * MINUTE);
+    host.sessionId = 'session-3';
+    await host.clock.advance(55 * MINUTE);
+    expect(host.proposals.heartbeat?.sessionId).toBe('session-3');
+    expect(host.commands).toEqual([WAKE, WAKE]);
+    expect((await run($, 'heartbeat', 'status')).text).toStartWith('This session is the heartbeat');
   });
 
   test('a failed read of the proposals skips the tick and keeps the clock', async ($, on) => {
