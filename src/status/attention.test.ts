@@ -164,6 +164,13 @@ describe('renderAttentionHtml', () => {
     );
   });
 
+  test('with no opener app, a task links its file in a new tab', () => {
+    const html = renderAttentionHtml(
+      buildAttentionView(inputs([task('ac-001', { horizon: TODAY })], { markdownUrl: '' }))
+    );
+    expect(html).toContain('href="file:///home/alex/projects/acme/tasks/ac-001.md" target="_blank"');
+  });
+
   test('today reads as a numbered list with the date as the headline', () => {
     const html = renderAttentionHtml(buildAttentionView(inputs([task('ac-001', { horizon: TODAY })])));
     expect(html).toContain('<em>Monday</em>, 28 September');

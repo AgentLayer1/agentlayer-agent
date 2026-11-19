@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
 import { FILES, FOLDERS } from '@/config';
 import { createTask } from '@/tasks/mutate';
@@ -50,7 +51,7 @@ describe('attention_write', () => {
     const second = AttentionDataSchema.parse(await call({ project: 'ops' }));
     expect(second.snapshot?.fetchedAt).toBe(first.snapshot?.fetchedAt);
     const dashboard = readFileSync(FILES.DASHBOARD, 'utf-8');
-    expect(dashboard).toMatch(new RegExp(`${encodeURIComponent(page)}[^"]*">Attention</a>`));
+    expect(dashboard).toContain(`href="${pathToFileURL(page).href}" target="_blank">Attention</a>`);
     expect(dashboard).not.toContain('data-href="projects/ops/attention.html"');
 
     const home = await call({});

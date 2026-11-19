@@ -6,11 +6,8 @@
  * and operator-first pages — Today, Work, Sessions, Brain, Reports,
  * Capabilities, Profile (the operator), Persona (the agent), System.
  *
- * Markdown links open through a configurable app URL template (obsidian://
- * by default, e.g. markedit:// via the MARKDOWN_URL env var) so tasks,
- * reports, concepts, and memory files open rendered and editable instead of
- * downloading as raw text. Projects carry a stable hash-derived color across
- * every badge.
+ * File links are plain `file://` links in a new tab by default; the MARKDOWN_URL env var points them at an app
+ * instead (obsidian://, markedit://). Projects carry a stable hash-derived color across every badge.
  *
  * Pure presentation: collect.ts owns every disk read, dashboard.html owns all
  * CSS/JS, html.ts owns the write. Every snapshot-derived string passes through
@@ -26,7 +23,6 @@
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { extname, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import type { ManifestEntry } from '@/hooks/context';
 import type { HistoryState } from '@/home/history';
 import { BANNER_LINES, bannerTag } from '@/hooks/banner';
@@ -55,7 +51,7 @@ import type {
 import { attentionData, horizonLabel } from './attention-data';
 import { ATTENTION_CSS, renderAttentionLanes } from './attention-render';
 import { humanBytes, relTime, shortToolName, tildifyHome, truncate } from './format';
-import { escapeHtml, projectHue } from './html-primitives';
+import { escapeHtml, openerAttrs, projectHue } from './html-primitives';
 
 const TEMPLATE = readFileSync(new URL('dashboard.html', import.meta.url), 'utf-8');
 
@@ -83,14 +79,11 @@ const esc = escapeHtml;
 const opensInObsidian = (snap: StatusSnapshot): boolean => snap.markdownUrl.startsWith('obsidian://');
 
 /** Obsidian opens an HTML page through its own link, like a note; every other viewer gets the page itself in a new
- *  tab, which a browser (cmux's included) renders. Notes always go through the opener app. */
+ *  tab, which a browser (cmux's included) renders. Notes go through the opener app when one is set. */
 const fileHref = (snap: StatusSnapshot, absPath: string): string =>
-  !opensInObsidian(snap) && extname(absPath) === '.html'
-    ? `href="${esc(pathToFileURL(absPath).href)}" target="_blank"`
-    : `href="${esc(snap.markdownUrl.replace('{path}', encodeURIComponent(absPath)))}"`;
+  openerAttrs(!opensInObsidian(snap) && extname(absPath) === '.html' ? '' : snap.markdownUrl, absPath);
 
-/** Link a markdown file (absolute path) through the configured opener app
- *  (obsidian:// by default; e.g. markedit:// via the MARKDOWN_URL env var).
+/** Link a file (absolute path) the way fileHref does.
  *  `cls: 'plink'` keeps the surrounding text color, underlining on hover. */
 const mdLinkAbs = (snap: StatusSnapshot, absPath: string, text: string, cls = ''): string =>
   `<a${cls ? ` class="${cls}"` : ''} ${fileHref(snap, absPath)}>${esc(text)}</a>`;
@@ -2129,7 +2122,7 @@ const sidebarNav = (snap: StatusSnapshot): string =>
 
 /** A sidebar group of outbound links (convention-discovered surfaces, pinned
  *  reports) under a divider with an ↗ so
- *  navigating away is never a surprise. appTab entries (the roadmap) go
+ *  navigating away is never a surprise. In Obsidian, appTab entries (the roadmap) go
  *  through the markdownUrl app template — a new Obsidian tab, the same
  *  mechanism as every markdown link. The rest are data-href rows navigated
  *  by `location.assign` — empirically the ONLY same-frame mechanism

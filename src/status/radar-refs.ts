@@ -15,6 +15,7 @@
  */
 import { resolve } from 'node:path';
 import { TASK_REF } from '@/tasks/prefix';
+import { openerAttrs } from './html-primitives';
 
 export interface RadarTaskRef {
   title: string;
@@ -103,9 +104,9 @@ export const escapeHtml = (text: string): string =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-/** `<a href="opener-url">label</a>` for an absolute path. */
+/** A link to an absolute path, through the opener app when one is set. */
 export const openerAnchor = (label: string, absPath: string, markdownUrl: string): string =>
-  `<a href="${escapeHtml(markdownUrl.replace('{path}', encodeURIComponent(absPath)))}">${escapeHtml(label)}</a>`;
+  `<a ${openerAttrs(markdownUrl, absPath)}>${escapeHtml(label)}</a>`;
 
 const metaRow = (tag: string, inner: string): string =>
   `<div class="rmeta-row"><span class="rmeta-tag">${tag}</span> ${inner}</div>`;

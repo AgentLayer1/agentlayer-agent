@@ -17,7 +17,7 @@ import {
   type AttentionTask,
   type AttentionView
 } from './attention-data';
-import { escapeHtml as esc, projectHue } from './html-primitives';
+import { escapeHtml as esc, openerAttrs, projectHue } from './html-primitives';
 
 const TEMPLATE = readFileSync(new URL('attention.html', import.meta.url), 'utf-8');
 
@@ -28,7 +28,7 @@ const fill = (slots: Record<string, string>): string =>
   TEMPLATE.replace(/\{\{(\w+)\}\}/g, (_match, token: string) => slots[token] ?? '');
 
 const homeLink = (view: AttentionView, path: string, text: string): string =>
-  `<a href="${esc(view.markdownUrl.replace('{path}', encodeURIComponent(resolve(view.home, path))))}">${esc(text)}</a>`;
+  `<a ${openerAttrs(view.markdownUrl, resolve(view.home, path))}>${esc(text)}</a>`;
 
 const taskLink = (view: AttentionView, task: AttentionTask): string => homeLink(view, task.path, task.id);
 

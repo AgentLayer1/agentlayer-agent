@@ -81,6 +81,10 @@ describe('openerAnchor', () => {
     );
     expect(openerAnchor('plan <v2>', '/x.md', 'x://{path}')).toContain('>plan &lt;v2&gt;</a>');
   });
+
+  test('with no opener app, links the file itself in a new tab', () => {
+    expect(openerAnchor('ab-001', '/a b/c.md', '')).toBe('<a href="file:///a%20b/c.md" target="_blank">ab-001</a>');
+  });
 });
 
 describe('composeMetaRows', () => {

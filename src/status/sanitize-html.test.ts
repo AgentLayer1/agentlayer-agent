@@ -24,6 +24,11 @@ describe('sanitizeHtml', () => {
     expect(out).toContain('href="obsidian://open?path=%2Fx.md"');
   });
 
+  test('keeps a file:// link and its new-tab target when file is allowed', async () => {
+    const out = await sanitizeHtml('<a href="file:///x.md" target="_blank">task</a>', { allowSchemes: ['file'] });
+    expect(out).toBe('<a href="file:///x.md" target="_blank">task</a>');
+  });
+
   test('still blocks javascript: even with another scheme allowed', async () => {
     const out = await sanitizeHtml('<a href="javascript:alert(1)">x</a>', { allowSchemes: ['obsidian'] });
     expect(out).not.toContain('javascript:');

@@ -349,7 +349,7 @@ export interface SurfaceLink {
    *  navigation; absolute when appTab is set. */
   href: string;
   icon: string;
-  /** Open through the markdownUrl app template (a new Obsidian tab) instead
+  /** Open through the markdownUrl app template (a new Obsidian tab in Obsidian) instead
    *  of navigating the dashboard frame. */
   appTab: boolean;
 }
@@ -382,7 +382,7 @@ export interface StatusSnapshot {
   };
   persona: Persona;
   operator: OperatorInfo;
-  /** URL template for opening markdown files, `{path}` = encoded abs path.
+  /** URL template for opening files in an app, `{path}` = encoded abs path; empty for plain `file://` links.
    *  Configurable via the MARKDOWN_URL env var (settings.local.json `env`). */
   markdownUrl: string;
   /** Hues set in project READMEs (`hue:`), keyed by project; a project without one hashes its name. */
@@ -1335,16 +1335,11 @@ const collectCli = (): CliSection[] => {
   return sections.filter((section) => section.entries.length);
 };
 
-// paneType=tab keeps the dashboard tab alive — Obsidian opens the note in a
-// new tab instead of replacing the active one.
-const DEFAULT_MARKDOWN_URL = 'obsidian://open?path={path}&paneType=tab';
-
-/** Markdown-opener URL template from the MARKDOWN_URL env var; must be a
- *  custom scheme carrying a `{path}` placeholder, else the Obsidian default
- *  applies. */
+/** Opener URL template from the MARKDOWN_URL env var; must be a custom scheme carrying a `{path}` placeholder,
+ *  else empty, for plain `file://` links. */
 const collectMarkdownUrl = (): string => {
   const valid = /^[a-z][a-z0-9.+-]*:\/\//i.test(MARKDOWN_URL) && MARKDOWN_URL.includes('{path}');
-  return valid ? MARKDOWN_URL : DEFAULT_MARKDOWN_URL;
+  return valid ? MARKDOWN_URL : '';
 };
 
 const runtimeHistory = (): StatusSnapshot['runtime']['history'] => {
@@ -1483,7 +1478,7 @@ const collectRadarLatest = async (reports: ReportRef[], work: Work): Promise<Rad
   // its summary and meta box) in a `data-row` div so the Recent tab's filterbox
   // can show/hide whole sessions by matching title + summary text. Allow the
   // opener scheme so the injected task/plan links keep their href.
-  const scheme = markdownUrl.match(/^([a-z][a-z0-9.+-]*):/i)?.[1];
+  const scheme = markdownUrl ? markdownUrl.match(/^([a-z][a-z0-9.+-]*):/i)?.[1] : 'file';
   const html = wrapRadarSessions(await sanitizeHtml(rendered, scheme ? { allowSchemes: [scheme] } : undefined));
   // Enrich the Today-feed rows with the same per-session meta (tasks + plans).
   const sessions = parseRadarSessions(raw).map((session) => {

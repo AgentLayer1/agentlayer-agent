@@ -1068,6 +1068,33 @@ describe('surfaces', () => {
     expect(html).not.toContain('data-href="');
   });
 
+  test('with no opener app, every file link opens the file itself in a new tab', () => {
+    const base = makeSnapshot();
+    const html = renderDashboardHtml(
+      makeSnapshot({
+        markdownUrl: '',
+        surfaces: [
+          { title: 'Roadmap', href: '/tmp/home/roadmap.html', icon: '🗺️', appTab: true },
+          { title: 'Financial Pack', href: 'projects/financial-pack/dashboard.html', icon: '📊', appTab: false }
+        ],
+        pinned: [{ title: 'Playbook', href: '/tmp/home/reports/plans/playbook.md', icon: '📌', appTab: true }],
+        tasks: {
+          ...base.tasks,
+          byProject: [{ ...base.tasks.byProject[0], roadmap: 'projects/life-os/roadmap.html' }]
+        }
+      })
+    );
+    expect(html).toContain('<a class="nav-item" href="file:///tmp/home/roadmap.html" target="_blank">');
+    expect(html).toContain(
+      '<a class="nav-item" href="file:///tmp/home/projects/financial-pack/dashboard.html" target="_blank">'
+    );
+    expect(html).toContain('<a class="nav-item" href="file:///tmp/home/reports/plans/playbook.md" target="_blank">');
+    expect(html).toContain('<a href="file:///tmp/home/projects/life-os/roadmap.html" target="_blank">Roadmap</a>');
+    expect(html).toContain('href="file:///tmp/home/knowledge/memory/2026-06-10.md" target="_blank"');
+    expect(html).not.toContain('://open?path=');
+    expect(html).not.toContain('data-href="');
+  });
+
   test('outside Obsidian, a project card opens its own roadmap as a page in a new tab', () => {
     const base = makeSnapshot();
     const html = renderDashboardHtml(

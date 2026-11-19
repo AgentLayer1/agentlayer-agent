@@ -22,7 +22,7 @@ const buildSanitizer = async (): Promise<Sanitizer> => {
 };
 
 /** DOMPurify's default allowed-URI matcher, with extra schemes (e.g. the
- *  dashboard's `obsidian://`/`markedit://` opener) spliced into the alternation.
+ *  dashboard's `file://` links or an `obsidian://`/`markedit://` opener) spliced into the alternation.
  *  Defaults block such schemes, so injected file-opener links get their href
  *  stripped without this. */
 const uriRegexpAllowing = (schemes: readonly string[]): RegExp => {
@@ -38,11 +38,13 @@ const uriRegexpAllowing = (schemes: readonly string[]): RegExp => {
  * HTML. Safe presentational markup (headings, links, code, lists, emphasis) is
  * preserved. Async because the DOM backing loads lazily on first use.
  *
- * `allowSchemes` whitelists otherwise-blocked URL schemes (e.g. `obsidian`) so
- * markdown-opener links survive; omit it for byte-identical default behaviour.
+ * `allowSchemes` whitelists otherwise-blocked URL schemes (e.g. `obsidian`, `file`) so
+ * opener links survive, along with their `target`; omit it for byte-identical default behaviour.
  */
 export const sanitizeHtml = async (dirty: string, opts?: { allowSchemes?: string[] }): Promise<string> => {
   sanitizerPromise ??= buildSanitizer();
-  const config = opts?.allowSchemes?.length ? { ALLOWED_URI_REGEXP: uriRegexpAllowing(opts.allowSchemes) } : undefined;
+  const config = opts?.allowSchemes?.length
+    ? { ALLOWED_URI_REGEXP: uriRegexpAllowing(opts.allowSchemes), ADD_ATTR: ['target'] }
+    : undefined;
   return (await sanitizerPromise)(dirty, config);
 };

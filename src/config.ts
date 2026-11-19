@@ -84,11 +84,9 @@ export const HOME_TIMEZONE = env('AGENT_HOME_TIMEZONE') || '';
  */
 export const SUBSCRIPTION_MARKER = 'AGENT_SUBSCRIPTION';
 
-/** URL template the dashboard uses to open markdown files in a native app.
- *  `{path}` is replaced with the URL-encoded absolute path. Set via the
- *  `MARKDOWN_URL` env var (e.g. in `.claude/settings.local.json` `env`);
- *  defaults to Obsidian. */
-export const MARKDOWN_URL = env('MARKDOWN_URL') || 'obsidian://open?path={path}&paneType=tab';
+/** URL template the dashboard uses to open files in an app, `{path}` being the URL-encoded absolute path. Set via
+ *  the `MARKDOWN_URL` env var (e.g. in `.claude/settings.local.json` `env`); empty means plain `file://` links. */
+export const MARKDOWN_URL = env('MARKDOWN_URL') || '';
 
 /** This plugin's name, from its manifest. */
 export const PLUGIN_NAME = pluginName();
