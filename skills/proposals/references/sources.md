@@ -5,7 +5,7 @@ A heartbeat source lets a plugin, or the operator's own home, add what the heart
 - its **name** starts `heartbeat-` (`heartbeat-support`, `heartbeat-family`);
 - its **description** starts "Heartbeat source:" and says in a line what it watches.
 
-Where it lives decides who has it: in a plugin's `skills/` for everyone who installs that plugin, or in a home's `.claude/skills/` for that home alone. For a few personal rules, a source is more than needed: `extensions/skills/heartbeat.md` in the home changes this skill directly.
+Where it lives decides who has it: in a plugin's `skills/` for everyone who installs that plugin, or in a home's `.claude/skills/` for that home alone. For a few personal rules, a source is more than needed: `extensions/skills/proposals.md` in the home changes this skill directly.
 
 ## What a source does
 

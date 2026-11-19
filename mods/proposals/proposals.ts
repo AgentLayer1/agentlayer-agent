@@ -73,7 +73,7 @@ async function wake($: EngineInterface): Promise<void> {
     await $.command.run({ command: 'clear' });
   }
   await update($, beat, (current) => ({ ...current, wokeOn: today }));
-  $.clock.after(0, () => void $.command.run({ command: `${$.plugin.name}:heartbeat` }));
+  $.clock.after(0, () => void $.command.run({ command: `${$.plugin.name}:proposals` }));
 }
 
 // The heartbeat is this running session, whichever conversation it is in now: a /clear or a /resume changes the id,

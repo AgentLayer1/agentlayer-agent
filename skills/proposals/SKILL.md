@@ -1,5 +1,5 @@
 ---
-name: heartbeat
+name: proposals
 description: The heartbeat's wake, run by its own clock in the session /heartbeat chose (or with /heartbeat now) - look at tasks, sync, GitHub and every heartbeat source skill, then top Proposals back up to five. Proposes only; never starts, sends or edits anything.
 disable-model-invocation: true
 allowed-tools: mcp__plugin_agentlayer_agent__proposal_add, mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_get, mcp__plugin_agentlayer_agent__compile_status, mcp__plugin_agentlayer_agent__github_sweep, Skill, Read, Bash
@@ -15,7 +15,7 @@ Proposals are sessions waiting for the operator's yes: Start opens a fresh sessi
 bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" proposals list
 ```
 
-It prints how many are waiting out of five. At five or more, say "Proposals full, nothing new" and stop. If session start listed `extensions/skills/heartbeat.md`, read it now: the operator's own rules for what to propose, and they win where they disagree with this file.
+It prints how many are waiting out of five. At five or more, say "Proposals full, nothing new" and stop. If session start listed `extensions/skills/proposals.md`, read it now: the operator's own rules for what to propose, and they win where they disagree with this file.
 
 ## 2. Gather candidates
 

@@ -100,7 +100,7 @@ Proposals are sessions the agent prepared and waits on a yes for: Start opens a 
 | The core: ledger (`.state/proposals.json`), the rules (dedupe by `source`, a backlog of 20, Later, decide once per id), `proposal_add`, the `proposals` CLI | `src/proposals/` |
 | The adapter contract (`ProposalAdapter`: `locate`, `start`, `publish`) and the list of adapters | `src/proposals/adapter.ts`, `src/adapters.ts` |
 | `/propose <start\|later\|skip> <id>`, `/heartbeat [15m\|2h\|off\|now\|status]`, the wake clock | `mods/proposals/` |
-| What a wake looks at, and the heartbeat-source contract | `skills/heartbeat/` |
+| What a wake looks at (the `proposals` skill, slash-only), and the heartbeat-source contract | `skills/proposals/` |
 | The cmux adapter: Start as a cmux workspace, the Manager's PROPOSED section | `src/cmux/proposals.ts`, `src/cmux/sidebar/proposals.ts` |
 
 The core never imports an adapter (a test fails if it does); `proposal_add` and the CLI take `ADAPTERS` from `src/adapters.ts`. With no adapter that can reach the session, Start prints the command to run by hand.
@@ -109,7 +109,7 @@ The core never imports an adapter (a test fails if it does); `proposal_add` and 
 
 **The wake** costs nothing until it runs: each tick reads `proposals list --json` and wakes only when this session is the heartbeat (by Claude session id), no main-loop turn runs (the queue feature's `isBusy`), it's outside 23:00–07:00 in the home's timezone, and fewer than five wait. The day's first wake runs `/clear` first. The interval is 55 minutes unless `/heartbeat <duration>` sets another, so a wake reads the prompt cache instead of rewriting it.
 
-**Adding a heartbeat source**: a skill named `heartbeat-<topic>` whose description starts "Heartbeat source:", in a plugin or a home's `.claude/skills/`; the contract is `skills/heartbeat/references/sources.md`. For a few personal rules, a home's `extensions/skills/heartbeat.md` is enough.
+**Adding a heartbeat source**: a skill named `heartbeat-<topic>` whose description starts "Heartbeat source:", in a plugin or a home's `.claude/skills/`; the contract is `skills/proposals/references/sources.md`. For a few personal rules, a home's `extensions/skills/proposals.md` is enough. A mod command and a skill can't share a name in one plugin (the host refuses the command), which is why the wake's skill is `proposals` beside the `/heartbeat` command.
 
 ## The cmux sidebar
 

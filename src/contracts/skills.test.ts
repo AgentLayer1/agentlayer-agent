@@ -13,7 +13,7 @@ const DESCRIPTION_CAP = 1024;
 // Hosts list every model-invocable description up to a budget (Codex ~2% of the window, Claude Code 1%);
 // this is the combined size after the playbook consolidation, and it only comes down.
 const CATALOG_BUDGET = 16_200;
-const SLASH_ONLY = ['heartbeat', 'init', 'release', 'rename-agent'];
+const SLASH_ONLY = ['init', 'proposals', 'release', 'rename-agent'];
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---/;
 const LINK_RE = /\]\(([^)\s]+)\)/g;
 const CODE_RE = /^(`{3,}|~{3,})[\s\S]*?^\1|`[^`\n]*`/gm;

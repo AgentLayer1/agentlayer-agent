@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { HOME_MARKER_FILES, PLUGIN_SOURCE_ROOT, RUNTIME_DIR, agentSlug, pluginName } from '@/shared/naming';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DATA_DIR, HOME_MARKERS } from '../../mods/manuals/repo';
 import { LIVE_STATUSES } from '../../mods/tasks/statuses';
@@ -47,6 +47,13 @@ describe('mods', () => {
         (isValidTransition(status, 'done') || isValidTransition(status, 'active'))
     );
     expect<readonly string[]>(closable).toEqual(LIVE_STATUSES);
+  });
+
+  test("no mod command shares a name with one of the plugin's skills, which the host refuses", () => {
+    const skills = new Set(readdirSync(resolve(PLUGIN_SOURCE_ROOT, 'skills')));
+    const commands = MOD_FEATURES.flatMap((feature) => feature.commands.map((command) => command.name));
+    expect(commands.length).toBeGreaterThan(5);
+    expect(commands.filter((name) => skills.has(name))).toEqual([]);
   });
 
   test('the dashboard catalog lists every feature the module registers', () => {

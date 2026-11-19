@@ -6,7 +6,7 @@ import { HOME, NOW, PLUGIN, fakeHost, machine, run } from './fake-host';
 import type { FakeHost } from './fake-host';
 
 const MINUTE = 60_000;
-const WAKE = `${PLUGIN}:heartbeat`;
+const WAKE = `${PLUGIN}:proposals`;
 
 const heartbeatHost = (on: On, heartbeat: FakeHost['proposals']['heartbeat'] = null) => {
   const host = fakeHost(on, machine({ proposals: { target: 5, waiting: [], heartbeat } }));
