@@ -16,7 +16,7 @@ AL_AGENTS_DIR="$HOME/Documents/Agents"
 AL_DEFAULT_NAME=Oppi
 AL_DEFAULT_CLONE="$HOME/Developer/agentlayer-agent"
 # Where installers put tools before a shell profile puts them on PATH. Overridable so tests see only their stubs.
-AL_TOOL_DIRS=${AL_TOOL_DIRS:-"$HOME/.bun/bin:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin"}
+AL_TOOL_DIRS=${AL_TOOL_DIRS:-"$HOME/.bun/bin:$HOME/.local/bin:$HOME/.local/share/fnm:/opt/homebrew/bin:/usr/local/bin"}
 
 AL_MODE=guide
 # agent (set one up) or prereqs (only the apps and tools); empty until a flag or the welcome menu picks.
@@ -726,6 +726,29 @@ show_bun() {
   else
     al_para "Bun runs the agent's tools. Copy the install line on its home page and run it."
     al_link https://bun.sh
+  fi
+}
+
+# A Node already on PATH passes, however it was installed. Otherwise fnm's default Node counts, since this guide's
+# own PATH predates the shell setup fnm's installer adds.
+check_node() {
+  local out
+  al_tool_check node && return 0
+  command -v fnm >/dev/null 2>&1 || return 1
+  if ! out=$(fnm exec --using=default node --version 2>/dev/null </dev/null); then
+    AL_DETAIL="fnm has no Node yet"
+    return 1
+  fi
+  AL_DETAIL="$(al_version_of "$out") through fnm"
+}
+
+show_node() {
+  if command -v fnm >/dev/null 2>&1; then
+    al_para "fnm is installed. Install Node's long-term support release with it:"
+    al_box "$(al_tool_path fnm) install --lts"
+  else
+    al_para "Node.js runs the tools and MCP servers that start with npx, which many packs and plugins use. fnm installs it and switches versions: follow the $AL_OS_NAME install on its page, then open a new terminal tab."
+    al_link https://github.com/Schniz/fnm
   fi
 }
 

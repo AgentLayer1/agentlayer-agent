@@ -90,7 +90,7 @@ function Assert-Contains([string]$Text, [string]$Part) { if (-not $Text.Contains
 function Assert-NotContains([string]$Text, [string]$Part) { if ($Text.Contains($Part)) { throw "expected the output not to contain: $Part" } }
 function Assert-Equal($Actual, $Expected) { if ($Actual -ne $Expected) { throw "expected $Expected, got $Actual" } }
 
-$all = @{ git = '2.47.1'; bun = '1.4.4'; claude = '2.1.326'; pdftoppm = '24.08.0'; jq = '1.7.1'; uv = '0.12.0'; gh = '2.60.0'; code = '1.95.0' }
+$all = @{ git = '2.47.1'; node = '24.11.1'; bun = '1.4.4'; claude = '2.1.326'; pdftoppm = '24.08.0'; jq = '1.7.1'; uv = '0.12.0'; gh = '2.60.0'; code = '1.95.0' }
 
 function New-SetUpMachine {
   $machine = New-Machine
@@ -122,6 +122,7 @@ Test-Case 'a bare machine lists every step with its link or command' {
   $run = Invoke-Scenario $machine @{} '$List = $true'
   Assert-Equal $run.Code 1
   Assert-Contains $run.Out 'winget install --id Git.Git -e --source winget'
+  Assert-Contains $run.Out 'https://github.com/Schniz/fnm'
   Assert-Contains $run.Out 'https://bun.sh'
   Assert-Contains $run.Out 'https://code.claude.com/docs/en/setup'
   Assert-Contains $run.Out 'required step(s) left'

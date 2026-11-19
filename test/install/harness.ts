@@ -98,6 +98,10 @@ export const everything = (machine: Machine): void => {
   app(machine, 'cmux', '0.65.2');
 };
 
+// fnm reports its default Node only when STUB_FNM_NODE names one.
+export const fnm = (machine: Machine): void =>
+  stub(machine, 'fnm', '[ "$1" = exec ] && [ -n "$STUB_FNM_NODE" ] && echo "v$STUB_FNM_NODE" && exit 0\nexit 1');
+
 // bun -e parses JSON for the guide, so it runs the real bun; the plugin's CLI answers from a file.
 export const bun = (machine: Machine, dir = machine.bin): void =>
   stub(
@@ -143,6 +147,7 @@ esac
 exit 0`
   );
   bun(made_);
+  tool(made_, 'node', 'v24.11.1');
   ['open', 'pbcopy'].forEach((name) => stub(made_, name, 'exit 0'));
   stub(made_, 'shell', '[ -n "$STUB_SHELL_DOES" ] && sh -c "$STUB_SHELL_DOES"\nexit 0');
   return made_;
@@ -229,6 +234,7 @@ const READ_ONLY = [
   /^pdftoppm -v$/,
   /^claude plugin list --json$/,
   /^bun -e /,
+  /^fnm exec --using=default node --version$/,
   /^bun \S+\/src\/cli\.ts cmux settings --file=(ghostty|cmux) --launcher=(claude|agent) --json$/,
   /^shell -l$/,
   /^pbcopy $/,

@@ -225,6 +225,7 @@ main() {
   al_step "CotEditor" recommended check_coteditor show_coteditor
   al_step "Homebrew" recommended check_brew show_brew
   al_step "Command Line Tools" required check_clt show_clt
+  al_step "Node.js" required check_node show_node
   al_step "Bun" required check_bun show_bun
   al_step "Claude Code" required check_claude show_claude
   al_step "poppler" recommended check_poppler show_poppler

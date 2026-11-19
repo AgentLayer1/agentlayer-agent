@@ -189,6 +189,20 @@ function Test-Tool([string]$Tool, [string]$Floor = '') {
   return $true
 }
 
+# A Node already on PATH passes, however it was installed. Otherwise fnm's default Node counts, since this guide's
+# own PATH predates the profile setup fnm's page has you add.
+function Test-Node {
+  if (Test-Tool 'node') { return $true }
+  if (-not (Get-Command 'fnm' -ErrorAction SilentlyContinue)) { return $false }
+  $version = Get-Version ((& fnm exec --using=default node --version 2>$null) -join ' ')
+  if (-not $version) {
+    $Script:Detail = 'fnm has no Node yet'
+    return $false
+  }
+  $Script:Detail = "$version through fnm"
+  return $true
+}
+
 function Test-App([string]$Path) {
   $Script:Detail = if (Test-Path $Path) { 'installed' } else { 'not installed' }
   Test-Path $Path
@@ -515,6 +529,16 @@ function Invoke-Guide {
     Write-Para 'git versions what the agent knows, and Git Bash comes with it. Install it from its site, or run this:'
     Write-Box @('winget install --id Git.Git -e --source winget')
     Write-Link 'https://git-scm.com/downloads/win'
+  }
+  $null = Invoke-Step 'Node.js' 'required' { Test-Node } {
+    if (Get-Command 'fnm' -ErrorAction SilentlyContinue) {
+      Write-Para "fnm is installed. Install Node's long-term support release with it:"
+      Write-Box @("$(Format-Tool 'fnm') install --lts")
+    }
+    else {
+      Write-Para 'Node.js runs the tools and MCP servers that start with npx, which many packs and plugins use. fnm installs it and switches versions: follow the Windows install on its page, then open a new window.'
+      Write-Link 'https://github.com/Schniz/fnm'
+    }
   }
   $null = Invoke-Step 'Bun' 'required' { Test-Tool 'bun' $Script:MinBun } {
     if ($Script:Detail -like '*older*') { Write-Para "The plugin needs Bun $($Script:MinBun) or later."; Write-Box @("$(Format-Tool 'bun') upgrade") }

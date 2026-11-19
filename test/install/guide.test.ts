@@ -18,6 +18,7 @@ import {
   changingCalls,
   cleanUp,
   everything,
+  fnm,
   frontDoor,
   guide,
   machine,
@@ -97,7 +98,7 @@ describe('a set-up Mac', () => {
 
 const bareMac = () => {
   const made = machine();
-  ['bun', 'claude'].forEach((name) => rmSync(join(made.bin, name)));
+  ['node', 'bun', 'claude'].forEach((name) => rmSync(join(made.bin, name)));
   return made;
 };
 
@@ -175,6 +176,37 @@ describe('tools', () => {
     const run = await guide(made, ['--list']);
     expect(run.out).toContain('This one comes through Homebrew');
     expect(run.out).not.toContain('brew install poppler');
+  });
+});
+
+describe('Node.js', () => {
+  const withFnm = () => {
+    const { made } = setUpMac();
+    rmSync(join(made.bin, 'node'));
+    fnm(made);
+    return made;
+  };
+
+  test.concurrent('comes right before Bun, and without fnm links to fnm’s own page', async () => {
+    const { made } = setUpMac();
+    rmSync(join(made.bin, 'node'));
+    const run = await guide(made, ['--list']);
+    expect(run.out).toContain('the macOS install on its page');
+    expect(run.out).toContain('https://github.com/Schniz/fnm');
+    expect(run.out.indexOf('Node.js')).toBeLessThan(run.out.indexOf('✓ Bun'));
+    expect(run.out).toContain('required step(s) left');
+  });
+
+  test.concurrent('with fnm but no Node, shows the LTS install', async () => {
+    const run = await guide(withFnm(), ['--list']);
+    expect(run.out).toContain('fnm has no Node yet');
+    expect(run.out).toContain('fnm install --lts');
+  });
+
+  test.concurrent('fnm’s default Node passes before this guide’s PATH has it, and changes nothing', async () => {
+    const run = await guide(withFnm(), ['--list'], '', { STUB_FNM_NODE: '24.11.1' });
+    expect(run.out).toContain('✓ Node.js · 24.11.1 through fnm');
+    expect(changingCalls(run)).toEqual([]);
   });
 });
 
@@ -618,6 +650,14 @@ describe('Linux', () => {
     expect(run.out).toContain('missing libnss3.so');
     expect(run.out).toContain(`sudo ${join(made.bin, 'bun')} x playwright install-deps chromium`);
     expect(changingCalls(run)).toEqual([]);
+  });
+
+  test.concurrent('a missing Node links to fnm’s own page for its Linux install', async () => {
+    const { made } = setUpLinux();
+    rmSync(join(made.bin, 'node'));
+    const run = await linux(made, ['--list']);
+    expect(run.out).toContain('the Linux install on its page');
+    expect(run.out).toContain('https://github.com/Schniz/fnm');
   });
 
   test.concurrent('the shown install commands follow the system’s package manager', async () => {

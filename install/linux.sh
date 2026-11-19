@@ -123,6 +123,7 @@ main() {
   [[ $AL_PATH_CHOICE == dev ]] && gh_kind=recommended
 
   al_step "git" required check_git show_git
+  al_step "Node.js" required check_node show_node
   al_step "Bun" required check_bun show_bun
   al_step "Claude Code" required check_claude show_claude
   al_step "poppler" recommended check_poppler show_poppler
