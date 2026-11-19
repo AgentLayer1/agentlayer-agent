@@ -47,6 +47,34 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.0.4] - 2026-11-19
+
+The cmux sidebar in the order you choose, refreshed on request, and reports by their last edit.
+
+### Added
+- `cmux sidebar order <agent>…` puts the named agents first on the cmux sidebar, in that order
+  (by agent name in any case, or by home folder when two share a name); the rest keep their order.
+  The order holds through every home's refresh, and a new home joins last.
+- "Refresh my sidebar" refreshes the cmux sidebar alone in one dashboard call, with no session scan
+  first. The dashboard tool runs outside the shell's sandbox, so it can write the sidebar where the
+  CLI run from a sandboxed shell can't.
+
+### Changed
+- The dashboard tool returns `sidebar` (`written`, `unchanged`, `not-installed`, `not-joined` or
+  `failed`), so the agent can say how the sidebar refresh went.
+- The dashboard's Reports page and the sidebar's reports list sort by when a report was last
+  updated, so a report edited after the day it was filed moves up. The radar, the Today feed and
+  session start still go by the filed day.
+- The sidebar keeps its agents in the order they joined instead of sorting them by folder.
+- The README leads with what the plugin is, the cmux workstation and the one-line installer.
+
+### Fixed
+- Three short-named agent chips fit beside the cmux sidebar's tab pill instead of the third
+  wrapping to a second line.
+
+### Upgrade
+- None — code-only, no bun install or HOME changes.
+
 ## [1.0.3] - 2026-11-18
 
 The guided installer, an agent's own colors, skill extensions, and homes that keep their pages as files.
