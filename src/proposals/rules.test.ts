@@ -95,7 +95,8 @@ test('Later puts a proposal off until the next 08:00 in the home timezone', () =
     const morning = nextMorning(now);
     expect(localTime(morning)).toBe('08:00:00');
     expect(Date.parse(morning)).toBeGreaterThan(now.getTime());
-    expect(Date.parse(morning) - now.getTime()).toBeLessThanOrEqual(24 * 60 * 60 * 1000);
+    // 25 hours on a day the clocks go back.
+    expect(Date.parse(morning) - now.getTime()).toBeLessThanOrEqual(25 * 60 * 60 * 1000);
   });
   const later = decide(withTwo(), 'p-0', 'later', NOW);
   if (later.outcome !== 'decided') {
