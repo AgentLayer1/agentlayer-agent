@@ -57,6 +57,8 @@ const offsetOf = (date: Date): string =>
     ?.value.replace('GMT', '') || '+00:00';
 const isoOf = (date: Date): string => `${dateOf(date)}T${clockOf(date)}:00${offsetOf(date)}`;
 const day = (offset: number): string => dateOf(new Date(now.getTime() + offset * DAY_MS));
+// Read in the demo's zone: the machine's own `getDay()` can already be a day ahead of New York.
+const daysSinceMonday = (new Date(`${day(0)}T00:00:00Z`).getUTCDay() + 6) % 7;
 const minutesAgo = (minutes: number): Date => new Date(now.getTime() - minutes * 60_000);
 const isoWeekOf = (date: string): string => {
   const ms = Date.parse(`${date}T00:00:00Z`);
@@ -698,7 +700,7 @@ write(
 1. The reconciliation report is signed off (pf-101)
 2. The load-test plan is agreed with SRE (pf-104)
 
-## Weekly Goals — Week of ${day(-((now.getDay() + 6) % 7))}
+## Weekly Goals — Week of ${day(-daysSinceMonday)}
 
 1. platform: Ship the reconciliation report (pf-101) — go/no-go signed off
 2. platform: Run the 5x load test (pf-104) — p99 under 300 ms at peak
