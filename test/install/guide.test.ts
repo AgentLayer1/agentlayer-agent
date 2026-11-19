@@ -107,6 +107,7 @@ describe('a bare Mac', () => {
     const run = await guide(bareMac(), ['--list']);
     expect(run.code).toBe(1);
     expect(run.out).toContain('https://coteditor.com');
+    expect(run.out).toContain('https://github.com/MarkEdit-app/MarkEdit');
     expect(run.out).toContain('https://brew.sh');
     expect(run.out).toContain('xcode-select --install');
     expect(run.out).toContain('https://bun.sh');
@@ -116,8 +117,8 @@ describe('a bare Mac', () => {
   });
 
   test.concurrent('the guide waits on a required step and quits cleanly, having changed nothing', async () => {
-    // 1 picks "set up an agent", then "use the agent"; s skips CotEditor and Homebrew; the keys run out at the Command Line Tools.
-    const run = await guide(bareMac(), [], '11ss');
+    // 1 picks "set up an agent", then "use the agent"; s skips CotEditor, MarkEdit and Homebrew; the keys run out at the Command Line Tools.
+    const run = await guide(bareMac(), [], '11sss');
     expect(run.code).toBe(0);
     expect(run.out).toContain('Command Line Tools');
     expect(run.out).toContain('xcode-select --install');
@@ -126,7 +127,7 @@ describe('a bare Mac', () => {
   });
 
   test.concurrent('a required step can’t be skipped', async () => {
-    const run = await guide(bareMac(), [], '11sss');
+    const run = await guide(bareMac(), [], '11ssss');
     expect(run.out).toContain('This one is required');
   });
 
@@ -168,6 +169,14 @@ describe('tools', () => {
     expect(run.out).toContain('✓ Done · 1.4.4');
     expect(run.code).toBe(0);
     expect(changingCalls(run)).toEqual(['changed bin/bun']);
+  });
+
+  test.concurrent('a Mac without MarkEdit lists it as recommended, and nothing waits on it', async () => {
+    const { made } = setUpMac();
+    rmSync(join(made.apps, 'MarkEdit.app'), { recursive: true });
+    const run = await guide(made, ['--check']);
+    expect(run.code).toBe(0);
+    expect(run.out).toContain('○ MarkEdit');
   });
 
   test.concurrent('without Homebrew, the tools it brings point at it instead of a brew command', async () => {

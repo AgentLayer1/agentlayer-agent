@@ -94,7 +94,7 @@ export const everything = (machine: Machine): void => {
   ['brew', 'uv', 'gh', 'jq'].forEach((name) => tool(machine, name, '1.0.0'));
   stub(machine, 'pdftoppm', 'echo "pdftoppm version 26.09.0" >&2\nexit 0');
   stub(machine, 'xcode-select', '[ "$1" = -p ] && echo /Library/Developer/CommandLineTools\nexit 0');
-  ['CotEditor', 'Ghostty', 'Obsidian', 'Visual Studio Code'].forEach((name) => app(machine, name, '1.0'));
+  ['CotEditor', 'MarkEdit', 'Ghostty', 'Obsidian', 'Visual Studio Code'].forEach((name) => app(machine, name, '1.0'));
   app(machine, 'cmux', '0.65.2');
 };
 

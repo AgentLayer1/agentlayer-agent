@@ -74,6 +74,15 @@ show_coteditor() {
   al_link https://coteditor.com
 }
 
+# --- MarkEdit ---
+
+check_markedit() { mac_app_check MarkEdit; }
+
+show_markedit() {
+  al_para "A markdown editor for the agent's notes and reports, which are all markdown files. Make it the default app for .md files, so a note the agent opens for you opens in it. Download it from its page or the App Store."
+  al_link https://github.com/MarkEdit-app/MarkEdit
+}
+
 # --- Homebrew ---
 
 check_brew() { al_tool_check brew; }
@@ -223,6 +232,7 @@ main() {
   [[ $AL_PATH_CHOICE == dev ]] && gh_kind=recommended
 
   al_step "CotEditor" recommended check_coteditor show_coteditor
+  al_step "MarkEdit" recommended check_markedit show_markedit
   al_step "Homebrew" recommended check_brew show_brew
   al_step "Command Line Tools" required check_clt show_clt
   al_step "Node.js" required check_node show_node
