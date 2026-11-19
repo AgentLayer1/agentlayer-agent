@@ -216,9 +216,9 @@ export const parseEvery = (text: string): number | Error => {
 
 export const setHeartbeat = (
   ledger: ProposalLedger,
-  sessionId: string,
+  owner: string,
   places: readonly SessionPlace[],
   everyMinutes: number
-): ProposalLedger => ({ ...ledger, heartbeat: { sessionId, places: [...places], everyMinutes } });
+): ProposalLedger => ({ ...ledger, heartbeat: { owner, places: [...places], everyMinutes } });
 
 export const clearHeartbeat = (ledger: ProposalLedger): ProposalLedger => ({ ...ledger, heartbeat: null });

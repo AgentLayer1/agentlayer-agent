@@ -165,7 +165,7 @@ test('the proposals still to decide, put-off ones included, carry what a card sh
 
 test('a home with no heartbeat, or none in cmux, has no place for the buttons', () => {
   expect(homeEntry(SCOUT_HOME, SCOUT, SCOUT_LEDGER).heartbeat).toBeNull();
-  const elsewhere = { ...NOVA_LEDGER, heartbeat: { sessionId: 's', everyMinutes: 55, places: [] } };
+  const elsewhere = { ...NOVA_LEDGER, heartbeat: { owner: 's', everyMinutes: 55, places: [] } };
   expect(homeEntry(NOVA_HOME, NOVA, elsewhere).heartbeat).toBeNull();
 });
 

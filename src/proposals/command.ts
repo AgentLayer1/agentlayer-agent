@@ -16,11 +16,11 @@ import { decideProposal, publishTo } from './start';
 
 const USAGE = [
   `Usage: ${CLI_COMMAND} proposals <command>`,
-  `  list [--json]                                  What's waiting, and the heartbeat`,
-  `  decide <${CHOICES.join('|')}> <id>                   Start, put off until morning, or drop a proposal`,
-  `  remove <id>…                                   Take proposals out`,
-  `  heartbeat --session=<id> [--every=<duration>]  Make that session the heartbeat (every 55m unless set)`,
-  `  heartbeat --off                                No heartbeat`
+  `  list [--json]                                   What's waiting, and the heartbeat`,
+  `  decide <${CHOICES.join('|')}> <id>                    Start, put off until morning, or drop a proposal`,
+  `  remove <id>…                                    Take proposals out`,
+  `  heartbeat --owner=<token> [--every=<duration>]  Make that session the heartbeat (every 55m unless set)`,
+  `  heartbeat --off                                 No heartbeat`
 ].join('\n');
 
 const flagOf = (args: readonly string[], name: string): string | undefined =>
@@ -48,15 +48,15 @@ const heartbeat = (args: readonly string[]): number => {
     console.log('No heartbeat now.');
     return 0;
   }
-  const session = flagOf(args, 'session');
+  const owner = flagOf(args, 'owner');
   const every = flagOf(args, 'every');
   const minutes = every ? parseEvery(every) : DEFAULT_EVERY_MINUTES;
-  if (!session || minutes instanceof Error) {
+  if (!owner || minutes instanceof Error) {
     console.error(minutes instanceof Error ? minutes.message : USAGE);
     return 1;
   }
   const places = ADAPTERS.map((adapter) => adapter.locate(process.env)).filter((place) => place !== null);
-  writeProposalLedger(setHeartbeat(readProposalLedger(), session, places, minutes));
+  writeProposalLedger(setHeartbeat(readProposalLedger(), owner, places, minutes));
   publish();
   const warm = minutes > 60 ? ' Over an hour apart, each wake pays to load the context again.' : '';
   console.log(`This session is the heartbeat now: it looks for proposals every ${minutes} minutes.${warm}`);

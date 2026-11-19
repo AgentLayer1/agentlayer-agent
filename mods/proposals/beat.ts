@@ -61,7 +61,7 @@ export const dayIn = (epochMs: number, timeZone: string | undefined): string =>
 export interface ProposalList {
   target: number;
   waiting: readonly { id: string; title: string }[];
-  heartbeat: { sessionId: string; everyMinutes: number } | null;
+  heartbeat: { owner: string; everyMinutes: number } | null;
 }
 
 export const parseList = (stdout: string): ProposalList | null => {
@@ -75,11 +75,11 @@ export const parseList = (stdout: string): ProposalList | null => {
     const beat =
       typeof heartbeat === 'object' &&
       heartbeat !== null &&
-      'sessionId' in heartbeat &&
+      'owner' in heartbeat &&
       'everyMinutes' in heartbeat &&
-      typeof heartbeat.sessionId === 'string' &&
+      typeof heartbeat.owner === 'string' &&
       typeof heartbeat.everyMinutes === 'number'
-        ? { sessionId: heartbeat.sessionId, everyMinutes: heartbeat.everyMinutes }
+        ? { owner: heartbeat.owner, everyMinutes: heartbeat.everyMinutes }
         : null;
     return typeof target === 'number' && Array.isArray(waiting) ? { target, waiting, heartbeat: beat } : null;
   } catch {

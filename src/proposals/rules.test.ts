@@ -129,12 +129,12 @@ test('a ledger read back keeps what it can and drops what it cannot use', () => 
   const ledger = withTwo();
   const broken = { ...ledger.proposals[0], prompt: 42 };
   const parsed = parseLedger({
-    heartbeat: { sessionId: 's-1', everyMinutes: 55, places: [{ adapter: 'cmux', surfaceId: 'a', workspaceId: 'b' }, 7] },
+    heartbeat: { owner: 's-1', everyMinutes: 55, places: [{ adapter: 'cmux', surfaceId: 'a', workspaceId: 'b' }, 7] },
     proposals: [broken, ledger.proposals[1], 'junk']
   });
   expect(parsed.proposals.map(({ id }) => id)).toEqual(['p-1']);
   expect(parsed.heartbeat).toEqual({
-    sessionId: 's-1',
+    owner: 's-1',
     everyMinutes: 55,
     places: [{ adapter: 'cmux', surfaceId: 'a', workspaceId: 'b' }]
   });

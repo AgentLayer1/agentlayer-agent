@@ -183,7 +183,7 @@ export const LATER_UNTIL = new Date((NOW + 60 * 60) * 1000).toISOString();
  */
 export const NOVA_LEDGER: ProposalLedger = {
   heartbeat: {
-    sessionId: 'nova-heartbeat',
+    owner: 'nova-heartbeat',
     everyMinutes: 55,
     places: [{ adapter: 'cmux', surfaceId: 'w-nova-s2-surface', workspaceId: 'w-nova' }]
   },

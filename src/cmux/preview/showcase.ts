@@ -436,7 +436,7 @@ export const SHOWCASE_NOVA = quietHome(
  */
 export const SHOWCASE_OPPI_LEDGER: ProposalLedger = {
   heartbeat: {
-    sessionId: 'oppi-heartbeat',
+    owner: 'oppi-heartbeat',
     everyMinutes: 55,
     places: [{ adapter: 'cmux', surfaceId: 'w-oppi-morning-brief-surface', workspaceId: 'w-oppi' }]
   },
@@ -469,7 +469,7 @@ export const SHOWCASE_OPPI_LEDGER: ProposalLedger = {
  */
 export const SHOWCASE_NOVA_LEDGER: ProposalLedger = {
   heartbeat: {
-    sessionId: 'nova-heartbeat',
+    owner: 'nova-heartbeat',
     everyMinutes: 55,
     places: [{ adapter: 'cmux', surfaceId: 'w-nova-month-end-surface', workspaceId: 'w-nova' }]
   },

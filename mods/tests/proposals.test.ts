@@ -29,6 +29,19 @@ const start = async ($: Engine, host: FakeHost) => {
   await host.clock.advance(0);
 };
 
+// The token /heartbeat binds with: the conversation id and the clock when it was first chosen.
+const TOKEN = `session-1@${NOW.toString(36)}`;
+
+// A session that ran /heartbeat, so it is the heartbeat from the clock's current time.
+const bound = async ($: Engine, on: On, every = '') => {
+  const context = heartbeatHost(on);
+  await start($, context.host);
+  await run($, 'heartbeat', every);
+  return context;
+};
+
+const heartbeatCalls = (host: FakeHost) => cliCalls(host).filter((args) => args.startsWith('proposals heartbeat'));
+
 const cliCalls = (host: FakeHost) => host.argv.map((argv) => argv.slice(2).join(' ')).filter((args) => args.startsWith('proposals '));
 
 describe('proposals', () => {
@@ -61,21 +74,20 @@ describe('proposals', () => {
     expect(submitted).toEqual(['what should I propose next?']);
   });
 
-  test('/heartbeat makes this session the heartbeat, at an interval when one is given', async ($, on) => {
+  test('/heartbeat makes this session the heartbeat by its token, at an interval when one is given', async ($, on) => {
     const { host } = heartbeatHost(on);
     await run($, 'heartbeat');
     await run($, 'heartbeat', '15 mins');
     await run($, 'heartbeat', 'off');
-    expect(cliCalls(host).filter((args) => !args.startsWith('proposals list'))).toEqual([
-      'proposals heartbeat --session=session-1',
-      'proposals heartbeat --session=session-1 --every=15 mins',
+    expect(heartbeatCalls(host)).toEqual([
+      `proposals heartbeat --owner=${TOKEN}`,
+      `proposals heartbeat --owner=${TOKEN} --every=15 mins`,
       'proposals heartbeat --off'
     ]);
   });
 
   test('the heartbeat wakes on its interval when the session is idle and proposals are short', async ($, on) => {
-    const { host } = heartbeatHost(on, { sessionId: 'session-1', everyMinutes: 55 });
-    await start($, host);
+    const { host } = await bound($, on);
     await host.clock.advance(54 * MINUTE);
     expect(host.commands).toEqual([]);
     await host.clock.advance(MINUTE);
@@ -83,23 +95,32 @@ describe('proposals', () => {
   });
 
   test('a new interval replaces the old clock rather than adding one', async ($, on) => {
-    const { host } = heartbeatHost(on, { sessionId: 'session-1', everyMinutes: 55 });
-    await start($, host);
+    const { host } = await bound($, on);
     await run($, 'heartbeat', '15m');
     await host.clock.advance(55 * MINUTE);
     expect(host.commands, 'three 15-minute wakes; a leftover 55-minute clock would add a fourth').toEqual([WAKE, WAKE, WAKE]);
   });
 
-  test('another session that is the heartbeat costs this one nothing', async ($, on) => {
-    const { host } = heartbeatHost(on, { sessionId: 'session-2', everyMinutes: 55 });
+  test('a heartbeat bound by another process costs this one nothing, even one named by this conversation id', async ($, on) => {
+    const { host } = heartbeatHost(on, { owner: 'session-1', everyMinutes: 55 });
     await start($, host);
     await host.clock.advance(3 * 55 * MINUTE);
     expect(host.commands).toEqual([]);
+    expect((await run($, 'heartbeat', 'status')).text).toStartWith('Another session is the heartbeat');
+  });
+
+  test('a newer session that takes the heartbeat over keeps it', async ($, on) => {
+    const { host } = await bound($, on);
+    host.sessionId = 'session-2';
+    host.proposals.heartbeat = { owner: 'session-7@newer', everyMinutes: 15 };
+    await host.clock.advance(2 * 55 * MINUTE);
+    expect(host.commands).toEqual([]);
+    expect(heartbeatCalls(host)).toEqual([`proposals heartbeat --owner=${TOKEN}`]);
+    expect(host.proposals.heartbeat).toEqual({ owner: 'session-7@newer', everyMinutes: 15 });
   });
 
   test('a running turn or full proposals hold the wake', async ($, on) => {
-    const { host } = heartbeatHost(on, { sessionId: 'session-1', everyMinutes: 55 });
-    await start($, host);
+    const { host } = await bound($, on);
     await $.turn.start({ text: '', turnId: 't1' });
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([]);
@@ -113,9 +134,10 @@ describe('proposals', () => {
   });
 
   test('quiet hours hold the wake until morning', async ($, on) => {
-    const { host } = heartbeatHost(on, { sessionId: 'session-1', everyMinutes: 55 });
+    const { host } = heartbeatHost(on);
     await host.clock.set(Date.parse('2026-03-10T23:10:00+08:00'));
     await start($, host);
+    await run($, 'heartbeat');
     await host.clock.set(Date.parse('2026-03-11T06:59:00+08:00'));
     expect(host.commands).toEqual([]);
     await host.clock.advance(55 * MINUTE);
@@ -123,8 +145,7 @@ describe('proposals', () => {
   });
 
   test("the day's first wake clears the conversation first", async ($, on) => {
-    const { host } = heartbeatHost(on, { sessionId: 'session-1', everyMinutes: 55 });
-    await start($, host);
+    const { host } = await bound($, on);
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE]);
     host.proposals.waiting = Array.from({ length: 5 }, (_, index) => ({ id: `p-${index}`, title: 'x' }));
@@ -136,7 +157,7 @@ describe('proposals', () => {
     expect(host.commands).toEqual([WAKE, 'clear', WAKE, WAKE]);
   });
 
-  test("the day's clear gives the conversation a new id, and the heartbeat moves to it and keeps waking", async ($, on) => {
+  test("the day's clear gives the conversation a new id, and the heartbeat keeps waking without binding again", async ($, on) => {
     // Registered first, so it answers above the fake host's catch-all command hook.
     const cleared: { host?: FakeHost } = {};
     on('command.run', { command: 'clear' }, () => {
@@ -146,9 +167,8 @@ describe('proposals', () => {
       }
       return {};
     });
-    const { host } = heartbeatHost(on, { sessionId: 'session-1', everyMinutes: 55 });
+    const { host } = await bound($, on);
     cleared.host = host;
-    await start($, host);
     await host.clock.advance(55 * MINUTE);
     host.proposals.waiting = Array.from({ length: 5 }, (_, index) => ({ id: `p-${index}`, title: 'x' }));
     await host.clock.set(NOW + 24 * 60 * MINUTE);
@@ -156,27 +176,34 @@ describe('proposals', () => {
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE, 'clear', WAKE]);
     await host.clock.advance(55 * MINUTE);
-    expect(cliCalls(host).filter((args) => args.startsWith('proposals heartbeat'))).toEqual([
-      'proposals heartbeat --session=session-2 --every=55m'
-    ]);
-    expect(host.proposals.heartbeat?.sessionId).toBe('session-2');
     expect(host.commands).toEqual([WAKE, 'clear', WAKE, WAKE]);
+    expect(heartbeatCalls(host)).toEqual([`proposals heartbeat --owner=${TOKEN}`]);
   });
 
-  test("the operator's own /clear or /resume in the heartbeat's tab moves the heartbeat with it", async ($, on) => {
-    const { host } = heartbeatHost(on, { sessionId: 'session-1', everyMinutes: 55 });
-    await start($, host);
+  test("the operator's own /clear or /resume in the heartbeat's tab keeps it the heartbeat", async ($, on) => {
+    const { host } = await bound($, on);
     await host.clock.advance(55 * MINUTE);
     host.sessionId = 'session-3';
     await host.clock.advance(55 * MINUTE);
-    expect(host.proposals.heartbeat?.sessionId).toBe('session-3');
     expect(host.commands).toEqual([WAKE, WAKE]);
     expect((await run($, 'heartbeat', 'status')).text).toStartWith('This session is the heartbeat');
   });
 
+  test('a /heartbeat off that fails after a /clear leaves the heartbeat running', async ($, on) => {
+    const { host } = await bound($, on);
+    host.sessionId = 'session-2';
+    host.failing.push('proposals heartbeat --off');
+    expect((await run($, 'heartbeat', 'off')).text).toContain('failed');
+    await host.clock.advance(2 * 55 * MINUTE);
+    expect(host.commands).toEqual([WAKE, WAKE]);
+    host.failing.length = 0;
+    await run($, 'heartbeat', 'off');
+    await host.clock.advance(2 * 55 * MINUTE);
+    expect(host.commands).toEqual([WAKE, WAKE]);
+  });
+
   test('a failed read of the proposals skips the tick and keeps the clock', async ($, on) => {
-    const { host } = heartbeatHost(on, { sessionId: 'session-1', everyMinutes: 55 });
-    await start($, host);
+    const { host } = await bound($, on);
     host.failing.push('proposals list --json');
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([]);
@@ -186,7 +213,7 @@ describe('proposals', () => {
   });
 
   test('/heartbeat now wakes at once, and status says who the heartbeat is', async ($, on) => {
-    const { host } = heartbeatHost(on, { sessionId: 'session-1', everyMinutes: 55 });
+    const { host } = await bound($, on);
     expect((await run($, 'heartbeat', 'now')).text).toBe('Looking for proposals now.');
     await host.clock.settle();
     expect(host.commands).toEqual([WAKE]);

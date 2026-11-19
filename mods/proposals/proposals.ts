@@ -21,7 +21,7 @@ const MINUTE_MS = 60_000;
 const USAGE = 'Usage: /propose <start|later|skip> <id>';
 
 // Kept in session state, which outlives a /clear and a reload of this module, unlike its own variables.
-const beat = atom({ plugin: 'agentlayer', key: 'heartbeat' } as const, { wokeOn: '', boundId: '' });
+const beat = atom({ plugin: 'agentlayer', key: 'heartbeat' } as const, { wokeOn: '', owner: '' });
 // The queue feature's state, whose isBusy says a main-loop turn runs; the heartbeat only reads it.
 const QUEUE_IDLE: Queue = { pending: [], isBusy: false, isPaused: false };
 const queue = atom({ plugin: 'agentlayer', key: 'queue' } as const, QUEUE_IDLE);
@@ -76,39 +76,31 @@ async function wake($: EngineInterface): Promise<void> {
   $.clock.after(0, () => void $.command.run({ command: `${$.plugin.name}:proposals` }));
 }
 
-// The heartbeat is this running session, whichever conversation it is in now: a /clear or a /resume changes the id,
-// and the binding moves with it. A ledger naming any other id means another session took over.
-const isOwner = (list: ProposalList, sessionId: string, boundId: string): boolean =>
-  list.heartbeat !== null && (list.heartbeat.sessionId === sessionId || list.heartbeat.sessionId === boundId);
-
-async function bind($: EngineInterface, sessionId: string, every: string | undefined): Promise<string | Error> {
-  const args = ['proposals', 'heartbeat', `--session=${sessionId}`, ...(every ? [`--every=${every}`] : [])];
-  return runCli($, args).then(
-    async (stdout) => {
-      await update($, beat, (current) => ({ ...current, boundId: sessionId }));
-      return stdout.trim();
-    },
-    (error: unknown) => (error instanceof Error ? error : new Error(String(error)))
-  );
+// The heartbeat is this running process, named by a token it picks once and keeps in session state: a /clear or a
+// /resume changes the conversation id, but not the token, and no other process holds it.
+async function ownerOf($: EngineInterface): Promise<string> {
+  const { owner } = await read($, beat);
+  if (owner) {
+    return owner;
+  }
+  const [sessionId, now] = await Promise.all([$.session.id(), $.clock.now()]);
+  const token = `${sessionId}@${now.toString(36)}`;
+  await update($, beat, (current) => ({ ...current, owner: token }));
+  return token;
 }
+
+const isOwner = (list: ProposalList | null, owner: string): boolean =>
+  owner !== '' && list?.heartbeat?.owner === owner;
 
 // Free unless every gate passes: this session is the heartbeat, no turn runs, it isn't quiet, and room is left.
 async function tick($: EngineInterface): Promise<void> {
-  const [list, sessionId, { isBusy }, { boundId }] = await Promise.all([
-    readList($),
-    $.session.id(),
-    read($, queue),
-    read($, beat)
-  ]);
+  const [list, { isBusy }, { owner }] = await Promise.all([readList($), read($, queue), read($, beat)]);
   if (!list) {
     return;
   }
-  if (!list.heartbeat || !isOwner(list, sessionId, boundId)) {
+  if (!isOwner(list, owner)) {
     ticker?.cancel();
     ticker = undefined;
-    return;
-  }
-  if (list.heartbeat.sessionId !== sessionId && (await bind($, sessionId, `${list.heartbeat.everyMinutes}m`)) instanceof Error) {
     return;
   }
   const [now, zone] = await Promise.all([$.clock.now(), zoneOf($)]);
@@ -119,25 +111,16 @@ async function tick($: EngineInterface): Promise<void> {
 }
 
 async function arm($: EngineInterface): Promise<void> {
-  const [list, sessionId, { boundId }] = await Promise.all([readList($), $.session.id(), read($, beat)]);
+  const [list, { owner }] = await Promise.all([readList($), read($, beat)]);
   ticker?.cancel();
   ticker = undefined;
-  if (list?.heartbeat && isOwner(list, sessionId, boundId)) {
-    if (list.heartbeat.sessionId === sessionId && boundId !== sessionId) {
-      await update($, beat, (current) => ({ ...current, boundId: sessionId }));
-    }
+  if (list?.heartbeat && isOwner(list, owner)) {
     ticker = $.clock.every(list.heartbeat.everyMinutes * MINUTE_MS, () => void tick($));
   }
 }
 
 async function status($: EngineInterface): Promise<string> {
-  const [list, sessionId, now, zone, { boundId }] = await Promise.all([
-    readList($),
-    $.session.id(),
-    $.clock.now(),
-    zoneOf($),
-    read($, beat)
-  ]);
+  const [list, now, zone, { owner }] = await Promise.all([readList($), $.clock.now(), zoneOf($), read($, beat)]);
   if (!list) {
     return "Couldn't read the proposals.";
   }
@@ -145,7 +128,7 @@ async function status($: EngineInterface): Promise<string> {
   if (!list.heartbeat) {
     return `No heartbeat. ${waiting}. /heartbeat makes this session the one.`;
   }
-  const who = isOwner(list, sessionId, boundId) ? 'This session' : 'Another session';
+  const who = isOwner(list, owner) ? 'This session' : 'Another session';
   const quiet = isQuiet(now, zone) ? `quiet now (${QUIET_HOURS})` : `quiet ${QUIET_HOURS}`;
   return `${who} is the heartbeat, every ${list.heartbeat.everyMinutes}m, ${quiet}. ${waiting}.`;
 }
@@ -162,13 +145,13 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
   }
   if (ask.kind === 'off') {
     const text = await said($, ['proposals', 'heartbeat', '--off']);
-    await update($, beat, (current) => ({ ...current, boundId: '' }));
     await arm($);
     return text;
   }
-  const bound = await bind($, await $.session.id(), ask.every || undefined);
+  const every = ask.every ? [`--every=${ask.every}`] : [];
+  const text = await said($, ['proposals', 'heartbeat', `--owner=${await ownerOf($)}`, ...every]);
   await arm($);
-  return bound instanceof Error ? bound.message : bound;
+  return text;
 }
 
 export const registerProposals = (on: On): void => {

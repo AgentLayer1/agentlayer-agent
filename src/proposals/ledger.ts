@@ -49,10 +49,10 @@ export interface Proposal {
 }
 
 /**
- * The session that keeps proposals coming, by its Claude session id, and the places adapters can reach it.
+ * The session that keeps proposals coming, by the token its process chose, and the places adapters can reach it.
  */
 export interface Heartbeat {
-  sessionId: string;
+  owner: string;
   places: SessionPlace[];
   everyMinutes: number;
 }
@@ -115,12 +115,12 @@ const parsePlace = (data: unknown): SessionPlace | null =>
     : null;
 
 const parseHeartbeat = (data: unknown): Heartbeat | null => {
-  if (!isRecord(data) || typeof data.sessionId !== 'string' || typeof data.everyMinutes !== 'number') {
+  if (!isRecord(data) || typeof data.owner !== 'string' || typeof data.everyMinutes !== 'number') {
     return null;
   }
   const places = Array.isArray(data.places) ? data.places.map(parsePlace) : [];
   return {
-    sessionId: data.sessionId,
+    owner: data.owner,
     everyMinutes: data.everyMinutes,
     places: places.filter((place): place is SessionPlace => place !== null)
   };
