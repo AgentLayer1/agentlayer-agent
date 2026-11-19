@@ -104,6 +104,6 @@ export const homeEntry = (home: string, work: Work, ledger: ProposalLedger): Hom
     goals: goalsView(work),
     proposals: proposalCards(ledger),
     heartbeat: heartbeatPlace(ledger),
-    launcher: launcher()
+    launcher: launcher(home)
   };
 };

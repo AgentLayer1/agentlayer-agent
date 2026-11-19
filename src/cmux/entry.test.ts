@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { FILES } from '@/config';
+import { claudeSubscriptionOf } from '@/config';
 import { secretsReadBlocked } from '@/shared/sandbox-probe';
 import { nameHue } from '@/status/html-primitives';
 import { homeEntry, REPORT_LIMIT } from './entry';
@@ -169,19 +169,16 @@ test('a home with no heartbeat, or none in cmux, has no place for the buttons', 
   expect(homeEntry(NOVA_HOME, NOVA, elsewhere).heartbeat).toBeNull();
 });
 
-// The launcher reads the current home's secrets, so each case gets a home of its own.
+// The launcher reads the given home's secrets, so each case gets a home of its own.
 const launcherIn = (subscribed: boolean) => {
-  const original = process.env.AGENT_HOME;
   const home = mkdtempSync(join(tmpdir(), 'agentlayer-launcher-'));
-  process.env.AGENT_HOME = home;
   try {
     if (subscribed) {
-      mkdirSync(dirname(FILES.CLAUDE_SUBSCRIPTION), { recursive: true });
-      writeFileSync(FILES.CLAUDE_SUBSCRIPTION, '{}');
+      mkdirSync(dirname(claudeSubscriptionOf(home)), { recursive: true });
+      writeFileSync(claudeSubscriptionOf(home), '{}');
     }
-    return homeEntry(SCOUT_HOME, SCOUT, SCOUT_LEDGER).launcher;
+    return homeEntry(home, SCOUT, SCOUT_LEDGER).launcher;
   } finally {
-    process.env.AGENT_HOME = original;
     rmSync(home, { recursive: true, force: true });
   }
 };

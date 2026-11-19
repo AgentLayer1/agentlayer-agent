@@ -22,6 +22,11 @@ const knowledgeRoot = (): string => fromEnv('AGENT_KNOWLEDGE', resolve(homeRoot(
 const dataRoot = (): string => dataDirOf(homeRoot());
 const secretsRoot = (): string => resolve(dataRoot(), 'secrets');
 
+/**
+ * The Claude subscription a home bills its own sessions to, passed by its `agent` shell launcher as `--settings`.
+ */
+export const claudeSubscriptionOf = (home: string): string => resolve(dataDirOf(home), 'secrets', '.env.claude.json');
+
 // Env values + secret loading live in `@/shared/env` (a config-free module — see
 // its header for why it's kept apart).
 // Importing it self-loads `<data-dir>/secrets/.env`; `env()` below reads through it.
@@ -306,7 +311,7 @@ export const FILES = {
   },
   /** This agent's own Claude subscription, passed by the `agent` shell launcher as `--settings`. */
   get CLAUDE_SUBSCRIPTION() {
-    return resolve(secretsRoot(), '.env.claude.json');
+    return claudeSubscriptionOf(homeRoot());
   },
   /** Session catalog keyed by sessionId — capture cursor + cross-day resume
    *  tracking. Authoritative for "how far have we captured session X"; itself

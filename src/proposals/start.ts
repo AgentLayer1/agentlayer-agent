@@ -1,4 +1,4 @@
-import { FILES, FOLDERS } from '@/config';
+import { claudeSubscriptionOf, FOLDERS } from '@/config';
 import { log } from '@/shared/log';
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -10,9 +10,9 @@ import { decide, reopen, type Choice } from './rules';
 const PROMPT_KEEP_MS = 24 * 60 * 60 * 1000;
 
 /**
- * `agent` when this home bills its own Claude subscription (the shell launcher passes it as `--settings`).
+ * `agent` when the home bills its own Claude subscription (the shell launcher passes it as `--settings`).
  */
-export const launcher = (): Launcher => (existsSync(FILES.CLAUDE_SUBSCRIPTION) ? 'agent' : 'claude');
+export const launcher = (home: string): Launcher => (existsSync(claudeSubscriptionOf(home)) ? 'agent' : 'claude');
 
 const writePromptFile = (proposal: Proposal, now: Date): string => {
   const dir = FOLDERS.PROPOSAL_PROMPTS;
@@ -83,7 +83,7 @@ export const decideProposal = (id: string, choice: Choice, context: DecideContex
     home: context.home,
     proposal: { id: proposal.id, title: proposal.title },
     promptFile: writePromptFile(proposal, context.now),
-    launcher: launcher()
+    launcher: launcher(context.home)
   };
   writeProposalLedger(decision.ledger);
   const located = locateIn(context.adapters, context.env);
