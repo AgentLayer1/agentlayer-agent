@@ -1,0 +1,89 @@
+import { FILES, FOLDERS } from '@/config';
+import { log } from '@/shared/log';
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import type { Launcher, ProposalAdapter, StartInput } from './adapter';
+import { readProposalLedger, writeProposalLedger, type Proposal } from './ledger';
+import { decide, reopen, type Choice } from './rules';
+
+// A started session reads its prompt as it opens; a day later the file has done its job.
+const PROMPT_KEEP_MS = 24 * 60 * 60 * 1000;
+
+// `agent` when this home bills its own Claude subscription (the shell launcher passes it as `--settings`).
+const launcher = (): Launcher => (existsSync(FILES.CLAUDE_SUBSCRIPTION) ? 'agent' : 'claude');
+
+const writePromptFile = (proposal: Proposal, now: Date): string => {
+  const dir = FOLDERS.PROPOSAL_PROMPTS;
+  mkdirSync(dir, { recursive: true });
+  readdirSync(dir)
+    .map((name) => resolve(dir, name))
+    .filter((path) => now.getTime() - statSync(path).mtimeMs > PROMPT_KEEP_MS)
+    .forEach((path) => rmSync(path, { force: true }));
+  const path = resolve(dir, `${proposal.id}.prompt`);
+  writeFileSync(path, proposal.prompt);
+  return path;
+};
+
+const manualStart = ({ home, promptFile, launcher: command }: StartInput): string =>
+  `To start it, run from ${home}: ${command} "$(cat '${promptFile}')"`;
+
+/**
+ * Redraws every adapter's view of the proposals; one that fails is logged and the rest still draw.
+ */
+export const publishTo = (adapters: readonly ProposalAdapter[], home: string): void =>
+  adapters.forEach((adapter) => {
+    try {
+      adapter.publish(home);
+    } catch (error) {
+      log.with('proposals').warn(`${adapter.name} didn't redraw: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  });
+
+export interface DecideContext {
+  home: string;
+  adapters: readonly ProposalAdapter[];
+  env: Readonly<Record<string, string | undefined>>;
+  now: Date;
+}
+
+/**
+ * Applies the operator's choice and says what happened. Start marks the proposal started before opening anything, so a
+ * repeat can't open a second session, and puts it back if the session couldn't open.
+ */
+export const decideProposal = (id: string, choice: Choice, context: DecideContext): string => {
+  const decision = decide(readProposalLedger(), id, choice, context.now);
+  if (decision.outcome === 'unknown') {
+    return `No proposal ${id}.`;
+  }
+  if (decision.outcome === 'already') {
+    return `${decision.proposal.title}: already ${decision.proposal.state}.`;
+  }
+  const { proposal } = decision;
+  if (choice !== 'start') {
+    writeProposalLedger(decision.ledger);
+    publishTo(context.adapters, context.home);
+    return choice === 'later' ? `Later: ${proposal.title} comes back in the morning.` : `Skipped: ${proposal.title}.`;
+  }
+  const input: StartInput = {
+    home: context.home,
+    proposal: { id: proposal.id, title: proposal.title },
+    promptFile: writePromptFile(proposal, context.now),
+    launcher: launcher()
+  };
+  writeProposalLedger(decision.ledger);
+  const adapter = context.adapters.find((candidate) => candidate.locate(context.env) !== null);
+  const opened = ((): { where: string } | { error: string } => {
+    try {
+      return { where: adapter ? adapter.start(input) : manualStart(input) };
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : String(error) };
+    }
+  })();
+  if ('error' in opened) {
+    writeProposalLedger(reopen(readProposalLedger(), proposal.id));
+  }
+  publishTo(context.adapters, context.home);
+  return 'error' in opened
+    ? `Couldn't start ${proposal.title}: ${opened.error}`
+    : `Started: ${proposal.title}. ${opened.where}`;
+};

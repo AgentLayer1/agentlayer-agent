@@ -89,6 +89,7 @@ Groups:
   compile                           Knowledge-compile state (synthesis runs in Claude Code, not here)
   knowledge                         Wiki maintenance (lint)
   notices                           What to nudge the operator about (upgrade, sync) as JSON; \`notices record <id> --outcome=acted|snoozed\` logs what they did
+  proposals                         Sessions the agent proposes and the heartbeat that keeps them coming: list, decide, remove, heartbeat
   prune                             Delete memory/YYYY-MM-DD*.md older than 14 days
   links                             Rewrite bare task IDs + shorthand into [[wikilinks]]
   dashboard                         Rebuild the Agent OS dashboard at <HOME>/dashboard.html + projects/TASKS.md (open in any browser)
@@ -186,6 +187,14 @@ Sidebar commands for cmux (this CLI's, not the cmux app's own; run them from a t
   cmux settings --file=<ghostty|cmux> [--launcher=<claude|agent>] [--json]
                                     Compare a Mac's Ghostty or cmux settings with the recommended ones (read-only;
                                     prints what to paste and the command to run; without --json, exit 3 unless the file is complete)
+
+Proposals commands:
+  proposals list [--json]           What's waiting to be started, and the heartbeat's interval
+  proposals decide <start|later|skip> <id>
+                                    Start it (a fresh session runs its prompt), put it off until morning, or drop it
+  proposals remove <id>…            Take proposals out
+  proposals heartbeat --session=<id> [--every=<duration>]
+                                    Make that Claude session the heartbeat, looking every 55m unless set (15m, 2h); --off for none
 
 Database commands:
   database list                     List configured AGENT_DB_<NAME> connections (name + host/db, never credentials)
@@ -600,6 +609,11 @@ async function run(): Promise<void> {
     const { collectNotices } = await import('@/notices/notices');
     console.log(JSON.stringify(await collectNotices()));
     return;
+  }
+
+  if (group === 'proposals') {
+    const { runProposalsCommand } = await import('@/proposals/command');
+    process.exit(runProposalsCommand(command, args));
   }
 
   if (group === 'prune') {

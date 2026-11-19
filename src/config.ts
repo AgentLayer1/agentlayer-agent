@@ -121,6 +121,10 @@ export const FOLDERS = {
   get ATTENTION_QUEUES() {
     return resolve(dataRoot(), 'attention');
   },
+  /** Each started proposal's prompt, `<id>.prompt`, read by the session that runs it. */
+  get PROPOSAL_PROMPTS() {
+    return resolve(dataRoot(), 'proposals');
+  },
   /** What App Store review reads have learned about each app's storefronts: <appId>.json. */
   get APPSTORE() {
     return resolve(dataRoot(), 'appstore');
@@ -251,6 +255,10 @@ export const FILES = {
   /** Snooze streaks and snoozed-through dates per notice (notices/ledger.ts). */
   get NOTICES() {
     return resolve(dataRoot(), 'notices.json');
+  },
+  /** Sessions the agent proposes and the heartbeat that keeps them coming (proposals/ledger.ts). */
+  get PROPOSALS() {
+    return resolve(dataRoot(), 'proposals.json');
   },
   get REPORTS_INDEX() {
     return resolve(FOLDERS.REPORTS, 'index.md');
