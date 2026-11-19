@@ -79,8 +79,45 @@ show_coteditor() {
 check_markedit() { mac_app_check MarkEdit; }
 
 show_markedit() {
-  al_para "A markdown editor for the agent's notes and reports, which are all markdown files. Make it the default app for .md files, so a note the agent opens for you opens in it. Download it from its page or the App Store."
+  al_para "A markdown editor for the agent's notes and reports. Download it from its page or the App Store."
   al_link https://github.com/MarkEdit-app/MarkEdit
+}
+
+# --- Default apps ---
+
+# A file kind, the app that should open it and its bundle id: what Finder's Change All records in LaunchServices.
+MAC_DEFAULTS=".txt public.plain-text CotEditor com.coteditor.CotEditor
+.json public.json CotEditor com.coteditor.CotEditor
+.md net.daringfireball.markdown MarkEdit app.cyan.markedit"
+MAC_LS_PLIST="$HOME/Library/Preferences/com.apple.LaunchServices/com.apple.launchservices.secure.plist"
+
+# Each handler as "<content type> <bundle id>", lowercased. Read with Bun, which an earlier step requires.
+mac_handlers() {
+  plutil -convert json -o - "$MAC_LS_PLIST" 2>/dev/null </dev/null | bun -e '
+    const { LSHandlers = [] } = JSON.parse((await Bun.stdin.text()) || "{}");
+    for (const handler of LSHandlers) {
+      const app = handler.LSHandlerRoleAll ?? handler.LSHandlerRoleViewer;
+      if (handler.LSHandlerContentType && app) console.log(`${handler.LSHandlerContentType} ${app}`.toLowerCase());
+    }' 2>/dev/null
+}
+
+# Sets MAC_DEFAULTS_MISSING to the kinds whose installed editor isn't their default yet, one "<ext> → <app>" per line.
+check_defaults() {
+  local handlers ext type app bundle
+  handlers=$(mac_handlers)
+  MAC_DEFAULTS_MISSING=""
+  while read -r ext type app bundle; do
+    mac_app "$app" || continue
+    grep -qixF "$type $bundle" <<<"$handlers" || MAC_DEFAULTS_MISSING+="$ext → $app"$'\n'
+  done <<<"$MAC_DEFAULTS"
+  [[ -z $MAC_DEFAULTS_MISSING ]] && return 0
+  AL_DETAIL="not set for $(printf '%s' "$MAC_DEFAULTS_MISSING" | cut -d' ' -f1 | paste -sd, - | sed 's/,/, /g')"
+  return 1
+}
+
+show_defaults() {
+  al_para "Make your editors the default apps for the agent's files, so a file the agent opens for you lands in the right one. For each kind below, select a file of that kind in Finder, choose File, Get Info, pick the app under Open with, then click Change All."
+  printf '%s' "$MAC_DEFAULTS_MISSING" | sed 's/^/      /'
 }
 
 # --- Homebrew ---
@@ -253,6 +290,7 @@ main() {
   fi
   al_step "Obsidian" "$obsidian_kind" check_obsidian show_obsidian
   [[ $AL_PATH_CHOICE == dev ]] && al_step "VS Code" recommended check_vscode show_vscode
+  { mac_app CotEditor || mac_app MarkEdit; } && al_step "Default apps" recommended check_defaults show_defaults
 
   [[ $AL_GOAL == prereqs ]] && al_prereqs_finish
   al_agent_steps

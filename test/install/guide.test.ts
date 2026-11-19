@@ -14,8 +14,10 @@ import {
   ROOT,
   agentHome,
   app,
+  EDITOR_DEFAULTS,
   bun,
   changingCalls,
+  defaultApps,
   cleanUp,
   everything,
   fnm,
@@ -177,6 +179,35 @@ describe('tools', () => {
     const run = await guide(made, ['--check']);
     expect(run.code).toBe(0);
     expect(run.out).toContain('○ MarkEdit');
+  });
+
+  test.concurrent('editors that are not yet the default for their files are listed with Finder’s Change All', async () => {
+    const { made } = setUpMac();
+    defaultApps(made, { 'public.json': 'com.coteditor.coteditor' });
+    const run = await guide(made, ['--list']);
+    expect(run.out).toContain('not set for .txt, .md');
+    expect(run.out).toContain('.txt → CotEditor');
+    expect(run.out).toContain('.md → MarkEdit');
+    expect(run.out).not.toContain('.json → CotEditor');
+    expect(run.out).toContain('Change All');
+    expect(changingCalls(run)).toEqual([]);
+  });
+
+  test.concurrent('a default set by Finder passes whatever the bundle id’s case', async () => {
+    const { made } = setUpMac();
+    defaultApps(made, { ...EDITOR_DEFAULTS, 'public.plain-text': 'com.coteditor.CotEditor' });
+    expect((await guide(made, ['--list'])).out).toContain('✓ Default apps');
+  });
+
+  test.concurrent('only the installed editors are asked about, and none means no step', async () => {
+    const { made } = setUpMac();
+    rmSync(join(made.apps, 'MarkEdit.app'), { recursive: true });
+    defaultApps(made, {});
+    const run = await guide(made, ['--list']);
+    expect(run.out).toContain('not set for .txt, .json');
+    expect(run.out).not.toContain('.md → MarkEdit');
+    rmSync(join(made.apps, 'CotEditor.app'), { recursive: true });
+    expect((await guide(made, ['--list'])).out).not.toContain('Default apps');
   });
 
   test.concurrent('without Homebrew, the tools it brings point at it instead of a brew command', async () => {

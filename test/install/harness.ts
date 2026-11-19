@@ -90,12 +90,35 @@ export const plugins = (
     )
   );
 
+// The LaunchServices handlers Finder's Change All writes: content type → bundle id.
+export const defaultApps = (machine: Machine, handlers: Record<string, string>): void => {
+  const dir = join(machine.home, 'Library', 'Preferences', 'com.apple.LaunchServices');
+  mkdirSync(dir, { recursive: true });
+  const entries = Object.entries(handlers)
+    .map(
+      ([type, app]) =>
+        `<dict><key>LSHandlerContentType</key><string>${type}</string><key>LSHandlerRoleAll</key><string>${app}</string></dict>`
+    )
+    .join('');
+  writeFileSync(
+    join(dir, 'com.apple.launchservices.secure.plist'),
+    `<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict><key>LSHandlers</key><array>${entries}</array></dict></plist>\n`
+  );
+};
+
+export const EDITOR_DEFAULTS = {
+  'public.plain-text': 'com.coteditor.coteditor',
+  'public.json': 'com.coteditor.coteditor',
+  'net.daringfireball.markdown': 'app.cyan.markedit'
+};
+
 export const everything = (machine: Machine): void => {
   ['brew', 'uv', 'gh', 'jq'].forEach((name) => tool(machine, name, '1.0.0'));
   stub(machine, 'pdftoppm', 'echo "pdftoppm version 26.09.0" >&2\nexit 0');
   stub(machine, 'xcode-select', '[ "$1" = -p ] && echo /Library/Developer/CommandLineTools\nexit 0');
   ['CotEditor', 'MarkEdit', 'Ghostty', 'Obsidian', 'Visual Studio Code'].forEach((name) => app(machine, name, '1.0'));
   app(machine, 'cmux', '0.65.2');
+  defaultApps(machine, EDITOR_DEFAULTS);
 };
 
 // fnm reports its default Node only when STUB_FNM_NODE names one.
