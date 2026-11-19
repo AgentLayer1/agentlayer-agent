@@ -1,9 +1,9 @@
-# Heartbeat sources
+# Proposal sources
 
-A heartbeat source lets a plugin, or the operator's own home, add what the heartbeat looks at without changing this plugin. It is an ordinary skill with two marks:
+A proposal source lets a plugin, or the operator's own home, add what the heartbeat looks at without changing this plugin. It is an ordinary skill with two marks:
 
-- its **name** starts `heartbeat-` (`heartbeat-support`, `heartbeat-family`);
-- its **description** starts "Heartbeat source:" and says in a line what it watches.
+- its **name** starts `proposals-` (`proposals-support`, `proposals-family`);
+- its **description** starts "Proposal source:" and says in a line what it watches.
 
 Where it lives decides who has it: in a plugin's `skills/` for everyone who installs that plugin, or in a home's `.claude/skills/` for that home alone. For a few personal rules, a source is more than needed: `extensions/skills/proposals.md` in the home changes this skill directly.
 
@@ -23,12 +23,12 @@ A source with nothing to say returns nothing, and quickly: it runs on every wake
 
 ```markdown
 ---
-name: heartbeat-support
-description: Heartbeat source: tickets waiting on the operator for more than a day in the support queue.
+name: proposals-support
+description: Proposal source: tickets waiting on the operator for more than a day in the support queue.
 allowed-tools: mcp__plugin_acme_support__tickets
 ---
 
-# Heartbeat source: support
+# Proposal source: support
 
 List open tickets assigned to the operator (`tickets` with `status=open`). For each waiting more than a day,
 oldest first, at most three, return a candidate:

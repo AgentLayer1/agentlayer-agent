@@ -18,7 +18,7 @@ import {
 } from './beat';
 
 const MINUTE_MS = 60_000;
-const USAGE = 'Usage: /propose <start|later|skip> <id>';
+const USAGE = 'Usage: /proposal <start|later|skip> <id>';
 
 // Kept in session state, which outlives a /clear and a reload of this module, unlike its own variables.
 const beat = atom({ plugin: 'agentlayer', key: 'heartbeat' } as const, { wokeOn: '', owner: '' });
@@ -161,7 +161,7 @@ export const registerProposals = (on: On): void => {
     return next(e);
   });
 
-  on('command.run', { command: 'propose' }, async ($, e) => {
+  on('command.run', { command: 'proposal' }, async ($, e) => {
     const decision = parseDecision(e.args);
     return { text: decision ? await decide($, decision) : USAGE };
   });

@@ -16,7 +16,7 @@ const PROPOSAL = z.object({
     .max(120)
     .regex(/^[a-z0-9][a-z0-9:._/#@-]*$/i, 'a key like task:ab-012, gh:owner/repo#79 or sync')
     .describe(
-      'What it comes from, the key that keeps it from being proposed twice: task:<id>, gh:<owner>/<repo>#<n>, sync, or <plugin>:<key> from a heartbeat source.'
+      'What it comes from, the key that keeps it from being proposed twice: task:<id>, gh:<owner>/<repo>#<n>, sync, or <name>:<key> from a proposal source.'
     ),
   title: text(100).min(1).describe('What the session does, as an imperative: "Finish the reply to your accountant".'),
   trigger: text(160).min(1).describe('What happened that made you propose it: "Your accountant wrote two hours ago".'),

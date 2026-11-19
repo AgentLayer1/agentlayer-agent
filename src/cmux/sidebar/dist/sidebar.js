@@ -967,7 +967,7 @@ var proposalsSection = () => {
       body: () => body(proposal, (choice, place) => cmux("surface.send_text", {
         surface_id: place.surfaceId,
         workspace_id: place.workspaceId,
-        text: `/propose ${choice} ${item.id}
+        text: `/proposal ${choice} ${item.id}
 `
       }))
     };

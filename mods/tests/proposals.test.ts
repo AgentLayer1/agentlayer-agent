@@ -45,23 +45,23 @@ const heartbeatCalls = (host: FakeHost) => cliCalls(host).filter((args) => args.
 const cliCalls = (host: FakeHost) => host.argv.map((argv) => argv.slice(2).join(' ')).filter((args) => args.startsWith('proposals '));
 
 describe('proposals', () => {
-  test('/propose runs the decision through the CLI with no model turn', async ($, on) => {
+  test('/proposal runs the decision through the CLI with no model turn', async ($, on) => {
     const { host } = heartbeatHost(on);
-    const { text } = await run($, 'propose', 'start p-1');
+    const { text } = await run($, 'proposal', 'start p-1');
     expect(text).toBe('ran proposals decide start p-1');
     expect(host.argv.at(-1)?.slice(2)).toEqual(['proposals', 'decide', 'start', 'p-1']);
     expect(host.cwd.at(-1)).toBe(HOME);
   });
 
-  test('/propose without a choice and an id prints usage and decides nothing', async ($, on) => {
+  test('/proposal without a choice and an id prints usage and decides nothing', async ($, on) => {
     const { host } = heartbeatHost(on);
-    expect((await run($, 'propose', 'maybe p-1')).text).toBe('Usage: /propose <start|later|skip> <id>');
+    expect((await run($, 'proposal', 'maybe p-1')).text).toBe('Usage: /proposal <start|later|skip> <id>');
     expect(cliCalls(host)).toEqual([]);
   });
 
   test('a decision typed after a half-written prompt runs, never reaches the model, and gives the draft back', async ($, on) => {
     const { host, submitted, filled } = heartbeatHost(on);
-    const result = await $.prompt.submit({ text: 'hello there/propose skip p-2' });
+    const result = await $.prompt.submit({ text: 'hello there/proposal skip p-2' });
     await host.clock.settle();
     expect(result).toEqual({ drop: 'ran proposals decide skip p-2' });
     expect(submitted).toEqual([]);

@@ -6,9 +6,9 @@ type Choice = (typeof CHOICES)[number];
 const QUIET = { from: 23, to: 7 } as const;
 
 /**
- * A `/propose` decision typed after whatever was half-written in the prompt, as a sidebar button types it.
+ * A `/proposal` decision typed after whatever was half-written in the prompt, as a sidebar button types it.
  */
-export const DECISION_AT_END = new RegExp(`/propose\\s+(${CHOICES.join('|')})\\s+(\\S+)\\s*$`);
+export const DECISION_AT_END = new RegExp(`/proposal\\s+(${CHOICES.join('|')})\\s+(\\S+)\\s*$`);
 
 export interface Decision {
   choice: Choice;

@@ -140,7 +140,7 @@ export const PROPOSALS_FEATURE = {
   where: 'slash commands · the heartbeat wakes on its own clock',
   commands: [
     {
-      name: 'propose',
+      name: 'proposal',
       description: 'Start a proposed session, put it off until morning, or skip it (no Claude turn)',
       argumentHint: '<start|later|skip> <id>',
       immediate: true

@@ -46,7 +46,7 @@ export interface CmuxCall {
  */
 export const callCmux = (args: string[]): CmuxCall => {
   try {
-    // A cmux that stops answering mustn't hang the /propose that called it.
+    // A cmux that stops answering mustn't hang the /proposal that called it.
     const result = Bun.spawnSync([CMUX_BIN, ...args], { stdout: 'pipe', stderr: 'pipe', timeout: 30_000 });
     return { ok: result.exitCode === 0, output: `${result.stdout}${result.stderr}`.trim() };
   } catch (error) {

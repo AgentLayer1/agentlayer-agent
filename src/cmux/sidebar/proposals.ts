@@ -111,7 +111,7 @@ const heartbeatBody = (home: string, entry: HomeEntry) =>
 /**
  * The Manager's PROPOSED section: every joined agent's proposals as cards, those put off hidden until their time.
  * Proposals a reachable heartbeat can decide come first; each agent without one follows as a card that starts its
- * heartbeat, then its proposals. A proposal's button types `/propose <choice> <id>` into that agent's heartbeat; the card
+ * heartbeat, then its proposals. A proposal's button types `/proposal <choice> <id>` into that agent's heartbeat; the card
  * leaves when the decision is published and the sidebar redrawn, and stays when it was refused.
  */
 export const proposalsSection = (): HostSection => {
@@ -137,7 +137,7 @@ export const proposalsSection = (): HostSection => {
           cmux('surface.send_text', {
             surface_id: place.surfaceId,
             workspace_id: place.workspaceId,
-            text: `/propose ${choice} ${item.id}\n`
+            text: `/proposal ${choice} ${item.id}\n`
           })
         )
     };

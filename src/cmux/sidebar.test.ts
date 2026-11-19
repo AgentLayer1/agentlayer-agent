@@ -77,7 +77,7 @@ run('Start types the choice into the agent’s heartbeat, and the card stays unt
   expect(sidebar.tap('Start')).toEqual({
     kind: 'cmux',
     method: 'surface.send_text',
-    params: { surface_id: 'w-nova-s2-surface', workspace_id: 'w-nova', text: '/propose start p-a1\n' }
+    params: { surface_id: 'w-nova-s2-surface', workspace_id: 'w-nova', text: '/proposal start p-a1\n' }
   });
   expect(sidebar.visibleTexts(), 'a Start that fails leaves the card where it was').toContain('Reply to the supplier');
   const decided = { ...NOVA_ENTRY, proposals: NOVA_ENTRY.proposals.filter(({ id }) => id !== 'p-a1') };

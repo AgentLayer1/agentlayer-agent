@@ -1,6 +1,6 @@
 ---
 name: proposals
-description: The heartbeat's wake, run by its own clock in the session /heartbeat chose (or with /heartbeat now) - look at tasks, sync, GitHub and every heartbeat source skill, then top Proposals back up to five. Proposes only; never starts, sends or edits anything.
+description: The heartbeat's wake, run by its own clock in the session /heartbeat chose (or with /heartbeat now) - look at tasks, sync, GitHub and every proposal source skill, then top Proposals back up to five. Proposes only; never starts, sends or edits anything.
 disable-model-invocation: true
 allowed-tools: mcp__plugin_agentlayer_agent__proposal_add, mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_get, mcp__plugin_agentlayer_agent__compile_status, mcp__plugin_agentlayer_agent__github_sweep, Skill, Read, Bash
 ---
@@ -24,7 +24,7 @@ Look in this order, and stop looking once you hold a few more candidates than th
 1. **Tasks** (`task_query`): overdue and due-this-week P0/P1 tasks first, then the next unchecked step of an active P1 task (`task_get` for its checklist). Source key `task:<id>`.
 2. **The brain**: a sync last run three or more days ago, or a compile backlog (`compile_status`). Source key `sync` or `compile`.
 3. **GitHub**, only where the GitHub pack is set up: what waits on the operator (`github_sweep`): a review asked of them, a comment on their PR, red CI on their branch. Source key `gh:<owner>/<repo>#<n>`.
-4. **Heartbeat sources**: every skill in this session whose name starts `heartbeat-` and whose description starts "Heartbeat source:", from this plugin, another plugin or the home. Run each with the Skill tool; each returns candidates and adds nothing. The contract they follow is in [references/sources.md](references/sources.md).
+4. **Proposal sources**: every skill in this session whose name starts `proposals-` and whose description starts "Proposal source:", from this plugin, another plugin or the home. Run each with the Skill tool; each returns candidates and adds nothing. The contract they follow is in [references/sources.md](references/sources.md).
 
 ## 3. Propose the best few
 
