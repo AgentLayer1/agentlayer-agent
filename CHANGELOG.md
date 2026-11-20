@@ -61,8 +61,8 @@ them coming.
   `proposals decide <start|later|skip> <id>` and `proposals heartbeat`.
 - The heartbeat: `/heartbeat [15m | 2h | off | now | status]` makes one long-running session the
   home's heartbeat. It looks for proposals at once, then every 55 minutes (or the interval you set),
-  only while the session is idle, outside 23:00–07:00 in the home's timezone, and while there's room
-  for fewer than five showing. `/proposal <start|later|skip> <id>` decides one without a model turn.
+  only while the session is idle, outside 23:00–07:00 in the home's timezone, and while fewer than
+  five are showing and the 20-proposal backlog has room. `/proposal <start|later|skip> <id>` decides one without a model turn.
   Both are Claude Code mods; the heartbeat follows its session across `/clear` and `/resume`, and a
   takeover by another session says so on both sides.
 - The `proposals` skill is the heartbeat's wake: it looks at tasks, sync, GitHub and every proposal
@@ -82,7 +82,8 @@ them coming.
 ### Changed
 - The sidebar opens a session one way everywhere: a tab where you are, or a new workspace in the
   home when no workspace is selected or the selected one can't take a tab.
-- The cmux sidebar picks up cmux-custom-manager 0.4.4.
+- The Manager's session titles take two lines, section headers line up with their cards, badges drop
+  their dots, and a section's fold follows the data as it arrives (cmux-custom-manager 0.4.4).
 - The release skill offers a docs pass after the release: it finds the docs site beside the plugin,
   plans every page the release touches (shown in the question, with every changelog line covered),
   and regenerates the plugin facts and the demo dashboard. It no longer offers to push either repo;
@@ -101,7 +102,9 @@ them coming.
   in `settings.json`.
 - `manual: optional` — Proposals need a heartbeat. In Claude Code, run `/heartbeat` in one session
   you'll leave open in the home (in cmux, the PROPOSED card starts one for you). Without one, nothing
-  is proposed and nothing else changes.
+  is proposed on its own and nothing else changes.
+- `manual: optional` — In the cmux sidebar, each agent on the Mac shows "needs its agent updated"
+  until its next sync or dashboard refresh rewrites its part of the sidebar.
 
 ## [1.0.5] - 2026-11-19
 
