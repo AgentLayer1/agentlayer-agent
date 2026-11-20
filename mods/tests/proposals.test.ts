@@ -32,11 +32,14 @@ const start = async ($: Engine, host: FakeHost) => {
 // The token /heartbeat binds with: the conversation id and the clock when it was first chosen.
 const TOKEN = `session-1@${NOW.toString(36)}`;
 
-// A session that ran /heartbeat, so it is the heartbeat from the clock's current time.
+// A session that ran /heartbeat, so it is the heartbeat from the clock's current time; the look it takes at once is
+// left out of what the test then counts.
 const bound = async ($: Engine, on: On, every = '') => {
   const context = heartbeatHost(on);
   await start($, context.host);
   await run($, 'heartbeat', every);
+  await context.host.clock.settle();
+  context.host.commands.length = 0;
   return context;
 };
 
@@ -92,6 +95,25 @@ describe('proposals', () => {
     expect(cliCalls(host)).toEqual([]);
   });
 
+  test('/heartbeat looks for proposals at once, then on its interval', async ($, on) => {
+    const { host } = heartbeatHost(on);
+    await start($, host);
+    await run($, 'heartbeat');
+    await host.clock.settle();
+    expect(host.commands).toEqual([WAKE]);
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands).toEqual([WAKE, WAKE]);
+  });
+
+  test('/heartbeat with proposals already full binds without a look', async ($, on) => {
+    const { host } = heartbeatHost(on);
+    host.proposals.room = 0;
+    await start($, host);
+    await run($, 'heartbeat');
+    await host.clock.settle();
+    expect(host.commands).toEqual([]);
+  });
+
   test('the heartbeat wakes on its interval when the session is idle and proposals are short', async ($, on) => {
     const { host } = await bound($, on);
     await host.clock.advance(54 * MINUTE);
@@ -103,6 +125,8 @@ describe('proposals', () => {
   test('a new interval replaces the old clock rather than adding one', async ($, on) => {
     const { host } = await bound($, on);
     await run($, 'heartbeat', '15m');
+    await host.clock.settle();
+    host.commands.length = 0;
     await host.clock.advance(55 * MINUTE);
     expect(host.commands, 'three 15-minute wakes; a leftover 55-minute clock would add a fourth').toEqual([WAKE, WAKE, WAKE]);
   });

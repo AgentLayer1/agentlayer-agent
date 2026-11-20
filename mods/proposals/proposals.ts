@@ -151,6 +151,8 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
   const every = ask.every ? [`--every=${ask.every}`] : [];
   const text = await said($, ['proposals', 'heartbeat', `--owner=${await ownerOf($)}`, ...every]);
   await arm($);
+  // A new heartbeat looks right away rather than an interval from now, through the same gates as every tick.
+  $.clock.after(0, () => void tick($));
   return text;
 }
 
