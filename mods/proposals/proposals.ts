@@ -7,18 +7,17 @@ import type { Queue } from '../types';
 import {
   CHOICES,
   DECISION_AT_END,
-  QUIET_HOURS,
+  MINUTE_MS,
   dayIn,
   decisionInDraft,
-  isQuiet,
   parseDecision,
   parseHeartbeat,
+  lastWrite,
   parseList,
   type Decision,
   type ProposalList
 } from './beat';
 
-const MINUTE_MS = 60_000;
 const USAGE = `Usage: /proposal <${CHOICES.join('|')}> <id>`;
 
 // Kept in session state, which outlives a /clear and a reload of this module, unlike its own variables.
@@ -65,6 +64,8 @@ async function wake($: EngineInterface, now: number, zone: string): Promise<void
   const today = dayIn(now, zone);
   const { wokeOn } = await read($, beat);
   if (wokeOn && wokeOn !== today) {
+    const clearedId = await $.session.id();
+    await update($, beat, (current) => ({ ...current, clearedId }));
     await $.command.run({ command: 'clear' });
   }
   await update($, beat, (current) => ({ ...current, wokeOn: today }));
@@ -84,10 +85,20 @@ async function ownerOf($: EngineInterface): Promise<string> {
   return token;
 }
 
-const isOwner = (list: ProposalList | null, owner: string): boolean =>
+type Bound = ProposalList & { heartbeat: NonNullable<ProposalList['heartbeat']> };
+
+const isOwner = (list: ProposalList | null, owner: string): list is Bound =>
   owner !== '' && list?.heartbeat?.owner === owner;
 
-// Free unless every gate passes: this session is the heartbeat, no turn runs, it isn't quiet, and room is left.
+// The newest write to any other session's transcript in this home's folder, the heartbeat's own and the one its last
+// /clear left behind skipped; null when the engine keeps no transcript to find the folder by.
+async function lastUse($: EngineInterface): Promise<number | null> {
+  const [{ transcriptPath }, id, { clearedId }] = await Promise.all([$.session.info(), $.session.id(), read($, beat)]);
+  const folder = transcriptPath.slice(0, transcriptPath.lastIndexOf('/'));
+  const entries = folder ? await $.fs.list(folder).catch(() => null) : null;
+  return entries && lastWrite(entries, [id, clearedId ?? '']);
+}
+
 async function tick($: EngineInterface): Promise<void> {
   const [list, { isBusy }, { owner }] = await Promise.all([readList($), read($, queue), read($, beat)]);
   if (!list) {
@@ -106,29 +117,35 @@ async function tick($: EngineInterface): Promise<void> {
     ticker = undefined;
     return;
   }
-  const now = await $.clock.now();
-  if (isBusy || isQuiet(now, list.timezone) || list.room === 0) {
+  if (isBusy || list.room === 0) {
+    return;
+  }
+  const [now, used] = await Promise.all([$.clock.now(), lastUse($)]);
+  // A home it can't see is treated as in use, since skipping would stop the heartbeat for good.
+  if (used !== null && now - used >= list.heartbeat.everyMinutes * MINUTE_MS) {
     return;
   }
   await wake($, now, list.timezone);
 }
 
 // Only a process that ran /heartbeat holds a token, so every other session starts without reading the ledger.
-async function arm($: EngineInterface): Promise<void> {
+async function arm($: EngineInterface): Promise<Bound | null> {
   const { owner } = await read($, beat);
   ticker?.cancel();
   ticker = undefined;
   if (!owner) {
-    return;
+    return null;
   }
   const list = await readList($);
-  if (list?.heartbeat && isOwner(list, owner)) {
-    ticker = $.clock.every(list.heartbeat.everyMinutes * MINUTE_MS, () => void tick($));
+  if (!isOwner(list, owner)) {
+    return null;
   }
+  ticker = $.clock.every(list.heartbeat.everyMinutes * MINUTE_MS, () => void tick($));
+  return list;
 }
 
 async function status($: EngineInterface): Promise<string> {
-  const [list, now, { owner }] = await Promise.all([readList($), $.clock.now(), read($, beat)]);
+  const [list, now, { owner }, used] = await Promise.all([readList($), $.clock.now(), read($, beat), lastUse($)]);
   if (!list) {
     return "Couldn't read the proposals.";
   }
@@ -137,8 +154,8 @@ async function status($: EngineInterface): Promise<string> {
     return `No heartbeat. ${showing}. /heartbeat makes this session the one.`;
   }
   const who = isOwner(list, owner) ? 'This session' : 'Another session';
-  const quiet = isQuiet(now, list.timezone) ? `quiet now (${QUIET_HOURS})` : `quiet ${QUIET_HOURS}`;
-  return `${who} is the heartbeat, every ${list.heartbeat.everyMinutes}m, ${quiet}. ${showing}.`;
+  const seen = used === null ? "its sessions can't be seen" : used === 0 ? 'no other session yet' : `last activity ${Math.round((now - used) / MINUTE_MS)}m ago`;
+  return `${who} is the heartbeat, every ${list.heartbeat.everyMinutes}m, skipping a wake when no other session in the home was active in that time (${seen}). ${showing}.`;
 }
 
 async function heartbeat($: EngineInterface, args: string): Promise<string> {
@@ -158,10 +175,19 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
   }
   const every = ask.every ? [`--every=${ask.every}`] : [];
   const text = await said($, ['proposals', 'heartbeat', `--owner=${await ownerOf($)}`, ...every]);
-  await arm($);
-  // A new heartbeat looks right away rather than an interval from now, through the same gates as every tick.
-  $.clock.after(0, () => void tick($));
-  return text;
+  return `${text}${await firstLook($, await arm($))}`;
+}
+
+async function firstLook($: EngineInterface, list: Bound | null): Promise<string> {
+  if (!list) {
+    return '';
+  }
+  if (list.room === 0) {
+    return ' The proposals are full, so the first look waits for room.';
+  }
+  const now = await $.clock.now();
+  $.clock.after(0, () => void wake($, now, list.timezone));
+  return ' Looking for proposals now.';
 }
 
 export const registerProposals = (on: On): void => {

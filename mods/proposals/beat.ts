@@ -3,7 +3,7 @@
 export const CHOICES = ['start', 'later', 'skip'] as const;
 type Choice = (typeof CHOICES)[number];
 
-const QUIET = { from: 23, to: 7 } as const;
+export const MINUTE_MS = 60_000;
 
 /**
  * A `/proposal` decision typed after whatever was half-written in the prompt, as a sidebar button types it.
@@ -42,15 +42,21 @@ export const parseHeartbeat = (args: string): HeartbeatAsk => {
   return { kind: 'bind', every: text };
 };
 
-const hourIn = (epochMs: number, timeZone: string): number =>
-  Number(new Date(epochMs).toLocaleString('en-GB', { timeZone, hour: '2-digit', hourCycle: 'h23' }));
+const TRANSCRIPT = '.jsonl';
 
-export const isQuiet = (epochMs: number, timeZone: string): boolean => {
-  const hour = hourIn(epochMs, timeZone);
-  return hour >= QUIET.from || hour < QUIET.to;
-};
-
-export const QUIET_HOURS = `${QUIET.from}:00–${String(QUIET.to).padStart(2, '0')}:00`;
+/**
+ * The newest write to a session transcript in a folder listing, leaving out the given sessions; 0 when there is none.
+ */
+export const lastWrite = (
+  entries: readonly { name: string; kind: string; mtimeMs: number }[],
+  skip: readonly string[]
+): number =>
+  Math.max(
+    0,
+    ...entries
+      .filter(({ name, kind }) => kind === 'file' && name.endsWith(TRANSCRIPT) && !skip.includes(name.slice(0, -TRANSCRIPT.length)))
+      .map(({ mtimeMs }) => mtimeMs)
+  );
 
 export const dayIn = (epochMs: number, timeZone: string): string =>
   new Date(epochMs).toLocaleDateString('sv-SE', { timeZone });
@@ -64,7 +70,7 @@ export interface ProposalList {
   room: number;
   showing: readonly { id: string; title: string }[];
   heartbeat: { owner: string; everyMinutes: number } | null;
-  /** The home's timezone, which quiet hours and the day's first wake are read in. */
+  /** The home's timezone, which the day's first wake is read in. */
   timezone: string;
 }
 

@@ -95,10 +95,11 @@ describe('proposals', () => {
     expect(cliCalls(host)).toEqual([]);
   });
 
-  test('/heartbeat looks for proposals at once, then on its interval', async ($, on) => {
+  test('/heartbeat looks for proposals at once, then on its interval, at any hour', async ($, on) => {
     const { host } = heartbeatHost(on);
+    await host.clock.set(Date.parse('2026-03-11T02:10:00+08:00'));
     await start($, host);
-    await run($, 'heartbeat');
+    expect((await run($, 'heartbeat')).text).toEndWith(' Looking for proposals now.');
     await host.clock.settle();
     expect(host.commands).toEqual([WAKE]);
     await host.clock.advance(55 * MINUTE);
@@ -109,7 +110,7 @@ describe('proposals', () => {
     const { host } = heartbeatHost(on);
     host.proposals.room = 0;
     await start($, host);
-    await run($, 'heartbeat');
+    expect((await run($, 'heartbeat')).text).toEndWith(' The proposals are full, so the first look waits for room.');
     await host.clock.settle();
     expect(host.commands).toEqual([]);
   });
@@ -185,15 +186,66 @@ describe('proposals', () => {
     expect(host.commands).toEqual([WAKE]);
   });
 
-  test('quiet hours hold the wake until morning', async ($, on) => {
+  test('/heartbeat with an interval looks at once, then waits that full interval', async ($, on) => {
     const { host } = heartbeatHost(on);
-    await host.clock.set(Date.parse('2026-03-10T23:10:00+08:00'));
+    await start($, host);
+    await run($, 'heartbeat', '15m');
+    await host.clock.settle();
+    expect(host.commands).toEqual([WAKE]);
+    await host.clock.advance(14 * MINUTE);
+    expect(host.commands).toEqual([WAKE]);
+    await host.clock.advance(MINUTE);
+    expect(host.commands).toEqual([WAKE, WAKE]);
+  });
+
+  test('a wake skips when no other session in the home wrote in the interval, and the next one after one does wakes', async ($, on) => {
+    const { host } = await bound($, on);
+    host.transcripts = { 'session-9': NOW };
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands, 'its own transcript, written just now, is not another session').toEqual([]);
+    await host.clock.advance(20 * MINUTE);
+    host.transcripts = { 'session-9': host.clock.now() };
+    await host.clock.advance(35 * MINUTE);
+    expect(host.commands).toEqual([WAKE]);
+  });
+
+  test('a home with no other session skips every wake, though the bind still looked', async ($, on) => {
+    const { host } = heartbeatHost(on);
+    host.transcripts = {};
     await start($, host);
     await run($, 'heartbeat');
-    await host.clock.set(Date.parse('2026-03-11T06:59:00+08:00'));
-    expect(host.commands).toEqual([]);
+    await host.clock.settle();
+    await host.clock.advance(3 * 55 * MINUTE);
+    expect(host.commands).toEqual([WAKE]);
+  });
+
+  test('a session that keeps no transcript wakes on its interval, since it cannot tell', async ($, on) => {
+    const { host } = await bound($, on);
+    host.transcriptPath = '';
+    host.transcripts = {};
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE]);
+  });
+
+  test("the transcript the day's clear left behind is not read as another session", async ($, on) => {
+    const cleared: { host?: FakeHost } = {};
+    on('command.run', { command: 'clear' }, () => {
+      if (cleared.host) {
+        cleared.host.sessionId = 'session-2';
+        cleared.host.transcripts = { 'session-1': cleared.host.clock.now() + MINUTE };
+        cleared.host.commands.push('clear');
+      }
+      return {};
+    });
+    const { host } = await bound($, on);
+    cleared.host = host;
+    host.transcripts = {};
+    await host.clock.set(NOW + 24 * 60 * MINUTE);
+    host.transcripts = { 'session-9': host.clock.now() };
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands).toEqual(['clear', WAKE]);
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands, 'session-1 was the heartbeat before its clear').toEqual(['clear', WAKE]);
   });
 
   test("the day's first wake clears the conversation first", async ($, on) => {
@@ -280,7 +332,7 @@ describe('proposals', () => {
     await host.clock.settle();
     expect(host.commands).toEqual([WAKE]);
     expect((await run($, 'heartbeat', 'status')).text).toBe(
-      'This session is the heartbeat, every 55m, quiet 23:00–07:00. 0 of 5 proposals showing.'
+      'This session is the heartbeat, every 55m, skipping a wake when no other session in the home was active in that time (last activity 0m ago). 0 of 5 proposals showing.'
     );
   });
 });

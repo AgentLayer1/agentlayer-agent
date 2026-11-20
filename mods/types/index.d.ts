@@ -134,6 +134,8 @@ export interface ReportRow {
 export interface HeartbeatClock {
   wokeOn: string;
   owner: string;
+  /** The conversation the day's /clear left, so its last writes aren't read as another session's. */
+  clearedId?: string;
 }
 
 export interface Queue {

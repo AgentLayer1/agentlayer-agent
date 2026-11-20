@@ -15,6 +15,8 @@ export const STATS_TOOL = `mcp__${PLUGIN}__sync_stats` as const;
 
 export const HOME = '/fixture/home';
 export const USER_HOME = '/fixture/user';
+/** The home's folder of session transcripts, as Claude Code keeps it under the user's config. */
+export const PROJECTS = `${USER_HOME}/.claude/projects/-fixture-home`;
 export const CODE = '/fixture/code';
 /**
  * How long the fake person takes to answer a question.
@@ -80,6 +82,10 @@ export interface FakeMachine {
   shellWrites: Record<string, string[]>;
   /** Modified times by path; a file not listed was last modified at 0. */
   mtimes: Record<string, number>;
+  /** What `$.session.info()` names as this conversation's transcript; '' for a session that keeps none. */
+  transcriptPath: string;
+  /** The last write to each other session's transcript in the home's folder; left unset, one written just now. */
+  transcripts?: Record<string, number>;
 }
 
 export const machine = (overrides: Partial<FakeMachine> = {}): FakeMachine => ({
@@ -111,6 +117,7 @@ export const machine = (overrides: Partial<FakeMachine> = {}): FakeMachine => ({
   isHome: true,
   shellWrites: {},
   mtimes: {},
+  transcriptPath: `${PROJECTS}/session-1.jsonl`,
   ...overrides
 });
 
@@ -217,6 +224,26 @@ export const fakeHost = (on: On, host: FakeMachine = machine()): FakeHost => {
   const clock = mock.clock(on, { now: NOW });
   on('session.root', () => ({ value: host.root }));
   on('session.id', () => ({ value: host.sessionId }));
+  on('session.info', () => ({ value: { transcriptPath: host.transcriptPath } }));
+  // This conversation's own transcript and a subagent folder ride along, as in a real project folder.
+  on('fs.list', (_$, e) => {
+    if (e.path !== PROJECTS) {
+      throw new Error(`ENOENT ${e.path}`);
+    }
+    const others = Object.entries(host.transcripts ?? { 'session-9': clock.now() });
+    return {
+      value: [
+        ...[[host.sessionId, clock.now()] as const, ...others].map(([id, mtimeMs]) => ({
+          name: `${id}.jsonl`,
+          kind: 'file' as const,
+          size: 1,
+          mtimeMs,
+          isLink: false
+        })),
+        { name: 'session-9', kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false }
+      ]
+    };
+  });
   on('env.get', () => ({ value: USER_HOME }));
   on('settings.read', () => ({ value: { permissions: { additionalDirectories: [CODE, '~/granted'] } } }));
   on('process.run', (_$, e) => {
