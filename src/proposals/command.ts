@@ -1,5 +1,5 @@
 import { ADAPTERS } from '@/adapters';
-import { FOLDERS } from '@/config';
+import { FOLDERS, TIMEZONE } from '@/config';
 import { CLI_COMMAND } from '@/shared/naming';
 import { readProposalLedger, writeProposalLedger } from './ledger';
 import {
@@ -33,7 +33,7 @@ const list = (args: readonly string[]): number => {
   const showing = showingNow(ledger, now);
   const room = roomFor(ledger, now);
   if (args.includes('--json')) {
-    console.log(JSON.stringify({ target: TARGET, room, showing, heartbeat: ledger.heartbeat }));
+    console.log(JSON.stringify({ target: TARGET, room, showing, heartbeat: ledger.heartbeat, timezone: TIMEZONE }));
     return 0;
   }
   const lines = showing.map(({ id, title, estimate }) => `${id}  ${title}${estimate ? ` (${estimate})` : ''}`);

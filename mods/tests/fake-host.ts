@@ -183,7 +183,7 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
   }
   if (args === 'proposals list --json') {
     const room = host.proposals.room ?? Math.max(0, host.proposals.target - host.proposals.showing.length);
-    return ran(0, JSON.stringify({ ...host.proposals, room }));
+    return ran(0, JSON.stringify({ ...host.proposals, room, timezone: 'Asia/Kuala_Lumpur' }));
   }
   // The CLI's heartbeat binding, kept so a test sees the owner and interval it was given.
   const binding = /^proposals heartbeat --owner=(\S+)(?: --every=(\d+)\s*(h|m))?/.exec(args);

@@ -28,7 +28,6 @@ const queue = atom({ plugin: 'agentlayer', key: 'queue' } as const, QUEUE_IDLE);
 
 // The wake clock, armed only in the session that is the home's heartbeat.
 let ticker: { cancel: () => void } | undefined;
-let timeZone: Promise<string | undefined> | undefined;
 
 // The session root, not its cwd: a shell `cd` in a turn moves the cwd out of the home.
 async function runCli($: EngineInterface, args: readonly string[]): Promise<string> {
@@ -52,28 +51,23 @@ async function readList($: EngineInterface): Promise<ProposalList | null> {
   return runCli($, ['proposals', 'list', '--json']).then(parseList, () => null);
 }
 
-function zoneOf($: EngineInterface): Promise<string | undefined> {
-  timeZone ??= runCli($, ['ping']).then(
-    (stdout) => (JSON.parse(stdout) as { timezone?: string }).timezone,
-    () => undefined
-  );
-  return timeZone;
-}
-
 async function decide($: EngineInterface, { choice, id }: Decision): Promise<string> {
   return said($, ['proposals', 'decide', choice, id]);
 }
 
+function refill($: EngineInterface): void {
+  $.clock.after(0, () => void $.command.run({ command: `${$.plugin.name}:proposals` }));
+}
+
 // The day's first wake clears the conversation first, so the heartbeat's context doesn't grow without end.
-async function wake($: EngineInterface): Promise<void> {
-  const [now, zone] = await Promise.all([$.clock.now(), zoneOf($)]);
+async function wake($: EngineInterface, now: number, zone: string): Promise<void> {
   const today = dayIn(now, zone);
   const { wokeOn } = await read($, beat);
   if (wokeOn && wokeOn !== today) {
     await $.command.run({ command: 'clear' });
   }
   await update($, beat, (current) => ({ ...current, wokeOn: today }));
-  $.clock.after(0, () => void $.command.run({ command: `${$.plugin.name}:proposals` }));
+  refill($);
 }
 
 // The heartbeat is this running process, named by a token it picks once and keeps in session state: a /clear or a
@@ -103,11 +97,11 @@ async function tick($: EngineInterface): Promise<void> {
     ticker = undefined;
     return;
   }
-  const [now, zone] = await Promise.all([$.clock.now(), zoneOf($)]);
-  if (isBusy || isQuiet(now, zone) || list.room === 0) {
+  const now = await $.clock.now();
+  if (isBusy || isQuiet(now, list.timezone) || list.room === 0) {
     return;
   }
-  await wake($);
+  await wake($, now, list.timezone);
 }
 
 async function arm($: EngineInterface): Promise<void> {
@@ -120,7 +114,7 @@ async function arm($: EngineInterface): Promise<void> {
 }
 
 async function status($: EngineInterface): Promise<string> {
-  const [list, now, zone, { owner }] = await Promise.all([readList($), $.clock.now(), zoneOf($), read($, beat)]);
+  const [list, now, { owner }] = await Promise.all([readList($), $.clock.now(), read($, beat)]);
   if (!list) {
     return "Couldn't read the proposals.";
   }
@@ -129,7 +123,7 @@ async function status($: EngineInterface): Promise<string> {
     return `No heartbeat. ${showing}. /heartbeat makes this session the one.`;
   }
   const who = isOwner(list, owner) ? 'This session' : 'Another session';
-  const quiet = isQuiet(now, zone) ? `quiet now (${QUIET_HOURS})` : `quiet ${QUIET_HOURS}`;
+  const quiet = isQuiet(now, list.timezone) ? `quiet now (${QUIET_HOURS})` : `quiet ${QUIET_HOURS}`;
   return `${who} is the heartbeat, every ${list.heartbeat.everyMinutes}m, ${quiet}. ${showing}.`;
 }
 
@@ -139,8 +133,8 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
     return status($);
   }
   if (ask.kind === 'now') {
-    // After this command returns: a clear run from inside it would wait on the command itself.
-    $.clock.after(0, () => void wake($));
+    // A refill only: the day's clear belongs to the heartbeat's own clock, never to a session that asked for one.
+    refill($);
     return 'Looking for proposals now.';
   }
   if (ask.kind === 'off') {

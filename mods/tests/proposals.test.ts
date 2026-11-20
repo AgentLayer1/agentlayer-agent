@@ -222,6 +222,16 @@ describe('proposals', () => {
     expect(host.commands).toEqual([WAKE]);
   });
 
+  test('/heartbeat now in an ordinary session refills on any day and never clears it', async ($, on) => {
+    const { host } = heartbeatHost(on);
+    await run($, 'heartbeat', 'now');
+    await host.clock.settle();
+    await host.clock.set(NOW + 24 * 60 * MINUTE);
+    await run($, 'heartbeat', 'now');
+    await host.clock.settle();
+    expect(host.commands).toEqual([WAKE, WAKE]);
+  });
+
   test('/heartbeat now wakes at once, and status says who the heartbeat is', async ($, on) => {
     const { host } = await bound($, on);
     expect((await run($, 'heartbeat', 'now')).text).toBe('Looking for proposals now.');

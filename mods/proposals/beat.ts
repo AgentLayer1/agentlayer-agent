@@ -64,6 +64,8 @@ export interface ProposalList {
   room: number;
   showing: readonly { id: string; title: string }[];
   heartbeat: { owner: string; everyMinutes: number } | null;
+  /** The home's timezone, which quiet hours and the day's first wake are read in. */
+  timezone: string;
 }
 
 export const parseList = (stdout: string): ProposalList | null => {
@@ -74,6 +76,7 @@ export const parseList = (stdout: string): ProposalList | null => {
     }
     const { target, showing } = data;
     const room = 'room' in data ? data.room : undefined;
+    const timezone = 'timezone' in data ? data.timezone : undefined;
     const heartbeat = 'heartbeat' in data ? data.heartbeat : null;
     const beat =
       typeof heartbeat === 'object' &&
@@ -84,8 +87,11 @@ export const parseList = (stdout: string): ProposalList | null => {
       typeof heartbeat.everyMinutes === 'number'
         ? { owner: heartbeat.owner, everyMinutes: heartbeat.everyMinutes }
         : null;
-    return typeof target === 'number' && typeof room === 'number' && Array.isArray(showing)
-      ? { target, room, showing, heartbeat: beat }
+    return typeof target === 'number' &&
+      typeof room === 'number' &&
+      typeof timezone === 'string' &&
+      Array.isArray(showing)
+      ? { target, room, showing, heartbeat: beat, timezone }
       : null;
   } catch {
     return null;
