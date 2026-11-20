@@ -16,9 +16,9 @@ a bumped `plugin.json` version + a `CHANGELOG.md` entry whose `### Upgrade` bloc
 tells every consumer exactly what their home needs after they `/plugin update`. Then it
 offers to bring the docs site level with the release (Step 6).
 
-Runs against the plugin repo at `${CLAUDE_PLUGIN_ROOT}`. **Never commits, tags, or
-pushes without explicit approval** — it stages everything and stops (per the
-standing "one approval ≠ blanket commit license" rule). Every command below names the repo
+Runs against the plugin repo at `${CLAUDE_PLUGIN_ROOT}`. **Never commits or tags without
+explicit approval, and never pushes**: it stages everything and stops (per the standing
+"one approval ≠ blanket commit license" rule), and the maintainer pushes after checking. Every command below names the repo
 with `git -C "${CLAUDE_PLUGIN_ROOT}"` or an absolute path, so the session stays in the home
 (the `guard` hook refuses a `cd` that would move it) and no git call lands in the home's own
 repo. Shell variables don't survive between calls: where a block says `<range>`, write the
@@ -206,24 +206,23 @@ git -C "${CLAUDE_PLUGIN_ROOT}" --no-pager diff -- .claude-plugin/plugin.json .co
 git -C "${CLAUDE_PLUGIN_ROOT}" status --short
 ```
 
-Then **ask** with the `AskUserQuestion` tool how far to take it — never commit, tag, or
-push without an explicit choice (per the standing "one approval ≠ blanket commit license"
-rule). Offer exactly these options:
+Then **ask** with the `AskUserQuestion` tool how far to take it — never commit or tag
+without an explicit choice (per the standing "one approval ≠ blanket commit license"
+rule). Offer exactly these options, and never a push:
 
-- **Commit only** — `git commit`, no tag, no push.
+- **Commit only** — `git commit`, no tag.
 - **Commit + tag** — `git commit` then annotated `git tag vX.Y.Z`.
-- **Commit + tag + push** — also `git push && git push --tags` to the marketplace remote.
 
 ("Other" lets the maintainer abort or hand-tune.) Then run **only** the chosen subset:
 
 ```bash
 git -C "${CLAUDE_PLUGIN_ROOT}" add .claude-plugin/plugin.json .codex-plugin/plugin.json CHANGELOG.md   # + any release-scoped files
 git -C "${CLAUDE_PLUGIN_ROOT}" commit -m "Release vX.Y.Z"
-git -C "${CLAUDE_PLUGIN_ROOT}" tag -a vX.Y.Z -m "vX.Y.Z"                   # commit+tag and above only
-git -C "${CLAUDE_PLUGIN_ROOT}" push && git -C "${CLAUDE_PLUGIN_ROOT}" push --tags   # push option only
+git -C "${CLAUDE_PLUGIN_ROOT}" tag -a vX.Y.Z -m "vX.Y.Z"                   # commit+tag only
 ```
 
-A pushed tag never moves. If `vX.Y.Z` already exists on the remote, leave it where it is:
+An untagged release commit can still take fixes before the tag: the maintainer tags the commit
+they settle on. A pushed tag never moves. If `vX.Y.Z` already exists on the remote, leave it where it is:
 never `git tag -f`, delete and re-create, or force-push a tag. Later commits ride into the next
 release's range.
 
@@ -269,8 +268,13 @@ would notice, find every page it touches:
   redirect in the site's `next.config.mjs`, and links into it from this repo (the README, skills)
   are updated in the same pass.
 
-Show the plan as a table (page · add, change, remove or move · what · the commit behind it), then ask
-with the `AskUserQuestion` tool:
+Then check coverage: every line of the entry's Added, Changed and Fixed groups maps to at least one
+row, or to a row saying `no page` with the reason. A maintainer-facing line counts too (a change to
+this skill or to `upgrade` changes the pages that describe them).
+
+Ask with the `AskUserQuestion` tool, with the plan as a table (page · add, change, remove or move ·
+what · the commit behind it) in the first option's `preview`. The dialog may be all the maintainer
+sees, so a table written before the question doesn't count, and the question names the page count.
 
 - **Apply the whole plan** (Recommended)
 - **Changelog and upgrade notes only**
@@ -289,16 +293,18 @@ pnpm -C "<site>" --filter @agentlayer/agentlayer lint && pnpm -C "<site>" --filt
 a page you touched is fixed, never added to the baseline.
 
 Show `git -C "<site>" status --short` and the diff, then ask with the `AskUserQuestion` tool:
-**Commit**, **Commit + push**, or **Leave uncommitted**. Commits follow the earlier releases' shape:
-`Document agentlayer X.Y.Z` (changelog, upgrade notes, reference pages), one commit per sizeable
-feature-page change, and `Generate the plugin facts and the demo dashboard from agentlayer X.Y.Z`.
-If Step 5 stopped short of pushing the tag, recommend leaving the docs unpushed too: pages for a
-release nobody can install yet mislead. Deploying the site stays with the maintainer.
+**Commit** or **Leave uncommitted**, never a push. Commits go on the branch the site is on and follow
+the earlier releases' shape: `Document agentlayer X.Y.Z` (changelog, upgrade notes, reference pages),
+one commit per sizeable feature-page change, and
+`Generate the plugin facts and the demo dashboard from agentlayer X.Y.Z`. Deploying the site stays
+with the maintainer.
 
 ## Step 7 — Hand off
 
-Say where the docs stand: committed, pushed, left uncommitted, or skipped, and that no page was
-looked at rendered (the site's dev server runs in the maintainer's shell).
+Say where the plugin and the docs stand (committed, tagged, left uncommitted, or skipped) and that no
+page was looked at rendered (the site's dev server runs in the maintainer's shell). Pushing is the
+maintainer's, after they've checked: the plugin's branch and tag first, then the site, since pages
+for a release nobody can install yet mislead.
 
 Remind the maintainer of the consumer upgrade path so it can go in release notes:
 
