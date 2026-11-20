@@ -136,6 +136,7 @@ describe('proposals', () => {
     await start($, host);
     await host.clock.advance(3 * 55 * MINUTE);
     expect(host.commands).toEqual([]);
+    expect(host.toasts, 'it never held the heartbeat, so it has nothing to say').toEqual([]);
     expect((await run($, 'heartbeat', 'status')).text).toStartWith('Another session is the heartbeat');
   });
 
@@ -147,6 +148,17 @@ describe('proposals', () => {
     expect(host.commands).toEqual([]);
     expect(heartbeatCalls(host)).toEqual([`proposals heartbeat --owner=${TOKEN}`]);
     expect(host.proposals.heartbeat).toEqual({ owner: 'session-7@newer', everyMinutes: 15 });
+    expect(host.toasts, 'said once, when it stopped').toEqual([
+      'Another session took over the heartbeat; this one stopped looking for proposals.'
+    ]);
+  });
+
+  test('a heartbeat turned off from another session says so once, and stops', async ($, on) => {
+    const { host } = await bound($, on);
+    host.proposals.heartbeat = null;
+    await host.clock.advance(3 * 55 * MINUTE);
+    expect(host.commands).toEqual([]);
+    expect(host.toasts).toEqual(['The heartbeat was turned off; this session stopped looking for proposals.']);
   });
 
   test('a running turn or full proposals hold the wake', async ($, on) => {

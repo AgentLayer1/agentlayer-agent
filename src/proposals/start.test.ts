@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, spyOn, test } from 'bun:test';
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { FILES, FOLDERS } from '@/config';
@@ -117,6 +117,22 @@ test('a ledger that won’t parse is never written over, a Start on it opens not
   expect(runProposalsCommand('list', ['--json'])).toBe(1);
   expect(readFileSync(FILES.PROPOSALS, 'utf-8')).toBe(broken);
   rmSync(FILES.PROPOSALS, { force: true });
+});
+
+test('binding a new owner says it took over from the one before; rebinding the same owner does not', () => {
+  rmSync(FILES.PROPOSALS, { force: true });
+  const said = spyOn(console, 'log').mockImplementation(() => {});
+  try {
+    runProposalsCommand('heartbeat', ['--owner=first']);
+    runProposalsCommand('heartbeat', ['--owner=first', '--every=15m']);
+    runProposalsCommand('heartbeat', ['--owner=second']);
+    const lines = said.mock.calls.map(([line]) => String(line));
+    expect(lines.map((line) => line.includes('took over from another session'))).toEqual([false, false, true]);
+    expect(readProposalLedger().heartbeat?.owner).toBe('second');
+  } finally {
+    said.mockRestore();
+    rmSync(FILES.PROPOSALS, { force: true });
+  }
 });
 
 test('the core never imports an adapter', () => {

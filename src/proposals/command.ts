@@ -63,10 +63,13 @@ const heartbeat = (args: readonly string[]): number => {
     return 1;
   }
   const places = ADAPTERS.map((adapter) => adapter.locate(process.env)).filter((place) => place !== null);
-  writeProposalLedger(setHeartbeat(readProposalLedger(), owner, places, minutes));
+  const ledger = readProposalLedger();
+  const tookOver = ledger.heartbeat !== null && ledger.heartbeat.owner !== owner;
+  writeProposalLedger(setHeartbeat(ledger, owner, places, minutes));
   publish();
+  const from = tookOver ? ' It took over from another session, which stops at its next tick.' : '';
   const warm = minutes > 60 ? ' Over an hour apart, each wake pays to load the context again.' : '';
-  console.log(`This session is the heartbeat now: it looks for proposals every ${minutes} minutes.${warm}`);
+  console.log(`This session is the heartbeat now: it looks for proposals every ${minutes} minutes.${from}${warm}`);
   return 0;
 };
 

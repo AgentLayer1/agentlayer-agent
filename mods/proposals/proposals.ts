@@ -94,6 +94,14 @@ async function tick($: EngineInterface): Promise<void> {
     return;
   }
   if (!isOwner(list, owner)) {
+    // The clock only runs in the session that was the heartbeat, so this session just lost the job.
+    if (ticker) {
+      void $.ui.toast(
+        list.heartbeat
+          ? 'Another session took over the heartbeat; this one stopped looking for proposals.'
+          : 'The heartbeat was turned off; this session stopped looking for proposals.'
+      );
+    }
     ticker?.cancel();
     ticker = undefined;
     return;
