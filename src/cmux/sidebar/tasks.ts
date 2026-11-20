@@ -1,7 +1,7 @@
 import type { HomeEntry, TaskItem } from './data';
 import { dueLabel, isoDay, type DueLabel } from './due';
 import { discussIcon } from './session';
-import { GREEN, GREY, keepWidth, listRow, nowMs, ORANGE, pill, RED, TITLE_OPACITY } from './style';
+import { GREEN, GREY, keepWidth, listRow, nowMs, ORANGE, RED, shrinkingPill, TITLE_OPACITY } from './style';
 
 const OPEN = { symbol: 'circle', color: GREY };
 const STATUS: Readonly<Record<string, { symbol: string; color: string }>> = {
@@ -52,7 +52,7 @@ const taskMeta = (entry: HomeEntry, task: TaskItem, projectColor?: string) =>
         .color(() => TONE[dueLabel(task.due, today())?.tone ?? 'later'])
     ),
     Spacer({ minLength: 0 }),
-    ...(projectColor ? [pill(task.project, projectColor)] : []),
+    ...(projectColor ? [shrinkingPill(task.project, projectColor)] : []),
     ...(task.comments
       ? [
           HStack({ spacing: 2 }, [

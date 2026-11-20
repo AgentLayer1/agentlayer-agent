@@ -132,17 +132,23 @@ export const keepWidth = (view: View) => view.lineLimit(1).fixedSize('horizontal
 /**
  * A word on a tint of its own colour, for a project or a report's status. `color` is `#rrggbb`.
  */
-export const pill = (label: string, color: string) =>
-  keepWidth(
-    Text(label)
-      .font(9)
-      .weight('semibold')
-      .color(color)
-      .paddingHorizontal(5)
-      .paddingVertical(1)
-      .background(`${color}26`)
-      .cornerRadius(4)
-  );
+const pillText = (label: string, color: string) =>
+  Text(label)
+    .font(9)
+    .weight('semibold')
+    .color(color)
+    .paddingHorizontal(5)
+    .paddingVertical(1)
+    .background(`${color}26`)
+    .cornerRadius(4);
+
+export const pill = (label: string, color: string) => keepWidth(pillText(label, color));
+
+/**
+ * A pill that truncates rather than widen its row: for a line of fixed-width items with no room to spare.
+ */
+export const shrinkingPill = (label: string, color: string) =>
+  pillText(label, color).lineLimit(1).truncation('tail');
 
 /**
  * A plain icon button for the top row; `help` names it on hover.

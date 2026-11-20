@@ -273,6 +273,14 @@ run('Projects opens the dashboard and the roadmap as full tabs', () => {
 
 const between = (texts: string[], from: string, to: string) => texts.slice(texts.indexOf(from), texts.indexOf(to));
 
+run('a task row in the Tasks card lets its project pill truncate, so its fixed-width line never widens the page', () => {
+  const sidebar = onProjects();
+  sidebar.tap('Tasks');
+  const props = sidebar.propsOf('acme-app');
+  expect(props).toMatchObject({ lineLimit: 1, truncation: 'tail' });
+  expect(props?.fixedSize, 'a fixed pill is what widened the page').toBeUndefined();
+});
+
 run('the Tasks card leads with every live task counted, what is overdue or due this week, folded', () => {
   const texts = onProjects().visibleTexts();
   expect(between(texts, 'Tasks', 'AT WORK'), 'title, 1 active, 1 blocked, 3 open, then the due tallies').toEqual([

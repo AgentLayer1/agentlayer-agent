@@ -405,7 +405,9 @@ var dividedList = (items, key, row) => {
 };
 var when2 = (show, build) => ForEach({ items: () => show() ? ["shown"] : [], key: (name) => name }, build);
 var keepWidth = (view) => view.lineLimit(1).fixedSize("horizontal");
-var pill = (label, color) => keepWidth(Text(label).font(9).weight("semibold").color(color).paddingHorizontal(5).paddingVertical(1).background(`${color}26`).cornerRadius(4));
+var pillText = (label, color) => Text(label).font(9).weight("semibold").color(color).paddingHorizontal(5).paddingVertical(1).background(`${color}26`).cornerRadius(4);
+var pill = (label, color) => keepWidth(pillText(label, color));
+var shrinkingPill = (label, color) => pillText(label, color).lineLimit(1).truncation("tail");
 var toolIcon = (symbol, help, onTap) => Image(symbol).font(11).color("secondary").padding(5).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
 var CARD = "#7f7f7f12";
 var foldingCard = (header, expanded, setExpanded, body) => VStack({ spacing: 0 }, [
@@ -609,7 +611,7 @@ var taskMeta = (entry, task, projectColor) => HStack({ spacing: 6 }, [
   keepWidth(Text(task.priority).font(10).weight("semibold").monospaced().color(URGENT.has(task.priority) ? ORANGE : "tertiary")),
   keepWidth(Text(() => dueLabel(task.due, today())?.text ?? "").font(10).color(() => TONE2[dueLabel(task.due, today())?.tone ?? "later"])),
   Spacer({ minLength: 0 }),
-  ...projectColor ? [pill(task.project, projectColor)] : [],
+  ...projectColor ? [shrinkingPill(task.project, projectColor)] : [],
   ...task.comments ? [
     HStack({ spacing: 2 }, [
       Image("bubble.left").font(9).color("tertiary"),
