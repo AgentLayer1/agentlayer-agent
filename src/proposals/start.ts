@@ -81,7 +81,6 @@ export const decideProposal = (id: string, choice: Choice, context: DecideContex
   }
   const input: StartInput = {
     home: context.home,
-    proposal: { id: proposal.id, title: proposal.title },
     promptFile: writePromptFile(proposal, context.now),
     launcher: launcher(context.home)
   };

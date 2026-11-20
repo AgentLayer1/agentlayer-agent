@@ -6,17 +6,8 @@ export type SessionPlace = { adapter: 'cmux'; surfaceId: string; workspaceId: st
 
 export type Launcher = 'agent' | 'claude';
 
-/**
- * The fields a proposal is shown and started by. The prompt stays in the ledger and travels only as a file.
- */
-export interface ProposalSummary {
-  id: string;
-  title: string;
-}
-
 export interface StartInput {
   home: string;
-  proposal: ProposalSummary;
   /**
    * Absolute path of the file holding the prompt the new session runs.
    */
