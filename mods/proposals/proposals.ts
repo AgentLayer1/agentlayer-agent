@@ -104,10 +104,15 @@ async function tick($: EngineInterface): Promise<void> {
   await wake($, now, list.timezone);
 }
 
+// Only a process that ran /heartbeat holds a token, so every other session starts without reading the ledger.
 async function arm($: EngineInterface): Promise<void> {
-  const [list, { owner }] = await Promise.all([readList($), read($, beat)]);
+  const { owner } = await read($, beat);
   ticker?.cancel();
   ticker = undefined;
+  if (!owner) {
+    return;
+  }
+  const list = await readList($);
   if (list?.heartbeat && isOwner(list, owner)) {
     ticker = $.clock.every(list.heartbeat.everyMinutes * MINUTE_MS, () => void tick($));
   }

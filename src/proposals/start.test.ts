@@ -5,6 +5,7 @@ import { FILES, FOLDERS } from '@/config';
 import type { ProposalAdapter, SessionPlace, StartInput } from './adapter';
 import { EMPTY_LEDGER, readProposalLedger, writeProposalLedger } from './ledger';
 import { addProposals, type ProposalInput } from './rules';
+import { runProposalsCommand } from './command';
 import { decideProposal, type DecideContext } from './start';
 
 const NOW = new Date('2026-11-20T10:00:00+08:00');
@@ -104,7 +105,7 @@ test('Later and Skip record the choice and publish', () => {
   expect(decideProposal('p-none', 'skip', context([]))).toBe('No proposal p-none.');
 });
 
-test('a ledger that won’t parse is never written over, and a Start on it opens nothing', () => {
+test('a ledger that won’t parse is never written over, a Start on it opens nothing, and the list fails rather than show no heartbeat', () => {
   const id = seed();
   const broken = `${readFileSync(FILES.PROPOSALS, 'utf-8')}}`;
   mkdirSync(dirname(FILES.PROPOSALS), { recursive: true });
@@ -113,6 +114,7 @@ test('a ledger that won’t parse is never written over, and a Start on it opens
   const { adapter, started } = fakeAdapter(true);
   expect(decideProposal(id, 'start', context([adapter]))).toBe(`No proposal ${id}.`);
   expect(started).toHaveLength(0);
+  expect(runProposalsCommand('list', ['--json'])).toBe(1);
   expect(readFileSync(FILES.PROPOSALS, 'utf-8')).toBe(broken);
   rmSync(FILES.PROPOSALS, { force: true });
 });

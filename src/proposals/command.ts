@@ -1,7 +1,7 @@
 import { ADAPTERS } from '@/adapters';
 import { FOLDERS, TIMEZONE } from '@/config';
 import { CLI_COMMAND } from '@/shared/naming';
-import { readProposalLedger, writeProposalLedger } from './ledger';
+import { ledgerProblem, readProposalLedger, writeProposalLedger } from './ledger';
 import {
   CHOICES,
   clearHeartbeat,
@@ -27,7 +27,13 @@ const flagOf = (args: readonly string[], name: string): string | undefined =>
 
 const publish = (): void => publishTo(ADAPTERS, FOLDERS.HOME);
 
+// An unreadable ledger fails the list, so the heartbeat's tick skips and keeps its clock instead of seeing no heartbeat.
 const list = (args: readonly string[]): number => {
+  const problem = ledgerProblem();
+  if (problem) {
+    console.error(problem);
+    return 1;
+  }
   const ledger = readProposalLedger();
   const now = new Date();
   const showing = showingNow(ledger, now);

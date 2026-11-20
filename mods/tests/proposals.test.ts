@@ -86,6 +86,12 @@ describe('proposals', () => {
     ]);
   });
 
+  test('a session that never ran /heartbeat starts without reading the proposals', async ($, on) => {
+    const { host } = heartbeatHost(on, { owner: 'session-9@other', everyMinutes: 55 });
+    await start($, host);
+    expect(cliCalls(host)).toEqual([]);
+  });
+
   test('the heartbeat wakes on its interval when the session is idle and proposals are short', async ($, on) => {
     const { host } = await bound($, on);
     await host.clock.advance(54 * MINUTE);

@@ -157,11 +157,19 @@ const isUnreadable = (path: string): boolean => {
 };
 
 /**
- * Replaces the ledger. One that won't parse reads as empty, so it is left for the operator rather than written over.
+ * What's wrong with the ledger file, or '' when it is missing or reads. A display can still draw the empty ledger
+ * `readProposalLedger` gives for it; anything that writes, or acts on the heartbeat it names, stops.
+ */
+export const ledgerProblem = (): string =>
+  isUnreadable(FILES.PROPOSALS) ? `${FILES.PROPOSALS} is not valid JSON; fix or remove it, then try again.` : '';
+
+/**
+ * Replaces the ledger, unless the file won't parse: that one is left for the operator rather than written over.
  */
 export const writeProposalLedger = (ledger: ProposalLedger): void => {
-  if (isUnreadable(FILES.PROPOSALS)) {
-    throw new Error(`${FILES.PROPOSALS} is not valid JSON; fix or remove it, then try again.`);
+  const problem = ledgerProblem();
+  if (problem) {
+    throw new Error(problem);
   }
   writeJsonAtomic(FILES.PROPOSALS, ledger);
 };
