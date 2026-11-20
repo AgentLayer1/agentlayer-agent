@@ -1,6 +1,6 @@
 ---
 name: release
-description: Producer-only. Cut a versioned release of the agentlayer plugin — analyze commits since the last release, detect what consumers must do to upgrade (bun install, settings, template/HOME changes), bump plugin.json, prepend a CHANGELOG entry with a machine-actionable Upgrade block, and stage the commit + tag for approval. Use when the maintainer says "cut a release", "release agentlayer", "ship a new version", "bump the version and update the changelog". Not for consumers — they use /agentlayer:upgrade.
+description: Producer-only. Cut a versioned release of the agentlayer plugin — analyze commits since the last release, detect what consumers must do to upgrade (bun install, settings, template/HOME changes), bump plugin.json, prepend a CHANGELOG entry with a machine-actionable Upgrade block, stage the commit + tag for approval, then offer to update the docs site to match. Use when the maintainer says "cut a release", "release agentlayer", "ship a new version", "bump the version and update the changelog". Not for consumers — they use /agentlayer:upgrade.
 disable-model-invocation: true
 allowed-tools: Bash, Read, Write, Edit
 ---
@@ -13,7 +13,8 @@ allowed-tools: Bash, Read, Write, Edit
 
 Maintainer tool. Produces the **contract** that `/agentlayer:upgrade` consumes:
 a bumped `plugin.json` version + a `CHANGELOG.md` entry whose `### Upgrade` block
-tells every consumer exactly what their home needs after they `/plugin update`.
+tells every consumer exactly what their home needs after they `/plugin update`. Then it
+offers to bring the docs site level with the release (Step 6).
 
 Runs against the plugin repo at `${CLAUDE_PLUGIN_ROOT}`. **Never commits, tags, or
 pushes without explicit approval** — it stages everything and stops (per the
@@ -226,7 +227,78 @@ A pushed tag never moves. If `vX.Y.Z` already exists on the remote, leave it whe
 never `git tag -f`, delete and re-create, or force-push a tag. Later commits ride into the next
 release's range.
 
-## Step 6 — Hand off
+## Step 6 — Offer the docs pass
+
+The plugin's docs live in the site repo, and they version with the plugin: a release that changes
+what someone sees or does leaves pages describing the old behaviour unless they move with it. The
+CHANGELOG entry is the start, not the scope. Run this after Step 5 whatever subset was chosen there;
+skip it only when the maintainer aborted.
+
+**Find the site checkout.** It sits beside the plugin checkout:
+
+```bash
+find "$(dirname "${CLAUDE_PLUGIN_ROOT}")" -maxdepth 6 -name node_modules -prune -o -path '*/content/docs/changelog.mdx' -print 2>/dev/null
+```
+
+Write the repo root (`git -C <hit's folder> rev-parse --show-toplevel`) literally as `<site>`
+below; page paths are relative to the hit's `content/docs/` folder. Nothing found means this machine
+has no site checkout: say so and go to Step 7. More than one (a worktree beside the main checkout):
+ask which. Read the site's `AGENTS.md` before writing anything. Its docs rules (one home per fact,
+host-neutral wording, one kind of page per page, version notes only in the changelog and the upgrade
+notes, invented example names) and its commit rules bind every edit and commit below.
+
+**Build the docs plan** from Step 1's commits and diff and the Step 4 entry. For each change someone
+would notice, find every page it touches:
+
+- **Always, the changelog page** (`changelog.mdx`): a `### X.Y.Z · Mon D [#vX-Y-Z]`
+  section under its minor's `##` heading, one bolded highlight per line, each linking the page that
+  explains it. Match the entries already there.
+- **When the Upgrade block isn't the code-only sentinel, the upgrade notes**
+  (`reference/upgrades.mdx` → Notes by version): what `upgrade` does on its own, what it
+  asks first, and what is yours, linked from the changelog line.
+- **A new, renamed or removed name** (skill, tool, CLI verb, hook, mod, setting, env var, home path,
+  pack): grep the docs for the old and the new name, and update the reference page that lists it
+  (`reference/skills`, `mcp-tools`, `cli`, `hooks`, `mods`, `agent-home`, `packs/`), exact counts
+  included.
+- **Changed behaviour:** the page that explains it. Grep for the skill, tool or file name and read
+  each hit in full, not the matching line alone. A section that describes the old behaviour is
+  rewritten to the new one, never footnoted.
+- **Something new with no home:** a section in the closest page, or a new page with its folder's
+  `meta.json` entry when it is a page of its own kind.
+- **Something removed:** delete its section or page. A deleted or moved page gets a permanent
+  redirect in the site's `next.config.mjs`, and links into it from this repo (the README, skills)
+  are updated in the same pass.
+
+Show the plan as a table (page · add, change, remove or move · what · the commit behind it), then ask
+with the `AskUserQuestion` tool:
+
+- **Apply the whole plan** (Recommended)
+- **Changelog and upgrade notes only**
+- **Skip the docs**
+
+**Write, regenerate, check.** Apply the chosen part, then regenerate the two files the site derives
+from the plugin, every release (the demo shows the version), and never edit them by hand:
+
+```bash
+pnpm -C "<site>" --filter @agentlayer/agentlayer facts "${CLAUDE_PLUGIN_ROOT}"
+bun "${CLAUDE_PLUGIN_ROOT}/skills/dashboard/scripts/demo-home.ts" --out "<site>/apps/agentlayer/public/demo/dashboard.html" --avatar "<site>/apps/agentlayer/public/demo/assets/ace-avatar.jpg"
+pnpm -C "<site>" --filter @agentlayer/agentlayer lint && pnpm -C "<site>" --filter @agentlayer/agentlayer exec tsc --noEmit
+```
+
+`lint` runs the docs lint too (links, redirects, sidebar `meta.json`). Read its verdict; a failure on
+a page you touched is fixed, never added to the baseline.
+
+Show `git -C "<site>" status --short` and the diff, then ask with the `AskUserQuestion` tool:
+**Commit**, **Commit + push**, or **Leave uncommitted**. Commits follow the earlier releases' shape:
+`Document agentlayer X.Y.Z` (changelog, upgrade notes, reference pages), one commit per sizeable
+feature-page change, and `Generate the plugin facts and the demo dashboard from agentlayer X.Y.Z`.
+If Step 5 stopped short of pushing the tag, recommend leaving the docs unpushed too: pages for a
+release nobody can install yet mislead. Deploying the site stays with the maintainer.
+
+## Step 7 — Hand off
+
+Say where the docs stand: committed, pushed, left uncommitted, or skipped, and that no page was
+looked at rendered (the site's dev server runs in the maintainer's shell).
 
 Remind the maintainer of the consumer upgrade path so it can go in release notes:
 
