@@ -1,21 +1,14 @@
 import type { HostSection, SectionCard } from 'cmux-custom-manager/sections';
-import { isShown } from '../../proposals/shown';
+import { isShown, type Choice } from '../../proposals/shown';
 import { SCHEMA, type HeartbeatPlace, type HomeEntry, type ProposalItem } from './data';
 import { openSession } from './session';
-import { ORANGE, PURPLE, when } from './style';
+import { nowMs, ORANGE, PURPLE, when } from './style';
 
-type Choice = 'start' | 'later' | 'skip';
-
-interface Waiting {
+interface Shown {
   key: string;
   entry: HomeEntry;
   item: ProposalItem;
 }
-
-const nowMs = computed(() => {
-  const clock = data.clock();
-  return clock ? clock.epoch * 1000 : Date.now();
-});
 
 /**
  * Claude, still running: the only agent a heartbeat's tab can hold.
@@ -54,7 +47,7 @@ const choiceButton = (label: string, onTap: () => void, tint?: string) =>
     .fixedSize('horizontal')
     .onTap(onTap);
 
-const body = ({ entry, item }: Waiting, decide: (choice: Choice, place: HeartbeatPlace) => void) => {
+const body = ({ entry, item }: Shown, decide: (choice: Choice, place: HeartbeatPlace) => void) => {
   const place = () => heartbeatRoute(entry.heartbeat);
   const choose = (choice: Choice) => () => {
     const target = place();
@@ -91,7 +84,7 @@ const body = ({ entry, item }: Waiting, decide: (choice: Choice, place: Heartbea
 const heartbeatBody = (entry: HomeEntry) =>
   VStack({ spacing: 5, alignment: 'leading' }, [
     Text(
-      `Opens a session in ${entry.name}’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five wait.`
+      `Opens a session in ${entry.name}’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five show.`
     )
       .font(11)
       .color('secondary'),
@@ -116,9 +109,9 @@ export const proposalsSection = (): HostSection => {
   const live = ([, entry]: [string, HomeEntry]) => heartbeatRoute(entry.heartbeat) !== null;
   const waiting = ([home, entry]: [string, HomeEntry]) =>
     entry.proposals
-      .map((item): Waiting => ({ key: `${home}#${item.id}`, entry, item }))
+      .map((item): Shown => ({ key: `${home}#${item.id}`, entry, item }))
       .filter(({ item }) => isShown(item.laterUntil, nowMs()));
-  const card = (proposal: Waiting): SectionCard => {
+  const card = (proposal: Shown): SectionCard => {
     const { entry, item, key } = proposal;
     return {
       key,

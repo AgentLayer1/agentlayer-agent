@@ -65,11 +65,12 @@ test('Start opens a tab in the heartbeat’s workspace whose command names neith
   ]);
 });
 
-test('a prompt file outside the home, or with a quote in its path, opens nothing', () => {
+test('a prompt file outside the home opens nothing, and a quote in its path stays inside the quoting', () => {
   const { adapter, calls } = recorder();
   expect(() => adapter.start(startInput(join('/Users', 'ada', 'p-a1.prompt')), PLACE)).toThrow('inside the home');
-  expect(() => adapter.start(startInput(join(HOME, '.state', "it's.prompt")), PLACE)).toThrow('inside the home');
   expect(calls).toEqual([]);
+  adapter.start(startInput(join(HOME, '.state', "it's.prompt")), PLACE);
+  expect(calls.at(-1)?.at(-1)).toBe(`agent "$(cat '${join('.state', "it'\\''s.prompt")}')"`);
 });
 
 test('a cmux that refuses throws its own words, so the core puts the proposal back', () => {

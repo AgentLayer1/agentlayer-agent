@@ -3,7 +3,6 @@ import { FOLDERS, TIMEZONE } from '@/config';
 import { CLI_COMMAND } from '@/shared/naming';
 import { ledgerProblem, readProposalLedger, writeProposalLedger } from './ledger';
 import {
-  CHOICES,
   clearHeartbeat,
   DEFAULT_EVERY_MINUTES,
   parseEvery,
@@ -12,6 +11,7 @@ import {
   TARGET,
   showingNow
 } from './rules';
+import { CHOICES } from './shown';
 import { decideProposal, publishTo } from './start';
 
 const USAGE = [

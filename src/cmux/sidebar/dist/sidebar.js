@@ -386,6 +386,10 @@ var groupTitle = (title, count) => HStack({ spacing: 4 }, [
 var chevron = (expanded) => Image(() => expanded() ? "chevron.down" : "chevron.right").font(9).weight("semibold").color("tertiary");
 var foldTitle = (title, count, expanded, setExpanded) => HStack({ spacing: 4 }, [groupTitle(title, count), chevron(expanded)]).paddingTrailing(4).cursor("pointer").onTap(() => setExpanded(!expanded()));
 var TITLE_OPACITY = 0.85;
+var nowMs = computed(() => {
+  const clock = data.clock();
+  return clock ? clock.epoch * 1000 : Date.now();
+});
 var listRow = (view) => view.paddingHorizontal(4).paddingVertical(5).cursor("pointer").frame({ maxWidth: "infinity", alignment: "leading" });
 var dividedList = (items, key, row) => {
   const headKey = computed(() => {
@@ -588,7 +592,7 @@ var STATUS = {
 var statusOf = (status) => STATUS[status] ?? OPEN;
 var TONE2 = { overdue: RED, soon: ORANGE, later: "tertiary" };
 var URGENT = new Set(["P0", "P1"]);
-var today = computed(() => isoDay(data.clock()?.epoch ?? Date.now() / 1000));
+var today = computed(() => isoDay(nowMs() / 1000));
 var statusIcon = (status, size = 7) => {
   const { symbol, color } = statusOf(status);
   return Image(symbol).font(size).color(color);
@@ -686,8 +690,7 @@ var goalsBody = (entry) => {
 // src/cmux/sidebar/projects.ts
 var HOUR_MS = 60 * 60 * 1000;
 var ago = (writtenAt) => {
-  const clock = data.clock();
-  const elapsed = (clock ? clock.epoch * 1000 : Date.now()) - Date.parse(writtenAt);
+  const elapsed = nowMs() - Date.parse(writtenAt);
   if (!(elapsed >= 0)) {
     return "";
   }
@@ -930,10 +933,6 @@ var agentPage = (options) => {
 var isShown = (laterUntil, nowMs) => laterUntil === "" || Date.parse(laterUntil) <= nowMs;
 
 // src/cmux/sidebar/proposals.ts
-var nowMs = computed(() => {
-  const clock = data.clock();
-  return clock ? clock.epoch * 1000 : Date.now();
-});
 var isRunningClaude = (agent) => agent.kind === "claude" && agent.status !== "ended";
 var heartbeatRoute = (place) => {
   const found = place && (data.workspaces() ?? []).find((workspace) => workspace.tabs.some((tab) => tab.surfaceId === place.surfaceId && (workspace.agents ?? []).some((agent) => agent.panelId === tab.id && isRunningClaude(agent))));
@@ -963,7 +962,7 @@ var body = ({ entry, item }, decide) => {
   ]);
 };
 var heartbeatBody = (entry) => VStack({ spacing: 5, alignment: "leading" }, [
-  Text(`Opens a session in ${entry.name}’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five wait.`).font(11).color("secondary"),
+  Text(`Opens a session in ${entry.name}’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five show.`).font(11).color("secondary"),
   HStack({ spacing: 4 }, [
     choiceButton("Start heartbeat", () => openSession(entry, "/heartbeat"), entry.colors?.primary ?? PURPLE),
     Spacer({ minLength: 0 })

@@ -1,8 +1,7 @@
-import { TIMEZONE } from '@/config';
-import { localISO, nowISO, shiftDate, todayDate } from '@/shared/date';
+import { localISO, nowISO, nowTime, shiftDate, todayDate } from '@/shared/date';
 import type { SessionPlace } from './adapter';
 import type { Proposal, ProposalLedger } from './ledger';
-import { isShown } from './shown';
+import { isShown, type Choice } from './shown';
 
 /**
  * How many proposals the heartbeat keeps showing.
@@ -25,9 +24,6 @@ const STARTED_QUIET_MS = DAY_MS;
 const SKIPPED_QUIET_MS = 7 * DAY_MS;
 // Decided proposals older than this are dropped, once no rule above can read them.
 const KEEP_DECIDED_MS = 30 * DAY_MS;
-
-export const CHOICES = ['start', 'later', 'skip'] as const;
-export type Choice = (typeof CHOICES)[number];
 
 export type ProposalInput = Pick<
   Proposal,
@@ -122,8 +118,7 @@ export const addProposals = (
  */
 export const nextMorning = (now: Date): string => {
   const today = todayDate(now);
-  const hour = Number(now.toLocaleString('en-GB', { timeZone: TIMEZONE, hour: '2-digit', hourCycle: 'h23' }));
-  return localISO(hour < Number(LATER_HOUR.slice(0, 2)) ? today : shiftDate(today, 1), LATER_HOUR);
+  return localISO(nowTime(now) < LATER_HOUR ? today : shiftDate(today, 1), LATER_HOUR);
 };
 
 type Decision =

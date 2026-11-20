@@ -7,11 +7,11 @@ allowed-tools: mcp__plugin_agentlayer_agent__proposal_add, mcp__plugin_agentlaye
 
 # Heartbeat: keep Proposals full
 
-Proposals are sessions waiting for the operator's yes: Start opens a fresh session that runs the proposal's prompt, Later brings it back in the morning, Skip drops it. This skill runs on the heartbeat's wake. Its one job is to bring the waiting proposals back to five, then stop. It never starts, sends or edits anything itself.
+Proposals are sessions waiting for the operator's yes: Start opens a fresh session that runs the proposal's prompt, Later brings it back in the morning, Skip drops it. This skill runs on the heartbeat's wake. Its one job is to bring Proposals back to five showing, then stop. It never starts, sends or edits anything itself.
 
 ## 1. See what's there
 
-First, the tasks summary in `<HOME>/projects/TASKS.md`, between `<!-- SUMMARY:START -->` and `<!-- SUMMARY:END -->`. When it holds only its placeholder, or its `_Written <YYYY-MM-DD HH:MM> by …_` line is more than six hours old (compare with `date '+%Y-%m-%d %H:%M'`), rewrite what sits between the markers with Edit. Write the heading `## Tasks at a Glance`, the line `_Written <now> by the heartbeat_`, and two or three sentences on what the open and active tasks add up to across projects: what the work is about, where the weight sits, what is stuck or waiting. Use no task ids or lists. Change nothing outside the markers. Then:
+First, the tasks summary in `<HOME>/projects/TASKS.md`. When it holds only its placeholder, or its written line is more than six hours old (compare with `date '+%Y-%m-%d %H:%M %z'`), rewrite it `by the heartbeat`, as [the sync skill's tasks-summary reference](../sync/references/tasks-summary.md) describes. Then:
 
 ```bash
 bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" proposals list

@@ -157,7 +157,7 @@ run('a home whose heartbeat isn’t open in cmux shows its proposals with how to
 });
 
 const HEARTBEAT_LINE =
-  'Opens a session in Scout’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five wait.';
+  'Opens a session in Scout’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five show.';
 
 run('a home without a heartbeat gets a card that opens one in a focused tab of the selected workspace', () => {
   const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
@@ -632,10 +632,13 @@ run('the Discuss icon on a task or a goal opens a session about it, and the task
     method: 'surface.create',
     params: { workspace_id: 'w-nova', working_directory: NOVA_HOME, focus: 'true' }
   });
-  expect(discussed?.params?.initial_input).toMatch(/^claude "\/agentlayer:discuss task:[a-z]{2}-\d{3}"\r$/);
+  const lastTask = between(sidebar.visibleTexts(), 'acme-app', 'BLOCKED')
+    .filter((text) => /^ac-\d{3}$/.test(text))
+    .at(-1);
+  expect(discussed?.params?.initial_input).toBe(`claude "/agentlayer:discuss task:${lastTask}"\r`);
   expect(sidebar.tap('Fix the checkout total')?.method).toBe('file.open');
-  expect(onGoals().tap('Discuss with Nova')?.params?.initial_input).toMatch(
-    /^claude "\/agentlayer:discuss goal:(day|week|month|year):\d+"\r$/
+  expect(onGoals().tap('Discuss with Nova')?.params?.initial_input, 'the last goal shown: this month, the second').toBe(
+    'claude "/agentlayer:discuss goal:month:2"\r'
   );
 });
 

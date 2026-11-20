@@ -27,6 +27,13 @@ const secretsRoot = (): string => resolve(dataRoot(), 'secrets');
  */
 export const claudeSubscriptionOf = (home: string): string => resolve(dataDirOf(home), 'secrets', '.env.claude.json');
 
+/**
+ * What starts Claude in a home: `agent` when it bills its own subscription (the shell launcher passes it as
+ * `--settings`), else `claude`.
+ */
+export const homeLauncher = (home: string): 'agent' | 'claude' =>
+  existsSync(claudeSubscriptionOf(home)) ? 'agent' : 'claude';
+
 // Env values + secret loading live in `@/shared/env` (a config-free module — see
 // its header for why it's kept apart).
 // Importing it self-loads `<data-dir>/secrets/.env`; `env()` below reads through it.

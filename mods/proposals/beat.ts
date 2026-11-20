@@ -1,6 +1,6 @@
 // Pure helpers for the proposals feature: no engine calls, so tests can run them as they are.
 
-const CHOICES = ['start', 'later', 'skip'] as const;
+export const CHOICES = ['start', 'later', 'skip'] as const;
 type Choice = (typeof CHOICES)[number];
 
 const QUIET = { from: 23, to: 7 } as const;
@@ -42,17 +42,17 @@ export const parseHeartbeat = (args: string): HeartbeatAsk => {
   return { kind: 'bind', every: text };
 };
 
-const hourIn = (epochMs: number, timeZone: string | undefined): number =>
+const hourIn = (epochMs: number, timeZone: string): number =>
   Number(new Date(epochMs).toLocaleString('en-GB', { timeZone, hour: '2-digit', hourCycle: 'h23' }));
 
-export const isQuiet = (epochMs: number, timeZone: string | undefined): boolean => {
+export const isQuiet = (epochMs: number, timeZone: string): boolean => {
   const hour = hourIn(epochMs, timeZone);
   return hour >= QUIET.from || hour < QUIET.to;
 };
 
-export const QUIET_HOURS = `${QUIET.from}:00–0${QUIET.to}:00`;
+export const QUIET_HOURS = `${QUIET.from}:00–${String(QUIET.to).padStart(2, '0')}:00`;
 
-export const dayIn = (epochMs: number, timeZone: string | undefined): string =>
+export const dayIn = (epochMs: number, timeZone: string): string =>
   new Date(epochMs).toLocaleDateString('sv-SE', { timeZone });
 
 /**

@@ -75,6 +75,14 @@ export const foldTitle = (
 export const TITLE_OPACITY = 0.85;
 
 /**
+ * The sidebar's clock in milliseconds: cmux's, once it sends one.
+ */
+export const nowMs = computed(() => {
+  const clock = data.clock();
+  return clock ? clock.epoch * 1000 : Date.now();
+});
+
+/**
  * A tappable row in a list: no hover wash, since one per row made a long sidebar lag as it scrolled.
  */
 export const listRow = (view: View) =>

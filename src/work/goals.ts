@@ -1,6 +1,4 @@
-import { resolve } from 'node:path';
-import { FOLDERS } from '@/config';
-import { readTextIfExists, stripMarkdown } from '@/shared/text';
+import { stripMarkdown } from '@/shared/text';
 import type { WorkGoal, WorkGoalBlock } from './model';
 
 export const GOALS_MARKER_START = '<!-- GOALS:START -->';
@@ -96,11 +94,16 @@ const toBlock = ({ horizon, heading, lines }: Section): WorkGoalBlock => {
 };
 
 /**
+ * What TASKS.md holds between a block's markers, '' when they're missing.
+ */
+export const markerBody = (markdown: string, start: string, end: string): string =>
+  markdown.split(start)[1]?.split(end)[0] ?? '';
+
+/**
  * The goal blocks between TASKS.md's goal markers, in file order; none when the markers are missing.
  */
-export const parseGoals = (markdown: string): WorkGoalBlock[] => {
-  const body = markdown.split(GOALS_MARKER_START)[1]?.split(GOALS_MARKER_END)[0] ?? '';
-  return body
+export const parseGoals = (markdown: string): WorkGoalBlock[] =>
+  markerBody(markdown, GOALS_MARKER_START, GOALS_MARKER_END)
     .split('\n')
     .map((line) => line.trim())
     .reduce<Section[]>((sections, line) => {
@@ -116,6 +119,3 @@ export const parseGoals = (markdown: string): WorkGoalBlock[] => {
       return [...sections.slice(0, -1), { ...last, lines: [...last.lines, line] }];
     }, [])
     .map(toBlock);
-};
-
-export const readGoals = (): WorkGoalBlock[] => parseGoals(readTextIfExists(resolve(FOLDERS.PROJECTS, 'TASKS.md')));

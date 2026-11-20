@@ -52,7 +52,7 @@ export interface FakeMachine {
   toolText: Record<string, string>;
   fsCalls: string[];
   notices: Notice[];
-  /** What `proposals list --json` prints: the target, what's waiting, and the heartbeat; room is what's left of five unless set. */
+  /** What `proposals list --json` prints: the target, what's showing, and the heartbeat; room is what's left of five unless set. */
   proposals: {
     target: number;
     room?: number;

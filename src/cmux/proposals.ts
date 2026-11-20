@@ -1,18 +1,18 @@
 import { relative } from 'node:path';
-import type { ProposalAdapter, SessionPlace, StartInput } from '@/proposals/adapter';
+import { promptLaunch, type ProposalAdapter, type SessionPlace, type StartInput } from '@/proposals/adapter';
 import { buildWork } from '@/work/build';
 import { readWork } from '@/work/store';
 import { callCmux, type CmuxCall } from './app';
 import { refreshSidebarQuietly } from './lifecycle';
 
 /**
- * The `cmux new-surface` call that opens a proposal as a tab in the workspace of the session that started it. `new-surface` takes no environment,
- * so the shell reads the prompt from its path relative to the home: neither the prompt's text nor the home's path is
- * ever parsed as shell.
+ * The `cmux new-surface` call that opens a proposal as a tab in the workspace of the session that started it.
+ * `new-surface` takes no environment, so the shell reads the prompt from its quoted path relative to the home: neither
+ * the prompt's text nor the home's path is parsed as shell.
  */
 const surfaceArgs = ({ home, promptFile, launcher }: StartInput, place: SessionPlace): string[] => {
   const promptPath = relative(home, promptFile);
-  if (promptPath.startsWith('..') || promptPath.includes("'")) {
+  if (promptPath.startsWith('..')) {
     throw new Error(`The prompt file isn’t a plain path inside the home: ${promptFile}`);
   }
   return [
@@ -22,7 +22,7 @@ const surfaceArgs = ({ home, promptFile, launcher }: StartInput, place: SessionP
     '--working-directory',
     home,
     '--command',
-    `${launcher} "$(cat '${promptPath}')"`
+    promptLaunch(launcher, promptPath)
   ];
 };
 

@@ -14,7 +14,7 @@ The operator tapped Discuss on a task or a goal. This session is for deciding, n
 The argument names one thing:
 
 - `task:<id>`: `task_get` it for its description, checklist and thread. Read its project's `projects/<slug>/README.md`, and `task_query` the project's other open tasks for what it sits beside or waits on. Open a file the task links to only when the brief needs it.
-- `goal:<horizon>:<n>`: in `<HOME>/projects/TASKS.md`, between `<!-- GOALS:START -->` and `<!-- GOALS:END -->`, find the block for the horizon (`## Daily Goals`, `## Weekly Goals`, `## Monthly Goals` or `## Yearly Goals`) and take its n-th goal line, counting from 1 in the order they appear. Note the project or tasks it names (`task_get` those) and the block's other goals.
+- `goal:<horizon>:<n>`: in `<HOME>/projects/TASKS.md`, between `<!-- GOALS:START -->` and `<!-- GOALS:END -->`, find the block for the horizon (`## Daily Goals`, `## Weekly Goals`, `## Monthly Goals` or `## Yearly Goals`) and take its n-th goal, counting the list items from 1 in the order they appear (the italic note lines are not goals). Note the project or tasks it names (`task_get` those) and the block's other goals.
 
 If the argument is missing or names nothing, say what was asked for and what you found, and stop.
 

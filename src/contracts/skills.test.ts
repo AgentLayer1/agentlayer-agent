@@ -70,7 +70,7 @@ describe('skills', () => {
     }
   );
 
-  test("only the first-run wizard, the release cut, the brain-wide rename and the heartbeat's clock-run wake are slash-only", () => {
+  test("only the first-run wizard, the release cut, the brain-wide rename, the heartbeat's wake and the sidebar's Discuss are slash-only", () => {
     const slashOnly = skillDirs.filter((skill) => {
       const frontmatter = readFrontmatter(skill);
       return (

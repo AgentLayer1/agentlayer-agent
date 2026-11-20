@@ -13,19 +13,19 @@ import {
   hueColor,
   keepWidth,
   note,
+  nowMs,
   ORANGE,
   progressBar,
   RED,
   when
 } from './style';
 import { count, taskRow, today } from './tasks';
+import { matchesQuery, openTarget, projectColors, startsOpen, targetKey } from './view';
 
 const HOUR_MS = 60 * 60 * 1000;
 
-// How long ago the summary was written, against the sidebar's own clock.
 const ago = (writtenAt: string): string => {
-  const clock = data.clock();
-  const elapsed = (clock ? clock.epoch * 1000 : Date.now()) - Date.parse(writtenAt);
+  const elapsed = nowMs() - Date.parse(writtenAt);
   if (!(elapsed >= 0)) {
     return '';
   }
@@ -38,7 +38,6 @@ const ago = (writtenAt: string): string => {
 
 const summaryBanner = ({ text, writtenAt }: NonNullable<HomeEntry['tasksSummary']>) =>
   banner(() => ['Tasks at a glance', ago(writtenAt)].filter(Boolean).join(' · '), text);
-import { matchesQuery, openTarget, projectColors, startsOpen, targetKey } from './view';
 
 const linkRow = ({ icon, title, target }: PinItem) =>
   HStack({ spacing: 6 }, [

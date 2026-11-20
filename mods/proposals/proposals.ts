@@ -5,6 +5,7 @@ import { PROPOSALS_FEATURE } from '../shared/catalog';
 import { cliArgv, cliError } from '../shared/cli';
 import type { Queue } from '../types';
 import {
+  CHOICES,
   DECISION_AT_END,
   QUIET_HOURS,
   dayIn,
@@ -18,7 +19,7 @@ import {
 } from './beat';
 
 const MINUTE_MS = 60_000;
-const USAGE = 'Usage: /proposal <start|later|skip> <id>';
+const USAGE = `Usage: /proposal <${CHOICES.join('|')}> <id>`;
 
 // Kept in session state, which outlives a /clear and a reload of this module, unlike its own variables.
 const beat = atom({ plugin: 'agentlayer', key: 'heartbeat' } as const, { wokeOn: '', owner: '' });
@@ -180,5 +181,4 @@ export const registerProposals = (on: On): void => {
     }
     return { drop: text };
   });
-
 };

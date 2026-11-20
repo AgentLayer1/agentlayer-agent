@@ -4,7 +4,17 @@
  */
 export type SessionPlace = { adapter: 'cmux'; surfaceId: string; workspaceId: string };
 
-export type Launcher = 'agent' | 'claude';
+import type { homeLauncher } from '@/config';
+
+export type Launcher = ReturnType<typeof homeLauncher>;
+
+const shellQuoted = (text: string): string => `'${text.replaceAll("'", "'\\''")}'`;
+
+/**
+ * The shell line that starts the launcher on a prompt file's text; the path is quoted, so nothing in it runs as shell.
+ */
+export const promptLaunch = (launcher: Launcher, promptPath: string): string =>
+  `${launcher} "$(cat ${shellQuoted(promptPath)})"`;
 
 export interface StartInput {
   home: string;

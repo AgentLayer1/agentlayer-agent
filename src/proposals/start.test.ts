@@ -112,7 +112,7 @@ test('a ledger that won’t parse is never written over, a Start on it opens not
   writeFileSync(FILES.PROPOSALS, broken);
   expect(() => writeProposalLedger(EMPTY_LEDGER)).toThrow('is not valid JSON');
   const { adapter, started } = fakeAdapter(true);
-  expect(decideProposal(id, 'start', context([adapter]))).toBe(`No proposal ${id}.`);
+  expect(decideProposal(id, 'start', context([adapter]))).toContain('is not valid JSON');
   expect(started).toHaveLength(0);
   expect(runProposalsCommand('list', ['--json'])).toBe(1);
   expect(readFileSync(FILES.PROPOSALS, 'utf-8')).toBe(broken);

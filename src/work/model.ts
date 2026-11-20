@@ -162,7 +162,7 @@ export const WorkSchema = z.object({
    */
   goals: z.array(GoalBlockSchema),
   /**
-   * The model-written summary of the tasks in projects/TASKS.md, beside the goals.
+   * The agent-written summary of the tasks in projects/TASKS.md, beside the goals.
    */
   tasksSummary: TasksSummarySchema.nullable(),
   /**

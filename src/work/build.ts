@@ -2,14 +2,14 @@ import { existsSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { FILES, FOLDERS } from '@/config';
 import { agentColors, agentDisplayName, agentEmoji } from '@/shared/agent-name';
-import { firstParagraph } from '@/shared/text';
+import { firstParagraph, readTextIfExists } from '@/shared/text';
 import { projectHue } from '@/status/html-primitives';
 import { homePinLinks, projectHues, projectPinLinks } from '@/status/surfaces';
 import { readReports } from '@/reports/read';
 import { discoverProjects, scanTasks } from '@/tasks/scan';
 import type { TaskFile } from '@/tasks/types';
-import { readGoals } from './goals';
-import { readTasksSummary } from './summary';
+import { parseGoals } from './goals';
+import { parseTasksSummary } from './summary';
 import { WORK_SCHEMA, type Work, type WorkProject, type WorkTask } from './model';
 
 const fromHome = (path: string): string => relative(FOLDERS.HOME, path);
@@ -76,6 +76,7 @@ export const buildWork = (): Work => {
   // A task can name a project that has no folder of its own; it still gets a card.
   const named = tasks.filter((task) => !task.archived).map((task) => task.project);
   const slugs = [...new Set([...discoverProjects(), ...named])].toSorted();
+  const tasksFile = readTextIfExists(resolve(FOLDERS.PROJECTS, 'TASKS.md'));
   return {
     schema: WORK_SCHEMA,
     agent: { name: agentDisplayName(), emoji: agentEmoji(), colors: agentColors() },
@@ -84,8 +85,8 @@ export const buildWork = (): Work => {
     tasks,
     reports: readReports(),
     pins: homePinLinks(),
-    goals: readGoals(),
-    tasksSummary: readTasksSummary(),
+    goals: parseGoals(tasksFile),
+    tasksSummary: parseTasksSummary(tasksFile),
     malformed
   };
 };

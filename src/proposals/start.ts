@@ -1,18 +1,14 @@
-import { claudeSubscriptionOf, FOLDERS } from '@/config';
+import { FOLDERS, homeLauncher } from '@/config';
 import { log } from '@/shared/log';
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { Launcher, ProposalAdapter, SessionPlace, StartInput } from './adapter';
-import { readProposalLedger, writeProposalLedger, type Proposal } from './ledger';
-import { decide, reopen, type Choice } from './rules';
+import { promptLaunch, type ProposalAdapter, type SessionPlace, type StartInput } from './adapter';
+import { ledgerProblem, readProposalLedger, writeProposalLedger, type Proposal } from './ledger';
+import { decide, reopen } from './rules';
+import type { Choice } from './shown';
 
 // A started session reads its prompt as it opens; a day later the file has done its job.
 const PROMPT_KEEP_MS = 24 * 60 * 60 * 1000;
-
-/**
- * `agent` when the home bills its own Claude subscription (the shell launcher passes it as `--settings`).
- */
-export const launcher = (home: string): Launcher => (existsSync(claudeSubscriptionOf(home)) ? 'agent' : 'claude');
 
 const writePromptFile = (proposal: Proposal, now: Date): string => {
   const dir = FOLDERS.PROPOSAL_PROMPTS;
@@ -26,8 +22,8 @@ const writePromptFile = (proposal: Proposal, now: Date): string => {
   return path;
 };
 
-const manualStart = ({ home, promptFile, launcher: command }: StartInput): string =>
-  `To start it, run from ${home}: ${command} "$(cat '${promptFile}')"`;
+const manualStart = ({ home, promptFile, launcher }: StartInput): string =>
+  `To start it, run from ${home}: ${promptLaunch(launcher, promptFile)}`;
 
 /**
  * Redraws every adapter's view of the proposals; one that fails is logged and the rest still draw.
@@ -66,6 +62,10 @@ export interface DecideContext {
  * repeat can't open a second session, and puts it back if the session couldn't open.
  */
 export const decideProposal = (id: string, choice: Choice, context: DecideContext): string => {
+  const problem = ledgerProblem();
+  if (problem) {
+    return problem;
+  }
   const decision = decide(readProposalLedger(), id, choice, context.now);
   if (decision.outcome === 'unknown') {
     return `No proposal ${id}.`;
@@ -82,7 +82,7 @@ export const decideProposal = (id: string, choice: Choice, context: DecideContex
   const input: StartInput = {
     home: context.home,
     promptFile: writePromptFile(proposal, context.now),
-    launcher: launcher(context.home)
+    launcher: homeLauncher(context.home)
   };
   writeProposalLedger(decision.ledger);
   const located = locateIn(context.adapters, context.env);

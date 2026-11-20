@@ -1,7 +1,7 @@
 import type { HomeEntry, TaskItem } from './data';
 import { dueLabel, isoDay, type DueLabel } from './due';
 import { discussIcon } from './session';
-import { GREEN, GREY, keepWidth, listRow, ORANGE, pill, RED, TITLE_OPACITY } from './style';
+import { GREEN, GREY, keepWidth, listRow, nowMs, ORANGE, pill, RED, TITLE_OPACITY } from './style';
 
 const OPEN = { symbol: 'circle', color: GREY };
 const STATUS: Readonly<Record<string, { symbol: string; color: string }>> = {
@@ -15,7 +15,7 @@ const TONE: Readonly<Record<DueLabel['tone'], string>> = { overdue: RED, soon: O
 const URGENT = new Set(['P0', 'P1']);
 
 // The due words only change at midnight, so the label follows a day, not the per-second clock.
-export const today = computed(() => isoDay(data.clock()?.epoch ?? Date.now() / 1000));
+export const today = computed(() => isoDay(nowMs() / 1000));
 
 const statusIcon = (status: string, size = 7) => {
   const { symbol, color } = statusOf(status);
