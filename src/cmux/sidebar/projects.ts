@@ -120,7 +120,7 @@ const tasksCard = (entry: HomeEntry, listed: readonly Listed[]) => {
             dividedList(
               () => group().tasks,
               (item) => item.task.id,
-              (item) => taskRow(item.task, item.color)
+              (item) => taskRow(entry, item.task, item.color)
             )
           ])
         )
@@ -130,7 +130,7 @@ const tasksCard = (entry: HomeEntry, listed: readonly Listed[]) => {
 
 // The entry is fixed while the sidebar is loaded (an update arrives as a rewrite), so a card takes its project and
 // tasks once; only whether it's open is live.
-const projectCard = (project: ProjectCard, tasks: TaskItem[]) => {
+const projectCard = (entry: HomeEntry, project: ProjectCard, tasks: TaskItem[]) => {
   const [expanded, setExpanded] = signal(startsOpen(project.slug));
   const color = hueColor(project.hue);
   const next = tasks[0];
@@ -178,7 +178,7 @@ const projectCard = (project: ProjectCard, tasks: TaskItem[]) => {
         dividedList(
           () => tasks,
           (task) => task.id,
-          (task) => taskRow(task)
+          (task) => taskRow(entry, task)
         )
       ])
   );
@@ -190,12 +190,17 @@ const STATES = [
   { title: 'Quiet', holds: (project: ProjectCard) => !project.active && !project.blocked }
 ];
 
-const stateGroup = (title: string, projects: ProjectCard[], tasksOf: ReadonlyMap<string, TaskItem[]>) => {
+const stateGroup = (
+  entry: HomeEntry,
+  title: string,
+  projects: ProjectCard[],
+  tasksOf: ReadonlyMap<string, TaskItem[]>
+) => {
   const [expanded, setExpanded] = signal(true);
   return VStack({ spacing: 6 }, [
     foldTitle(title, projects.length, expanded, setExpanded),
     ForEach({ items: () => (expanded() ? projects : []), key: (project) => project.slug }, (item) =>
-      projectCard(item(), tasksOf.get(item().slug) ?? [])
+      projectCard(entry, item(), tasksOf.get(item().slug) ?? [])
     )
   ]);
 };
@@ -219,7 +224,7 @@ export const projectsBody = (entry: HomeEntry) => {
         dividedList(
           found,
           (item) => item.task.id,
-          (item) => taskRow(item.task, item.color)
+          (item) => taskRow(entry, item.task, item.color)
         ),
         Text(() => (found().length ? '' : 'No matching tasks.'))
           .font(11)
@@ -234,7 +239,7 @@ export const projectsBody = (entry: HomeEntry) => {
           tasksCard(entry, listed),
           ...STATES.flatMap(({ title, holds }) => {
             const projects = entry.projects.filter(holds);
-            return projects.length ? [stateGroup(title, projects, tasksOf)] : [];
+            return projects.length ? [stateGroup(entry, title, projects, tasksOf)] : [];
           }),
           ...(entry.projects.length ? [] : [note('No projects yet.')])
         ])

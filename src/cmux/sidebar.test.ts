@@ -186,7 +186,7 @@ run('a home without a heartbeat gets a card that opens one in a focused tab of t
 
 run('a home path with an apostrophe goes to cmux as the folder, never through the shell', () => {
   const home = join('/Users', 'ada', "Ada's Agents", 'Scout');
-  const sidebar = mount(installed({ [home]: SCOUT_ENTRY }), CMUX_DATA);
+  const sidebar = mount(installed({ [home]: { ...SCOUT_ENTRY, home } }), CMUX_DATA);
   sidebar.tap('PROPOSED');
   expect(sidebar.tap('Start heartbeat')?.params).toMatchObject({ working_directory: home, initial_input: 'claude "/heartbeat"\r' });
 });
@@ -611,6 +611,21 @@ run('yesterday’s daily goals leave today empty, with the command that sets the
 
 run('the Dashboard icon on Goals opens the dashboard’s Goals', () => {
   expect(onGoals().tap('Dashboard')?.params).toEqual({ url: `${NOVA_ENTRY.dashboard}#today/goals` });
+});
+
+run('the Discuss icon on a task or a goal opens a session about it, and the task row still opens its file', () => {
+  const sidebar = onProjects();
+  sidebar.tap('acme-app');
+  const discussed = sidebar.tap('Discuss with Nova');
+  expect(discussed).toMatchObject({
+    method: 'surface.create',
+    params: { workspace_id: 'w-nova', working_directory: NOVA_HOME, focus: 'true' }
+  });
+  expect(discussed?.params?.initial_input).toMatch(/^claude "\/agentlayer:discuss task:[a-z]{2}-\d{3}"\r$/);
+  expect(sidebar.tap('Fix the checkout total')?.method).toBe('file.open');
+  expect(onGoals().tap('Discuss with Nova')?.params?.initial_input).toMatch(
+    /^claude "\/agentlayer:discuss goal:(day|week|month|year):\d+"\r$/
+  );
 });
 
 run('a preview can open on any page, while the installed sidebar opens on the Manager', () => {

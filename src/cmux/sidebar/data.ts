@@ -3,7 +3,7 @@ import type { AgentColors } from '../../shared/persona';
 /**
  * The entry format's version. A sidebar shows an entry with another schema as "update this agent".
  */
-export const SCHEMA = 9;
+export const SCHEMA = 10;
 
 export interface TaskItem {
   id: string;
@@ -175,6 +175,14 @@ export interface HeartbeatPlace {
  */
 export interface HomeEntry {
   schema: number;
+  /**
+   * The home's folder, where a session the sidebar opens starts.
+   */
+  home: string;
+  /**
+   * The plugin's name, which prefixes its skills' slash commands.
+   */
+  plugin: string;
   name: string;
   emoji: string;
   /**

@@ -1,6 +1,7 @@
 import { goalShelf } from '../../work/due';
 import type { GoalBlockItem, GoalItem, GoalsItem, HomeEntry } from './data';
 import { ACCENT, dividedList, foldCard, GREEN, GREY, ORANGE, pill, PURPLE, TITLE_OPACITY, when } from './style';
+import { discussIcon } from './session';
 import { today } from './tasks';
 import { projectColors } from './view';
 
@@ -35,7 +36,7 @@ const themeBanner = ({ label, text }: NonNullable<GoalsItem['theme']>) =>
     .cornerRadius(10);
 
 // A scored goal belongs to a quarter that's over, so it steps back.
-const goalRow = (colorOf: (slug: string) => string) => (goal: GoalItem) =>
+const goalRow = (colorOf: (slug: string) => string, discuss: (goal: GoalItem) => View) => (goal: GoalItem) =>
   VStack({ spacing: 4, alignment: 'leading' }, [
     HStack({ spacing: 6 }, [
       goal.label
@@ -43,7 +44,8 @@ const goalRow = (colorOf: (slug: string) => string) => (goal: GoalItem) =>
         : Text(String(goal.number)).font(10).weight('semibold').monospaced().color('tertiary'),
       ...(goal.mark ? [Text(goal.mark).font(10)] : []),
       ...(goal.project ? [pill(goal.project, colorOf(goal.project))] : []),
-      Spacer({ minLength: 0 })
+      Spacer({ minLength: 0 }),
+      discuss(goal)
     ]),
     Text(goal.title).font(12).weight('medium').opacity(TITLE_OPACITY),
     ...(goal.check
@@ -64,9 +66,10 @@ const goalRow = (colorOf: (slug: string) => string) => (goal: GoalItem) =>
 const shelfCard = (
   shelf: Shelf,
   block: GoalBlockItem | undefined,
-  agent: string,
+  entry: HomeEntry,
   colorOf: (slug: string) => string
 ) => {
+  const agent = entry.name;
   const [open, setOpen] = signal(shelf.open);
   const command = `goals ${shelf.horizon}`;
   const view = computed(() => goalShelf(block, today()));
@@ -110,7 +113,11 @@ const shelfCard = (
               .paddingVertical(4)
               .frame({ maxWidth: 'infinity', alignment: 'leading' })
         ),
-        dividedList(shown, (goal) => String(goal.number), goalRow(colorOf)),
+        dividedList(
+          shown,
+          (goal) => String(goal.number),
+          goalRow(colorOf, (goal) => discussIcon(entry, `goal:${shelf.horizon}:${goal.number}`))
+        ),
         when(
           () => shown().length > 0 && (block?.notes.length ?? 0) > 0,
           () =>
@@ -142,7 +149,7 @@ export const goalsBody = (entry: HomeEntry) => {
         shelfCard(
           shelf,
           blocks.find((block) => block.horizon === shelf.horizon),
-          entry.name,
+          entry,
           colorOf
         )
       )

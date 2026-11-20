@@ -357,7 +357,7 @@ var packLines = (items, label, firstWidth, width) => items.reduce(({ lines, used
 }, { lines: [[]], used: 0 }).lines;
 
 // src/cmux/sidebar/data.ts
-var SCHEMA = 9;
+var SCHEMA = 10;
 
 // src/cmux/sidebar/style.ts
 var hueColor = (hue) => {
@@ -539,6 +539,18 @@ var TONE = {
 };
 var toneOf = (days) => TONE[bucketOf(days)];
 
+// src/cmux/sidebar/session.ts
+var openSession = (entry, command) => {
+  const selected = (data.workspaces() ?? []).find((workspace) => workspace.selected);
+  const input = `${entry.launcher} "${command}"\r`;
+  if (selected && !selected.remote) {
+    cmux("surface.create", { workspace_id: selected.id, working_directory: entry.home, initial_input: input, focus: true });
+  } else {
+    cmux("workspace.create", { cwd: entry.home, initial_input: input });
+  }
+};
+var discussIcon = (entry, ref) => Image("bubble.left").font(10).color("tertiary").opacity(0.55).padding(3).help(`Discuss with ${entry.name}`).onTap(() => openSession(entry, `/${entry.plugin}:discuss ${ref}`));
+
 // src/cmux/sidebar/due.ts
 var wordsFor = (days) => {
   if (days < 0) {
@@ -594,9 +606,12 @@ var taskMeta = (task, projectColor) => HStack({ spacing: 6 }, [
     ]).fixedSize()
   ] : []
 ]);
-var taskRow = (task, projectColor) => listRow(VStack({ spacing: 2, alignment: "leading" }, [
-  Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail"),
-  taskMeta(task, projectColor)
+var taskRow = (entry, task, projectColor) => listRow(HStack({ spacing: 6, alignment: "top" }, [
+  VStack({ spacing: 2, alignment: "leading" }, [
+    Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail"),
+    taskMeta(task, projectColor)
+  ]).frame({ maxWidth: "infinity", alignment: "leading" }),
+  discussIcon(entry, `task:${task.id}`)
 ])).onTap(() => cmux("file.open", { path: task.path }));
 
 // src/cmux/sidebar/goals.ts
@@ -613,12 +628,13 @@ var themeBanner = ({ label, text }) => HStack({ spacing: 10 }, [
     Text(text).font(14).weight("semibold").italic().opacity(TITLE_OPACITY)
   ]).frame({ maxWidth: "infinity", alignment: "leading" })
 ]).paddingHorizontal(12).paddingVertical(10).background(`${PURPLE}1f`).cornerRadius(10);
-var goalRow = (colorOf) => (goal) => VStack({ spacing: 4, alignment: "leading" }, [
+var goalRow = (colorOf, discuss) => (goal) => VStack({ spacing: 4, alignment: "leading" }, [
   HStack({ spacing: 6 }, [
     goal.label ? pill(goal.label, GREY) : Text(String(goal.number)).font(10).weight("semibold").monospaced().color("tertiary"),
     ...goal.mark ? [Text(goal.mark).font(10)] : [],
     ...goal.project ? [pill(goal.project, colorOf(goal.project))] : [],
-    Spacer({ minLength: 0 })
+    Spacer({ minLength: 0 }),
+    discuss(goal)
   ]),
   Text(goal.title).font(12).weight("medium").opacity(TITLE_OPACITY),
   ...goal.check ? [
@@ -629,7 +645,8 @@ var goalRow = (colorOf) => (goal) => VStack({ spacing: 4, alignment: "leading" }
   ] : [],
   ...goal.detail ? [Text(goal.detail).font(11).color("tertiary")] : []
 ]).paddingHorizontal(4).paddingVertical(7).frame({ maxWidth: "infinity", alignment: "leading" }).opacity(goal.mark ? 0.55 : 1);
-var shelfCard = (shelf, block, agent, colorOf) => {
+var shelfCard = (shelf, block, entry, colorOf) => {
+  const agent = entry.name;
   const [open, setOpen] = signal(shelf.open);
   const command = `goals ${shelf.horizon}`;
   const view = computed(() => goalShelf(block, today()));
@@ -655,7 +672,7 @@ var shelfCard = (shelf, block, agent, colorOf) => {
       Text(`No goals set for ${shelf.title.toLowerCase()}.`).font(11).color("secondary"),
       Text(`Ask ${agent}: ${command}`).font(10).color("tertiary")
     ]).paddingHorizontal(4).paddingVertical(4).frame({ maxWidth: "infinity", alignment: "leading" })),
-    dividedList(shown, (goal) => String(goal.number), goalRow(colorOf)),
+    dividedList(shown, (goal) => String(goal.number), goalRow(colorOf, (goal) => discussIcon(entry, `goal:${shelf.horizon}:${goal.number}`))),
     when2(() => shown().length > 0 && (block?.notes.length ?? 0) > 0, () => VStack({ spacing: 4, alignment: "leading" }, (block?.notes ?? []).map((note) => Text(note).font(10).italic().color("tertiary").frame({ maxWidth: "infinity", alignment: "leading" }))).paddingHorizontal(4).paddingTop(4))
   ]));
 };
@@ -664,7 +681,7 @@ var goalsBody = (entry) => {
   const colorOf = projectColors(entry);
   return VStack({ spacing: 10 }, [
     ...theme ? [themeBanner(theme)] : [],
-    VStack({ spacing: 6 }, SHELVES.map((shelf) => shelfCard(shelf, blocks.find((block) => block.horizon === shelf.horizon), entry.name, colorOf)))
+    VStack({ spacing: 6 }, SHELVES.map((shelf) => shelfCard(shelf, blocks.find((block) => block.horizon === shelf.horizon), entry, colorOf)))
   ]);
 };
 
@@ -721,11 +738,11 @@ var tasksCard = (entry, listed) => {
   ]), expanded, setExpanded, () => VStack({ spacing: 6 }, [
     ForEach({ items: groups, key: (group) => group.title }, (group) => VStack({ spacing: 1 }, [
       groupTitle(group().title, group().tasks.length).paddingTop(4),
-      dividedList(() => group().tasks, (item) => item.task.id, (item) => taskRow(item.task, item.color))
+      dividedList(() => group().tasks, (item) => item.task.id, (item) => taskRow(entry, item.task, item.color))
     ]))
   ]));
 };
-var projectCard = (project, tasks) => {
+var projectCard = (entry, project, tasks) => {
   const [expanded, setExpanded] = signal(startsOpen(project.slug));
   const color = hueColor(project.hue);
   const next = tasks[0];
@@ -751,7 +768,7 @@ var projectCard = (project, tasks) => {
         ForEach({ items: links, key: (link) => targetKey(link.target) }, (link) => linkRow(link()))
       ])
     ] : [],
-    dividedList(() => tasks, (task) => task.id, (task) => taskRow(task))
+    dividedList(() => tasks, (task) => task.id, (task) => taskRow(entry, task))
   ]));
 };
 var STATES = [
@@ -759,11 +776,11 @@ var STATES = [
   { title: "Blocked", holds: (project) => !project.active && project.blocked > 0 },
   { title: "Quiet", holds: (project) => !project.active && !project.blocked }
 ];
-var stateGroup = (title, projects, tasksOf) => {
+var stateGroup = (entry, title, projects, tasksOf) => {
   const [expanded, setExpanded] = signal(true);
   return VStack({ spacing: 6 }, [
     foldTitle(title, projects.length, expanded, setExpanded),
-    ForEach({ items: () => expanded() ? projects : [], key: (project) => project.slug }, (item) => projectCard(item(), tasksOf.get(item().slug) ?? []))
+    ForEach({ items: () => expanded() ? projects : [], key: (project) => project.slug }, (item) => projectCard(entry, item(), tasksOf.get(item().slug) ?? []))
   ]);
 };
 var projectsBody = (entry) => {
@@ -775,14 +792,14 @@ var projectsBody = (entry) => {
   return VStack({ spacing: 10 }, [
     searchField("Search tasks…", setQuery),
     when2(searching, () => VStack({ spacing: 1 }, [
-      dividedList(found, (item) => item.task.id, (item) => taskRow(item.task, item.color)),
+      dividedList(found, (item) => item.task.id, (item) => taskRow(entry, item.task, item.color)),
       Text(() => found().length ? "" : "No matching tasks.").font(11).color("tertiary").paddingHorizontal(4)
     ])),
     when2(() => !searching(), () => VStack({ spacing: 10 }, [
       tasksCard(entry, listed),
       ...STATES.flatMap(({ title, holds }) => {
         const projects = entry.projects.filter(holds);
-        return projects.length ? [stateGroup(title, projects, tasksOf)] : [];
+        return projects.length ? [stateGroup(entry, title, projects, tasksOf)] : [];
       }),
       ...entry.projects.length ? [] : [note("No projects yet.")]
     ]))
@@ -903,17 +920,6 @@ var agentPage = (options) => {
 // src/proposals/shown.ts
 var isShown = (laterUntil, nowMs) => laterUntil === "" || Date.parse(laterUntil) <= nowMs;
 
-// src/cmux/sidebar/session.ts
-var openSession = (home, entry, command) => {
-  const selected = (data.workspaces() ?? []).find((workspace) => workspace.selected);
-  const input = `${entry.launcher} "${command}"\r`;
-  if (selected && !selected.remote) {
-    cmux("surface.create", { workspace_id: selected.id, working_directory: home, initial_input: input, focus: true });
-  } else {
-    cmux("workspace.create", { cwd: home, initial_input: input });
-  }
-};
-
 // src/cmux/sidebar/proposals.ts
 var nowMs = computed(() => {
   const clock = data.clock();
@@ -947,10 +953,10 @@ var body = ({ entry, item }, decide) => {
     when2(() => place() === null, () => Text(`Run /heartbeat in one of ${entry.name}’s sessions to start these.`).font(10).color("tertiary").paddingTop(3))
   ]);
 };
-var heartbeatBody = (home, entry) => VStack({ spacing: 5, alignment: "leading" }, [
+var heartbeatBody = (entry) => VStack({ spacing: 5, alignment: "leading" }, [
   Text(`Opens a session in ${entry.name}’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five wait.`).font(11).color("secondary"),
   HStack({ spacing: 4 }, [
-    choiceButton("Start heartbeat", () => openSession(home, entry, "/heartbeat"), entry.colors?.primary ?? PURPLE),
+    choiceButton("Start heartbeat", () => openSession(entry, "/heartbeat"), entry.colors?.primary ?? PURPLE),
     Spacer({ minLength: 0 })
   ]).paddingTop(3)
 ]);
@@ -981,7 +987,7 @@ var proposalsSection = () => {
     key: `${home}#heartbeat`,
     title: `Start ${entry.name}’s heartbeat`,
     badges: [{ text: entry.name, color: entry.colors?.primary ?? PURPLE }],
-    body: () => heartbeatBody(home, entry)
+    body: () => heartbeatBody(entry)
   });
   const cards = computed(() => [
     ...homes.filter(live).flatMap((home) => waiting(home).map(card)),

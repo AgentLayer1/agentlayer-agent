@@ -1,5 +1,6 @@
-import type { TaskItem } from './data';
+import type { HomeEntry, TaskItem } from './data';
 import { dueLabel, isoDay, type DueLabel } from './due';
+import { discussIcon } from './session';
 import { GREEN, GREY, keepWidth, listRow, ORANGE, pill, RED, TITLE_OPACITY } from './style';
 
 const OPEN = { symbol: 'circle', color: GREY };
@@ -64,12 +65,16 @@ const taskMeta = (task: TaskItem, projectColor?: string) =>
 
 /**
  * A task with its title on up to two lines and its status leading the line below; a tap opens its file as a full
- * tab. `projectColor` puts the task's project on a pill, where tasks from several projects sit together.
+ * tab, and the icon at its end opens a session to discuss it. `projectColor` puts the task's project on a pill, where
+ * tasks from several projects sit together.
  */
-export const taskRow = (task: TaskItem, projectColor?: string) =>
+export const taskRow = (entry: HomeEntry, task: TaskItem, projectColor?: string) =>
   listRow(
-    VStack({ spacing: 2, alignment: 'leading' }, [
-      Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation('tail'),
-      taskMeta(task, projectColor)
+    HStack({ spacing: 6, alignment: 'top' }, [
+      VStack({ spacing: 2, alignment: 'leading' }, [
+        Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation('tail'),
+        taskMeta(task, projectColor)
+      ]).frame({ maxWidth: 'infinity', alignment: 'leading' }),
+      discussIcon(entry, `task:${task.id}`)
     ])
   ).onTap(() => cmux('file.open', { path: task.path }));

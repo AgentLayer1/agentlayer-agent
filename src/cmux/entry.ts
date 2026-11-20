@@ -4,6 +4,7 @@ import type { ProposalLedger } from '@/proposals/ledger';
 import { proposalCards } from '@/proposals/rules';
 import { launcher } from '@/proposals/start';
 import { reportKind } from '@/reports/kinds';
+import { pluginName } from '@/shared/naming';
 import { nameHue } from '@/status/html-primitives';
 import type { Work, WorkProject, WorkReport } from '@/work/model';
 import { taskOrderById } from '@/work/order';
@@ -104,6 +105,8 @@ export const homeEntry = (home: string, work: Work, ledger: ProposalLedger): Hom
     goals: goalsView(work),
     proposals: proposalCards(ledger),
     heartbeat: heartbeatPlace(ledger),
-    launcher: launcher(home)
+    launcher: launcher(home),
+    home,
+    plugin: pluginName()
   };
 };

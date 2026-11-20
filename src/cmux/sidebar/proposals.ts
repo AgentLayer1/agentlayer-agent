@@ -88,7 +88,7 @@ const body = ({ entry, item }: Waiting, decide: (choice: Choice, place: Heartbea
   ]);
 };
 
-const heartbeatBody = (home: string, entry: HomeEntry) =>
+const heartbeatBody = (entry: HomeEntry) =>
   VStack({ spacing: 5, alignment: 'leading' }, [
     Text(
       `Opens a session in ${entry.name}’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five wait.`
@@ -98,7 +98,7 @@ const heartbeatBody = (home: string, entry: HomeEntry) =>
     HStack({ spacing: 4 }, [
       choiceButton(
         'Start heartbeat',
-        () => openSession(home, entry, '/heartbeat'),
+        () => openSession(entry, '/heartbeat'),
         entry.colors?.primary ?? PURPLE
       ),
       Spacer({ minLength: 0 })
@@ -143,7 +143,7 @@ export const proposalsSection = (): HostSection => {
     key: `${home}#heartbeat`,
     title: `Start ${entry.name}’s heartbeat`,
     badges: [{ text: entry.name, color: entry.colors?.primary ?? PURPLE }],
-    body: () => heartbeatBody(home, entry)
+    body: () => heartbeatBody(entry)
   });
   const cards = computed(() => [
     ...homes.filter(live).flatMap((home) => waiting(home).map(card)),
