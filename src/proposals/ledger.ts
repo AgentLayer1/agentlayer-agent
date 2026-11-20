@@ -1,7 +1,7 @@
 import { FILES } from '@/config';
 import { isRecord } from '@/shared/json-block';
 import { writeJsonAtomic } from '@/shared/utils';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import type { SessionPlace } from './adapter';
 
 const STATES = ['waiting', 'started', 'skipped'] as const;
@@ -145,4 +145,23 @@ export const readProposalLedger = (): ProposalLedger => {
   }
 };
 
-export const writeProposalLedger = (ledger: ProposalLedger): void => writeJsonAtomic(FILES.PROPOSALS, ledger);
+const isUnreadable = (path: string): boolean => {
+  if (!existsSync(path)) {
+    return false;
+  }
+  try {
+    return !isRecord(JSON.parse(readFileSync(path, 'utf-8')));
+  } catch {
+    return true;
+  }
+};
+
+/**
+ * Replaces the ledger. One that won't parse reads as empty, so it is left for the operator rather than written over.
+ */
+export const writeProposalLedger = (ledger: ProposalLedger): void => {
+  if (isUnreadable(FILES.PROPOSALS)) {
+    throw new Error(`${FILES.PROPOSALS} is not valid JSON; fix or remove it, then try again.`);
+  }
+  writeJsonAtomic(FILES.PROPOSALS, ledger);
+};

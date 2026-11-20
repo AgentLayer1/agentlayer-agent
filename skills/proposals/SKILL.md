@@ -28,7 +28,7 @@ Look in this order, and stop looking once you hold a few more candidates than th
 
 ## 3. Propose the best few
 
-Pick the candidates worth the operator's yes, most pressing first, up to the room, and add them in one `proposal_add` call. Each one is a session a stranger could run:
+Pick the candidates worth the operator's yes, most pressing first, up to the room, and add them in one `proposal_add` call. It refuses a source already waiting, started in the last day or skipped in the last week; for each refusal, add the next-best candidate you hold in another call, until the room is used or your candidates run out. Each one is a session a stranger could run:
 
 - **title**: what the session does, as an imperative, under 60 characters ("Draft the reply to your accountant").
 - **trigger**: what happened, in the operator's terms ("Your accountant wrote two hours ago").
@@ -36,7 +36,7 @@ Pick the candidates worth the operator's yes, most pressing first, up to the roo
 - **estimate**: how long the session should take: `5m`, `15m`, `1h`.
 - **reach**: what it may touch. Drafts only: never send, post, pay, merge or delete, and nothing on the home's ask-first list.
 - **prompt**: the whole first message for a fresh session with none of this context: the task or issue id, what to do, the reach again, and the stop point ("…then stop and show me the draft").
-- **source**: the key from step 2; `proposal_add` refuses one already waiting, started in the last day or skipped in the last week, so a refusal is expected, not an error.
+- **source**: the key from step 2; a refusal for it is expected, not an error.
 
 Propose nothing rather than filler: a quiet hour is a good hour.
 

@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { readdirSync, readFileSync, rmSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { FILES, FOLDERS } from '@/config';
 import type { ProposalAdapter, SessionPlace, StartInput } from './adapter';
 import { EMPTY_LEDGER, readProposalLedger, writeProposalLedger } from './ledger';
@@ -102,6 +102,19 @@ test('Later and Skip record the choice and publish', () => {
   expect(later.published).toHaveLength(1);
   expect(decideProposal(seed(), 'skip', context([]))).toBe('Skipped: Reply to the review.');
   expect(decideProposal('p-none', 'skip', context([]))).toBe('No proposal p-none.');
+});
+
+test('a ledger that won’t parse is never written over, and a Start on it opens nothing', () => {
+  const id = seed();
+  const broken = `${readFileSync(FILES.PROPOSALS, 'utf-8')}}`;
+  mkdirSync(dirname(FILES.PROPOSALS), { recursive: true });
+  writeFileSync(FILES.PROPOSALS, broken);
+  expect(() => writeProposalLedger(EMPTY_LEDGER)).toThrow('is not valid JSON');
+  const { adapter, started } = fakeAdapter(true);
+  expect(decideProposal(id, 'start', context([adapter]))).toBe(`No proposal ${id}.`);
+  expect(started).toHaveLength(0);
+  expect(readFileSync(FILES.PROPOSALS, 'utf-8')).toBe(broken);
+  rmSync(FILES.PROPOSALS, { force: true });
 });
 
 test('the core never imports an adapter', () => {
