@@ -164,11 +164,9 @@ it "(Recommended)"), but the maintainer's choice wins.
 
 Then bump `version` in both manifests, `.claude-plugin/plugin.json` and
 `.codex-plugin/plugin.json`, to the chosen (or determined) value (edit that one field in
-each; `src/contracts/manifests.test.ts` fails when they drift). In the same pass, set the
-setup guides' release line to the new tag: `RELEASE="vX.Y.Z"` in `install.sh` and
-`$release = 'vX.Y.Z'` in `install.ps1`. Both front doors download their steps from that tag,
-so a push to `main` never changes what a new user runs, and the same test fails when either
-line lags the manifests.
+each; `src/contracts/manifests.test.ts` fails when they drift). Set `RELEASE` in
+`install.sh` and `$release` in `install.ps1` to `vX.Y.Z` too; the setup guides download from
+that tag, and the same test fails when either lags.
 
 > Note: `package.json` carries its own, separate `version` that is not used
 > for plugin versioning and has drifted — leave it unless the maintainer asks to sync it.
@@ -292,6 +290,9 @@ pnpm -C "<site>" --filter @agentlayer/agentlayer facts "${CLAUDE_PLUGIN_ROOT}"
 bun "${CLAUDE_PLUGIN_ROOT}/skills/dashboard/scripts/demo-home.ts" --out "<site>/apps/agentlayer/public/demo/dashboard.html" --avatar "<site>/apps/agentlayer/public/demo/assets/ace-avatar.jpg"
 pnpm -C "<site>" --filter @agentlayer/agentlayer lint && pnpm -C "<site>" --filter @agentlayer/agentlayer exec tsc --noEmit
 ```
+
+`facts` refuses a version with no `vX.Y.Z` tag, since the site's install redirects point at it:
+after **Commit only**, run it once the release is tagged.
 
 `lint` runs the docs lint too (links, redirects, sidebar `meta.json`). Read its verdict; a failure on
 a page you touched is fixed, never added to the baseline.
