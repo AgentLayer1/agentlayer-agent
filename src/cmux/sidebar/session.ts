@@ -15,11 +15,12 @@ export const openSession = (entry: HomeEntry, command: string): void => {
 };
 
 /**
- * A faint icon that opens a session to talk `ref` (`task:<id>`, `goal:<horizon>:<n>`) through with the agent. It sits
- * on every row of long lists, so it tracks no hover of its own.
+ * A faint icon that opens a session to talk `ref` (`task:<id>`, `goal:<horizon>:<n>`) through with the agent: the
+ * sparkles of the agent's own headlines, since a speech bubble already counts comments. It sits on every row of long
+ * lists, so it tracks no hover of its own.
  */
 export const discussIcon = (entry: HomeEntry, ref: string) =>
-  Image('bubble.left')
+  Image('sparkles')
     .font(10)
     .color('tertiary')
     .opacity(0.55)

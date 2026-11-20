@@ -57,7 +57,7 @@ run('PROPOSED leads the Manager above NEEDS YOU, its first card open and its put
   expect(between(texts, 'Reply to the supplier', 'Reproduce the rounding bug')).toEqual([
     'Reply to the supplier',
     '~5m',
-    'Nova',
+    '🦉 Nova',
     'due Fri',
     'The supplier wrote two hours ago',
     '“Can you confirm the spring order by Friday?”',
@@ -164,7 +164,7 @@ run('a home without a heartbeat gets a card that opens one in a focused tab of t
   sidebar.tap('PROPOSED');
   expect(between(sidebar.visibleTexts(), 'Start Scout’s heartbeat', 'Audit the dark mode colours')).toEqual([
     'Start Scout’s heartbeat',
-    'Scout',
+    '🐢 Scout',
     HEARTBEAT_LINE,
     'Start heartbeat'
   ]);
@@ -252,7 +252,7 @@ run('every joined agent’s proposals share the section, the ones a heartbeat ca
     texts.filter((text) => titles.includes(text)),
     'Nova’s first, then Scout’s heartbeat card and its proposal'
   ).toEqual(titles);
-  expect(texts).toContain('Scout');
+  expect(texts).toContain('🐢 Scout');
 });
 
 run('an entry from an older plugin adds nothing to PROPOSED', () => {

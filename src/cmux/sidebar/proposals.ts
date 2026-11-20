@@ -125,7 +125,7 @@ export const proposalsSection = (): HostSection => {
       title: item.title,
       ...(item.estimate ? { span: `~${item.estimate}` } : {}),
       badges: [
-        { text: entry.name, color: entry.colors?.primary ?? PURPLE },
+        { text: `${entry.emoji} ${entry.name}`, color: entry.colors?.primary ?? PURPLE },
         ...(item.due ? [{ text: item.due, color: ORANGE, icon: 'calendar' }] : [])
       ],
       searchText: `${item.trigger} ${item.detail}`,
@@ -142,7 +142,7 @@ export const proposalsSection = (): HostSection => {
   const heartbeatCard = (home: string, entry: HomeEntry): SectionCard => ({
     key: `${home}#heartbeat`,
     title: `Start ${entry.name}’s heartbeat`,
-    badges: [{ text: entry.name, color: entry.colors?.primary ?? PURPLE }],
+    badges: [{ text: `${entry.emoji} ${entry.name}`, color: entry.colors?.primary ?? PURPLE }],
     body: () => heartbeatBody(entry)
   });
   const cards = computed(() => [

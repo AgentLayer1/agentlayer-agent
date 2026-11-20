@@ -35,7 +35,7 @@ export const count = (amount: number, status: string) =>
       ]
     : [];
 
-const taskMeta = (task: TaskItem, projectColor?: string) =>
+const taskMeta = (entry: HomeEntry, task: TaskItem, projectColor?: string) =>
   HStack({ spacing: 6 }, [
     statusIcon(task.status),
     keepWidth(Text(task.id).font(10).monospaced().color('tertiary')),
@@ -60,21 +60,19 @@ const taskMeta = (task: TaskItem, projectColor?: string) =>
             Text(String(task.comments)).font(10).monospaced().color('tertiary')
           ]).fixedSize()
         ]
-      : [])
+      : []),
+    discussIcon(entry, `task:${task.id}`)
   ]);
 
 /**
  * A task with its title on up to two lines and its status leading the line below; a tap opens its file as a full
- * tab, and the icon at its end opens a session to discuss it. `projectColor` puts the task's project on a pill, where
- * tasks from several projects sit together.
+ * tab, and the sparkles at the end of that line open a session to discuss it. `projectColor` puts the task's project on
+ * a pill, where tasks from several projects sit together.
  */
 export const taskRow = (entry: HomeEntry, task: TaskItem, projectColor?: string) =>
   listRow(
-    HStack({ spacing: 6, alignment: 'top' }, [
-      VStack({ spacing: 2, alignment: 'leading' }, [
-        Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation('tail'),
-        taskMeta(task, projectColor)
-      ]).frame({ maxWidth: 'infinity', alignment: 'leading' }),
-      discussIcon(entry, `task:${task.id}`)
+    VStack({ spacing: 2, alignment: 'leading' }, [
+      Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation('tail'),
+      taskMeta(entry, task, projectColor)
     ])
   ).onTap(() => cmux('file.open', { path: task.path }));

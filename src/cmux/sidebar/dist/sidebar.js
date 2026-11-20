@@ -554,7 +554,7 @@ var openSession = (entry, command) => {
     cmux("workspace.create", { cwd: entry.home, initial_input: input });
   }
 };
-var discussIcon = (entry, ref) => Image("bubble.left").font(10).color("tertiary").opacity(0.55).padding(3).help(`Discuss with ${entry.name}`).onTap(() => openSession(entry, `/${entry.plugin}:discuss ${ref}`));
+var discussIcon = (entry, ref) => Image("sparkles").font(10).color("tertiary").opacity(0.55).padding(3).help(`Discuss with ${entry.name}`).onTap(() => openSession(entry, `/${entry.plugin}:discuss ${ref}`));
 
 // src/cmux/sidebar/due.ts
 var wordsFor = (days) => {
@@ -597,7 +597,7 @@ var count = (amount, status) => amount ? [
     Text(String(amount)).font(10).weight("medium").monospaced().color("secondary")
   ]).fixedSize()
 ] : [];
-var taskMeta = (task, projectColor) => HStack({ spacing: 6 }, [
+var taskMeta = (entry, task, projectColor) => HStack({ spacing: 6 }, [
   statusIcon(task.status),
   keepWidth(Text(task.id).font(10).monospaced().color("tertiary")),
   keepWidth(Text(task.priority).font(10).weight("semibold").monospaced().color(URGENT.has(task.priority) ? ORANGE : "tertiary")),
@@ -609,14 +609,12 @@ var taskMeta = (task, projectColor) => HStack({ spacing: 6 }, [
       Image("bubble.left").font(9).color("tertiary"),
       Text(String(task.comments)).font(10).monospaced().color("tertiary")
     ]).fixedSize()
-  ] : []
-]);
-var taskRow = (entry, task, projectColor) => listRow(HStack({ spacing: 6, alignment: "top" }, [
-  VStack({ spacing: 2, alignment: "leading" }, [
-    Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail"),
-    taskMeta(task, projectColor)
-  ]).frame({ maxWidth: "infinity", alignment: "leading" }),
+  ] : [],
   discussIcon(entry, `task:${task.id}`)
+]);
+var taskRow = (entry, task, projectColor) => listRow(VStack({ spacing: 2, alignment: "leading" }, [
+  Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail"),
+  taskMeta(entry, task, projectColor)
 ])).onTap(() => cmux("file.open", { path: task.path }));
 
 // src/cmux/sidebar/goals.ts
@@ -980,7 +978,7 @@ var proposalsSection = () => {
       title: item.title,
       ...item.estimate ? { span: `~${item.estimate}` } : {},
       badges: [
-        { text: entry.name, color: entry.colors?.primary ?? PURPLE },
+        { text: `${entry.emoji} ${entry.name}`, color: entry.colors?.primary ?? PURPLE },
         ...item.due ? [{ text: item.due, color: ORANGE, icon: "calendar" }] : []
       ],
       searchText: `${item.trigger} ${item.detail}`,
@@ -995,7 +993,7 @@ var proposalsSection = () => {
   const heartbeatCard = (home, entry) => ({
     key: `${home}#heartbeat`,
     title: `Start ${entry.name}’s heartbeat`,
-    badges: [{ text: entry.name, color: entry.colors?.primary ?? PURPLE }],
+    badges: [{ text: `${entry.emoji} ${entry.name}`, color: entry.colors?.primary ?? PURPLE }],
     body: () => heartbeatBody(entry)
   });
   const cards = computed(() => [
