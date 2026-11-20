@@ -84,7 +84,7 @@ const body = ({ entry, item }: Shown, decide: (choice: Choice, place: HeartbeatP
 const heartbeatBody = (entry: HomeEntry) =>
   VStack({ spacing: 5, alignment: 'leading' }, [
     Text(
-      `Opens a session in ${entry.name}’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five show.`
+      `Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, spending a model turn only when fewer than five show.`
     )
       .font(11)
       .color('secondary'),
@@ -121,6 +121,7 @@ export const proposalsSection = (): HostSection => {
         { text: `${entry.emoji} ${entry.name}`, color: entry.colors?.primary ?? PURPLE },
         ...(item.due ? [{ text: item.due, color: ORANGE, icon: 'calendar' }] : [])
       ],
+      ...(item.trigger ? { summary: item.trigger } : {}),
       searchText: `${item.trigger} ${item.detail}`,
       body: () =>
         body(proposal, (choice, place) =>
@@ -146,7 +147,8 @@ export const proposalsSection = (): HostSection => {
     label: 'PROPOSED',
     icon: 'tray.full.fill',
     color: PURPLE,
-    folded: () => !homes.some(live),
+    folded: true,
+    expandFirst: false,
     cards
   };
 };

@@ -50,10 +50,19 @@ run('the Manager leaves out the heartbeat’s own tab until it needs you', () =>
 
 const SCOUT_ENTRY = homeEntry(SCOUT_HOME, SCOUT, SCOUT_LEDGER);
 
-run('PROPOSED leads the Manager above NEEDS YOU, its first card open and its put-off and started ones hidden', () => {
-  const texts = mount(installed(), CMUX_DATA).visibleTexts();
-  expect(texts.indexOf('PROPOSED')).toBeGreaterThan(-1);
-  expect(texts.indexOf('PROPOSED')).toBeLessThan(texts.indexOf('NEEDS YOU'));
+run('PROPOSED leads the Manager above NEEDS YOU, its cards closed and its put-off and started ones hidden', () => {
+  const sidebar = mount(installed(), CMUX_DATA);
+  const folded = sidebar.visibleTexts();
+  expect(folded.indexOf('PROPOSED')).toBeGreaterThan(-1);
+  expect(folded.indexOf('PROPOSED')).toBeLessThan(folded.indexOf('NEEDS YOU'));
+  sidebar.tap('PROPOSED');
+  expect(sidebar.visibleTexts(), 'no card opens on its own').not.toContain('Drafts the reply with the quantities from the price list.');
+  expect(
+    between(sidebar.visibleTexts(), 'Reply to the supplier', 'Reproduce the rounding bug'),
+    'a closed card shows why now under its badges'
+  ).toEqual(['Reply to the supplier', '~5m', '🦉 Nova', 'due Fri', 'The supplier wrote two hours ago']);
+  sidebar.tap('Reply to the supplier');
+  const texts = sidebar.visibleTexts();
   expect(between(texts, 'Reply to the supplier', 'Reproduce the rounding bug')).toEqual([
     'Reply to the supplier',
     '~5m',
@@ -67,13 +76,15 @@ run('PROPOSED leads the Manager above NEEDS YOU, its first card open and its put
     'Later',
     'Skip'
   ]);
-  expect(texts, 'the second card starts closed').not.toContain('A new issue came in this morning');
+  expect(texts, 'the second card starts closed').not.toContain('Runs the checkout with the totals from the issue.');
   expect(texts).not.toContain('Tidy the release notes');
   expect(texts).not.toContain('Run the sync');
 });
 
 run('Start types the choice into the agent’s heartbeat, and the card stays until the published ledger drops it', () => {
   const sidebar = mount(installed(), CMUX_DATA);
+  sidebar.tap('PROPOSED');
+  sidebar.tap('Reply to the supplier');
   expect(sidebar.tap('Start')).toEqual({
     kind: 'cmux',
     method: 'surface.send_text',
@@ -81,13 +92,15 @@ run('Start types the choice into the agent’s heartbeat, and the card stays unt
   });
   expect(sidebar.visibleTexts(), 'a Start that fails leaves the card where it was').toContain('Reply to the supplier');
   const decided = { ...NOVA_ENTRY, proposals: NOVA_ENTRY.proposals.filter(({ id }) => id !== 'p-a1') };
-  const redrawn = mount(installed({ [NOVA_HOME]: decided }), CMUX_DATA).visibleTexts();
-  expect(redrawn).not.toContain('Reply to the supplier');
-  expect(redrawn, 'the next card opens').toContain('A new issue came in this morning');
+  const redrawn = mount(installed({ [NOVA_HOME]: decided }), CMUX_DATA);
+  redrawn.tap('PROPOSED');
+  expect(redrawn.visibleTexts()).not.toContain('Reply to the supplier');
+  expect(redrawn.visibleTexts(), 'the next card stays closed').not.toContain('Runs the checkout with the totals from the issue.');
 });
 
 run('a card put off with Later shows once the clock passes its time', () => {
   const sidebar = mount(installed(), CMUX_DATA);
+  sidebar.tap('PROPOSED');
   expect(sidebar.visibleTexts()).not.toContain('Tidy the release notes');
   sidebar.setData({ clock: { ...CMUX_DATA.clock, epoch: CMUX_DATA.clock.epoch + 2 * 60 * 60 } });
   expect(sidebar.visibleTexts()).toContain('Tidy the release notes');
@@ -124,7 +137,10 @@ run('a heartbeat tab moved to another workspace gets the choice where it is now'
       ...rest
     ]
   };
-  expect(mount(installed(), moved).tap('Start')?.params).toMatchObject({ surface_id: 'w-nova-s2-surface', workspace_id: 'w-code' });
+  const sidebar = mount(installed(), moved);
+  sidebar.tap('PROPOSED');
+  sidebar.tap('Reply to the supplier');
+  expect(sidebar.tap('Start')?.params).toMatchObject({ surface_id: 'w-nova-s2-surface', workspace_id: 'w-code' });
 });
 
 run('a heartbeat tab whose Claude has ended or gone offers a new heartbeat, and no buttons', () => {
@@ -157,11 +173,12 @@ run('a home whose heartbeat isn’t open in cmux shows its proposals with how to
 });
 
 const HEARTBEAT_LINE =
-  'Opens a session in Scout’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five show.';
+  'Opens a session in Scout’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, spending a model turn only when fewer than five show.';
 
 run('a home without a heartbeat gets a card that opens one in a focused tab of the selected workspace', () => {
   const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
   sidebar.tap('PROPOSED');
+  sidebar.tap('Start Scout’s heartbeat');
   expect(between(sidebar.visibleTexts(), 'Start Scout’s heartbeat', 'Audit the dark mode colours')).toEqual([
     'Start Scout’s heartbeat',
     '🐢 Scout',
@@ -176,6 +193,7 @@ run('a home without a heartbeat gets a card that opens one in a focused tab of t
   expect(sidebar.visibleTexts(), 'the card stays until the rewrite drops it').toContain('Start Scout’s heartbeat');
   const billed = mount(installed({ [SCOUT_HOME]: { ...SCOUT_ENTRY, launcher: 'agent' } }), selecting('w-code'));
   billed.tap('PROPOSED');
+  billed.tap('Start Scout’s heartbeat');
   expect(billed.tap('Start heartbeat')?.params).toEqual({
     workspace_id: 'w-code',
     working_directory: SCOUT_HOME,
@@ -188,6 +206,7 @@ run('a home path with an apostrophe goes to cmux as the folder, never through th
   const home = join('/Users', 'ada', "Ada's Agents", 'Scout');
   const sidebar = mount(installed({ [home]: { ...SCOUT_ENTRY, home } }), CMUX_DATA);
   sidebar.tap('PROPOSED');
+  sidebar.tap('Start Scout’s heartbeat');
   expect(sidebar.tap('Start heartbeat')?.params).toMatchObject({ working_directory: home, initial_input: 'claude "/heartbeat"\r' });
 });
 
@@ -201,6 +220,7 @@ run('with no workspace selected, or a remote one, the heartbeat opens in a new w
   [selecting('none'), remote].forEach((data) => {
     const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), data);
     sidebar.tap('PROPOSED');
+    sidebar.tap('Start Scout’s heartbeat');
     expect(sidebar.tap('Start heartbeat')).toEqual({
       kind: 'cmux',
       method: 'workspace.create',
@@ -209,7 +229,7 @@ run('with no workspace selected, or a remote one, the heartbeat opens in a new w
   });
 });
 
-run('with no heartbeat reachable, PROPOSED starts folded, and the header opens it', () => {
+run('with no heartbeat reachable, PROPOSED starts folded too, and the header opens it', () => {
   const gone = { ...NOVA_ENTRY, heartbeat: null };
   const sidebar = mount(installed({ [NOVA_HOME]: gone, [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
   const texts = sidebar.visibleTexts();
@@ -220,17 +240,11 @@ run('with no heartbeat reachable, PROPOSED starts folded, and the header opens i
   expect(sidebar.visibleTexts()).toEqual(expect.arrayContaining(['Start Nova’s heartbeat', 'Start Scout’s heartbeat']));
 });
 
-run('PROPOSED opens once cmux’s sessions arrive with a live heartbeat, even after mounting without them', () => {
-  const sidebar = mount(installed(), { clock: CMUX_DATA.clock });
-  expect(sidebar.visibleTexts()).not.toContain('Reply to the supplier');
-  sidebar.setData({ workspaces: CMUX_DATA.workspaces });
+run('a reachable heartbeat adds no card to start it', () => {
+  const sidebar = mount(installed({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
+  sidebar.tap('PROPOSED');
   expect(sidebar.visibleTexts()).toContain('Reply to the supplier');
-});
-
-run('a reachable heartbeat leaves PROPOSED open with no card to start it', () => {
-  const texts = mount(installed({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA).visibleTexts();
-  expect(texts).toContain('Reply to the supplier');
-  expect(texts).not.toContain('Start Nova’s heartbeat');
+  expect(sidebar.visibleTexts()).not.toContain('Start Nova’s heartbeat');
 });
 
 run('PROPOSED shows with no proposals anywhere while a home has no heartbeat', () => {
@@ -241,7 +255,9 @@ run('PROPOSED shows with no proposals anywhere while a home has no heartbeat', (
 });
 
 run('every joined agent’s proposals share the section, the ones a heartbeat can decide first', () => {
-  const texts = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY, [NOVA_HOME]: NOVA_ENTRY }), CMUX_DATA).visibleTexts();
+  const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY, [NOVA_HOME]: NOVA_ENTRY }), CMUX_DATA);
+  sidebar.tap('PROPOSED');
+  const texts = sidebar.visibleTexts();
   const titles = [
     'Reply to the supplier',
     'Reproduce the rounding bug',

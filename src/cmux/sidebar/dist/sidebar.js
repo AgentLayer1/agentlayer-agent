@@ -212,7 +212,8 @@ var sectionCard = (card, color, expanded, onToggle) => VStack({ spacing: 4, alig
         })),
         key: (entry) => entry.key
       }, badge)
-    ]).paddingLeading(14).frame({ maxWidth: "infinity", alignment: "leading" })
+    ]).paddingLeading(14).frame({ maxWidth: "infinity", alignment: "leading" }),
+    when(() => !expanded() && Boolean(card().summary), () => Text(() => card().summary ?? "").font(11).color("tertiary").lineLimit(2).truncation("tail").paddingLeading(14))
   ]).frame({ maxWidth: "infinity", alignment: "leading" }).cursor("pointer").onTap(onToggle),
   when(() => expanded() && Boolean(card().body), () => (card().body?.() ?? VStack([])).paddingLeading(14).paddingTop(2))
 ]).paddingHorizontal(10).paddingVertical(8).cornerRadius(10).background(() => expanded() ? `${color}1f` : "#7f7f7f0d").frame({ maxWidth: "infinity", alignment: "leading" });
@@ -964,7 +965,7 @@ var body = ({ entry, item }, decide) => {
   ]);
 };
 var heartbeatBody = (entry) => VStack({ spacing: 5, alignment: "leading" }, [
-  Text(`Opens a session in ${entry.name}’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five show.`).font(11).color("secondary"),
+  Text(`Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, spending a model turn only when fewer than five show.`).font(11).color("secondary"),
   HStack({ spacing: 4 }, [
     choiceButton("Start heartbeat", () => openSession(entry, "/heartbeat"), entry.colors?.primary ?? PURPLE),
     Spacer({ minLength: 0 })
@@ -984,6 +985,7 @@ var proposalsSection = () => {
         { text: `${entry.emoji} ${entry.name}`, color: entry.colors?.primary ?? PURPLE },
         ...item.due ? [{ text: item.due, color: ORANGE, icon: "calendar" }] : []
       ],
+      ...item.trigger ? { summary: item.trigger } : {},
       searchText: `${item.trigger} ${item.detail}`,
       body: () => body(proposal, (choice, place) => cmux("surface.send_text", {
         surface_id: place.surfaceId,
@@ -1007,7 +1009,8 @@ var proposalsSection = () => {
     label: "PROPOSED",
     icon: "tray.full.fill",
     color: PURPLE,
-    folded: () => !homes.some(live),
+    folded: true,
+    expandFirst: false,
     cards
   };
 };
