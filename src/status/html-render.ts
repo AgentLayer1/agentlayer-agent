@@ -391,7 +391,10 @@ const attentionTab = (snap: StatusSnapshot): string => {
     ...attention.lanes.later,
     ...attention.unplanned
   ];
-  return `<div data-filterbox>${filterInput('filter tasks…')}${projectFilterChips(tasks, snap.projectHues)}<div class="attentionview"><div class="lanes">${renderAttentionLanes(attention)}</div></div></div>`;
+  const summary = snap.tasksSummary
+    ? `<div class="goaltheme"><span class="glabel">Tasks at a glance · ${esc(relTime(snap.tasksSummary.writtenAt))}</span><span class="gtheme">${esc(snap.tasksSummary.text)}</span></div>`
+    : '';
+  return `${summary}<div data-filterbox>${filterInput('filter tasks…')}${projectFilterChips(tasks, snap.projectHues)}<div class="attentionview"><div class="lanes">${renderAttentionLanes(attention)}</div></div></div>`;
 };
 
 /** Today's header: the day as attention sees it, each tile opening the Attention tab. */

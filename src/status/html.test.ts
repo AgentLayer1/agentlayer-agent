@@ -115,6 +115,7 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
       }
     ]
   },
+  tasksSummary: { text: 'Shipping the partner portal while the paperwork waits on the bank.', writtenAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
   goals: {
     theme: { label: '2026 theme', text: 'Partners first' },
     blocks: [
@@ -868,6 +869,14 @@ describe('renderDashboardHtml', () => {
     expect(html).toContain('<span class="chip proj">');
     expect(html).not.toContain('No goals set for today');
     expect(day('2020-01-01')).toContain('No goals set for today, run goals day.');
+  });
+
+  test('Attention opens on the tasks summary, in the goals theme’s banner with its age, and shows none when none is written', () => {
+    const html = renderDashboardHtml(makeSnapshot());
+    expect(html).toContain(
+      '<div class="goaltheme"><span class="glabel">Tasks at a glance · 2h ago</span><span class="gtheme">Shipping the partner portal while the paperwork waits on the bank.</span></div><div data-filterbox>'
+    );
+    expect(renderDashboardHtml(makeSnapshot({ tasksSummary: null }))).not.toContain('Tasks at a glance');
   });
 
   test('a goal reads as its headline, what counts as done, and its block’s notes; a scored quarter steps back', () => {

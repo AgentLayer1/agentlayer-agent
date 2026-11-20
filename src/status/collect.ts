@@ -396,6 +396,8 @@ export interface StatusSnapshot {
   mcp: { toolCount: number; toolDetails: ToolInfo[] };
   /** The goal blocks in projects/TASKS.md, as the work model reads them. */
   goals: GoalsView;
+  /** The one-line theme of the open tasks from projects/TASKS.md, beside the goals; null until one is written. */
+  tasksSummary: Work['tasksSummary'];
   /** `## Active Threads` bullets from memory/index.md, markdown stripped. */
   memoryThreads: string[];
   /** `## Recent Decisions` bullets from memory/index.md, markdown stripped. */
@@ -1607,6 +1609,7 @@ export const collectStatus = async (work: Work = buildWork()): Promise<StatusSna
     skills: collectSkills(),
     mcp: await collectMcp(),
     goals: goalsView(work),
+    tasksSummary: work.tasksSummary,
     memoryThreads: collectMemoryThreads(),
     memoryDecisions: collectMemoryDecisions(),
     memoryLearnings: collectMemoryLearnings(),
