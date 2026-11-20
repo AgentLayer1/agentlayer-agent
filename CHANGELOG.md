@@ -47,6 +47,26 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.0.8] - 2026-11-21
+
+The heartbeat follows the home instead of the clock, and the PROPOSED list waits until you open it.
+
+### Changed
+- The heartbeat no longer sleeps 23:00–07:00. A wake goes ahead only when another session in the
+  home wrote to its transcript within the interval (syncs and agent-run sessions count); a session
+  that keeps no transcript keeps waking. `/heartbeat status` says when another session was last
+  active.
+- `/heartbeat`, with or without an interval, looks for proposals at once at any hour, then waits a
+  full interval. Its reply says whether it looked, or why not.
+- The cmux Manager's PROPOSED section starts folded and no card opens on its own. A closed card shows
+  why it's there under its badges; opening it shows the details and buttons. The Start heartbeat card
+  describes the new wake (cmux-custom-manager 0.4.5). The sidebar picks this up on its next sync or
+  dashboard refresh.
+
+### Upgrade
+- `deps: required` — `cmux-custom-manager` moves to `f885f86` (0.4.5); run `bun install` in the
+  plugin root.
+
 ## [1.0.7] - 2026-11-20
 
 The setup guide installs the release it names, never what happens to be on `main`.
