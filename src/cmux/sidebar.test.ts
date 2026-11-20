@@ -159,7 +159,7 @@ run('a home whose heartbeat isn’t open in cmux shows its proposals with how to
 const HEARTBEAT_LINE =
   'Opens a session in Scout’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five wait.';
 
-run('a home without a heartbeat gets a card that opens one in a new workspace in its home, whatever is selected', () => {
+run('a home without a heartbeat gets a card that opens one in a focused tab of the selected workspace', () => {
   const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
   sidebar.tap('PROPOSED');
   expect(between(sidebar.visibleTexts(), 'Start Scout’s heartbeat', 'Audit the dark mode colours')).toEqual([
@@ -170,20 +170,43 @@ run('a home without a heartbeat gets a card that opens one in a new workspace in
   ]);
   expect(sidebar.tap('Start heartbeat')).toEqual({
     kind: 'cmux',
-    method: 'workspace.create',
-    params: { cwd: SCOUT_HOME, initial_input: 'claude "/heartbeat"\r' }
+    method: 'surface.create',
+    params: { workspace_id: 'w-nova', working_directory: SCOUT_HOME, initial_input: 'claude "/heartbeat"\r', focus: 'true' }
   });
   expect(sidebar.visibleTexts(), 'the card stays until the rewrite drops it').toContain('Start Scout’s heartbeat');
   const billed = mount(installed({ [SCOUT_HOME]: { ...SCOUT_ENTRY, launcher: 'agent' } }), selecting('w-code'));
   billed.tap('PROPOSED');
-  expect(billed.tap('Start heartbeat')?.params).toEqual({ cwd: SCOUT_HOME, initial_input: 'agent "/heartbeat"\r' });
+  expect(billed.tap('Start heartbeat')?.params).toEqual({
+    workspace_id: 'w-code',
+    working_directory: SCOUT_HOME,
+    initial_input: 'agent "/heartbeat"\r',
+    focus: 'true'
+  });
 });
 
 run('a home path with an apostrophe goes to cmux as the folder, never through the shell', () => {
   const home = join('/Users', 'ada', "Ada's Agents", 'Scout');
   const sidebar = mount(installed({ [home]: SCOUT_ENTRY }), CMUX_DATA);
   sidebar.tap('PROPOSED');
-  expect(sidebar.tap('Start heartbeat')?.params).toEqual({ cwd: home, initial_input: 'claude "/heartbeat"\r' });
+  expect(sidebar.tap('Start heartbeat')?.params).toMatchObject({ working_directory: home, initial_input: 'claude "/heartbeat"\r' });
+});
+
+run('with no workspace selected, or a remote one, the heartbeat opens in a new workspace in its home', () => {
+  const remote = {
+    ...CMUX_DATA,
+    workspaces: CMUX_DATA.workspaces.map((item) =>
+      item.selected ? { ...item, remote: { target: 'ada@build-box', state: 'connected', connected: true } } : item
+    )
+  };
+  [selecting('none'), remote].forEach((data) => {
+    const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), data);
+    sidebar.tap('PROPOSED');
+    expect(sidebar.tap('Start heartbeat')).toEqual({
+      kind: 'cmux',
+      method: 'workspace.create',
+      params: { cwd: SCOUT_HOME, initial_input: 'claude "/heartbeat"\r' }
+    });
+  });
 });
 
 run('with no heartbeat reachable, PROPOSED starts folded, and the header opens it', () => {

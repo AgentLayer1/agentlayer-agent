@@ -1,6 +1,7 @@
 import type { HostSection, SectionCard } from 'cmux-custom-manager/sections';
 import { isShown } from '../../proposals/shown';
 import { SCHEMA, type HeartbeatPlace, type HomeEntry, type ProposalItem } from './data';
+import { openSession } from './session';
 import { ORANGE, PURPLE, when } from './style';
 
 type Choice = 'start' | 'later' | 'skip';
@@ -87,10 +88,6 @@ const body = ({ entry, item }: Waiting, decide: (choice: Choice, place: Heartbea
   ]);
 };
 
-// A workspace of its own in the home, whatever is selected: a remote one can't take startup input.
-const startHeartbeat = (home: string, entry: HomeEntry): void =>
-  cmux('workspace.create', { cwd: home, initial_input: `${entry.launcher} "/heartbeat"\r` });
-
 const heartbeatBody = (home: string, entry: HomeEntry) =>
   VStack({ spacing: 5, alignment: 'leading' }, [
     Text(
@@ -101,7 +98,7 @@ const heartbeatBody = (home: string, entry: HomeEntry) =>
     HStack({ spacing: 4 }, [
       choiceButton(
         'Start heartbeat',
-        () => startHeartbeat(home, entry),
+        () => openSession(home, entry, '/heartbeat'),
         entry.colors?.primary ?? PURPLE
       ),
       Spacer({ minLength: 0 })

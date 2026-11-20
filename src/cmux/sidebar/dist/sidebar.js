@@ -903,6 +903,17 @@ var agentPage = (options) => {
 // src/proposals/shown.ts
 var isShown = (laterUntil, nowMs) => laterUntil === "" || Date.parse(laterUntil) <= nowMs;
 
+// src/cmux/sidebar/session.ts
+var openSession = (home, entry, command) => {
+  const selected = (data.workspaces() ?? []).find((workspace) => workspace.selected);
+  const input = `${entry.launcher} "${command}"\r`;
+  if (selected && !selected.remote) {
+    cmux("surface.create", { workspace_id: selected.id, working_directory: home, initial_input: input, focus: true });
+  } else {
+    cmux("workspace.create", { cwd: home, initial_input: input });
+  }
+};
+
 // src/cmux/sidebar/proposals.ts
 var nowMs = computed(() => {
   const clock = data.clock();
@@ -936,11 +947,10 @@ var body = ({ entry, item }, decide) => {
     when2(() => place() === null, () => Text(`Run /heartbeat in one of ${entry.name}’s sessions to start these.`).font(10).color("tertiary").paddingTop(3))
   ]);
 };
-var startHeartbeat = (home, entry) => cmux("workspace.create", { cwd: home, initial_input: `${entry.launcher} "/heartbeat"\r` });
 var heartbeatBody = (home, entry) => VStack({ spacing: 5, alignment: "leading" }, [
   Text(`Opens a session in ${entry.name}’s home that looks for proposals every 55 minutes and stays quiet at night, spending a model turn only when fewer than five wait.`).font(11).color("secondary"),
   HStack({ spacing: 4 }, [
-    choiceButton("Start heartbeat", () => startHeartbeat(home, entry), entry.colors?.primary ?? PURPLE),
+    choiceButton("Start heartbeat", () => openSession(home, entry, "/heartbeat"), entry.colors?.primary ?? PURPLE),
     Spacer({ minLength: 0 })
   ]).paddingTop(3)
 ]);
