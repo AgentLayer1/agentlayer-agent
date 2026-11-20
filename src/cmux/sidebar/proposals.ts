@@ -87,15 +87,9 @@ const body = ({ entry, item }: Waiting, decide: (choice: Choice, place: Heartbea
   ]);
 };
 
-const startHeartbeat = (home: string, entry: HomeEntry): void => {
-  const selected = (data.workspaces() ?? []).find((workspace) => workspace.selected);
-  const launch = `${entry.launcher} "/heartbeat"\r`;
-  if (selected) {
-    cmux('surface.create', { workspace_id: selected.id, working_directory: home, initial_input: launch, focus: true });
-  } else {
-    cmux('workspace.create', { cwd: home, initial_input: launch });
-  }
-};
+// A workspace of its own in the home, whatever is selected: a remote one can't take startup input.
+const startHeartbeat = (home: string, entry: HomeEntry): void =>
+  cmux('workspace.create', { cwd: home, initial_input: `${entry.launcher} "/heartbeat"\r` });
 
 const heartbeatBody = (home: string, entry: HomeEntry) =>
   VStack({ spacing: 5, alignment: 'leading' }, [
