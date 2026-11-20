@@ -84,7 +84,10 @@ them coming.
   home when no workspace is selected or the selected one can't take a tab.
 - The cmux sidebar picks up cmux-custom-manager 0.4.4.
 - The release skill offers a docs pass after the release: it finds the docs site beside the plugin,
-  plans every page the release touches, and regenerates the plugin facts and the demo dashboard.
+  plans every page the release touches (shown in the question, with every changelog line covered),
+  and regenerates the plugin facts and the demo dashboard. It no longer offers to push either repo;
+  pushing is the maintainer's once they've checked.
+- The README's skill, playbook and tool counts are checked by a test.
 
 ### Fixed
 - Task titles in the cmux Agents tab take two lines, like reports.
