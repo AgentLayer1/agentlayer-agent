@@ -267,6 +267,7 @@ test('a model that holds nothing for a home with no projects', () => {
     reports: [],
     pins: [],
     goals: [],
+    tasksSummary: null,
     malformed: []
   };
   expect(projectLoads(empty)).toEqual([]);

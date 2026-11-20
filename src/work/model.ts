@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * The model's version. A reader treats a file with another version as missing, and the next rebuild rewrites it.
  */
-export const WORK_SCHEMA = 4;
+export const WORK_SCHEMA = 5;
 
 const PinSchema = z.object({ title: z.string(), icon: z.string(), path: z.string() });
 
@@ -128,6 +128,14 @@ const GoalBlockSchema = z.object({
  * pins and its goals. It holds no counts, dates of its own or judgements like "overdue"; those are views over it
  * (views.ts), so it changes only when the work does.
  */
+const TasksSummarySchema = z.object({
+  text: z.string(),
+  /**
+   * When it was written, an ISO time with an offset.
+   */
+  writtenAt: z.string()
+});
+
 export const WorkSchema = z.object({
   schema: z.literal(WORK_SCHEMA),
   agent: z.object({
@@ -154,6 +162,10 @@ export const WorkSchema = z.object({
    */
   goals: z.array(GoalBlockSchema),
   /**
+   * The model-written summary of the tasks in projects/TASKS.md, beside the goals.
+   */
+  tasksSummary: TasksSummarySchema.nullable(),
+  /**
    * HOME-relative paths of task files that don't parse, so a broken task shows as broken rather than missing.
    */
   malformed: z.array(z.string())
@@ -165,3 +177,4 @@ export type WorkTask = Work['tasks'][number];
 export type WorkReport = Work['reports'][number];
 export type WorkGoalBlock = Work['goals'][number];
 export type WorkGoal = WorkGoalBlock['goals'][number];
+export type WorkTasksSummary = NonNullable<Work['tasksSummary']>;

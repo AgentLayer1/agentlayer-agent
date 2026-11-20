@@ -223,6 +223,26 @@ export const PURPLE = '#BF5AF2';
 export const note = (text: string) => Text(text).font(11).color('tertiary').paddingHorizontal(10);
 
 /**
+ * A page's headline: a small label over a line or two of italic text, on a tinted card.
+ */
+export const banner = (label: LiveText, text: string) =>
+  HStack({ spacing: 10 }, [
+    Image('sparkles').font(13).color(PURPLE),
+    // A text beside a Spacer gets half the row and wraps early, so the column takes the width itself.
+    VStack({ spacing: 2, alignment: 'leading' }, [
+      Text(() => textOf(label).toUpperCase())
+        .font(9)
+        .weight('semibold')
+        .color('tertiary'),
+      Text(text).font(14).weight('semibold').italic().opacity(TITLE_OPACITY)
+    ]).frame({ maxWidth: 'infinity', alignment: 'leading' })
+  ])
+    .paddingHorizontal(12)
+    .paddingVertical(10)
+    .background(`${PURPLE}1f`)
+    .cornerRadius(10);
+
+/**
  * An icon-only tab; `help` names it on hover.
  */
 export const tabIcon = (symbol: string, help: string, active: () => boolean, onTap: () => void) =>

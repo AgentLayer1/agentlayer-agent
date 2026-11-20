@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { FOLDERS } from '@/config';
 import type { WorkTask } from '@/work/model';
-import { formatDashboard } from './dashboard';
+import { formatDashboard, writeDashboard } from './dashboard';
 
 const task = (id: string, project: string, updated: string): WorkTask => ({
   id,
@@ -66,4 +69,26 @@ describe('formatDashboard blocked lines', () => {
       '_(project: life-os · priority: P2 · blocked_by: Waiting on the vendor · depends_on: lo-001)_'
     );
   });
+});
+
+test('a rebuild keeps the goals and the summary blocks byte for byte, the summary under the goals', () => {
+  const goals = '<!-- GOALS:START -->\n## Weekly Goals\n\n1. Ship the export\n<!-- GOALS:END -->';
+  const summary = '<!-- SUMMARY:START -->\n## Tasks at a Glance\n\n_Written 2026-11-20 09:30 by sync_\n\nCheckout leads.\n<!-- SUMMARY:END -->';
+  const file = join(FOLDERS.PROJECTS, 'TASKS.md');
+  mkdirSync(FOLDERS.PROJECTS, { recursive: true });
+  writeFileSync(file, `# old\n\n${summary}\n\n${goals}\n\n## Active (9)\n`);
+  writeDashboard({ tasks: [], malformed: [] });
+  const rebuilt = readFileSync(file, 'utf-8');
+  expect(rebuilt).toContain(goals);
+  expect(rebuilt).toContain(summary);
+  expect(rebuilt.indexOf(goals)).toBeLessThan(rebuilt.indexOf(summary));
+  expect(rebuilt.indexOf(summary)).toBeLessThan(rebuilt.indexOf('## Active (0)'));
+});
+
+test('a TASKS.md with no summary block gets the placeholder, which reads as no summary', () => {
+  const file = join(FOLDERS.PROJECTS, 'TASKS.md');
+  mkdirSync(FOLDERS.PROJECTS, { recursive: true });
+  writeFileSync(file, '# old\n');
+  writeDashboard({ tasks: [], malformed: [] });
+  expect(readFileSync(file, 'utf-8')).toContain('_No summary yet. Sync writes one._');
 });

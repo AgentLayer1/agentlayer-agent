@@ -1,5 +1,5 @@
 import { TIMEZONE } from '@/config';
-import { nowISO, offsetFor, shiftDate, todayDate } from '@/shared/date';
+import { localISO, nowISO, shiftDate, todayDate } from '@/shared/date';
 import type { SessionPlace } from './adapter';
 import type { Proposal, ProposalLedger } from './ledger';
 import { isShown } from './shown';
@@ -123,11 +123,7 @@ export const addProposals = (
 export const nextMorning = (now: Date): string => {
   const today = todayDate(now);
   const hour = Number(now.toLocaleString('en-GB', { timeZone: TIMEZONE, hour: '2-digit', hourCycle: 'h23' }));
-  const day = hour < Number(LATER_HOUR.slice(0, 2)) ? today : shiftDate(today, 1);
-  const local = `${day}T${LATER_HOUR}:00`;
-  // Read twice: the first offset, taken at 08:00 UTC, can sit on the other side of a DST change.
-  const guess = offsetFor(new Date(`${local}Z`));
-  return `${local}${offsetFor(new Date(`${local}${guess}`))}`;
+  return localISO(hour < Number(LATER_HOUR.slice(0, 2)) ? today : shiftDate(today, 1), LATER_HOUR);
 };
 
 type Decision =

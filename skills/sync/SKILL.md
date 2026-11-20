@@ -222,6 +222,8 @@ Read <HOME>/.state/lint.md
 Read <HOME>/knowledge/memory/index.md   # for narrative context
 ```
 
+**Write the tasks summary.** With TASKS.md read, replace what sits between `<!-- SUMMARY:START -->` and `<!-- SUMMARY:END -->` with Edit, changing nothing outside the markers (a rebuild keeps the block, as it keeps the goals). It holds three things: the heading `## Tasks at a Glance`; the line `_Written <YYYY-MM-DD HH:MM> by sync_`, the local time from `date '+%Y-%m-%d %H:%M'`; and two or three sentences on what the open and active tasks add up to across projects. Say what the work is about, where the weight sits, and what is stuck or waiting. Use no task ids, no lists and no counts the sidebar already shows. The cmux sidebar shows this block above the tasks, and the dashboard refresh in step 11 redraws it.
+
 ### 8. Pull the attention queue
 
 Invoke the `attention` skill with `refresh` (its [refresh](../attention/references/playbooks/refresh.md) playbook,

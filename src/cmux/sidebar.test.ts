@@ -338,6 +338,17 @@ run('each state group folds away and back on its own', () => {
   expect(sidebar.visibleTexts()).toContain('acme-app');
 });
 
+run('Projects opens on what the tasks add up to and when it was written, and an entry without one shows none', () => {
+  const texts = onProjects().visibleTexts();
+  expect(texts.slice(texts.indexOf('TASKS AT A GLANCE · 2H AGO'), texts.indexOf('TASKS AT A GLANCE · 2H AGO') + 2)).toEqual([
+    'TASKS AT A GLANCE · 2H AGO',
+    'Checkout fixes lead this week: a total bug due tomorrow and an overdue invoice export. Launch waits on both.'
+  ]);
+  expect(onProjects({ [NOVA_HOME]: { ...NOVA_ENTRY, tasksSummary: null } }).visibleTexts().join(' ')).not.toContain(
+    'TASKS AT A GLANCE'
+  );
+});
+
 run('the search lists the tasks whose title or id has every word, in place of the cards', () => {
   const sidebar = onProjects();
   sidebar.type('the CHECKOUT');

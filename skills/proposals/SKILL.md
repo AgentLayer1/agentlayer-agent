@@ -2,7 +2,7 @@
 name: proposals
 description: The heartbeat's wake, run by its own clock in the session /heartbeat chose (or with /heartbeat now) - look at tasks, sync, GitHub and every proposal source skill, then top Proposals back up to five. Proposes only; never starts, sends or edits anything.
 disable-model-invocation: true
-allowed-tools: mcp__plugin_agentlayer_agent__proposal_add, mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_get, mcp__plugin_agentlayer_agent__compile_status, mcp__plugin_agentlayer_agent__github_sweep, Skill, Read, Bash
+allowed-tools: mcp__plugin_agentlayer_agent__proposal_add, mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_get, mcp__plugin_agentlayer_agent__compile_status, mcp__plugin_agentlayer_agent__github_sweep, Skill, Read, Edit, Bash
 ---
 
 # Heartbeat: keep Proposals full
@@ -10,6 +10,8 @@ allowed-tools: mcp__plugin_agentlayer_agent__proposal_add, mcp__plugin_agentlaye
 Proposals are sessions waiting for the operator's yes: Start opens a fresh session that runs the proposal's prompt, Later brings it back in the morning, Skip drops it. This skill runs on the heartbeat's wake. Its one job is to bring the waiting proposals back to five, then stop. It never starts, sends or edits anything itself.
 
 ## 1. See what's there
+
+First, the tasks summary in `<HOME>/projects/TASKS.md`, between `<!-- SUMMARY:START -->` and `<!-- SUMMARY:END -->`. When it holds only its placeholder, or its `_Written <YYYY-MM-DD HH:MM> by …_` line is more than six hours old (compare with `date '+%Y-%m-%d %H:%M'`), rewrite what sits between the markers with Edit. Write the heading `## Tasks at a Glance`, the line `_Written <now> by the heartbeat_`, and two or three sentences on what the open and active tasks add up to across projects: what the work is about, where the weight sits, what is stuck or waiting. Use no task ids or lists. Change nothing outside the markers. Then:
 
 ```bash
 bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" proposals list

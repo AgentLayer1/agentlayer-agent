@@ -32,6 +32,16 @@ export function nowISO(date: Date = new Date()): string {
   return date.toLocaleString('sv-SE', { timeZone: TIMEZONE }).replace(' ', 'T') + offsetFor(date);
 }
 
+/**
+ * A local day and time (`2026-11-20`, `08:00`) in `TIMEZONE` as an ISO time with that moment's offset.
+ */
+export function localISO(day: string, time: string): string {
+  const local = `${day}T${time}:00`;
+  // Read twice: the first offset, taken at that wall time in UTC, can sit on the other side of a DST change.
+  const guess = offsetFor(new Date(`${local}Z`));
+  return `${local}${offsetFor(new Date(`${local}${guess}`))}`;
+}
+
 /** YYYY-MM-DD in local time. */
 export function todayDate(date: Date = new Date()): string {
   return date.toLocaleDateString('sv-SE', { timeZone: TIMEZONE });

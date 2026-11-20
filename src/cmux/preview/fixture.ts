@@ -136,6 +136,10 @@ export const NOVA: Work = {
   ],
   pins: [{ title: 'Support playbook', icon: '🛟', path: join('reports', 'plans', 'support-playbook.md') }],
   goals: parseGoals(NOVA_GOALS),
+  tasksSummary: {
+    text: 'Checkout fixes lead this week: a total bug due tomorrow and an overdue invoice export. Launch waits on both.',
+    writtenAt: '2026-11-09T08:00:00.000Z'
+  },
   malformed: []
 };
 
@@ -150,6 +154,7 @@ export const SCOUT: Work = {
   tasks: [],
   reports: [],
   goals: [],
+  tasksSummary: null,
   pins: [],
   malformed: []
 };

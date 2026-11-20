@@ -1,6 +1,6 @@
 import { goalShelf } from '../../work/due';
-import type { GoalBlockItem, GoalItem, GoalsItem, HomeEntry } from './data';
-import { ACCENT, dividedList, foldCard, GREEN, GREY, ORANGE, pill, PURPLE, TITLE_OPACITY, when } from './style';
+import type { GoalBlockItem, GoalItem, HomeEntry } from './data';
+import { ACCENT, banner, dividedList, foldCard, GREEN, GREY, ORANGE, pill, PURPLE, TITLE_OPACITY, when } from './style';
 import { discussIcon } from './session';
 import { today } from './tasks';
 import { projectColors } from './view';
@@ -20,20 +20,6 @@ const SHELVES: readonly Shelf[] = [
   { horizon: 'month', title: 'This month', icon: 'target', color: GREEN, open: true },
   { horizon: 'year', title: 'This year', icon: 'flag.fill', color: PURPLE, open: false }
 ];
-
-const themeBanner = ({ label, text }: NonNullable<GoalsItem['theme']>) =>
-  HStack({ spacing: 10 }, [
-    Image('sparkles').font(13).color(PURPLE),
-    // A text beside a Spacer gets half the row and wraps early, so the column takes the width itself.
-    VStack({ spacing: 2, alignment: 'leading' }, [
-      Text(label.toUpperCase()).font(9).weight('semibold').color('tertiary'),
-      Text(text).font(14).weight('semibold').italic().opacity(TITLE_OPACITY)
-    ]).frame({ maxWidth: 'infinity', alignment: 'leading' })
-  ])
-    .paddingHorizontal(12)
-    .paddingVertical(10)
-    .background(`${PURPLE}1f`)
-    .cornerRadius(10);
 
 // A scored goal belongs to a quarter that's over, so it steps back.
 const goalRow = (colorOf: (slug: string) => string, discuss: (goal: GoalItem) => View) => (goal: GoalItem) =>
@@ -142,7 +128,7 @@ export const goalsBody = (entry: HomeEntry) => {
   const { theme, blocks } = entry.goals;
   const colorOf = projectColors(entry);
   return VStack({ spacing: 10 }, [
-    ...(theme ? [themeBanner(theme)] : []),
+    ...(theme ? [banner(theme.label, theme.text)] : []),
     VStack(
       { spacing: 6 },
       SHELVES.map((shelf) =>

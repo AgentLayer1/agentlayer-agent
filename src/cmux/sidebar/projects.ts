@@ -4,6 +4,7 @@ import { BUCKETS, dueBucket, type DueBucket } from '../../work/due';
 import { dueLabel } from './due';
 import {
   ACCENT,
+  banner,
   chevron,
   dividedList,
   foldingCard,
@@ -18,6 +19,25 @@ import {
   when
 } from './style';
 import { count, taskRow, today } from './tasks';
+
+const HOUR_MS = 60 * 60 * 1000;
+
+// How long ago the summary was written, against the sidebar's own clock.
+const ago = (writtenAt: string): string => {
+  const clock = data.clock();
+  const elapsed = (clock ? clock.epoch * 1000 : Date.now()) - Date.parse(writtenAt);
+  if (!(elapsed >= 0)) {
+    return '';
+  }
+  return elapsed < HOUR_MS
+    ? `${Math.max(1, Math.round(elapsed / 60_000))}m ago`
+    : elapsed < 24 * HOUR_MS
+      ? `${Math.round(elapsed / HOUR_MS)}h ago`
+      : `${Math.round(elapsed / (24 * HOUR_MS))}d ago`;
+};
+
+const summaryBanner = ({ text, writtenAt }: NonNullable<HomeEntry['tasksSummary']>) =>
+  banner(() => ['Tasks at a glance', ago(writtenAt)].filter(Boolean).join(' · '), text);
 import { matchesQuery, openTarget, projectColors, startsOpen, targetKey } from './view';
 
 const linkRow = ({ icon, title, target }: PinItem) =>
@@ -218,6 +238,7 @@ export const projectsBody = (entry: HomeEntry) => {
   const found = computed(() => listed.filter(({ task }) => matchesQuery(query(), task.title, task.id)));
   const searching = () => query().trim() !== '';
   return VStack({ spacing: 10 }, [
+    ...(entry.tasksSummary ? [summaryBanner(entry.tasksSummary)] : []),
     searchField('Search tasks…', setQuery),
     when(searching, () =>
       VStack({ spacing: 1 }, [

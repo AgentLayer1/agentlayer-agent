@@ -9,6 +9,7 @@ import { readReports } from '@/reports/read';
 import { discoverProjects, scanTasks } from '@/tasks/scan';
 import type { TaskFile } from '@/tasks/types';
 import { readGoals } from './goals';
+import { readTasksSummary } from './summary';
 import { WORK_SCHEMA, type Work, type WorkProject, type WorkTask } from './model';
 
 const fromHome = (path: string): string => relative(FOLDERS.HOME, path);
@@ -84,6 +85,7 @@ export const buildWork = (): Work => {
     reports: readReports(),
     pins: homePinLinks(),
     goals: readGoals(),
+    tasksSummary: readTasksSummary(),
     malformed
   };
 };

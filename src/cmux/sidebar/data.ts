@@ -217,6 +217,10 @@ export interface HomeEntry {
   olderReports: number;
   goals: GoalsItem;
   /**
+   * What the open tasks add up to, as sync or the heartbeat last wrote it in TASKS.md; null when none is written.
+   */
+  tasksSummary: { text: string; writtenAt: string } | null;
+  /**
    * Every proposal still to decide, oldest first, those put off included; the sidebar hides those against its clock.
    */
   proposals: ProposalItem[];

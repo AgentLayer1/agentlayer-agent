@@ -395,6 +395,10 @@ export const SHOWCASE_OPPI: Work = {
     pin('Q4 roadmap review', '🗺️', 'reports', 'plans', 'q4-roadmap.md')
   ],
   goals: parseGoals(NOVA_GOALS.replace('Week of Monday, 2026-11-02', 'Week of Monday, 2026-11-09')),
+  tasksSummary: {
+    text: 'Launch week leans on the reconciliation report and the load-test prep; the pricing page waits on the new plans.',
+    writtenAt: new Date((NOW - 90 * 60) * 1000).toISOString()
+  },
   malformed: []
 };
 
@@ -407,6 +411,7 @@ const quietHome = (name: string, projects: Work['projects'], tasks: Work['tasks'
   reports: [],
   pins: [],
   goals: [],
+  tasksSummary: null,
   malformed: []
 });
 

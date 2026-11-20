@@ -103,6 +103,7 @@ export const homeEntry = (home: string, work: Work, ledger: ProposalLedger): Hom
     reports: openable.slice(0, REPORT_LIMIT).map((report) => reportItem(home, report)),
     olderReports: Math.max(0, openable.length - REPORT_LIMIT),
     goals: goalsView(work),
+    tasksSummary: work.tasksSummary,
     proposals: proposalCards(ledger),
     heartbeat: heartbeatPlace(ledger),
     launcher: launcher(home),
