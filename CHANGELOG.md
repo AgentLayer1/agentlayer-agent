@@ -47,6 +47,59 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.0.6] - 2026-11-20
+
+Proposals: the agent lines up sessions worth starting, and one heartbeat session per home keeps
+them coming.
+
+### Added
+- Proposals: sessions the agent has prepared and waits on a yes for. Start opens a fresh session that
+  runs the proposal's prompt, Later brings it back at 08:00, Skip drops it. A source already waiting,
+  started in the last day or skipped in the last week is never proposed twice, and the backlog stops
+  at 20. The list lives in `.state/proposals.json`.
+- `proposal_add`, the tool that adds proposals, and a `proposals` CLI group: `proposals list`,
+  `proposals decide <start|later|skip> <id>` and `proposals heartbeat`.
+- The heartbeat: `/heartbeat [15m | 2h | off | now | status]` makes one long-running session the
+  home's heartbeat. It looks for proposals at once, then every 55 minutes (or the interval you set),
+  only while the session is idle, outside 23:00–07:00 in the home's timezone, and while there's room
+  for fewer than five showing. `/proposal <start|later|skip> <id>` decides one without a model turn.
+  Both are Claude Code mods; the heartbeat follows its session across `/clear` and `/resume`, and a
+  takeover by another session says so on both sides.
+- The `proposals` skill is the heartbeat's wake: it looks at tasks, sync, GitHub and every proposal
+  source skill, then tops proposals back up to five. It proposes only, and never starts, sends or
+  edits anything. A proposal source is a skill named `proposals-<topic>` whose description starts
+  "Proposal source:"; the contract is in the skill's `references/sources.md`.
+- The cmux Manager shows a PROPOSED section above Needs you, across every home on the Mac. Its
+  buttons type the decision into that home's heartbeat tab, a started proposal opens as a tab beside
+  the heartbeat, and a home without a heartbeat gets a card that starts one.
+- A Discuss icon on every task and goal in the cmux sidebar opens a session on the new `discuss`
+  skill: where the task stands, what's unknown, the ways forward, then a choice of next move, with
+  nothing built first.
+- A tasks-at-a-glance summary in TASKS.md, one line written by sync (and by the heartbeat once it's
+  six hours old). The sidebar shows it above Tasks, and the dashboard's Attention tab opens on it in
+  the goals banner.
+
+### Changed
+- The sidebar opens a session one way everywhere: a tab where you are, or a new workspace in the
+  home when no workspace is selected or the selected one can't take a tab.
+- The cmux sidebar picks up cmux-custom-manager 0.4.4.
+- The release skill offers a docs pass after the release: it finds the docs site beside the plugin,
+  plans every page the release touches, and regenerates the plugin facts and the demo dashboard.
+
+### Fixed
+- Task titles in the cmux Agents tab take two lines, like reports.
+- A task's project pill truncates, so an open Tasks card no longer widens the sidebar.
+- The sidebar's tasks summary is one short themed sentence, and its banner stops at three lines.
+
+### Upgrade
+- `deps: required` — `cmux-custom-manager` moves to `2a8eb8e` (0.4.4); run `bun install` in the
+  plugin root.
+- `settings: mandatory` — add `mcp__plugin_agentlayer_agent__proposal_add` to `permissions.allow`
+  in `settings.json`.
+- `manual: optional` — Proposals need a heartbeat. In Claude Code, run `/heartbeat` in one session
+  you'll leave open in the home (in cmux, the PROPOSED card starts one for you). Without one, nothing
+  is proposed and nothing else changes.
+
 ## [1.0.5] - 2026-11-19
 
 Files open in your own apps: dashboard links go to the file itself, and the installer sets up the editors.
