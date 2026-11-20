@@ -237,7 +237,7 @@ export const PURPLE = '#BF5AF2';
 export const note = (text: string) => Text(text).font(11).color('tertiary').paddingHorizontal(10);
 
 /**
- * A page's headline: a small label over a line or two of italic text, on a tinted card.
+ * A page's headline: a small label over at most three lines of italic text, on a tinted card.
  */
 export const banner = (label: LiveText, text: string) =>
   HStack({ spacing: 10 }, [
@@ -248,7 +248,7 @@ export const banner = (label: LiveText, text: string) =>
         .font(9)
         .weight('semibold')
         .color('tertiary'),
-      Text(text).font(14).weight('semibold').italic().opacity(TITLE_OPACITY)
+      Text(text).font(14).weight('semibold').italic().opacity(TITLE_OPACITY).lineLimit(3).truncation('tail')
     ]).frame({ maxWidth: 'infinity', alignment: 'leading' })
   ])
     .paddingHorizontal(12)

@@ -352,6 +352,12 @@ run('Projects opens on what the tasks add up to and when it was written, and an 
     'TASKS AT A GLANCE · 2H AGO',
     'Checkout fixes lead this week: a total bug due tomorrow and an overdue invoice export. Launch waits on both.'
   ]);
+  expect(
+    onProjects().propsOf(
+      'Checkout fixes lead this week: a total bug due tomorrow and an overdue invoice export. Launch waits on both.'
+    ),
+    'however long the written theme, the banner stops at three lines'
+  ).toMatchObject({ lineLimit: 3, truncation: 'tail' });
   expect(onProjects({ [NOVA_HOME]: { ...NOVA_ENTRY, tasksSummary: null } }).visibleTexts().join(' ')).not.toContain(
     'TASKS AT A GLANCE'
   );

@@ -433,7 +433,7 @@ var banner = (label, text) => HStack({ spacing: 10 }, [
   Image("sparkles").font(13).color(PURPLE),
   VStack({ spacing: 2, alignment: "leading" }, [
     Text(() => textOf(label).toUpperCase()).font(9).weight("semibold").color("tertiary"),
-    Text(text).font(14).weight("semibold").italic().opacity(TITLE_OPACITY)
+    Text(text).font(14).weight("semibold").italic().opacity(TITLE_OPACITY).lineLimit(3).truncation("tail")
   ]).frame({ maxWidth: "infinity", alignment: "leading" })
 ]).paddingHorizontal(12).paddingVertical(10).background(`${PURPLE}1f`).cornerRadius(10);
 var tabIcon = (symbol, help, active, onTap) => Image(symbol).font(12).color(() => active() ? "accent" : "secondary").padding(5).background(() => active() ? "#7f7f7f3d" : null).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
