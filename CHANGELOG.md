@@ -47,6 +47,22 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.0.7] - 2026-11-20
+
+The setup guide installs the release it names, never what happens to be on `main`.
+
+### Fixed
+- `install.sh` and `install.ps1` download their steps from the release tag (`RELEASE`, `$release`)
+  instead of the `main` branch, so a push to `main` no longer changes what a new user runs before
+  it's released. A test fails when either line lags the plugin's version.
+
+### Changed
+- The release skill bumps the setup guides' release line along with the manifests, and its docs
+  pass notes that the site's plugin facts wait for the release tag.
+
+### Upgrade
+- None — code-only, no bun install or HOME changes.
+
 ## [1.0.6] - 2026-11-20
 
 Proposals: the agent lines up sessions worth starting, and one heartbeat session per home keeps
