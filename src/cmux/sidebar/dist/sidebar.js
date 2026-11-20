@@ -595,7 +595,7 @@ var taskMeta = (task, projectColor) => HStack({ spacing: 6 }, [
   ] : []
 ]);
 var taskRow = (task, projectColor) => listRow(VStack({ spacing: 2, alignment: "leading" }, [
-  Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(3).truncation("tail"),
+  Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail"),
   taskMeta(task, projectColor)
 ])).onTap(() => cmux("file.open", { path: task.path }));
 
