@@ -45,14 +45,13 @@ const PLACE: SessionPlace = { adapter: 'cmux', surfaceId: 'surface-1', workspace
 
 const startInput = (promptFile: string = PROMPT_FILE): StartInput => ({
   home: HOME,
-  proposal: { id: 'p-a1', title: 'Reply to the supplier' },
   promptFile,
   launcher: 'agent'
 });
 
 test('Start opens a tab in the heartbeat’s workspace whose command names neither the home nor the prompt', () => {
   const { adapter, calls } = recorder();
-  expect(adapter.start(startInput(), PLACE)).toBe('Opened it in a new tab beside the heartbeat.');
+  expect(adapter.start(startInput(), PLACE)).toBe('Opened it in a new tab.');
   expect(calls).toEqual([
     [
       'new-surface',
@@ -103,7 +102,7 @@ test('a Start through the core passes the prompt only as a file the new shell re
   const { adapter, calls } = recorder();
   const env = { CMUX_SURFACE_ID: 'surface-1', CMUX_WORKSPACE_ID: 'workspace-1' };
   const said = decideProposal(id, 'start', { home: FOLDERS.HOME, adapters: [adapter], env, now: new Date() });
-  expect(said).toBe('Started: Reply to the review. Opened it in a new tab beside the heartbeat.');
+  expect(said).toBe('Started: Reply to the review. Opened it in a new tab.');
   const [args = []] = calls;
   expect(valueOf(args, '--workspace')).toBe('workspace-1');
   expect(valueOf(args, '--working-directory')).toBe(FOLDERS.HOME);

@@ -98,6 +98,35 @@ const novaHeartbeatAgents = (change: (agents: (typeof CMUX_DATA.workspaces)[numb
   workspaces: CMUX_DATA.workspaces.map((item) => (item.id === 'w-nova' ? { ...item, agents: change(item.agents) } : item))
 });
 
+run('another agent started in the heartbeat’s old tab is not the heartbeat, and keeps its Manager card', () => {
+  const codex = novaHeartbeatAgents((agents) =>
+    agents.map((agent) => (agent.panelId === 'w-nova-s2-panel' ? { ...agent, kind: 'codex' } : agent))
+  );
+  const sidebar = mount(installed(), codex);
+  expect(sidebar.visibleTexts()).toContain('Morning brief');
+  sidebar.tap('PROPOSED');
+  expect(sidebar.visibleTexts()).toContain('Start Nova’s heartbeat');
+  expect(sidebar.visibleTexts()).not.toContain('Start');
+});
+
+run('a heartbeat tab moved to another workspace gets the choice where it is now', () => {
+  const [nova, code, ...rest] = CMUX_DATA.workspaces;
+  const heartbeatTab = nova?.tabs.find((tab) => tab.surfaceId === 'w-nova-s2-surface');
+  const heartbeatAgent = nova?.agents.find((agent) => agent.panelId === 'w-nova-s2-panel');
+  if (!nova || !code || !heartbeatTab || !heartbeatAgent) {
+    throw new Error('the fixture lost its heartbeat tab');
+  }
+  const moved = {
+    ...CMUX_DATA,
+    workspaces: [
+      { ...nova, tabs: nova.tabs.filter((tab) => tab !== heartbeatTab), agents: nova.agents.filter((agent) => agent !== heartbeatAgent) },
+      { ...code, tabs: [...code.tabs, heartbeatTab], agents: [...code.agents, heartbeatAgent] },
+      ...rest
+    ]
+  };
+  expect(mount(installed(), moved).tap('Start')?.params).toMatchObject({ surface_id: 'w-nova-s2-surface', workspace_id: 'w-code' });
+});
+
 run('a heartbeat tab whose Claude has ended or gone offers a new heartbeat, and no buttons', () => {
   const ended = novaHeartbeatAgents((agents) =>
     agents.map((agent) => (agent.panelId === 'w-nova-s2-panel' ? { ...agent, status: 'ended' as const } : agent))
@@ -142,25 +171,24 @@ run('a home without a heartbeat gets a card that opens one in a tab of the selec
   expect(sidebar.tap('Start heartbeat')).toEqual({
     kind: 'cmux',
     method: 'surface.create',
-    params: { workspace_id: 'w-nova', initial_input: `cd '${SCOUT_HOME}' && claude "/heartbeat"\r` }
+    params: { workspace_id: 'w-nova', working_directory: SCOUT_HOME, initial_input: 'claude "/heartbeat"\r', focus: 'true' }
   });
   expect(sidebar.visibleTexts(), 'the card stays until the rewrite drops it').toContain('Start Scout’s heartbeat');
   const billed = mount(installed({ [SCOUT_HOME]: { ...SCOUT_ENTRY, launcher: 'agent' } }), selecting('w-code'));
   billed.tap('PROPOSED');
   expect(billed.tap('Start heartbeat')?.params).toEqual({
     workspace_id: 'w-code',
-    initial_input: `cd '${SCOUT_HOME}' && agent "/heartbeat"\r`
+    working_directory: SCOUT_HOME,
+    initial_input: 'agent "/heartbeat"\r',
+    focus: 'true'
   });
 });
 
-run('a home path with an apostrophe reaches the shell as one quoted word', () => {
+run('a home path with an apostrophe goes to cmux as the folder, never through the shell', () => {
   const home = join('/Users', 'ada', "Ada's Agents", 'Scout');
   const sidebar = mount(installed({ [home]: SCOUT_ENTRY }), CMUX_DATA);
   sidebar.tap('PROPOSED');
-  expect(sidebar.tap('Start heartbeat')?.params).toEqual({
-    workspace_id: 'w-nova',
-    initial_input: `cd '/Users/ada/Ada'\\''s Agents/Scout' && claude "/heartbeat"\r`
-  });
+  expect(sidebar.tap('Start heartbeat')?.params).toMatchObject({ working_directory: home, initial_input: 'claude "/heartbeat"\r' });
 });
 
 run('with no workspace selected, the heartbeat opens in a new workspace in its home', () => {

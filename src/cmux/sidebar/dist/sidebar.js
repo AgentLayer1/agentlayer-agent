@@ -908,10 +908,14 @@ var nowMs = computed(() => {
   const clock = data.clock();
   return clock ? clock.epoch * 1000 : Date.now();
 });
-var reachable = (place) => place && (data.workspaces() ?? []).some((workspace) => workspace.tabs.some((tab) => tab.surfaceId === place.surfaceId && (workspace.agents ?? []).some((agent) => agent.panelId === tab.id && agent.status !== "ended"))) ? place : null;
+var isRunningClaude = (agent) => agent.kind === "claude" && agent.status !== "ended";
+var heartbeatRoute = (place) => {
+  const found = place && (data.workspaces() ?? []).find((workspace) => workspace.tabs.some((tab) => tab.surfaceId === place.surfaceId && (workspace.agents ?? []).some((agent) => agent.panelId === tab.id && isRunningClaude(agent))));
+  return place && found ? { surfaceId: place.surfaceId, workspaceId: found.id } : null;
+};
 var choiceButton = (label, onTap, tint) => Text(label).font(11).weight("semibold").color(tint ? "#ffffff" : "secondary").paddingHorizontal(tint ? 14 : 9).paddingVertical(5).background(tint ?? null).cornerRadius(8).hoverBackground(tint ?? "#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(onTap);
 var body = ({ entry, item }, decide) => {
-  const place = () => reachable(entry.heartbeat);
+  const place = () => heartbeatRoute(entry.heartbeat);
   const choose = (choice) => () => {
     const target = place();
     if (target) {
@@ -932,12 +936,11 @@ var body = ({ entry, item }, decide) => {
     when2(() => place() === null, () => Text(`Run /heartbeat in one of ${entry.name}’s sessions to start these.`).font(10).color("tertiary").paddingTop(3))
   ]);
 };
-var shellQuoted = (text) => `'${text.replaceAll("'", "'\\''")}'`;
 var startHeartbeat = (home, entry) => {
   const selected = (data.workspaces() ?? []).find((workspace) => workspace.selected);
   const launch = `${entry.launcher} "/heartbeat"\r`;
   if (selected) {
-    cmux("surface.create", { workspace_id: selected.id, initial_input: `cd ${shellQuoted(home)} && ${launch}` });
+    cmux("surface.create", { workspace_id: selected.id, working_directory: home, initial_input: launch, focus: true });
   } else {
     cmux("workspace.create", { cwd: home, initial_input: launch });
   }
@@ -951,7 +954,7 @@ var heartbeatBody = (home, entry) => VStack({ spacing: 5, alignment: "leading" }
 ]);
 var proposalsSection = () => {
   const homes = Object.entries(DATA.homes).filter(([, entry]) => entry.schema === SCHEMA);
-  const live = ([, entry]) => reachable(entry.heartbeat) !== null;
+  const live = ([, entry]) => heartbeatRoute(entry.heartbeat) !== null;
   const waiting = ([home, entry]) => entry.proposals.map((item) => ({ key: `${home}#${item.id}`, entry, item })).filter(({ item }) => isShown(item.laterUntil, nowMs()));
   const card = (proposal) => {
     const { entry, item, key } = proposal;
@@ -1015,8 +1018,8 @@ var app = () => {
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
   const proposed = proposalsSection();
-  const heartbeats = new Set(homes.flatMap((home) => DATA.homes[home]?.heartbeat?.surfaceId ?? []));
-  const isQuietHeartbeat = (card) => card.focusId !== undefined && heartbeats.has(card.focusId) && card.agent.status !== "needs_input";
+  const heartbeats = computed(() => new Set(Object.values(DATA.homes).flatMap((entry) => entry.schema === SCHEMA ? heartbeatRoute(entry.heartbeat)?.surfaceId ?? [] : [])));
+  const isQuietHeartbeat = (card) => card.focusId !== undefined && heartbeats().has(card.focusId) && isRunningClaude(card.agent) && card.agent.status !== "needs_input";
   const pill = () => HStack({ spacing: 2 }, [
     tabIcon("square.grid.2x2", "Manager", () => tab() === "manager", () => setTab("manager")),
     tabIcon("square.stack.3d.up.fill", "Agents", () => tab() === "agents", () => setTab("agents"))

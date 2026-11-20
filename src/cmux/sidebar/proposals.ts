@@ -16,19 +16,28 @@ const nowMs = computed(() => {
   return clock ? clock.epoch * 1000 : Date.now();
 });
 
-// The heartbeat's place while Claude still runs in its tab: a closed tab, or the shell Claude exited to, can't take
-// the choice.
-const reachable = (place: HeartbeatPlace | null): HeartbeatPlace | null =>
-  place &&
-  (data.workspaces() ?? []).some((workspace) =>
-    workspace.tabs.some(
-      (tab) =>
-        tab.surfaceId === place.surfaceId &&
-        (workspace.agents ?? []).some((agent) => agent.panelId === tab.id && agent.status !== 'ended')
-    )
-  )
-    ? place
-    : null;
+/**
+ * Claude, still running: the only agent a heartbeat's tab can hold.
+ */
+export const isRunningClaude = (agent: { kind: string; status: string }): boolean =>
+  agent.kind === 'claude' && agent.status !== 'ended';
+
+/**
+ * Where the heartbeat is now: its tab, in whichever workspace holds it, while Claude runs there. A closed tab, the
+ * shell Claude exited to, or another agent started in that tab has no route.
+ */
+export const heartbeatRoute = (place: HeartbeatPlace | null): HeartbeatPlace | null => {
+  const found =
+    place &&
+    (data.workspaces() ?? []).find((workspace) =>
+      workspace.tabs.some(
+        (tab) =>
+          tab.surfaceId === place.surfaceId &&
+          (workspace.agents ?? []).some((agent) => agent.panelId === tab.id && isRunningClaude(agent))
+      )
+    );
+  return place && found ? { surfaceId: place.surfaceId, workspaceId: found.id } : null;
+};
 
 const choiceButton = (label: string, onTap: () => void, tint?: string) =>
   Text(label)
@@ -45,7 +54,7 @@ const choiceButton = (label: string, onTap: () => void, tint?: string) =>
     .onTap(onTap);
 
 const body = ({ entry, item }: Waiting, decide: (choice: Choice, place: HeartbeatPlace) => void) => {
-  const place = () => reachable(entry.heartbeat);
+  const place = () => heartbeatRoute(entry.heartbeat);
   const choose = (choice: Choice) => () => {
     const target = place();
     if (target) {
@@ -78,14 +87,11 @@ const body = ({ entry, item }: Waiting, decide: (choice: Choice, place: Heartbea
   ]);
 };
 
-// surface.create takes no folder, so the tab's first line moves into the home.
-const shellQuoted = (text: string): string => `'${text.replaceAll("'", "'\\''")}'`;
-
 const startHeartbeat = (home: string, entry: HomeEntry): void => {
   const selected = (data.workspaces() ?? []).find((workspace) => workspace.selected);
   const launch = `${entry.launcher} "/heartbeat"\r`;
   if (selected) {
-    cmux('surface.create', { workspace_id: selected.id, initial_input: `cd ${shellQuoted(home)} && ${launch}` });
+    cmux('surface.create', { workspace_id: selected.id, working_directory: home, initial_input: launch, focus: true });
   } else {
     cmux('workspace.create', { cwd: home, initial_input: launch });
   }
@@ -116,7 +122,7 @@ const heartbeatBody = (home: string, entry: HomeEntry) =>
  */
 export const proposalsSection = (): HostSection => {
   const homes = Object.entries(DATA.homes).filter(([, entry]) => entry.schema === SCHEMA);
-  const live = ([, entry]: [string, HomeEntry]) => reachable(entry.heartbeat) !== null;
+  const live = ([, entry]: [string, HomeEntry]) => heartbeatRoute(entry.heartbeat) !== null;
   const waiting = ([home, entry]: [string, HomeEntry]) =>
     entry.proposals
       .map((item): Waiting => ({ key: `${home}#${item.id}`, entry, item }))

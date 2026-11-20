@@ -18,8 +18,8 @@
 import { manager } from 'cmux-custom-manager/manager';
 import type { Card } from 'cmux-custom-manager/model';
 import { agentPage } from './agent';
-import type { StartPage } from './data';
-import { proposalsSection } from './proposals';
+import { SCHEMA, type StartPage } from './data';
+import { heartbeatRoute, isRunningClaude, proposalsSection } from './proposals';
 import { scopedHome, type Pin } from './scope';
 import { tabIcon } from './style';
 
@@ -40,10 +40,20 @@ const app = () => {
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
   const proposed = proposalsSection();
-  const heartbeats = new Set(homes.flatMap((home) => DATA.homes[home]?.heartbeat?.surfaceId ?? []));
+  const heartbeats = computed(
+    () =>
+      new Set(
+        Object.values(DATA.homes).flatMap((entry) =>
+          entry.schema === SCHEMA ? (heartbeatRoute(entry.heartbeat)?.surfaceId ?? []) : []
+        )
+      )
+  );
   // The heartbeat waits in its tab all day; the Manager lists it only when it needs you.
   const isQuietHeartbeat = (card: Card) =>
-    card.focusId !== undefined && heartbeats.has(card.focusId) && card.agent.status !== 'needs_input';
+    card.focusId !== undefined &&
+    heartbeats().has(card.focusId) &&
+    isRunningClaude(card.agent) &&
+    card.agent.status !== 'needs_input';
 
   const pill = () =>
     HStack({ spacing: 2 }, [

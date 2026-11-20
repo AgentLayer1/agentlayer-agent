@@ -6,7 +6,7 @@ import { callCmux, type CmuxCall } from './app';
 import { refreshSidebarQuietly } from './lifecycle';
 
 /**
- * The `cmux new-surface` call that opens a proposal as a tab beside the heartbeat. `new-surface` takes no environment,
+ * The `cmux new-surface` call that opens a proposal as a tab in the workspace of the session that started it. `new-surface` takes no environment,
  * so the shell reads the prompt from its path relative to the home: neither the prompt's text nor the home's path is
  * ever parsed as shell.
  */
@@ -41,7 +41,7 @@ export const cmuxAdapterWith = (run: (args: string[]) => CmuxCall): ProposalAdap
     if (!result.ok) {
       throw new Error(result.output || 'cmux didn’t open a tab.');
     }
-    return 'Opened it in a new tab beside the heartbeat.';
+    return 'Opened it in a new tab.';
   },
   publish: (home) => {
     refreshSidebarQuietly(home, readWork() ?? buildWork());
