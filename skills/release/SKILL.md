@@ -164,7 +164,11 @@ it "(Recommended)"), but the maintainer's choice wins.
 
 Then bump `version` in both manifests, `.claude-plugin/plugin.json` and
 `.codex-plugin/plugin.json`, to the chosen (or determined) value (edit that one field in
-each; `src/contracts/manifests.test.ts` fails when they drift).
+each; `src/contracts/manifests.test.ts` fails when they drift). In the same pass, set the
+setup guides' release line to the new tag: `RELEASE="vX.Y.Z"` in `install.sh` and
+`$release = 'vX.Y.Z'` in `install.ps1`. Both front doors download their steps from that tag,
+so a push to `main` never changes what a new user runs, and the same test fails when either
+line lags the manifests.
 
 > Note: `package.json` carries its own, separate `version` that is not used
 > for plugin versioning and has drifted — leave it unless the maintainer asks to sync it.

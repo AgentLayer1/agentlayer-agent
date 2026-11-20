@@ -265,7 +265,7 @@ const READ_ONLY = [
   /^uname -s$/,
   /^uname -sr$/,
   /^ldd \S+$/,
-  /^curl .* https:\/\/raw\.githubusercontent\.com\/AgentLayer1\/agentlayer-agent\/main\/install\/\S+ -o \S+$/
+  /^curl .* https:\/\/raw\.githubusercontent\.com\/AgentLayer1\/agentlayer-agent\/v\d+\.\d+\.\d+\/install\/\S+ -o \S+$/
 ];
 
 // Calls outside the allowlist, and any file a run changed.

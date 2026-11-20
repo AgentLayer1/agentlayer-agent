@@ -40,6 +40,12 @@ describe('plugin manifests', () => {
     commands.forEach((command) => expect(command).toStartWith(`bun "\${CLAUDE_PLUGIN_ROOT}/${CLI_FILE.replaceAll('\\', '/')}" `));
   });
 
+  test('the setup guides download from this release tag, so a push to main never reaches new users', () => {
+    const release = (rel: string, pattern: RegExp) => readFileSync(resolve(ROOT, rel), 'utf-8').match(pattern)?.[1];
+    expect(release('install.sh', /^RELEASE="([^"]+)"$/m)).toBe(`v${claude.version}`);
+    expect(release('install.ps1', /^\s*\$release = '([^']+)'$/m)).toBe(`v${claude.version}`);
+  });
+
   test('the repo doubles as a Codex marketplace listing this checkout as the plugin', () => {
     const marketplace = read('.agents/plugins/marketplace.json');
     const claudeCatalog = read('.claude-plugin/marketplace.json');

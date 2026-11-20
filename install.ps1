@@ -8,7 +8,8 @@ $ErrorActionPreference = 'Stop'
 function Start-AgentLayerGuide {
   param([string[]]$GuideArgs)
 
-  $sourceUrl = 'https://raw.githubusercontent.com/AgentLayer1/agentlayer-agent/main/install'
+  $release = 'v1.0.6'
+  $sourceUrl = "https://raw.githubusercontent.com/AgentLayer1/agentlayer-agent/$release/install"
   $powershellPage = 'https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-windows'
 
   if ($PSVersionTable.PSVersion.Major -lt 7) {
