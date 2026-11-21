@@ -76,6 +76,8 @@ export interface SyncRun {
   owner: string;
   /** The loops doing the sync: the owner and every agent spawned from one of them. */
   loops: string[];
+  /** A brain refresh (`sync brain`): its own phases only, kept out of the history, gone when it ends. */
+  isBrain?: boolean;
 }
 
 export interface SyncHistoryEntry {
@@ -130,10 +132,15 @@ export interface ReportRow {
   title?: string;
 }
 
-/** One tick of the heartbeat as its band shows it. */
+/** One tick of the heartbeat as its band shows it; repeats of one skip fold into a single event. */
 export interface HeartbeatEvent {
   at: number;
+  kind: 'look' | 'refresh' | 'skip' | 'stopped';
+  /** The look's or refresh's closing line, a skip's reason, or what stopped. */
   text: string;
+  /** How many skips this one stands for, and when the first was; absent for one. */
+  count?: number;
+  since?: number;
 }
 
 /** The heartbeat session's own bookkeeping: the local day it last woke, and the token it is the heartbeat by. */
@@ -160,6 +167,8 @@ export interface HeartbeatClock {
   log?: HeartbeatEvent[];
   /** The wake turns started and not yet ended, oldest first: `look` or `refresh`. */
   awaiting?: string[];
+  /** When the first of `awaiting` was queued, epoch ms. */
+  workingSince?: number;
 }
 
 export interface Queue {
@@ -199,6 +208,7 @@ declare module 'claude-code' {
       noticeActing: NoticeActing | null;
       queue: Queue;
       heartbeat: HeartbeatClock;
+      heartbeatRedraw: number;
       needsSetup: boolean;
       taskCard: TaskCard | null;
     };

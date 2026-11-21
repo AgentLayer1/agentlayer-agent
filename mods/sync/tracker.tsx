@@ -4,7 +4,7 @@ import type { AgentStatus, EngineInterface, On, Timer } from 'claude-code';
 import { SYNC_FEATURE } from '../shared/catalog';
 import { cliArgv } from '../shared/cli';
 import type { SyncRun, SyncSnapshot } from '../types';
-import { PHASES, bareToolName, classify } from './phases';
+import { BRAIN_PHASES, PHASES, bareToolName, classify } from './phases';
 import {
   actionNotes,
   appendHistory,
@@ -34,6 +34,8 @@ const syncTick = atom({ plugin: 'agentlayer', key: 'syncTick' } as const, 0);
 
 const [STATS_TOOL] = SYNC_FEATURE.tools;
 const SYNC_SKILL = /(^|:)sync$/;
+// The host appends the command's arguments to the skill's text on their own line.
+const BRAIN_RUN = /^ARGUMENTS:\s*brain\b/m;
 const TICK_MS = 1000;
 const MAIN = 'main';
 
@@ -126,9 +128,12 @@ export const registerSync = (on: On): void => {
     if (!isHandedOn) {
       const now = await $.clock.now();
       const before = await snapshot($).catch(() => null);
-      await update($, syncRun, () => startRun(now, before, loop));
+      await update($, syncRun, () => startRun(now, before, loop, BRAIN_RUN.test(e.text)));
       ticker?.cancel();
       ticker = $.clock.every(TICK_MS, () => void update($, syncTick, (tick) => tick + 1));
+    }
+    if ((await read($, syncRun))?.isBrain) {
+      return result;
     }
     const tools = await $.tool.list();
     const statsTool = tools.find((tool) => tool.name.endsWith(`__${STATS_TOOL}`));
@@ -203,6 +208,11 @@ export const registerSync = (on: On): void => {
     ticker?.cancel();
     ticker = undefined;
     const now = await $.clock.now();
+    // A brain refresh runs where no prompt is typed to clear a finished band; the heartbeat's band records it instead.
+    if (run.isBrain) {
+      await update($, syncRun, () => null);
+      return result;
+    }
     const ended = finish(run, now, await snapshot($).catch(() => null), e.isAborted);
     await update($, syncRun, () => ended);
     // A stopped run would drag the average down.
@@ -233,7 +243,9 @@ export const registerSync = (on: On): void => {
     const isEnded = isOver(run);
     const isComplete = run.status === 'done';
     await read($, syncTick);
-    const past = isComplete ? await history($) : [];
+    const past = isComplete && !run.isBrain ? await history($) : [];
+    const shown = run.isBrain ? PHASES.filter((phase) => BRAIN_PHASES.includes(phase.id)) : PHASES;
+    const current = PHASES[run.phase];
     const average = typicalMs(past);
     const elapsed = formatDuration((run.endedAt ?? now) - run.startedAt);
     const notes = actionNotes(run.actions);
@@ -241,7 +253,7 @@ export const registerSync = (on: On): void => {
     const header = (
       <Box>
         <Text color={look.color}>{look.icon} </Text>
-        <Text weight="semibold">sync</Text>
+        <Text weight="semibold">{run.isBrain ? 'brain refresh' : 'sync'}</Text>
         <Text dimColor>
           {' '}
           · {look.status} · {elapsed}
@@ -252,25 +264,25 @@ export const registerSync = (on: On): void => {
 
     const rail = (
       <Box>
-        {PHASES.map((phase, index) => (
+        {shown.map((phase, position) => (
           <Box key={phase.id}>
-            {index > 0 ? <Text dimColor>─</Text> : null}
-            {isComplete || index < run.phase ? (
+            {position > 0 ? <Text dimColor>─</Text> : null}
+            {isComplete || PHASES.indexOf(phase) < run.phase ? (
               <Text color="green">●</Text>
-            ) : index === run.phase ? (
+            ) : PHASES.indexOf(phase) === run.phase ? (
               <Text color={look.color}>◉</Text>
             ) : (
               <Text dimColor>○</Text>
             )}
           </Box>
         ))}
-        {!isComplete && PHASES[run.phase] ? (
+        {!isComplete && current ? (
           <Box>
             <Text>
               {'  '}
-              {PHASES[run.phase]?.id}{' '}
+              {current.id}{' '}
             </Text>
-            <Text dimColor>{`${run.phase + 1}/${PHASES.length}`}</Text>
+            <Text dimColor>{`${shown.indexOf(current) + 1}/${shown.length}`}</Text>
           </Box>
         ) : null}
       </Box>

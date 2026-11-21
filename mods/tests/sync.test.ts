@@ -126,6 +126,19 @@ describe('sync tracking', () => {
     expect(Array.isArray(stored) ? stored[0]?.totalMs : undefined).toBe(90_000);
   });
 
+  test('a brain refresh shows its own phases, stays out of the history, and clears its band when it ends', async ($, on) => {
+    const host = fakeHost(on, machine());
+    const loaded = await $.skill.prompt({ skill: `${PLUGIN}:sync`, text: 'SYNC PROTOCOL\n\nARGUMENTS: brain' });
+    expect(loaded.text, 'a refresh writes no output block, so it gets no stats instruction').toBe('SYNC PROTOCOL\n\nARGUMENTS: brain');
+    const band = await bandText($, 'terminal');
+    expect(band).toContain('brain refresh');
+    expect(band.match(/[●◉○]/g)?.length, "its nine phases, not the full sync's").toBe(9);
+    await host.clock.advance(60_000);
+    await $.turn.complete({ answer: '', durationMs: 60_000, isAborted: false, turnId: 't1', reason: 'answer' });
+    expect(await bandText($, 'terminal')).not.toContain('brain refresh');
+    expect(host.store.get('sync-history')).toBeUndefined();
+  });
+
   test('a sync handed to a background agent runs on through the hand-back turn', async ($, on) => {
     const host = fakeHost(on, machine());
     on('prompt.submit', (_$, e) => ({ text: e.text }));

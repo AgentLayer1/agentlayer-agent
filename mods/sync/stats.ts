@@ -102,7 +102,8 @@ const tallyAction = (actions: SyncActions, name: string, resultText: string): Sy
   }
 };
 
-export const startRun = (now: number, before: SyncSnapshot | null, owner: string): SyncRun => ({
+export const startRun = (now: number, before: SyncSnapshot | null, owner: string, isBrain = false): SyncRun => ({
+  ...(isBrain ? { isBrain } : {}),
   status: 'running',
   startedAt: now,
   phase: -1,

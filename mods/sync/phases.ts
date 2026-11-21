@@ -60,6 +60,11 @@ export const PHASES: readonly Phase[] = [
 ];
 
 /**
+ * The phases a brain refresh (`sync brain`) runs; the rest are a full sync's alone.
+ */
+export const BRAIN_PHASES: readonly string[] = ['snapshot', 'code', 'compile', 'lint', 'prune', 'links', 'flywheel', 'dashboard', 'history'];
+
+/**
  * A call's bare tool name: the part after `__` for this plugin's MCP tools, the name itself otherwise.
  */
 export const bareToolName = (tool: string, pluginName: string): string =>

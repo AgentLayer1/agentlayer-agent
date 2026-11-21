@@ -130,8 +130,14 @@ export const parseList = (stdout: string): ProposalList | null => {
 
 const LOG_SIZE = 3;
 
-export const logged = (log: readonly HeartbeatEvent[], event: HeartbeatEvent): HeartbeatEvent[] =>
-  [event, ...log].slice(0, LOG_SIZE);
+// A skip that repeats the newest one folds into it, so a quiet night is one line, not the whole log.
+export const logged = (log: readonly HeartbeatEvent[], event: HeartbeatEvent): HeartbeatEvent[] => {
+  const [newest, ...older] = log;
+  if (event.kind === 'skip' && newest?.kind === 'skip' && newest.text === event.text) {
+    return [{ ...event, count: (newest.count ?? 1) + 1, since: newest.since ?? newest.at }, ...older];
+  }
+  return [event, ...log].slice(0, LOG_SIZE);
+};
 
 export const clockIn = (epochMs: number, timeZone: string): string =>
   new Date(epochMs).toLocaleTimeString('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false });
@@ -147,10 +153,44 @@ export const closingLine = (answer: string): string =>
     .at(-1) ?? '';
 
 /**
- * When the next look is due; late once the clock is a minute past it, as after the Mac slept through it.
+ * Whether a look is overdue by more than a minute, as when the Mac slept through it.
  */
-export const nextLook = (nextAt: number, now: number, timeZone: string): string =>
-  `next look ${clockIn(nextAt, timeZone)}${now - nextAt > MINUTE_MS ? ' (late)' : ''}`;
+export const isLate = (nextAt: number, now: number): boolean => now - nextAt > MINUTE_MS;
+
+const span = (minutes: number): string =>
+  minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ''}`;
+
+/**
+ * When the next look comes: a countdown and its clock time, or when it was due once it is late.
+ */
+export const nextLook = (nextAt: number, now: number, timeZone: string): string => {
+  const at = clockIn(nextAt, timeZone);
+  if (isLate(nextAt, now)) {
+    return `next look was due ${at}`;
+  }
+  const minutes = Math.ceil((nextAt - now) / MINUTE_MS);
+  return minutes <= 1 ? `next look now · ${at}` : `next look in ${span(minutes)} · ${at}`;
+};
+
+/**
+ * How the band draws one event: its mark, the mark's colour (absent for dim), and its words.
+ */
+export const eventView = (
+  event: HeartbeatEvent,
+  timeZone: string
+): { mark: string; color?: 'green' | 'cyan' | 'red'; text: string } => {
+  if (event.kind === 'skip') {
+    const times = event.count && event.since ? ` ${event.count}× since ${clockIn(event.since, timeZone)}` : '';
+    return { mark: '–', text: `skipped${times} · ${event.text}` };
+  }
+  if (event.kind === 'refresh') {
+    return { mark: '↻', color: 'cyan', text: event.text };
+  }
+  if (event.kind === 'stopped') {
+    return { mark: '✗', color: 'red', text: event.text };
+  }
+  return /^nothing new/i.test(event.text) ? { mark: '·', text: event.text } : { mark: '✓', color: 'green', text: event.text };
+};
 
 /**
  * How long ago a time was, in the largest whole unit: just now, 12m, 3h, 2d.

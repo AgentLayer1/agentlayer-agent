@@ -5,7 +5,7 @@ import { PROPOSALS_FEATURE } from '../shared/catalog';
 import { cliArgv, cliError } from '../shared/cli';
 import { TURN_REASONS } from '../shared/turns';
 import { clip } from '../tasks/task';
-import type { Queue } from '../types';
+import type { HeartbeatEvent, Queue } from '../types';
 import {
   CHOICES,
   DECISION_AT_END,
@@ -15,6 +15,8 @@ import {
   clockIn,
   closingLine,
   dayIn,
+  eventView,
+  isLate,
   decisionInDraft,
   lastWrite,
   logged,
@@ -40,8 +42,19 @@ const beat = atom({ plugin: 'agentlayer', key: 'heartbeat' } as const, { wokeOn:
 const QUEUE_IDLE: Queue = { pending: [], isBusy: false, isPaused: false };
 const queue = atom({ plugin: 'agentlayer', key: 'queue' } as const, QUEUE_IDLE);
 
-// The wake clock, armed only in the session that is the home's heartbeat.
+// Bumped each minute so the band's countdown stays true between ticks; it costs no model turn.
+const redrawn = atom({ plugin: 'agentlayer', key: 'heartbeatRedraw' } as const, 0);
+
+// The wake clock and the band's redraw, armed only in the session that is the home's heartbeat.
 let ticker: { cancel: () => void } | undefined;
+let redraw: { cancel: () => void } | undefined;
+
+const stopClocks = (): void => {
+  ticker?.cancel();
+  redraw?.cancel();
+  ticker = undefined;
+  redraw = undefined;
+};
 
 // The session root, not its cwd: a shell `cd` in a turn moves the cwd out of the home.
 async function runCli($: EngineInterface, args: readonly string[]): Promise<string> {
@@ -77,8 +90,15 @@ async function workspacesNow($: EngineInterface): Promise<string[]> {
 
 // Queued just before its command runs, so a prompt typed while cmux answers isn't read as the wake's turn.
 async function expectTurn($: EngineInterface, kind: string): Promise<void> {
+  const now = await $.clock.now();
   await update($, beat, (current) =>
-    current.isHeartbeat ? { ...current, awaiting: [...(current.awaiting ?? []), kind] } : current
+    current.isHeartbeat
+      ? {
+          ...current,
+          awaiting: [...(current.awaiting ?? []), kind],
+          workingSince: current.awaiting?.length ? current.workingSince : now
+        }
+      : current
   );
 }
 
@@ -113,24 +133,24 @@ async function wake($: EngineInterface, now: number, zone: string, refresh = fal
   });
 }
 
-async function note($: EngineInterface, at: number, text: string): Promise<void> {
-  await update($, beat, (current) => ({ ...current, log: logged(current.log ?? [], { at, text }) }));
+async function note($: EngineInterface, event: HeartbeatEvent): Promise<void> {
+  await update($, beat, (current) => ({ ...current, log: logged(current.log ?? [], event) }));
 }
 
 const refreshedMs = (list: ProposalList): number => Date.parse(list.refreshedAt) || 0;
 
-// What the band shows of the list, as of a tick at `now`.
-const seen = (list: Bound, now: number) => ({
-  nextAt: now + list.heartbeat.everyMinutes * MINUTE_MS,
+const facts = (list: ProposalList) => ({
   showing: list.showing.length,
   target: list.target,
   refreshedAt: refreshedMs(list)
 });
 
-async function ticked($: EngineInterface, list: Bound, now: number, text: string): Promise<void> {
+const seen = (list: Bound, now: number) => ({ nextAt: now + list.heartbeat.everyMinutes * MINUTE_MS, ...facts(list) });
+
+async function ticked($: EngineInterface, list: Bound, now: number, skipped = ''): Promise<void> {
   await update($, beat, (current) => ({ ...current, ...seen(list, now) }));
-  if (text) {
-    await note($, now, text);
+  if (skipped) {
+    await note($, { at: now, kind: 'skip', text: skipped });
   }
 }
 
@@ -175,14 +195,13 @@ async function tick($: EngineInterface): Promise<void> {
           : 'The heartbeat was turned off; this session stopped looking for proposals.'
       );
     }
-    ticker?.cancel();
-    ticker = undefined;
+    stopClocks();
     await update($, beat, (current) => ({ ...current, isHeartbeat: false }));
     return;
   }
   const now = await $.clock.now();
   if (isBusy) {
-    await ticked($, list, now, 'skipped: a turn was running');
+    await ticked($, list, now, 'a turn was running');
     return;
   }
   const used = await lastUse($);
@@ -190,24 +209,23 @@ async function tick($: EngineInterface): Promise<void> {
   // A refresh waits for something to absorb: a session written since the last sync or refresh.
   const absorbs = used === null || used > refreshedMs(list);
   if (list.refreshDue && absorbs && now - refreshTriedAt >= REFRESH_RETRY_MS) {
-    await ticked($, list, now, '');
+    await ticked($, list, now);
     await wake($, now, list.timezone, true);
     return;
   }
   // A home it can't see is treated as in use, since skipping would stop the heartbeat for good.
   if (used !== null && now - used >= list.heartbeat.everyMinutes * MINUTE_MS) {
-    await ticked($, list, now, 'skipped: home idle');
+    await ticked($, list, now, 'home idle');
     return;
   }
-  await ticked($, list, now, '');
+  await ticked($, list, now);
   await wake($, now, list.timezone);
 }
 
 // Only a process that ran /heartbeat holds a token, so every other session starts without reading the ledger.
 async function arm($: EngineInterface): Promise<Bound | null> {
   const { owner } = await read($, beat);
-  ticker?.cancel();
-  ticker = undefined;
+  stopClocks();
   if (!owner) {
     return null;
   }
@@ -219,6 +237,7 @@ async function arm($: EngineInterface): Promise<Bound | null> {
   const { everyMinutes } = list.heartbeat;
   const now = await $.clock.now();
   ticker = $.clock.every(everyMinutes * MINUTE_MS, () => void tick($));
+  redraw = $.clock.every(MINUTE_MS, () => void update($, redrawn, (count) => count + 1));
   await update($, beat, (current) => ({
     ...current,
     isHeartbeat: true,
@@ -315,10 +334,21 @@ export const registerProposals = (on: On): void => {
     const { awaiting = [] } = await read($, beat);
     const kind = awaiting[0];
     if (e.agentId === undefined && kind) {
-      const [now, line] = [await $.clock.now(), closingLine(e.answer)];
-      const verb = kind === 'refresh' ? 'refreshed' : 'looked';
-      await update($, beat, (current) => ({ ...current, awaiting: (current.awaiting ?? []).slice(1) }));
-      await note($, now, e.reason === 'answer' ? `${verb}: ${line || 'done'}` : `${verb}: stopped (${e.reason})`);
+      const now = await $.clock.now();
+      const done = kind === 'refresh' ? 'refresh' : 'look';
+      await update($, beat, (current) => ({ ...current, awaiting: (current.awaiting ?? []).slice(1), workingSince: now }));
+      await note(
+        $,
+        e.reason === 'answer'
+          ? { at: now, kind: done, text: closingLine(e.answer) || 'done' }
+          : { at: now, kind: 'stopped', text: `the ${done} stopped (${e.reason})` }
+      );
+      // What the turn changed (proposals, the tasks summary, the brain) shows now, here and on the dashboard and sidebar.
+      const list = await readList($);
+      if (list) {
+        await update($, beat, (current) => ({ ...current, ...facts(list) }));
+      }
+      $.clock.after(0, () => void runCli($, ['dashboard']).catch(() => undefined));
     }
     return next(e);
   });
@@ -329,29 +359,47 @@ export const registerProposals = (on: On): void => {
     if (!state.isHeartbeat || e.props.hasSurvey) {
       return below;
     }
+    await read($, redrawn);
     const { Box, Text } = $.ui.resolve(e);
     const zone = state.zone ?? 'UTC';
     const now = await $.clock.now();
-    const head = [
+    const working = state.awaiting?.[0];
+    const late = state.nextAt !== undefined && isLate(state.nextAt, now);
+    const facts = [
       `every ${state.everyMinutes ?? 55}m`,
-      state.nextAt ? nextLook(state.nextAt, now, zone) : '',
-      state.target ? `${state.showing ?? 0} of ${state.target} showing` : '',
+      state.target ? `${state.showing ?? 0} of ${state.target} proposals showing` : '',
       state.refreshedAt ? `brain refreshed ${ago(state.refreshedAt, now)}` : ''
     ].filter(Boolean);
-    const width = Math.max(20, e.props.bodyColumns - 2);
+    // The time, the mark and the gaps around them.
+    const width = Math.max(20, e.props.bodyColumns - 13);
     return (
       <Box flexDirection="column">
         <Box gap={1}>
           <Text color="magenta">💓</Text>
           <Text weight="semibold">Heartbeat</Text>
-          <Text dimColor>{head.join(' · ')}</Text>
+          {working ? (
+            <Text color="magenta">
+              {`◉ ${working === 'refresh' ? 'refreshing the brain' : 'looking for proposals'}…${
+                state.workingSince ? ` since ${clockIn(state.workingSince, zone)}` : ''
+              }`}
+            </Text>
+          ) : state.nextAt ? (
+            <Text color={late ? 'yellow' : undefined} dimColor={!late}>{`○ ${nextLook(state.nextAt, now, zone)}`}</Text>
+          ) : null}
         </Box>
-        {(state.log ?? []).map((event) => (
-          <Box paddingLeft={3} gap={1}>
-            <Text dimColor>{clockIn(event.at, zone)}</Text>
-            <Text>{clip(event.text, width - 6)}</Text>
-          </Box>
-        ))}
+        <Box paddingLeft={3}>
+          <Text dimColor>{facts.join(' · ')}</Text>
+        </Box>
+        {(state.log ?? []).map((event) => {
+          const view = eventView(event, zone);
+          return (
+            <Box paddingLeft={3} gap={1}>
+              <Text dimColor>{clockIn(event.at, zone)}</Text>
+              <Text color={view.color} dimColor={!view.color}>{view.mark}</Text>
+              <Text dimColor={!view.color}>{clip(view.text, width)}</Text>
+            </Box>
+          );
+        })}
         {below}
       </Box>
     );

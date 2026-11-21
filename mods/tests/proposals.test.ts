@@ -371,7 +371,7 @@ describe('proposals', () => {
     await host.clock.settle();
     expect(host.commands).toEqual([WAKE]);
     expect((await run($, 'heartbeat', 'status')).text).toBe(
-      'This session is the heartbeat, every 55m, skipping a wake when no other session in the home was active in that time (last activity 0m ago). 0 of 5 proposals showing. Its next look 09:55.'
+      'This session is the heartbeat, every 55m, skipping a wake when no other session in the home was active in that time (last activity 0m ago). 0 of 5 proposals showing. Its next look in 55m · 09:55.'
     );
   });
 });
@@ -395,9 +395,10 @@ describe('heartbeat band', () => {
     expect(await drawn($)).not.toContain('Heartbeat');
     await run($, 'heartbeat');
     await host.clock.settle();
-    const band = await drawn($);
-    expect(band).toContain('💓|Heartbeat|every 55m · next look ');
-    expect(band).toContain(' · 0 of 5 showing');
+    expect(await drawn($), 'the first look is under way').toContain('💓|Heartbeat|◉ looking for proposals… since 09:00|every 55m · 0 of 5 proposals showing');
+    await ended($, 'Nothing new worth proposing.');
+    await host.clock.advance(5 * MINUTE);
+    expect(await drawn($), 'the countdown redraws each minute').toContain('○ next look in 50m · 09:55');
   });
 
   test('says what each tick did: a look by its closing line, a skip by its reason', async ($, on) => {
@@ -405,10 +406,21 @@ describe('heartbeat band', () => {
     await ended($, 'Read the queue.\n\n**Proposed 2: Draft the reply; Run the sync.**');
     host.transcripts = { 'session-9': NOW };
     await host.clock.advance(55 * MINUTE);
-    const band = await drawn($);
-    expect(band).toContain('skipped: home idle');
-    expect(band).toContain('looked: Proposed 2: Draft the reply; Run the sync.');
-    expect(band.indexOf('skipped: home idle'), 'newest first').toBeLessThan(band.indexOf('looked:'));
+    expect(await drawn($)).toContain('|09:55|–|skipped · home idle|09:00|✓|Proposed 2: Draft the reply; Run the sync.');
+    await host.clock.advance(2 * 55 * MINUTE);
+    expect(await drawn($), 'repeats fold into one line').toContain('|11:45|–|skipped 3× since 09:55 · home idle|09:00|✓|');
+  });
+
+  test('a look that ends rebuilds the dashboard and sidebar, with no model turn', async ($, on) => {
+    const { host } = await bound($, on);
+    const rebuilds = () => host.argv.filter((argv) => argv.slice(2).join(' ') === 'dashboard').length;
+    expect(rebuilds()).toBe(0);
+    await ended($, 'Nothing new worth proposing.');
+    await host.clock.settle();
+    expect(rebuilds()).toBe(1);
+    await ended($, 'Just chatting.', 't2');
+    await host.clock.settle();
+    expect(rebuilds(), 'an ordinary turn rebuilds nothing').toBe(1);
   });
 
   test("an ordinary turn in the heartbeat's tab is not read as a look", async ($, on) => {
@@ -416,7 +428,7 @@ describe('heartbeat band', () => {
     await ended($, 'Proposed 1: x.');
     await ended($, 'Just chatting.', 't2');
     const band = await drawn($);
-    expect(band).toContain('looked: Proposed 1: x.');
+    expect(band).toContain('|✓|Proposed 1: x.');
     expect(band).not.toContain('Just chatting');
   });
 
@@ -429,8 +441,9 @@ describe('heartbeat band', () => {
 
   test('a next look the Mac slept through reads late', () => {
     const due = Date.parse('2026-03-11T10:00:00+08:00');
-    expect(nextLook(due, due + MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look 10:00');
-    expect(nextLook(due, due + 2 * MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look 10:00 (late)');
+    expect(nextLook(due, due - 90 * MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look in 1h 30m · 10:00');
+    expect(nextLook(due, due + MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look now · 10:00');
+    expect(nextLook(due, due + 2 * MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look was due 10:00');
   });
 });
 
@@ -480,8 +493,8 @@ describe('brain refresh', () => {
     )
       .map((element) => element.text)
       .join('|');
-    expect(band).toContain('refreshed: 🧠 Brain refreshed: compiled 3, lint fixed 1, flywheel closed 0, stalled 2.');
-    expect(band).toContain('looked: Proposed 1: Decide on ab-012.');
+    expect(band).toContain('|↻|🧠 Brain refreshed: compiled 3, lint fixed 1, flywheel closed 0, stalled 2.');
+    expect(band).toContain('|✓|Proposed 1: Decide on ab-012.');
     expect(band).toMatch(/brain refreshed (1h|2h) ago/);
   });
 
