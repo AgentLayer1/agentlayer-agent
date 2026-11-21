@@ -21,7 +21,7 @@ It prints the five (or fewer) showing, with their ids, and the room left. A full
 
 ## 2. Gather candidates
 
-Look in this order, and stop looking once you hold a few strong candidates beyond the room:
+Every look gathers, whether or not five are showing and however recently the last look ran: this session starts each wake with no memory of the last one, so a look that only re-checks the showing cards hasn't looked. Look in this order, and stop looking once you hold a few strong candidates beyond the room:
 
 1. **Tasks** (`task_query`): overdue and due-this-week P0/P1 tasks first, then the next unchecked step of an active P1 task (`task_get` for its checklist). Source key `task:<id>`.
 2. **The brain**: a full sync last run three or more days ago (its interviews, goals and briefings wait for the operator; the heartbeat's own brain refresh doesn't replace them), source key `sync`. When a brain refresh ran earlier in this conversation, each stalled task its flywheel listed is a candidate too ("Decide on <task>, stalled N days"), source key `stalled:<id>`.
@@ -30,13 +30,13 @@ Look in this order, and stop looking once you hold a few strong candidates beyon
 
 ## 3. Leave out what a session already has
 
-A proposal for work the operator is already doing is noise. List the sessions active in the last six hours:
+A proposal for work the operator is already doing is noise. List the sessions active in the last six hours, one line each (id · age · branch · what it is about · its latest ask), and run it once as written:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/skills/attention/scripts/list_sessions.ts" --hours 6
+bun "${CLAUDE_PLUGIN_ROOT}/skills/attention/scripts/list_sessions.ts" --hours 6 --brief
 ```
 
-Skip this session's own entry. Drop any candidate, and mark for retiring any showing card, that a listed session is working on: the same task id, issue or PR number, branch, or plainly the same piece of work by its title and recent messages. When unsure whether a session covers it, keep it: a duplicate costs the operator one Skip.
+Skip the heartbeat's own sessions: any whose topic or latest ask is `/heartbeat`, `/clear`, `/agentlayer:proposals` or `/agentlayer:sync brain`. Drop any candidate, and mark for retiring any showing card, that a listed session is working on: the same task id, issue or PR number, branch, or plainly the same piece of work by its title and recent messages. When unsure whether a session covers it, keep it: a duplicate costs the operator one Skip.
 
 ## 4. Keep the best five
 
@@ -58,4 +58,4 @@ Propose nothing rather than filler: a quiet hour is a good hour.
 
 ## 5. End
 
-One line, nothing else, since it is what the heartbeat's band shows: "Proposed 2, retired 1: Draft the reply to your accountant; Run the sync." or "Nothing new worth proposing."
+Exactly one short line, with no second sentence and nothing after it, since it is what the heartbeat's band shows: "Proposed 2, retired 1: Draft the reply to your accountant; Run the sync." or "Nothing new worth proposing." Say nothing about the tasks summary; the heartbeat refreshes the dashboard and sidebar itself once this turn ends.

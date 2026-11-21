@@ -6,7 +6,9 @@
  * metadata, and prints JSON sorted by last activity (most recent first).
  * Read-only, no network. Run with `bun`.
  *
- * Usage: bun list_sessions.ts [--hours 24] [--scope <path>[,<path>...]|all]
+ * Usage: bun list_sessions.ts [--hours 24] [--scope <path>[,<path>...]|all] [--brief]
+ *
+ * --brief prints one line per session (id, age, branch, what it is about, its latest ask) instead of JSON.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -276,16 +278,32 @@ const sessions = listTranscripts(PROJECTS_DIR)
   .filter((info) => info.minutes_ago <= hours * 60) // mtime above was only the cheap pre-filter; open idle sessions keep it fresh forever
   .sort((first, second) => first.minutes_ago - second.minutes_ago);
 
+const oneLine = (text: string | null | undefined, limit: number): string => {
+  const flat = (text ?? '').replace(/\s+/g, ' ').trim();
+  return flat.length > limit ? `${flat.slice(0, limit - 1)}…` : flat;
+};
+
+const briefLine = (info: SessionInfo): string =>
+  [
+    info.session_id.slice(0, 8),
+    `${info.minutes_ago}m ago`,
+    info.git_branch ?? '-',
+    oneLine(info.title ?? info.first_user_msg, 90),
+    `latest: ${oneLine(info.recent_user_msgs.at(-1) ?? info.first_user_msg, 140)}`
+  ].join(' · ');
+
 process.stdout.write(
-  JSON.stringify(
-    {
-      generated_at: toLocalIsoMinutes(new Date(now)),
-      scope: scopes?.join(',') ?? 'all',
-      window_hours: hours,
-      count: sessions.length,
-      sessions
-    },
-    null,
-    1
-  )
+  flags.has('brief')
+    ? `${sessions.map(briefLine).join('\n')}\n`
+    : JSON.stringify(
+        {
+          generated_at: toLocalIsoMinutes(new Date(now)),
+          scope: scopes?.join(',') ?? 'all',
+          window_hours: hours,
+          count: sessions.length,
+          sessions
+        },
+        null,
+        1
+      )
 );
