@@ -72,6 +72,9 @@ export interface ProposalList {
   heartbeat: { owner: string; everyMinutes: number } | null;
   /** The home's timezone, which the day's first wake is read in. */
   timezone: string;
+  /** When a sync or brain refresh last ran, an ISO time or ''; and whether the heartbeat should refresh now. */
+  refreshedAt: string;
+  refreshDue: boolean;
 }
 
 export const parseList = (stdout: string): ProposalList | null => {
@@ -84,6 +87,8 @@ export const parseList = (stdout: string): ProposalList | null => {
     const room = 'room' in data ? data.room : undefined;
     const timezone = 'timezone' in data ? data.timezone : undefined;
     const heartbeat = 'heartbeat' in data ? data.heartbeat : null;
+    const refreshedAt = 'refreshedAt' in data && typeof data.refreshedAt === 'string' ? data.refreshedAt : '';
+    const refreshDue = 'refreshDue' in data && data.refreshDue === true;
     const beat =
       typeof heartbeat === 'object' &&
       heartbeat !== null &&
@@ -97,7 +102,7 @@ export const parseList = (stdout: string): ProposalList | null => {
       typeof room === 'number' &&
       typeof timezone === 'string' &&
       Array.isArray(showing)
-      ? { target, room, showing, heartbeat: beat, timezone }
+      ? { target, room, showing, heartbeat: beat, timezone, refreshedAt, refreshDue }
       : null;
   } catch {
     return null;
@@ -140,3 +145,17 @@ export const closingLine = (answer: string): string =>
  */
 export const nextLook = (nextAt: number, now: number, timeZone: string): string =>
   `next look ${clockIn(nextAt, timeZone)}${now - nextAt > MINUTE_MS ? ' (late)' : ''}`;
+
+/**
+ * How long ago a time was, in the largest whole unit: just now, 12m, 3h, 2d.
+ */
+export const ago = (epochMs: number, now: number): string => {
+  const minutes = Math.floor((now - epochMs) / MINUTE_MS);
+  if (minutes < 1) {
+    return 'just now';
+  }
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+  return minutes < 48 * 60 ? `${Math.floor(minutes / 60)}h ago` : `${Math.floor(minutes / (24 * 60))}d ago`;
+};

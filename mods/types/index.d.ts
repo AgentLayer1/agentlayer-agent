@@ -152,6 +152,8 @@ export interface HeartbeatClock {
   /** How many proposals showed at the last tick, and the most there are. */
   showing?: number;
   target?: number;
+  /** When a sync or brain refresh last ran, epoch ms; 0 when never. */
+  refreshedAt?: number;
   /** The latest ticks, newest first. */
   log?: HeartbeatEvent[];
   /** The wake turns started and not yet ended, oldest first: `look` or `refresh`. */

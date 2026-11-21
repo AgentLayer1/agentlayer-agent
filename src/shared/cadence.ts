@@ -13,6 +13,11 @@ export interface Cadence {
   welcome?: string;
   /** ISO timestamp of the last sync, which ages in hours on the dashboard and days in the sync notice. */
   sync?: string;
+  /**
+   * ISO timestamp of the heartbeat's last brain refresh: a sync's maintenance steps with none of its questions, so it
+   * never stands in for `sync`.
+   */
+  'brain-refresh'?: string;
 }
 
 // Whole, not field by field: the goals keys this module doesn't name ride through `stampCadence`.
@@ -45,3 +50,5 @@ export const stampCadence = (key: string, value: string): void => {
 };
 
 export const stampSync = (): void => stampCadence('sync', nowISO());
+
+export const stampRefresh = (): void => stampCadence('brain-refresh', nowISO());

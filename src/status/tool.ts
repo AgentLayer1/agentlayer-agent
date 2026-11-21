@@ -1,5 +1,5 @@
 import { FILES } from '@/config';
-import { stampSync } from '@/shared/cadence';
+import { stampRefresh, stampSync } from '@/shared/cadence';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { collectAttentionView, saveAttentionQueue, writeAttentionPage } from '@/status/attention';
 import { AttentionGroupSchema, attentionData } from '@/status/attention-data';
@@ -20,11 +20,18 @@ export const tools: ToolDef[] = [
       sync: z
         .boolean()
         .optional()
-        .describe('Only the sync skill sets this: record the run as the last sync before rendering.')
+        .describe('Only the sync skill sets this: record the run as the last sync before rendering.'),
+      refresh: z
+        .boolean()
+        .optional()
+        .describe('Only sync brain sets this: record the run as the last brain refresh, never as a sync.')
     },
-    handler: async ({ sync }) => {
+    handler: async ({ sync, refresh }) => {
       if (sync) {
         stampSync();
+      }
+      if (refresh) {
+        stampRefresh();
       }
       return rebuildDashboards();
     }

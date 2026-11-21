@@ -5,10 +5,12 @@ import {
   addProposals,
   BACKLOG,
   decide,
+  lastRefreshed,
   nextMorning,
   parseEvery,
   proposalCards,
   type ProposalInput,
+  refreshDue,
   releaseHeartbeat,
   retireProposals,
   roomFor,
@@ -191,4 +193,14 @@ test('a ledger written before folder and workspace existed still reads, with bot
   });
   const [read] = parseLedger(old).proposals;
   expect([read?.id, read?.folder, read?.workspace]).toEqual(['p-0', '', '']);
+});
+
+test('a refresh is due six hours after the later of the last sync and the last refresh, and at once when neither ran', () => {
+  const hoursAgo = (hours: number) => new Date(NOW.getTime() - hours * 60 * 60 * 1000).toISOString();
+  expect(lastRefreshed(hoursAgo(9), hoursAgo(2))).toBe(hoursAgo(2));
+  expect(lastRefreshed(hoursAgo(1), undefined)).toBe(hoursAgo(1));
+  expect(lastRefreshed(undefined, undefined)).toBe('');
+  expect(refreshDue('', NOW)).toBe(true);
+  expect(refreshDue(hoursAgo(5.99), NOW)).toBe(false);
+  expect(refreshDue(hoursAgo(6), NOW)).toBe(true);
 });

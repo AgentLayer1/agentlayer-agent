@@ -1,11 +1,14 @@
 import { ADAPTERS } from '@/adapters';
 import { FOLDERS, TIMEZONE } from '@/config';
+import { readCadence } from '@/shared/cadence';
 import { CLI_COMMAND } from '@/shared/naming';
 import { ledgerProblem, readProposalLedger, writeProposalLedger } from './ledger';
 import {
   clearHeartbeat,
   DEFAULT_EVERY_MINUTES,
+  lastRefreshed,
   parseEvery,
+  refreshDue,
   releaseHeartbeat,
   roomFor,
   setHeartbeat,
@@ -41,7 +44,10 @@ const list = (args: readonly string[]): number => {
   const showing = showingNow(ledger, now);
   const room = roomFor(ledger, now);
   if (args.includes('--json')) {
-    console.log(JSON.stringify({ target: TARGET, room, showing, heartbeat: ledger.heartbeat, timezone: TIMEZONE }));
+    const cadence = readCadence();
+    const refreshedAt = lastRefreshed(cadence.sync, cadence['brain-refresh']);
+    const brain = { refreshedAt, refreshDue: refreshDue(refreshedAt, now) };
+    console.log(JSON.stringify({ target: TARGET, room, showing, heartbeat: ledger.heartbeat, timezone: TIMEZONE, ...brain }));
     return 0;
   }
   const lines = showing.map(({ id, title, estimate }) => `${id}  ${title}${estimate ? ` (${estimate})` : ''}`);

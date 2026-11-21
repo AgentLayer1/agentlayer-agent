@@ -12,7 +12,9 @@ One pass through every maintenance op, in dependency order, ending in a single s
 
 ## Arguments
 
-Optional first arg selects a briefing to chain after sync completes:
+Optional first arg selects a briefing to chain after sync completes, or `brain` for the heartbeat's refresh:
+
+- `brain` — the brain refresh the heartbeat runs on its own, every six hours while there is something new to absorb. See [Brain refresh](#brain-refresh-brain) below: it replaces the rest of this section and the protocol's step list.
 
 - `morning` — run the briefing skill's [morning](../briefing/references/playbooks/morning.md) playbook at step 10.
 - `evening` — run the briefing skill's [evening](../briefing/references/playbooks/evening.md) playbook at step 10.
@@ -22,6 +24,19 @@ Optional first arg selects a briefing to chain after sync completes:
   - (`date +%H` if today's time isn't already in context.) State which briefing was auto-selected — and why, if it's a catch-up morning — in the output header.
 
 The briefing reads the post-sync state, so it's strictly better than running the briefing standalone against stale data. Output gets a second block appended (see Output).
+
+### Brain refresh (`brain`)
+
+The heartbeat runs this unattended, so nobody is there to answer: **never call `AskUserQuestion`**, and never offer, nudge or interview. What needs the operator (goals, self-review, cadences, briefings, the closing interview) stays in a full sync they run; the refresh only keeps the brain current, which also makes that sync quicker. Run these steps of the protocol, in order, and nothing else:
+
+1. **Before step 0**: the opening snapshot.
+2. **Step 0**: refresh the code checkouts.
+3. **Steps 1–4**: compile, lint, prune, links.
+4. **Step 5**: the flywheel pass, with sync's overrides. Its stalled tasks are listed, never asked about: the heartbeat's look after this run turns them into proposals.
+5. **Step 11**: one `dashboard` call with `{ refresh: true }` (not `sync: true`), which refreshes the dashboards and the cmux sidebar and records the run as a brain refresh, so the full-sync nudge keeps nudging.
+6. **Step 12**: commit the brain history.
+
+Skip steps 6–10 and 13, and write no output block. End with one line, which the heartbeat's band shows: `🧠 Brain refreshed: compiled <n>, lint fixed <n>, flywheel closed <n>, stalled <n>.` followed by the stalled tasks as `<id> (<n>d)`, comma-separated, when there are any. A step that fails is one clause on that line (`compile failed: <reason>`), never a stop.
 
 ## Why this shape
 

@@ -41,6 +41,7 @@ const bound = async ($: Engine, on: On, every = '') => {
   await run($, 'heartbeat', every);
   await context.host.clock.settle();
   context.host.commands.length = 0;
+  context.host.commandArgs.length = 0;
   return context;
 };
 
@@ -400,5 +401,66 @@ describe('heartbeat band', () => {
     const due = Date.parse('2026-03-11T10:00:00+08:00');
     expect(nextLook(due, due + MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look 10:00');
     expect(nextLook(due, due + 2 * MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look 10:00 (late)');
+  });
+});
+
+describe('brain refresh', () => {
+  const REFRESH = `${PLUGIN}:sync`;
+  const refreshedWith = (host: FakeHost) => host.commandArgs[host.commands.indexOf(REFRESH)];
+
+  test('a due refresh with something new to absorb clears, refreshes the brain, then looks', async ($, on) => {
+    const { host } = await bound($, on);
+    host.proposals.refreshDue = true;
+    host.proposals.refreshedAt = new Date(NOW - 7 * 60 * MINUTE).toISOString();
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands).toEqual(['clear', REFRESH, WAKE]);
+    expect(refreshedWith(host)).toBe('brain');
+  });
+
+  test('a due refresh with nothing written since the last one waits, and an idle home skips the look too', async ($, on) => {
+    const { host } = await bound($, on);
+    host.proposals.refreshDue = true;
+    host.proposals.refreshedAt = new Date(NOW + 10 * MINUTE).toISOString();
+    host.transcripts = { 'session-9': NOW };
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands).toEqual([]);
+  });
+
+  test('a refresh that never ran is due as soon as a session writes', async ($, on) => {
+    const { host } = await bound($, on);
+    host.proposals.refreshDue = true;
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands).toEqual(['clear', REFRESH, WAKE]);
+    expect(refreshedWith(host)).toBe('brain');
+  });
+
+  test("the band says what the refresh and the look after it did, and how old the brain's refresh is", async ($, on) => {
+    const { host } = await bound($, on);
+    host.proposals.refreshDue = true;
+    await host.clock.advance(55 * MINUTE);
+    const finish = (answer: string, turnId: string) =>
+      $.turn.complete({ answer, durationMs: 0, isAborted: false, turnId, reason: 'answer' });
+    await finish('🧠 Brain refreshed: compiled 3, lint fixed 1, flywheel closed 0, stalled 2.', 'r');
+    await finish('Proposed 1: Decide on ab-012.', 'l');
+    host.proposals.refreshDue = false;
+    host.proposals.refreshedAt = new Date(host.clock.now()).toISOString();
+    await host.clock.advance(2 * 60 * MINUTE);
+    const band = (
+      await (await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AbovePrompt', props: BAND_PROPS })).findAll({ type: 'Text' })
+    )
+      .map((element) => element.text)
+      .join('|');
+    expect(band).toContain('refreshed: 🧠 Brain refreshed: compiled 3, lint fixed 1, flywheel closed 0, stalled 2.');
+    expect(band).toContain('looked: Proposed 1: Decide on ab-012.');
+    expect(band).toMatch(/brain refreshed (1h|2h) ago/);
+  });
+
+  test('/heartbeat now in the heartbeat refreshes first when one is due; elsewhere it only looks', async ($, on) => {
+    const { host } = await bound($, on);
+    host.proposals.refreshDue = true;
+    expect((await run($, 'heartbeat', 'now')).text).toBe('Refreshing the brain, then looking for proposals.');
+    await host.clock.settle();
+    expect(host.commands).toEqual(['clear', REFRESH, WAKE]);
+    expect(refreshedWith(host)).toBe('brain');
   });
 });

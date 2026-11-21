@@ -10,6 +10,7 @@ import {
   CHOICES,
   DECISION_AT_END,
   MINUTE_MS,
+  ago,
   clockIn,
   closingLine,
   dayIn,
@@ -67,16 +68,22 @@ function refill($: EngineInterface): void {
   $.clock.after(0, () => void $.command.run({ command: `${$.plugin.name}:proposals` }));
 }
 
-// The day's first wake clears the conversation first, so the heartbeat's context doesn't grow without end.
-async function wake($: EngineInterface, now: number, zone: string): Promise<void> {
+// A brain refresh and the day's first wake clear the conversation first, so the heartbeat's context stays small. A
+// refresh runs sync's maintenance steps, then the look reads the brain it left.
+async function wake($: EngineInterface, now: number, zone: string, refresh = false): Promise<void> {
   const today = dayIn(now, zone);
   const { wokeOn } = await read($, beat);
-  if (wokeOn && wokeOn !== today) {
+  const clears = refresh || (wokeOn !== '' && wokeOn !== today);
+  if (clears) {
     const clearedId = await $.session.id();
-    await update($, beat, (current) => ({ ...current, clearedId }));
+    await update($, beat, (current) => ({ ...current, clearedId, awaiting: [] }));
     await $.command.run({ command: 'clear' });
   }
-  await update($, beat, (current) => ({ ...current, wokeOn: today, awaiting: [...(current.awaiting ?? []), 'look'] }));
+  const turns = refresh ? ['refresh', 'look'] : ['look'];
+  await update($, beat, (current) => ({ ...current, wokeOn: today, awaiting: [...(current.awaiting ?? []), ...turns] }));
+  if (refresh) {
+    $.clock.after(0, () => void $.command.run({ command: `${$.plugin.name}:sync`, args: 'brain' }));
+  }
   refill($);
 }
 
@@ -90,7 +97,8 @@ async function ticked($: EngineInterface, list: Bound, now: number, text: string
     ...current,
     nextAt: now + list.heartbeat.everyMinutes * MINUTE_MS,
     showing: list.showing.length,
-    target: list.target
+    target: list.target,
+    refreshedAt: Date.parse(list.refreshedAt) || 0
   }));
   if (text) {
     await note($, now, text);
@@ -149,6 +157,12 @@ async function tick($: EngineInterface): Promise<void> {
     return;
   }
   const used = await lastUse($);
+  // A refresh waits for something to absorb: a session written since the last sync or refresh.
+  if (list.refreshDue && (used === null || used > (Date.parse(list.refreshedAt) || 0))) {
+    await ticked($, list, now, '');
+    await wake($, now, list.timezone, true);
+    return;
+  }
   // A home it can't see is treated as in use, since skipping would stop the heartbeat for good.
   if (used !== null && now - used >= list.heartbeat.everyMinutes * MINUTE_MS) {
     await ticked($, list, now, 'skipped: home idle');
@@ -181,7 +195,8 @@ async function arm($: EngineInterface): Promise<Bound | null> {
     zone: list.timezone,
     nextAt: now + everyMinutes * MINUTE_MS,
     showing: list.showing.length,
-    target: list.target
+    target: list.target,
+    refreshedAt: Date.parse(list.refreshedAt) || 0
   }));
   return list;
 }
@@ -209,7 +224,14 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
     return status($);
   }
   if (ask.kind === 'now') {
-    // A refill only: the day's clear belongs to the heartbeat's own clock, never to a session that asked for one.
+    // The heartbeat's own tab refreshes the brain first when one is due; anywhere else it is a refill only, since a
+    // clear belongs to the heartbeat, never to a session that asked for a look.
+    const list = (await read($, beat)).isHeartbeat ? await readList($) : null;
+    if (list?.refreshDue) {
+      const now = await $.clock.now();
+      $.clock.after(0, () => void wake($, now, list.timezone, true));
+      return 'Refreshing the brain, then looking for proposals.';
+    }
     await update($, beat, (current) =>
       current.isHeartbeat ? { ...current, awaiting: [...(current.awaiting ?? []), 'look'] } : current
     );
@@ -289,7 +311,8 @@ export const registerProposals = (on: On): void => {
     const head = [
       `every ${state.everyMinutes ?? 55}m`,
       state.nextAt ? nextLook(state.nextAt, now, zone) : '',
-      state.target ? `${state.showing ?? 0} of ${state.target} showing` : ''
+      state.target ? `${state.showing ?? 0} of ${state.target} showing` : '',
+      state.refreshedAt ? `brain refreshed ${ago(state.refreshedAt, now)}` : ''
     ].filter(Boolean);
     const width = Math.max(20, e.props.bodyColumns - 2);
     return (

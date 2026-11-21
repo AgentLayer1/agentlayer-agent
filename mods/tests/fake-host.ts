@@ -60,12 +60,16 @@ export interface FakeMachine {
     room?: number;
     showing: ProposalList['showing'][number][];
     heartbeat: ProposalList['heartbeat'];
+    refreshedAt?: string;
+    refreshDue?: boolean;
   };
   toasts: string[];
   /** What `$.ui.copy` put on the clipboard. */
   copied: string[];
   suggestions: string[];
   commands: string[];
+  /** What each command in `commands` was run with, in the same order. */
+  commandArgs: string[];
   /** CLI calls (`task query`) that exit 1. */
   failing: string[];
   /** Status changes the CLI made (`task close`, `task update --status`), by task id. */
@@ -109,6 +113,7 @@ export const machine = (overrides: Partial<FakeMachine> = {}): FakeMachine => ({
   copied: [],
   suggestions: [],
   commands: [],
+  commandArgs: [],
   failing: [],
   statuses: {},
   root: HOME,
@@ -329,6 +334,7 @@ export const fakeHost = (on: On, host: FakeMachine = machine()): FakeHost => {
   on('prompt.autocomplete', () => ({ suggestions: [] }));
   on('command.run', (_$, e) => {
     host.commands.push(e.command);
+    host.commandArgs.push(e.args);
     return {};
   });
   on('ui.render', { component: 'AbovePrompt' }, () => ({ type: 'Box' as const }));

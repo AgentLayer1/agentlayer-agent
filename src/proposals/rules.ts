@@ -15,6 +15,10 @@ export const BACKLOG = 20;
  * The heartbeat's interval when none is set: inside the prompt cache's hour, so a wake reads the cache.
  */
 export const DEFAULT_EVERY_MINUTES = 55;
+/**
+ * How long the brain may go without a sync or a refresh before the heartbeat refreshes it.
+ */
+export const REFRESH_EVERY_HOURS = 6;
 const EVERY_RANGE = { min: 5, max: 24 * 60 } as const;
 const LATER_HOUR = '08:00';
 
@@ -262,6 +266,18 @@ export const parseEvery = (text: string): number | Error => {
     ? new Error(`Pick an interval between ${EVERY_RANGE.min} minutes and 24 hours.`)
     : minutes;
 };
+
+/**
+ * The later of the last full sync and the last brain refresh, as an ISO time; '' when neither ever ran.
+ */
+export const lastRefreshed = (syncedAt: string | undefined, refreshedAt: string | undefined): string =>
+  [syncedAt ?? '', refreshedAt ?? ''].filter(Boolean).sort((a, b) => ms(a) - ms(b)).at(-1) ?? '';
+
+/**
+ * Whether the heartbeat should refresh the brain: nothing has synced or refreshed it in the last six hours.
+ */
+export const refreshDue = (lastAt: string, now: Date): boolean =>
+  !lastAt || now.getTime() - ms(lastAt) >= REFRESH_EVERY_HOURS * 60 * 60 * 1000;
 
 export const setHeartbeat = (
   ledger: ProposalLedger,
