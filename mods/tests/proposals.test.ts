@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing';
 import type { Engine } from 'claude-code/testing';
 import type { On } from 'claude-code';
 
-import { nextLook, workspaceTitles } from '../proposals/beat';
+import { eventView, nextLook, workspaceTitles } from '../proposals/beat';
 import { BAND_PROPS, HOME, NOW, PLUGIN, fakeHost, machine, run } from './fake-host';
 import type { FakeHost } from './fake-host';
 
@@ -437,6 +437,14 @@ describe('heartbeat band', () => {
     host.proposals.heartbeat = { owner: 'session-7@newer', everyMinutes: 55 };
     await host.clock.advance(55 * MINUTE);
     expect(await drawn($)).not.toContain('Heartbeat');
+  });
+
+  test('a look that found nothing reads quiet wherever it says so in its line', () => {
+    const at = Date.parse('2026-03-11T10:00:00+08:00');
+    const quiet = (text: string) => eventView({ at, kind: 'look', text }, 'Asia/Kuala_Lumpur').mark;
+    expect(quiet('Nothing new worth proposing.')).toBe('·');
+    expect(quiet('I checked the tasks again, and nothing beats the five showing. Nothing new worth proposing.')).toBe('·');
+    expect(quiet('Proposed 1, retired 1: Draft the reply.')).toBe('✓');
   });
 
   test('a next look the Mac slept through reads late', () => {

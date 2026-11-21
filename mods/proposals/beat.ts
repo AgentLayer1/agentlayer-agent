@@ -189,7 +189,7 @@ export const eventView = (
   if (event.kind === 'stopped') {
     return { mark: '✗', color: 'red', text: event.text };
   }
-  return /^nothing new/i.test(event.text) ? { mark: '·', text: event.text } : { mark: '✓', color: 'green', text: event.text };
+  return /nothing new/i.test(event.text) ? { mark: '·', text: event.text } : { mark: '✓', color: 'green', text: event.text };
 };
 
 /**
