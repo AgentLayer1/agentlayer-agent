@@ -1,7 +1,6 @@
 import { relative } from 'node:path';
 import { promptLaunch, type ProposalAdapter, type SessionPlace, type StartInput } from '@/proposals/adapter';
 import { buildWork } from '@/work/build';
-import { readWork } from '@/work/store';
 import { callCmux, type CmuxCall } from './app';
 import { refreshSidebarQuietly } from './lifecycle';
 
@@ -50,7 +49,8 @@ export const cmuxAdapterWith = (run: (args: string[]) => CmuxCall): ProposalAdap
     return 'Opened it in a new tab.';
   },
   publish: (home) => {
-    refreshSidebarQuietly(home, readWork() ?? buildWork());
+    // A fresh scan, not the saved model: a summary or task changed since the last dashboard rebuild would be undone.
+    refreshSidebarQuietly(home, buildWork());
   }
 });
 
