@@ -234,6 +234,11 @@ export interface HomeEntry {
    * What starts Claude in this home: `agent` when it bills its own subscription, else `claude`.
    */
   launcher: 'agent' | 'claude';
+  /**
+   * The code checkouts this home works in, which mark a workspace opened there as this agent's. Absent in an entry an
+   * older plugin wrote.
+   */
+  codeFolders?: string[];
 }
 
 export interface StartPage {

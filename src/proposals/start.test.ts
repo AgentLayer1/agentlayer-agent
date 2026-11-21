@@ -69,6 +69,13 @@ test('Start hands the prompt as a file to the adapter that can reach this sessio
   expect(readProposalLedger().proposals[0]?.state).toBe('started');
 });
 
+test('a Start the surface placed opens in the workspace it picked, beside nothing else', () => {
+  const id = seed();
+  const { adapter, places } = fakeAdapter(true);
+  decideProposal(id, 'start', { ...context([adapter]), workspace: 'workspace-9' });
+  expect(places).toEqual([{ ...PLACE, workspaceId: 'workspace-9' }]);
+});
+
 test('a second Start opens nothing', () => {
   const id = seed();
   const { adapter, started } = fakeAdapter(true);

@@ -49,16 +49,19 @@ const startInput = (promptFile: string = PROMPT_FILE): StartInput => ({
   launcher: 'agent'
 });
 
-test('Start opens a tab in the heartbeat’s workspace whose command names neither the home nor the prompt', () => {
+test('Start selects the workspace and opens a focused tab whose command names neither the home nor the prompt', () => {
   const { adapter, calls } = recorder();
   expect(adapter.start(startInput(), PLACE)).toBe('Opened it in a new tab.');
   expect(calls).toEqual([
+    ['select-workspace', '--workspace', 'workspace-1'],
     [
       'new-surface',
       '--workspace',
       'workspace-1',
       '--working-directory',
       HOME,
+      '--focus',
+      'true',
       '--command',
       `agent "$(cat '${join('.state', 'proposals', 'p-a1.prompt')}')"`
     ]
@@ -104,7 +107,7 @@ test('a Start through the core passes the prompt only as a file the new shell re
   const env = { CMUX_SURFACE_ID: 'surface-1', CMUX_WORKSPACE_ID: 'workspace-1' };
   const said = decideProposal(id, 'start', { home: FOLDERS.HOME, adapters: [adapter], env, now: new Date() });
   expect(said).toBe('Started: Reply to the review. Opened it in a new tab.');
-  const [args = []] = calls;
+  const args = calls.find((call) => call[0] === 'new-surface') ?? [];
   expect(valueOf(args, '--workspace')).toBe('workspace-1');
   expect(valueOf(args, '--working-directory')).toBe(FOLDERS.HOME);
   const command = valueOf(args, '--command');

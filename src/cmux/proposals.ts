@@ -6,7 +6,8 @@ import { callCmux, type CmuxCall } from './app';
 import { refreshSidebarQuietly } from './lifecycle';
 
 /**
- * The `cmux new-surface` call that opens a proposal as a tab in the workspace of the session that started it.
+ * The `cmux new-surface` call that opens a proposal as a focused tab in the workspace the sidebar picked, else the
+ * workspace of the session that started it.
  * `new-surface` takes no environment, so the shell reads the prompt from its quoted path relative to the home: neither
  * the prompt's text nor the home's path is parsed as shell.
  */
@@ -21,6 +22,8 @@ const surfaceArgs = ({ home, promptFile, launcher }: StartInput, place: SessionP
     place.workspaceId,
     '--working-directory',
     home,
+    '--focus',
+    'true',
     '--command',
     promptLaunch(launcher, promptPath)
   ];
@@ -37,7 +40,10 @@ export const cmuxAdapterWith = (run: (args: string[]) => CmuxCall): ProposalAdap
     return surfaceId && workspaceId ? { adapter: 'cmux', surfaceId, workspaceId } : null;
   },
   start: (input, place) => {
-    const result = run(surfaceArgs(input, place));
+    const args = surfaceArgs(input, place);
+    // Selecting first brings the new tab into view; a failed select still opens it.
+    run(['select-workspace', '--workspace', place.workspaceId]);
+    const result = run(args);
     if (!result.ok) {
       throw new Error(result.output || 'cmux didn’t open a tab.');
     }

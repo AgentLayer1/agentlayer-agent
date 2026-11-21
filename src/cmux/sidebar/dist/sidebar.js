@@ -553,17 +553,78 @@ var TONE = {
 };
 var toneOf = (days) => TONE[bucketOf(days)];
 
+// src/cmux/sidebar/placement.ts
+var PICKED = 100;
+var IN_FOLDER = 90;
+var SAME_NAME = 80;
+var NAME_INSIDE = 70;
+var WORDS = 60;
+var ONE_WORD = 50;
+var MIN_INSIDE = 4;
+var STOP = new Set("a an and the or of to in on for with from by at as is it its my your our this that be do new".split(" "));
+var GENERIC = new Set(["agent", "issu", "work", "task", "session", "run", "chat", "misc", "group"]);
+var flat = (text) => text.toLowerCase().replace(/[^a-z0-9]/g, "");
+var stem = (word) => {
+  const base = word.length > 5 && word.endsWith("ing") ? word.slice(0, -3) : word;
+  const single = base.length > 3 && base.endsWith("s") && !base.endsWith("ss") ? base.slice(0, -1) : base;
+  return single.length > 4 && single.endsWith("e") ? single.slice(0, -1) : single;
+};
+var stems = (text) => new Set(text.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length > 1 && !STOP.has(word)).map(stem));
+var isInside = (directory, folder) => folder !== "" && (directory === folder || directory.startsWith(folder.endsWith("/") ? folder : `${folder}/`));
+var directoriesOf = (workspace) => [workspace.directory, ...workspace.tabs.map((tab) => tab.directory ?? "")].filter(Boolean);
+var holdsHeartbeat = (workspace, agent) => agent.heartbeatSurface !== undefined && workspace.tabs.some((tab) => tab.surfaceId === agent.heartbeatSurface);
+var anchorOf = (workspaces, agent) => workspaces.find((workspace) => flat(workspace.title) === flat(`agent ${agent.name}`)) ?? workspaces.filter((workspace) => workspace.directory === agent.home).toSorted((a, b) => Number(holdsHeartbeat(a, agent)) - Number(holdsHeartbeat(b, agent)))[0];
+var claimedBy = (workspace, anchor) => anchor !== undefined && (workspace.id === anchor.id || anchor.group !== undefined && workspace.group === anchor.group);
+var worksIn = (workspace, agent) => directoriesOf(workspace).some((directory) => [agent.home, ...agent.folders].some((folder) => isInside(directory, folder)));
+var scoreOf = (workspace, hint, home) => {
+  const title = flat(workspace.title);
+  const folders = (hint.folders ?? []).filter((folder) => folder !== "" && folder !== home);
+  const names = (hint.names ?? []).map(flat).filter(Boolean);
+  const own = stems(`${workspace.title} ${workspace.description ?? ""}`);
+  const shared = [...stems(`${hint.words ?? ""} ${(hint.names ?? []).join(" ")} ${hint.workspace ?? ""}`)].filter((word) => own.has(word));
+  const distinct = shared.filter((word) => !GENERIC.has(word) && word.length >= 3);
+  const scores = [
+    hint.workspace && flat(hint.workspace) === title ? PICKED : 0,
+    folders.some((folder) => directoriesOf(workspace).some((directory) => isInside(directory, folder))) ? IN_FOLDER : 0,
+    names.includes(title) ? SAME_NAME : 0,
+    names.some((name) => Math.min(name.length, title.length) >= MIN_INSIDE && (name.includes(title) || title.includes(name))) ? NAME_INSIDE : 0,
+    shared.length >= 2 && distinct.length >= 1 ? WORDS : 0,
+    distinct.length >= 1 ? ONE_WORD : 0
+  ];
+  return Math.max(...scores);
+};
+var placeFor = (workspaces, agent, others, hint) => {
+  const local = workspaces.filter((workspace) => !workspace.remote);
+  const anchor = anchorOf(local, agent);
+  const otherAnchors = others.map((other) => anchorOf(local, other));
+  const isTheirs = (workspace) => !claimedBy(workspace, anchor) && (otherAnchors.some((other) => claimedBy(workspace, other)) || others.some((other) => worksIn(workspace, other) && !worksIn(workspace, agent)));
+  const mine = local.filter((workspace) => !isTheirs(workspace) && (claimedBy(workspace, anchor) || worksIn(workspace, agent)));
+  const choices = mine.filter((workspace) => !holdsHeartbeat(workspace, agent) || mine.length === 1);
+  const best = choices.map((workspace) => ({ workspace, score: scoreOf(workspace, hint, agent.home) })).filter(({ score }) => score >= ONE_WORD).toSorted((a, b) => b.score - a.score || (b.workspace.latestAt ?? 0) - (a.workspace.latestAt ?? 0))[0];
+  const selected = local.find((workspace) => workspace.selected && !isTheirs(workspace));
+  const target = best?.workspace ?? anchor ?? selected;
+  return target ? { kind: "workspace", id: target.id } : { kind: "new" };
+};
+
 // src/cmux/sidebar/session.ts
-var openSession = (entry, command) => {
-  const selected = (data.workspaces() ?? []).find((workspace) => workspace.selected);
+var agentOf = (entry) => ({
+  name: entry.name,
+  home: entry.home,
+  folders: entry.codeFolders ?? [],
+  ...entry.heartbeat ? { heartbeatSurface: entry.heartbeat.surfaceId } : {}
+});
+var placeSession = (entry, hint) => placeFor(data.workspaces() ?? [], agentOf(entry), Object.values(DATA.homes).filter((other) => other.home !== entry.home).map(agentOf), hint);
+var openSession = (entry, command, hint = {}) => {
   const input = `${entry.launcher} "${command}"\r`;
-  if (selected && !selected.remote) {
-    cmux("surface.create", { workspace_id: selected.id, working_directory: entry.home, initial_input: input, focus: true });
+  const target = placeSession(entry, hint);
+  if (target.kind === "workspace") {
+    cmux("workspace.select", { workspace_id: target.id });
+    cmux("surface.create", { workspace_id: target.id, working_directory: entry.home, initial_input: input, focus: true });
   } else {
     cmux("workspace.create", { cwd: entry.home, initial_input: input });
   }
 };
-var discussIcon = (entry, ref) => Image("sparkles").font(10).color("tertiary").opacity(0.55).padding(3).help(`Discuss with ${entry.name}`).onTap(() => openSession(entry, `/${entry.plugin}:discuss ${ref}`));
+var discussIcon = (entry, ref, hint = {}) => Image("sparkles").font(10).color("secondary").padding(3).help(`Discuss with ${entry.name}`).onTap(() => openSession(entry, `/${entry.plugin}:discuss ${ref}`, hint));
 
 // src/cmux/sidebar/due.ts
 var wordsFor = (days) => {
@@ -619,7 +680,7 @@ var taskMeta = (entry, task, projectColor) => HStack({ spacing: 6 }, [
       Text(String(task.comments)).font(10).monospaced().color("tertiary")
     ]).fixedSize()
   ] : [],
-  discussIcon(entry, `task:${task.id}`)
+  discussIcon(entry, `task:${task.id}`, { names: [task.project], words: task.title })
 ]);
 var taskRow = (entry, task, projectColor) => listRow(VStack({ spacing: 2, alignment: "leading" }, [
   Text(task.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail"),
@@ -677,7 +738,10 @@ var shelfCard = (shelf, block, entry, colorOf) => {
       Text(`No goals set for ${shelf.title.toLowerCase()}.`).font(11).color("secondary"),
       Text(`Ask ${agent}: ${command}`).font(10).color("tertiary")
     ]).paddingHorizontal(4).paddingVertical(4).frame({ maxWidth: "infinity", alignment: "leading" })),
-    dividedList(shown, (goal) => String(goal.number), goalRow(colorOf, (goal) => discussIcon(entry, `goal:${shelf.horizon}:${goal.number}`))),
+    dividedList(shown, (goal) => String(goal.number), goalRow(colorOf, (goal) => discussIcon(entry, `goal:${shelf.horizon}:${goal.number}`, {
+      names: goal.project ? [goal.project] : [],
+      words: goal.title
+    }))),
     when2(() => shown().length > 0 && (block?.notes.length ?? 0) > 0, () => VStack({ spacing: 4, alignment: "leading" }, (block?.notes ?? []).map((note) => Text(note).font(10).italic().color("tertiary").frame({ maxWidth: "infinity", alignment: "leading" }))).paddingHorizontal(4).paddingTop(4))
   ]));
 };
@@ -987,12 +1051,20 @@ var proposalsSection = () => {
       ],
       ...item.trigger ? { summary: item.trigger } : {},
       searchText: `${item.trigger} ${item.detail}`,
-      body: () => body(proposal, (choice, place) => cmux("surface.send_text", {
-        surface_id: place.surfaceId,
-        workspace_id: place.workspaceId,
-        text: `/proposal ${choice} ${item.id}
+      body: () => body(proposal, (choice, place) => {
+        const target = choice === "start" ? placeSession(entry, {
+          workspace: item.workspace ?? "",
+          folders: item.folder ? [item.folder] : [],
+          words: `${item.title} ${item.trigger}`
+        }) : null;
+        const where = target?.kind === "workspace" ? ` ${target.id}` : "";
+        cmux("surface.send_text", {
+          surface_id: place.surfaceId,
+          workspace_id: place.workspaceId,
+          text: `/proposal ${choice} ${item.id}${where}
 `
-      }))
+        });
+      })
     };
   };
   const heartbeatCard = (home, entry) => ({

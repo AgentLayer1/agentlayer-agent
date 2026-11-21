@@ -21,7 +21,7 @@ import { decideProposal, publishTo } from './start';
 const USAGE = [
   `Usage: ${CLI_COMMAND} proposals <command>`,
   `  list [--json]                                   What's showing, the room for more, and the heartbeat`,
-  `  decide <${CHOICES.join('|')}> <id>                    Start, put off until morning, or drop a proposal`,
+  `  decide <${CHOICES.join('|')}> <id> [--workspace=<id>]  Start (in that workspace), put off until morning, or drop`,
   `  heartbeat --owner=<token> [--every=<duration>]  Make that session the heartbeat (every 55m unless set)`,
   `  heartbeat --release --owner=<token>             End that session's heartbeat, if it still holds it`,
   `  heartbeat --off                                 No heartbeat`
@@ -103,7 +103,8 @@ export const runProposalsCommand = (command: string | undefined, args: readonly 
   const choice = CHOICES.find((known) => known === words[0]);
   const id = words[1];
   if (command === 'decide' && choice && id) {
-    const context = { home: FOLDERS.HOME, adapters: ADAPTERS, env: process.env, now: new Date() };
+    const workspace = flagOf(args, 'workspace');
+    const context = { home: FOLDERS.HOME, adapters: ADAPTERS, env: process.env, now: new Date(), ...(workspace ? { workspace } : {}) };
     console.log(decideProposal(id, choice, context));
     return 0;
   }

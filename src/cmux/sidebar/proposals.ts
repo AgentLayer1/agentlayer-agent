@@ -1,7 +1,7 @@
 import type { HostSection, SectionCard } from 'cmux-custom-manager/sections';
 import { isShown, type Choice } from '../../proposals/shown';
 import { SCHEMA, type HeartbeatPlace, type HomeEntry, type ProposalItem } from './data';
-import { openSession } from './session';
+import { openSession, placeSession } from './session';
 import { nowMs, ORANGE, PURPLE, when } from './style';
 
 interface Shown {
@@ -124,13 +124,23 @@ export const proposalsSection = (): HostSection => {
       ...(item.trigger ? { summary: item.trigger } : {}),
       searchText: `${item.trigger} ${item.detail}`,
       body: () =>
-        body(proposal, (choice, place) =>
+        body(proposal, (choice, place) => {
+          // Start names the workspace the session belongs in, picked here where cmux's workspaces are known.
+          const target =
+            choice === 'start'
+              ? placeSession(entry, {
+                  workspace: item.workspace ?? '',
+                  folders: item.folder ? [item.folder] : [],
+                  words: `${item.title} ${item.trigger}`
+                })
+              : null;
+          const where = target?.kind === 'workspace' ? ` ${target.id}` : '';
           cmux('surface.send_text', {
             surface_id: place.surfaceId,
             workspace_id: place.workspaceId,
-            text: `/proposal ${choice} ${item.id}\n`
-          })
-        )
+            text: `/proposal ${choice} ${item.id}${where}\n`
+          });
+        })
     };
   };
   const heartbeatCard = (home: string, entry: HomeEntry): SectionCard => ({

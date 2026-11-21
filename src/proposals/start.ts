@@ -55,6 +55,10 @@ export interface DecideContext {
   adapters: readonly ProposalAdapter[];
   env: Readonly<Record<string, string | undefined>>;
   now: Date;
+  /**
+   * The workspace a Start opens in, when the surface picked one; else beside the session that decided.
+   */
+  workspace?: string;
 }
 
 /**
@@ -85,7 +89,9 @@ export const decideProposal = (id: string, choice: Choice, context: DecideContex
     launcher: homeLauncher(context.home)
   };
   writeProposalLedger(decision.ledger);
-  const located = locateIn(context.adapters, context.env);
+  const found = locateIn(context.adapters, context.env);
+  const located =
+    found && context.workspace ? { ...found, place: { ...found.place, workspaceId: context.workspace } } : found;
   const opened = ((): { where: string } | { error: string } => {
     try {
       return { where: located ? located.adapter.start(input, located.place) : manualStart(input) };

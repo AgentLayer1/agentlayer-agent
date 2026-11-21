@@ -88,7 +88,7 @@ run('Start types the choice into the agent’s heartbeat, and the card stays unt
   expect(sidebar.tap('Start')).toEqual({
     kind: 'cmux',
     method: 'surface.send_text',
-    params: { surface_id: 'w-nova-s2-surface', workspace_id: 'w-nova', text: '/proposal start p-a1\n' }
+    params: { surface_id: 'w-nova-s2-surface', workspace_id: 'w-nova', text: '/proposal start p-a1 w-nova\n' }
   });
   expect(sidebar.visibleTexts(), 'a Start that fails leaves the card where it was').toContain('Reply to the supplier');
   const decided = { ...NOVA_ENTRY, proposals: NOVA_ENTRY.proposals.filter(({ id }) => id !== 'p-a1') };
@@ -669,6 +669,29 @@ run('the Discuss icon on a task or a goal opens a session about it, and the task
   expect(sidebar.tap('Fix the checkout total')?.method).toBe('file.open');
   expect(onGoals().tap('Discuss with Nova')?.params?.initial_input, 'the last goal shown: this month, the second').toBe(
     'claude "/agentlayer:discuss goal:month:2"\r'
+  );
+});
+
+run("a session opens in its own agent's workspace, focused, never in another joined agent's, even the selected one", () => {
+  const both = { [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY };
+  const fromElsewhere = mount(installed(both), selecting('w-other'));
+  fromElsewhere.tap('PROPOSED');
+  fromElsewhere.tap('Reply to the supplier');
+  expect(fromElsewhere.tap('Start')?.params?.text, "Nova's own workspace, though Downloads is selected").toBe(
+    '/proposal start p-a1 w-nova\n'
+  );
+  const discussing = onProjects(both);
+  discussing.tap('acme-app');
+  discussing.tap('Discuss with Nova');
+  expect(discussing.actions.slice(-2).map(({ method, params }) => [method, params?.workspace_id])).toEqual([
+    ['workspace.select', 'w-nova'],
+    ['surface.create', 'w-nova']
+  ]);
+  const scout = mount(installed(both), selecting('w-nova'));
+  scout.tap('PROPOSED');
+  scout.tap('Start Scout’s heartbeat');
+  expect(scout.tap('Start heartbeat')?.method, "Nova's workspace is selected, and Scout has none of its own").toBe(
+    'workspace.create'
   );
 });
 

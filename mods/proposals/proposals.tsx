@@ -21,13 +21,17 @@ import {
   parseDecision,
   parseHeartbeat,
   parseList,
+  workspaceTitles,
   type Decision,
   type ProposalList
 } from './beat';
 
-const USAGE = `Usage: /proposal <${CHOICES.join('|')}> <id>`;
+const USAGE = `Usage: /proposal <${CHOICES.join('|')}> <id> [workspace]`;
 // Inside the engine's short bound on every session.end hook.
 const RELEASE_TIMEOUT_MS = 1000;
+// TODO(windows): cmux is a macOS app, found only in /Applications.
+const CMUX_BIN = '/Applications/cmux.app/Contents/Resources/bin/cmux';
+const CMUX_TIMEOUT_MS = 5000;
 
 // Kept in session state, which outlives a /clear and a reload of this module, unlike its own variables.
 const beat = atom({ plugin: 'agentlayer', key: 'heartbeat' } as const, { wokeOn: '', owner: '' });
@@ -60,12 +64,24 @@ async function readList($: EngineInterface): Promise<ProposalList | null> {
   return runCli($, ['proposals', 'list', '--json']).then(parseList, () => null);
 }
 
-async function decide($: EngineInterface, { choice, id }: Decision): Promise<string> {
-  return said($, ['proposals', 'decide', choice, id]);
+async function decide($: EngineInterface, { choice, id, workspace }: Decision): Promise<string> {
+  return said($, ['proposals', 'decide', choice, id, ...(workspace ? [`--workspace=${workspace}`] : [])]);
+}
+
+// The open workspaces' titles, so the look can name the one each proposal belongs in; none when cmux can't answer.
+async function workspacesNow($: EngineInterface): Promise<string[]> {
+  const listed = await $.process.run([CMUX_BIN, 'workspace', 'list'], { timeoutMs: CMUX_TIMEOUT_MS }).catch(() => null);
+  return listed?.exitCode === 0 ? workspaceTitles(listed.stdout) : [];
 }
 
 function refill($: EngineInterface): void {
-  $.clock.after(0, () => void $.command.run({ command: `${$.plugin.name}:proposals` }));
+  $.clock.after(0, async () => {
+    const titles = await workspacesNow($);
+    await $.command.run({
+      command: `${$.plugin.name}:proposals`,
+      args: titles.length ? `workspaces: ${titles.join(' | ')}` : ''
+    });
+  });
 }
 
 // A brain refresh and the day's first wake clear the conversation first, so the heartbeat's context stays small. A

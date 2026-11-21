@@ -17,7 +17,7 @@ First, the tasks summary in `<HOME>/projects/TASKS.md`. When it holds only its p
 bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" proposals list
 ```
 
-It prints the five (or fewer) showing, with their ids, and the room left. A full list is not a reason to stop: every showing card is weighed again below. If session start listed `extensions/skills/proposals.md`, read it now: the operator's own rules for what to propose, and they win where they disagree with this file.
+It prints the five (or fewer) showing, with their ids, and the room left. A full list is not a reason to stop: every showing card is weighed again below. When this skill was run with `workspaces: A | B | …`, those are the titles of the cmux workspaces open now, across every agent on the machine; keep them for step 4. If session start listed `extensions/skills/proposals.md`, read it now: the operator's own rules for what to propose, and they win where they disagree with this file.
 
 ## 2. Gather candidates
 
@@ -52,7 +52,7 @@ Rank the showing cards and the candidates together, most pressing first: overdue
 - **prompt**: the whole first message for a fresh session with none of this context: the task or issue id, what to do, the reach again, and the stop point ("…then stop and show me the draft").
 - **source**: the key from step 2; a refusal for it is expected, not an error.
 - **folder**: where the work happens: the repo's path for code work, else the home.
-- **workspace**: when this skill was given the agent's workspace titles, the one this session belongs in (a review in the reviews workspace, an issue in the issues one), else empty. Never another agent's.
+- **workspace**: from the `workspaces:` titles, the one this session belongs in by the kind of work (a PR review in a reviews workspace, an investigation in an investigations one); empty when none fits or none were given. The titles span every agent: never pick a workspace named for another agent (`Agent <Name>`), and leave it empty rather than guess. The sidebar checks the pick against this agent's own workspaces when Start is pressed.
 
 Propose nothing rather than filler: a quiet hour is a good hour.
 

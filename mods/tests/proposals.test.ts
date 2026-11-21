@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing';
 import type { Engine } from 'claude-code/testing';
 import type { On } from 'claude-code';
 
-import { nextLook } from '../proposals/beat';
+import { nextLook, workspaceTitles } from '../proposals/beat';
 import { BAND_PROPS, HOME, NOW, PLUGIN, fakeHost, machine, run } from './fake-host';
 import type { FakeHost } from './fake-host';
 
@@ -60,7 +60,7 @@ describe('proposals', () => {
 
   test('/proposal without a choice and an id prints usage and decides nothing', async ($, on) => {
     const { host } = heartbeatHost(on);
-    expect((await run($, 'proposal', 'maybe p-1')).text).toBe('Usage: /proposal <start|later|skip> <id>');
+    expect((await run($, 'proposal', 'maybe p-1')).text).toBe('Usage: /proposal <start|later|skip> <id> [workspace]');
     expect(cliCalls(host)).toEqual([]);
   });
 
@@ -71,6 +71,27 @@ describe('proposals', () => {
     expect(result).toEqual({ drop: 'ran proposals decide skip p-2' });
     expect(submitted).toEqual([]);
     expect(filled).toEqual(['hello there']);
+  });
+
+  test('a Start the sidebar placed carries its workspace to the CLI, typed or after a draft', async ($, on) => {
+    const { host, filled } = heartbeatHost(on);
+    await run($, 'proposal', 'start p-1 W-9');
+    expect(host.argv.at(-1)?.slice(2)).toEqual(['proposals', 'decide', 'start', 'p-1', '--workspace=W-9']);
+    await $.prompt.submit({ text: 'half a thought/proposal start p-2 W-3' });
+    await host.clock.settle();
+    expect(host.argv.at(-1)?.slice(2)).toEqual(['proposals', 'decide', 'start', 'p-2', '--workspace=W-3']);
+    expect(filled).toEqual(['half a thought']);
+  });
+
+  test('the workspace titles cmux lists reach the look; a path-only title names no kind of work', () => {
+    const listed = [
+      '  workspace:1  …/Documents/Agents/Nova',
+      '* workspace:2  Agent Nova  [selected]',
+      '  workspace:3  Code Reviews',
+      '  workspace:4  Compliance & KYC'
+    ].join('\n');
+    expect(workspaceTitles(listed)).toEqual(['Agent Nova', 'Code Reviews', 'Compliance & KYC']);
+    expect(workspaceTitles('{"ok":true}')).toEqual([]);
   });
 
   test('an ordinary prompt passes through untouched', async ($, on) => {

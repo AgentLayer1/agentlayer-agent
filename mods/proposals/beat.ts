@@ -8,18 +8,23 @@ export const MINUTE_MS = 60_000;
 /**
  * A `/proposal` decision typed after whatever was half-written in the prompt, as a sidebar button types it.
  */
-export const DECISION_AT_END = new RegExp(`/proposal\\s+(${CHOICES.join('|')})\\s+(\\S+)\\s*$`);
+export const DECISION_AT_END = new RegExp(`/proposal\\s+(${CHOICES.join('|')})\\s+(\\S+)(?:\\s+(\\S+))?\\s*$`);
 
 export interface Decision {
   choice: Choice;
   id: string;
+  /** The cmux workspace a Start opens its session in, when the sidebar picked one. */
+  workspace?: string;
 }
 
 const isChoice = (word: string | undefined): word is Choice => CHOICES.some((choice) => choice === word);
 
 export const parseDecision = (args: string): Decision | null => {
-  const [choice, id, ...rest] = args.trim().split(/\s+/);
-  return isChoice(choice) && id && rest.length === 0 ? { choice, id } : null;
+  const [choice, id, workspace, ...rest] = args.trim().split(/\s+/);
+  if (!isChoice(choice) || !id || rest.length > 0) {
+    return null;
+  }
+  return workspace ? { choice, id, workspace } : { choice, id };
 };
 
 /**
@@ -29,7 +34,12 @@ export const decisionInDraft = (text: string): (Decision & { draft: string }) | 
   const match = DECISION_AT_END.exec(text);
   const choice = match?.[1];
   const id = match?.[2];
-  return match && isChoice(choice) && id ? { choice, id, draft: text.slice(0, match.index).trimEnd() } : null;
+  const workspace = match?.[3];
+  if (!match || !isChoice(choice) || !id) {
+    return null;
+  }
+  const draft = text.slice(0, match.index).trimEnd();
+  return workspace ? { choice, id, workspace, draft } : { choice, id, draft };
 };
 
 type HeartbeatAsk = { kind: 'bind'; every: string } | { kind: 'off' } | { kind: 'now' } | { kind: 'status' };
@@ -159,3 +169,15 @@ export const ago = (epochMs: number, now: number): string => {
   }
   return minutes < 48 * 60 ? `${Math.floor(minutes / 60)}h ago` : `${Math.floor(minutes / (24 * 60))}d ago`;
 };
+
+const WORKSPACE_LINE = /^\s*\*?\s*workspace:\S+\s+(.+?)(?:\s+\[selected\])?\s*$/;
+
+/**
+ * The workspace titles in `cmux workspace list`'s output, in its order; a title that is only a path is left out, since
+ * it names no kind of work.
+ */
+export const workspaceTitles = (stdout: string): string[] =>
+  stdout
+    .split('\n')
+    .map((line) => WORKSPACE_LINE.exec(line)?.[1]?.trim() ?? '')
+    .filter((title) => title !== '' && !title.includes('/'));

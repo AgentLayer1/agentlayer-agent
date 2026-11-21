@@ -61,7 +61,7 @@ const taskMeta = (entry: HomeEntry, task: TaskItem, projectColor?: string) =>
           ]).fixedSize()
         ]
       : []),
-    discussIcon(entry, `task:${task.id}`)
+    discussIcon(entry, `task:${task.id}`, { names: [task.project], words: task.title })
   ]);
 
 /**

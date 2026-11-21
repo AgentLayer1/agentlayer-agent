@@ -102,7 +102,12 @@ const shelfCard = (
         dividedList(
           shown,
           (goal) => String(goal.number),
-          goalRow(colorOf, (goal) => discussIcon(entry, `goal:${shelf.horizon}:${goal.number}`))
+          goalRow(colorOf, (goal) =>
+            discussIcon(entry, `goal:${shelf.horizon}:${goal.number}`, {
+              names: goal.project ? [goal.project] : [],
+              words: goal.title
+            })
+          )
         ),
         when(
           () => shown().length > 0 && (block?.notes.length ?? 0) > 0,

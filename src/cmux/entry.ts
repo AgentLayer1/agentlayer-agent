@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 import type { ProposalLedger } from '@/proposals/ledger';
 import { proposalCards } from '@/proposals/rules';
 import { reportKind } from '@/reports/kinds';
-import { homeLauncher } from '@/config';
+import { configuredRepoPaths, homeLauncher } from '@/config';
 import { pluginName } from '@/shared/naming';
 import { nameHue } from '@/status/html-primitives';
 import type { Work, WorkProject, WorkReport } from '@/work/model';
@@ -107,6 +107,7 @@ export const homeEntry = (home: string, work: Work, ledger: ProposalLedger): Hom
     proposals: proposalCards(ledger),
     heartbeat: heartbeatPlace(ledger),
     launcher: homeLauncher(home),
+    codeFolders: configuredRepoPaths(),
     home,
     plugin: pluginName()
   };
