@@ -173,7 +173,7 @@ run('a home whose heartbeat isn’t open in cmux shows its proposals with how to
 });
 
 const HEARTBEAT_LINE =
-  'Opens a session in Scout’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, spending a model turn only when fewer than five show.';
+  'Opens a session in Scout’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing.';
 
 run('a home without a heartbeat gets a card that opens one in a focused tab of the selected workspace', () => {
   const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);

@@ -4,7 +4,8 @@ import { writeJsonAtomic } from '@/shared/utils';
 import { existsSync, readFileSync } from 'node:fs';
 import type { SessionPlace } from './adapter';
 
-const STATES = ['waiting', 'started', 'skipped'] as const;
+// Retired: the agent withdrew it, outranked, taken up by a session already, or no longer true.
+const STATES = ['waiting', 'started', 'skipped', 'retired'] as const;
 type ProposalState = (typeof STATES)[number];
 
 /**
@@ -39,6 +40,14 @@ export interface Proposal {
    */
   due: string;
   prompt: string;
+  /**
+   * The folder the work lives in (a repo or the home), '' when none was named; it places the session Start opens.
+   */
+  folder: string;
+  /**
+   * The title of the workspace the agent picked for it, '' when none; a hint the surface resolves when Start is pressed.
+   */
+  workspace: string;
   createdAt: string;
   state: ProposalState;
   /**
@@ -80,6 +89,9 @@ const TEXT_FIELDS = [
   'decidedAt'
 ] as const;
 
+// Fields added after the first ledgers were written read as '' when absent, so an older entry is never dropped.
+const optional = (value: unknown): string => (typeof value === 'string' ? value : '');
+
 const isState = (value: unknown): value is ProposalState => STATES.some((state) => state === value);
 
 // A hand-edited entry missing a field is dropped, never half-read: a proposal without its prompt can't be started.
@@ -102,6 +114,8 @@ const parseProposal = (data: unknown): Proposal | null => {
     createdAt: text('createdAt'),
     laterUntil: text('laterUntil'),
     decidedAt: text('decidedAt'),
+    folder: optional(data.folder),
+    workspace: optional(data.workspace),
     state: data.state
   };
 };

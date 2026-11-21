@@ -148,10 +148,6 @@ async function tick($: EngineInterface): Promise<void> {
     await ticked($, list, now, 'skipped: a turn was running');
     return;
   }
-  if (list.room === 0) {
-    await ticked($, list, now, 'skipped: proposals full');
-    return;
-  }
   const used = await lastUse($);
   // A home it can't see is treated as in use, since skipping would stop the heartbeat for good.
   if (used !== null && now - used >= list.heartbeat.everyMinutes * MINUTE_MS) {
@@ -233,9 +229,6 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
 async function firstLook($: EngineInterface, list: Bound | null): Promise<string> {
   if (!list) {
     return '';
-  }
-  if (list.room === 0) {
-    return ' The proposals are full, so the first look waits for room.';
   }
   const now = await $.clock.now();
   $.clock.after(0, () => void wake($, now, list.timezone));

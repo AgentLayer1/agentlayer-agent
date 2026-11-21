@@ -156,7 +156,9 @@ test('the proposals still to decide, put-off ones included, carry what a card sh
     reach: 'Drafts the email and sends nothing.',
     estimate: '5m',
     due: 'due Fri',
-    laterUntil: ''
+    laterUntil: '',
+    folder: '',
+    workspace: ''
   });
   expect(proposals[2]?.laterUntil).toBe(LATER_UNTIL);
   expect(JSON.stringify(proposals)).not.toContain('Touch nothing outside the home');

@@ -28,7 +28,8 @@ const KEEP_DECIDED_MS = 30 * DAY_MS;
 export type ProposalInput = Pick<
   Proposal,
   'source' | 'title' | 'trigger' | 'quote' | 'detail' | 'reach' | 'estimate' | 'due' | 'prompt'
->;
+> &
+  Partial<Pick<Proposal, 'folder' | 'workspace'>>;
 
 interface Refusal {
   source: string;
@@ -97,6 +98,8 @@ export const addProposals = (
       }
       const proposal: Proposal = {
         ...input,
+        folder: input.folder ?? '',
+        workspace: input.workspace ?? '',
         id: freshId(new Set(proposals.map(({ id }) => id)), makeId),
         createdAt: nowISO(now),
         state: 'waiting',
@@ -110,6 +113,55 @@ export const addProposals = (
       };
     },
     { ledger: { ...ledger, proposals: prune(ledger.proposals, nowMs) }, added: [], refused: [] }
+  );
+};
+
+interface Retiring {
+  id: string;
+  reason: string;
+}
+
+interface Retired {
+  ledger: ProposalLedger;
+  retired: { id: string; title: string; reason: string }[];
+  refused: { id: string; reason: string }[];
+}
+
+// Why a proposal can't be retired, or '' when it can.
+const keptBy = (proposal: Proposal | undefined, nowMs: number): string => {
+  if (!proposal) {
+    return 'no such proposal';
+  }
+  if (!isWaiting(proposal)) {
+    return `already ${proposal.state}`;
+  }
+  return isShown(proposal.laterUntil, nowMs) ? '' : 'put off by the operator';
+};
+
+/**
+ * Withdraws showing proposals the agent no longer stands behind: outranked, already taken up by a session, or no longer
+ * true. One put off with Later waits for the operator, and one already decided is theirs, so both are refused.
+ */
+export const retireProposals = (ledger: ProposalLedger, retiring: readonly Retiring[], now: Date): Retired => {
+  const nowMs = now.getTime();
+  return retiring.reduce<Retired>(
+    (result, { id, reason }) => {
+      const found = result.ledger.proposals.find((proposal) => proposal.id === id);
+      const why = keptBy(found, nowMs);
+      if (!found || why) {
+        return { ...result, refused: [...result.refused, { id, reason: why }] };
+      }
+      const retired: Proposal = { ...found, state: 'retired', decidedAt: nowISO(now) };
+      return {
+        ledger: {
+          ...result.ledger,
+          proposals: result.ledger.proposals.map((proposal) => (proposal.id === id ? retired : proposal))
+        },
+        retired: [...result.retired, { id, title: found.title, reason }],
+        refused: result.refused
+      };
+    },
+    { ledger, retired: [], refused: [] }
   );
 };
 
@@ -169,17 +221,21 @@ export const reopen = (ledger: ProposalLedger, id: string): ProposalLedger => ({
  * `isShown` against its own clock.
  */
 export const proposalCards = (ledger: ProposalLedger): ProposalCard[] =>
-  ledger.proposals.filter(isWaiting).map(({ id, title, trigger, quote, detail, reach, estimate, due, laterUntil }) => ({
-    id,
-    title,
-    trigger,
-    quote,
-    detail,
-    reach,
-    estimate,
-    due,
-    laterUntil
-  }));
+  ledger.proposals
+    .filter(isWaiting)
+    .map(({ id, title, trigger, quote, detail, reach, estimate, due, laterUntil, folder, workspace }) => ({
+      id,
+      title,
+      trigger,
+      quote,
+      detail,
+      reach,
+      estimate,
+      due,
+      laterUntil,
+      folder,
+      workspace
+    }));
 
 export const showingNow = (ledger: ProposalLedger, now: Date): ProposalCard[] =>
   proposalCards(ledger).filter((card) => isShown(card.laterUntil, now.getTime()));

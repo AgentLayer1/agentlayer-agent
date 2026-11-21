@@ -156,6 +156,11 @@ export interface ProposalItem {
    */
   due: string;
   /**
+   * The folder the work lives in, and the title of the workspace the agent picked for it; '' when none was named.
+   */
+  folder?: string;
+  workspace?: string;
+  /**
    * When a proposal put off with Later shows again, an ISO time with an offset; '' when it shows now.
    */
   laterUntil: string;

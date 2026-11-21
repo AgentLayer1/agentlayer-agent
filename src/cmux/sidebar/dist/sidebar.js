@@ -965,7 +965,7 @@ var body = ({ entry, item }, decide) => {
   ]);
 };
 var heartbeatBody = (entry) => VStack({ spacing: 5, alignment: "leading" }, [
-  Text(`Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, spending a model turn only when fewer than five show.`).font(11).color("secondary"),
+  Text(`Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing.`).font(11).color("secondary"),
   HStack({ spacing: 4 }, [
     choiceButton("Start heartbeat", () => openSession(entry, "/heartbeat"), entry.colors?.primary ?? PURPLE),
     Spacer({ minLength: 0 })

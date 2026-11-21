@@ -172,6 +172,8 @@ export const proposal = (id: string, title: string, fields: Partial<Proposal> = 
   estimate: '5m',
   due: '',
   prompt: `Work on: ${title}. Touch nothing outside the home.`,
+  folder: '',
+  workspace: '',
   createdAt: '2026-11-09T08:00:00Z',
   state: 'waiting',
   laterUntil: '',

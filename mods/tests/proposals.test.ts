@@ -107,13 +107,13 @@ describe('proposals', () => {
     expect(host.commands).toEqual([WAKE, WAKE]);
   });
 
-  test('/heartbeat with proposals already full binds without a look', async ($, on) => {
+  test('/heartbeat with proposals already full still looks, since a better one can replace a card', async ($, on) => {
     const { host } = heartbeatHost(on);
     host.proposals.room = 0;
     await start($, host);
-    expect((await run($, 'heartbeat')).text).toEndWith(' The proposals are full, so the first look waits for room.');
+    expect((await run($, 'heartbeat')).text).toEndWith(' Looking for proposals now.');
     await host.clock.settle();
-    expect(host.commands).toEqual([]);
+    expect(host.commands).toEqual([WAKE]);
   });
 
   test('the heartbeat wakes on its interval when the session is idle and proposals are short', async ($, on) => {
@@ -163,26 +163,13 @@ describe('proposals', () => {
     expect(host.toasts).toEqual(['The heartbeat was turned off; this session stopped looking for proposals.']);
   });
 
-  test('a running turn or full proposals hold the wake', async ($, on) => {
+  test('a running turn holds the wake; full proposals do not', async ($, on) => {
     const { host } = await bound($, on);
     await $.turn.start({ text: '', turnId: 't1' });
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([]);
     await $.turn.complete({ answer: '', durationMs: 0, isAborted: false, turnId: 't1', reason: 'answer' });
     host.proposals.showing = Array.from({ length: 5 }, (_, index) => ({ id: `p-${index}`, title: 'x' }));
-    await host.clock.advance(55 * MINUTE);
-    expect(host.commands).toEqual([]);
-    host.proposals.showing = [];
-    await host.clock.advance(55 * MINUTE);
-    expect(host.commands).toEqual([WAKE]);
-  });
-
-  test('a backlog filled by proposals put off holds the wake, though none show', async ($, on) => {
-    const { host } = await bound($, on);
-    host.proposals.room = 0;
-    await host.clock.advance(2 * 55 * MINUTE);
-    expect(host.commands).toEqual([]);
-    host.proposals.room = undefined;
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE]);
   });
@@ -253,9 +240,10 @@ describe('proposals', () => {
     const { host } = await bound($, on);
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE]);
-    host.proposals.showing = Array.from({ length: 5 }, (_, index) => ({ id: `p-${index}`, title: 'x' }));
+    // An idle home holds the ticks the jump to tomorrow fires; a session written to just now wakes the next one.
+    host.transcripts = { 'session-9': NOW };
     await host.clock.set(NOW + 24 * 60 * MINUTE);
-    host.proposals.showing = [];
+    delete host.transcripts;
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE, 'clear', WAKE]);
     await host.clock.advance(55 * MINUTE);
@@ -275,9 +263,10 @@ describe('proposals', () => {
     const { host } = await bound($, on);
     cleared.host = host;
     await host.clock.advance(55 * MINUTE);
-    host.proposals.showing = Array.from({ length: 5 }, (_, index) => ({ id: `p-${index}`, title: 'x' }));
+    // An idle home holds the ticks the jump to tomorrow fires; a session written to just now wakes the next one.
+    host.transcripts = { 'session-9': NOW };
     await host.clock.set(NOW + 24 * 60 * MINUTE);
-    host.proposals.showing = [];
+    delete host.transcripts;
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE, 'clear', WAKE]);
     await host.clock.advance(55 * MINUTE);

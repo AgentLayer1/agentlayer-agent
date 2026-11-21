@@ -10,6 +10,7 @@ import {
   proposalCards,
   type ProposalInput,
   releaseHeartbeat,
+  retireProposals,
   roomFor,
   showingNow
 } from './rules';
@@ -154,4 +155,40 @@ test('an exiting heartbeat releases only the claim it still holds', () => {
   const held: ProposalLedger = { ...EMPTY_LEDGER, heartbeat: { owner: 'a@1', places: [], everyMinutes: 55 } };
   expect(releaseHeartbeat(held, 'a@1').heartbeat).toBeNull();
   expect(releaseHeartbeat(held, 'b@2')).toBe(held);
+});
+
+test('retiring withdraws a showing proposal, whose source can come straight back', () => {
+  const { ledger, retired, refused } = retireProposals(withTwo(), [{ id: 'p-0', reason: 'outranked' }], NOW);
+  expect(retired).toEqual([{ id: 'p-0', title: 'Do task:aa-001', reason: 'outranked' }]);
+  expect(refused).toEqual([]);
+  expect(showingNow(ledger, NOW).map(({ id }) => id)).toEqual(['p-1']);
+  expect(addProposals(ledger, [input('task:aa-001')], NOW).added).toHaveLength(1);
+});
+
+test('retiring refuses what the operator owns: one put off, one decided, one unknown', () => {
+  const later = decide(withTwo(), 'p-0', 'later', NOW);
+  const started = later.outcome === 'decided' ? decide(later.ledger, 'p-1', 'start', NOW) : later;
+  if (started.outcome !== 'decided') {
+    throw new Error('the fixture decisions should apply');
+  }
+  const reasons = ['p-0', 'p-1', 'p-9'].map((id) => ({ id, reason: 'x' }));
+  const { ledger, retired, refused } = retireProposals(started.ledger, reasons, NOW);
+  expect(retired).toEqual([]);
+  expect(refused).toEqual([
+    { id: 'p-0', reason: 'put off by the operator' },
+    { id: 'p-1', reason: 'already started' },
+    { id: 'p-9', reason: 'no such proposal' }
+  ]);
+  expect(ledger).toBe(started.ledger);
+});
+
+test('a ledger written before folder and workspace existed still reads, with both empty', () => {
+  const { ledger } = addProposals(EMPTY_LEDGER, [input('sync')], NOW, counter());
+  const old = JSON.parse(JSON.stringify(ledger)) as { proposals: Record<string, unknown>[] };
+  old.proposals.forEach((proposal) => {
+    delete proposal.folder;
+    delete proposal.workspace;
+  });
+  const [read] = parseLedger(old).proposals;
+  expect([read?.id, read?.folder, read?.workspace]).toEqual(['p-0', '', '']);
 });

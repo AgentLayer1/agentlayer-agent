@@ -3,10 +3,17 @@ import { FOLDERS } from '@/config';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { z } from 'zod';
 import { readProposalLedger, writeProposalLedger } from './ledger';
-import { addProposals, BACKLOG, showingNow, TARGET } from './rules';
+import { addProposals, BACKLOG, retireProposals, showingNow, TARGET } from './rules';
 import { publishTo } from './start';
 
 const text = (max: number) => z.string().trim().max(max);
+
+const RETIRE = z.object({
+  id: z.string().trim().min(1).describe('A showing proposal, by its id.'),
+  reason: text(160)
+    .min(1)
+    .describe('Why it goes: "outranked by the overdue tax reply", "a session is already on pw-045", "the task closed".')
+});
 
 const PROPOSAL = z.object({
   source: z
@@ -25,6 +32,14 @@ const PROPOSAL = z.object({
   reach: text(160).min(1).describe('What it may touch: "Drafts the email and sends nothing."'),
   estimate: text(16).min(1).describe('How long it should take: 5m, 15m, 1h.'),
   due: text(24).default('').describe('When it presses, like "due Sat", else empty.'),
+  folder: text(400)
+    .default('')
+    .describe('The folder the work lives in: the repo path for code work, else the home; empty when neither fits.'),
+  workspace: text(100)
+    .default('')
+    .describe(
+      "The title of the agent's workspace the session belongs in, from the list the heartbeat was given; empty when none fits."
+    ),
   prompt: text(8000)
     .min(1)
     .describe(
@@ -35,20 +50,31 @@ const PROPOSAL = z.object({
 export const tools: ToolDef[] = [
   defineTool({
     name: 'proposal_add',
-    description: `Propose sessions for the operator to start later. Each waits in Proposals until they choose Start (a fresh session runs its prompt), Later (back tomorrow morning) or Skip. A source already waiting, started in the last day or skipped in the last week is refused, as is anything past ${BACKLOG} waiting. Returns what was added, what was refused and why, and what's showing (the heartbeat keeps ${TARGET}).`,
+    description: `Propose sessions for the operator to start later, and retire showing ones a better candidate outranks, a live session already covers, or that are no longer true. Each waits in Proposals until they choose Start (a fresh session runs its prompt), Later (back tomorrow morning) or Skip. A source already waiting, started in the last day or skipped in the last week is refused, as is anything past ${BACKLOG} waiting. Returns what was added, what was refused and why, and what's showing (the heartbeat keeps ${TARGET}).`,
     inputSchema: {
-      proposals: z.array(PROPOSAL).min(1).max(10).describe('The sessions to propose, best first.')
+      proposals: z.array(PROPOSAL).max(10).default([]).describe('The sessions to propose, best first.'),
+      retire: z
+        .array(RETIRE)
+        .max(TARGET)
+        .default([])
+        .describe('Showing proposals to withdraw in the same write, so a swap never flickers; never one put off with Later.')
     },
-    handler: async ({ proposals }) => {
+    handler: async ({ proposals, retire }) => {
+      if (!proposals.length && !retire.length) {
+        throw new Error('Pass proposals to add, retire to withdraw, or both.');
+      }
       const now = new Date();
-      const { ledger, added, refused } = addProposals(readProposalLedger(), proposals, now);
-      if (added.length) {
+      const withdrawn = retireProposals(readProposalLedger(), retire, now);
+      const { ledger, added, refused } = addProposals(withdrawn.ledger, proposals, now);
+      if (added.length || withdrawn.retired.length) {
         writeProposalLedger(ledger);
         publishTo(ADAPTERS, FOLDERS.HOME);
       }
       return {
         added: added.map(({ id, title }) => ({ id, title })),
         refused,
+        retired: withdrawn.retired,
+        keptShowing: withdrawn.refused,
         showing: showingNow(ledger, now).map(({ id, title }) => ({ id, title }))
       };
     }

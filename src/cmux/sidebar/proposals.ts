@@ -84,7 +84,7 @@ const body = ({ entry, item }: Shown, decide: (choice: Choice, place: HeartbeatP
 const heartbeatBody = (entry: HomeEntry) =>
   VStack({ spacing: 5, alignment: 'leading' }, [
     Text(
-      `Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, spending a model turn only when fewer than five show.`
+      `Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing.`
     )
       .font(11)
       .color('secondary'),

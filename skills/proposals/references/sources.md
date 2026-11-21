@@ -12,7 +12,7 @@ Where it lives decides who has it: in a plugin's `skills/` for everyone who inst
 The heartbeat runs every source it can see, once per wake, with the Skill tool. A source:
 
 1. Looks with its own tools: its plugin's MCP tools, the CLI, files it owns.
-2. **Returns candidates; never calls `proposal_add`.** The heartbeat weighs all candidates together and keeps the total at five.
+2. **Returns candidates; never calls `proposal_add`.** The heartbeat weighs all candidates together and keeps the best five showing, retiring cards a stronger candidate beats.
 3. Returns **at most three**, most pressing first, each in `proposal_add`'s shape: `source`, `title`, `trigger`, `detail`, `reach`, `estimate`, `prompt`, and `quote` and `due` when they help.
 4. Prefixes each `source` key with its own name, so two sources can't collide: `support:ticket-412`, `family:school-form`.
 5. Writes nothing, sends nothing, and proposes only drafts: the prompt it writes runs later, in a fresh session, after the operator says yes.
