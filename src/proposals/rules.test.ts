@@ -9,6 +9,7 @@ import {
   parseEvery,
   proposalCards,
   type ProposalInput,
+  releaseHeartbeat,
   roomFor,
   showingNow
 } from './rules';
@@ -147,4 +148,10 @@ test('a ledger read back keeps what it can and drops what it cannot use', () => 
     places: [{ adapter: 'cmux', surfaceId: 'a', workspaceId: 'b' }]
   });
   expect(parseLedger('nonsense')).toEqual(EMPTY_LEDGER);
+});
+
+test('an exiting heartbeat releases only the claim it still holds', () => {
+  const held: ProposalLedger = { ...EMPTY_LEDGER, heartbeat: { owner: 'a@1', places: [], everyMinutes: 55 } };
+  expect(releaseHeartbeat(held, 'a@1').heartbeat).toBeNull();
+  expect(releaseHeartbeat(held, 'b@2')).toBe(held);
 });

@@ -201,6 +201,10 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
   if (args === 'proposals heartbeat --off') {
     host.proposals.heartbeat = null;
   }
+  const release = /^proposals heartbeat --release --owner=(\S+)$/.exec(args);
+  if (release && host.proposals.heartbeat?.owner === release[1]) {
+    host.proposals.heartbeat = null;
+  }
   if (args.startsWith('proposals ')) {
     return ran(0, `ran ${args}`);
   }

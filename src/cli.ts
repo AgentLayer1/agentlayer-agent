@@ -193,7 +193,7 @@ Proposals commands:
   proposals decide <start|later|skip> <id>
                                     Start it (a fresh session runs its prompt), put it off until morning, or drop it
   proposals heartbeat --owner=<token> [--every=<duration>]
-                                    Make the session holding that token the heartbeat (/heartbeat passes its own), looking every 55m unless set (15m, 2h); --off for none
+                                    Make the session holding that token the heartbeat (/heartbeat passes its own), looking every 55m unless set (15m, 2h); --release ends it if that token still holds it; --off for none
 
 Database commands:
   database list                     List configured AGENT_DB_<NAME> connections (name + host/db, never credentials)

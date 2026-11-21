@@ -6,6 +6,7 @@ import {
   clearHeartbeat,
   DEFAULT_EVERY_MINUTES,
   parseEvery,
+  releaseHeartbeat,
   roomFor,
   setHeartbeat,
   TARGET,
@@ -19,6 +20,7 @@ const USAGE = [
   `  list [--json]                                   What's showing, the room for more, and the heartbeat`,
   `  decide <${CHOICES.join('|')}> <id>                    Start, put off until morning, or drop a proposal`,
   `  heartbeat --owner=<token> [--every=<duration>]  Make that session the heartbeat (every 55m unless set)`,
+  `  heartbeat --release --owner=<token>             End that session's heartbeat, if it still holds it`,
   `  heartbeat --off                                 No heartbeat`
 ].join('\n');
 
@@ -62,12 +64,20 @@ const heartbeat = (args: readonly string[]): number => {
     console.error(minutes instanceof Error ? minutes.message : USAGE);
     return 1;
   }
-  const places = ADAPTERS.map((adapter) => adapter.locate(process.env)).filter((place) => place !== null);
   const ledger = readProposalLedger();
-  const tookOver = ledger.heartbeat !== null && ledger.heartbeat.owner !== owner;
+  if (args.includes('--release')) {
+    const released = releaseHeartbeat(ledger, owner);
+    if (released !== ledger) {
+      writeProposalLedger(released);
+      publish();
+    }
+    return 0;
+  }
+  const places = ADAPTERS.map((adapter) => adapter.locate(process.env)).filter((place) => place !== null);
+  const replaced = ledger.heartbeat !== null && ledger.heartbeat.owner !== owner;
   writeProposalLedger(setHeartbeat(ledger, owner, places, minutes));
   publish();
-  const from = tookOver ? ' It took over from another session, which stops at its next tick.' : '';
+  const from = replaced ? ' It replaced an earlier heartbeat; if that session is still open, it stops at its next tick.' : '';
   const warm = minutes > 60 ? ' Over an hour apart, each wake pays to load the context again.' : '';
   console.log(`This session is the heartbeat now: it looks for proposals every ${minutes} minutes.${from}${warm}`);
   return 0;

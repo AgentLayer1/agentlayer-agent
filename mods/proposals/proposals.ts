@@ -19,6 +19,8 @@ import {
 } from './beat';
 
 const USAGE = `Usage: /proposal <${CHOICES.join('|')}> <id>`;
+// Inside the engine's short bound on every session.end hook.
+const RELEASE_TIMEOUT_MS = 1000;
 
 // Kept in session state, which outlives a /clear and a reload of this module, unlike its own variables.
 const beat = atom({ plugin: 'agentlayer', key: 'heartbeat' } as const, { wokeOn: '', owner: '' });
@@ -194,6 +196,21 @@ export const registerProposals = (on: On): void => {
   on('session.start', { isInteractive: true }, async ($, e, next) => {
     await Promise.all(PROPOSALS_FEATURE.commands.map((command) => $.command.register(command)));
     $.clock.after(0, () => void arm($));
+    return next(e);
+  });
+
+  // A /clear or a /resume keeps this process, and with it the heartbeat; only leaving it gives the heartbeat up. A crash
+  // runs no hook, which is why a later /heartbeat still says it replaced one.
+  on('session.end', { reason: ['prompt_input_exit', 'logout', 'other'] }, async ($, e, next) => {
+    const { owner } = await read($, beat);
+    if (owner) {
+      await $.process
+        .run(cliArgv($.plugin.root, ['proposals', 'heartbeat', '--release', `--owner=${owner}`]), {
+          cwd: await $.session.root(),
+          timeoutMs: RELEASE_TIMEOUT_MS
+        })
+        .catch(() => undefined);
+    }
     return next(e);
   });
 

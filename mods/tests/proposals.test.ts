@@ -306,6 +306,24 @@ describe('proposals', () => {
     expect(host.commands).toEqual([WAKE, WAKE]);
   });
 
+  test('leaving the heartbeat session gives the heartbeat up; a /clear or a /resume keeps it', async ($, on) => {
+    const { host } = await bound($, on);
+    await $.session.end({ reason: 'clear', sessionId: 'session-1', resume: { id: 'session-1' } });
+    await $.session.end({ reason: 'resume', sessionId: 'session-1', resume: { id: 'session-1' } });
+    expect(host.proposals.heartbeat?.owner).toBe(TOKEN);
+    await $.session.end({ reason: 'other', sessionId: 'session-1', resume: { id: 'session-1' } });
+    expect(heartbeatCalls(host)).toEqual([`proposals heartbeat --owner=${TOKEN}`, `proposals heartbeat --release --owner=${TOKEN}`]);
+    expect(host.proposals.heartbeat).toBeNull();
+  });
+
+  test('a session that never ran /heartbeat releases nothing when it exits', async ($, on) => {
+    const { host } = heartbeatHost(on, { owner: 'session-9@other', everyMinutes: 55 });
+    await start($, host);
+    await $.session.end({ reason: 'prompt_input_exit', sessionId: 'session-1', resume: { id: 'session-1' } });
+    expect(cliCalls(host)).toEqual([]);
+    expect(host.proposals.heartbeat?.owner).toBe('session-9@other');
+  });
+
   test('a failed read of the proposals skips the tick and keeps the clock', async ($, on) => {
     const { host } = await bound($, on);
     host.failing.push('proposals list --json');

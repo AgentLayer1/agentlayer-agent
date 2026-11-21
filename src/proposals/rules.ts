@@ -215,3 +215,9 @@ export const setHeartbeat = (
 ): ProposalLedger => ({ ...ledger, heartbeat: { owner, places: [...places], everyMinutes } });
 
 export const clearHeartbeat = (ledger: ProposalLedger): ProposalLedger => ({ ...ledger, heartbeat: null });
+
+/**
+ * Clears the heartbeat only while `owner` still holds it, so a session that exits never clears a newer one.
+ */
+export const releaseHeartbeat = (ledger: ProposalLedger, owner: string): ProposalLedger =>
+  ledger.heartbeat?.owner === owner ? clearHeartbeat(ledger) : ledger;
