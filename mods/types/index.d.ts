@@ -130,12 +130,32 @@ export interface ReportRow {
   title?: string;
 }
 
+/** One tick of the heartbeat as its band shows it. */
+export interface HeartbeatEvent {
+  at: number;
+  text: string;
+}
+
 /** The heartbeat session's own bookkeeping: the local day it last woke, and the token it is the heartbeat by. */
 export interface HeartbeatClock {
   wokeOn: string;
   owner: string;
   /** The conversation the day's /clear left, so its last writes aren't read as another session's. */
   clearedId?: string;
+  /** Set while this process is the home's heartbeat, which is when its band shows. */
+  isHeartbeat?: boolean;
+  everyMinutes?: number;
+  /** When the clock ticks next, epoch ms. */
+  nextAt?: number;
+  /** The home's timezone, which the band's times are read in. */
+  zone?: string;
+  /** How many proposals showed at the last tick, and the most there are. */
+  showing?: number;
+  target?: number;
+  /** The latest ticks, newest first. */
+  log?: HeartbeatEvent[];
+  /** The wake turns started and not yet ended, oldest first: `look` or `refresh`. */
+  awaiting?: string[];
 }
 
 export interface Queue {

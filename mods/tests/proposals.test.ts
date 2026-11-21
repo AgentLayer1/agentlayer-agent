@@ -2,7 +2,8 @@ import { describe, expect, test } from 'claude-code/testing';
 import type { Engine } from 'claude-code/testing';
 import type { On } from 'claude-code';
 
-import { HOME, NOW, PLUGIN, fakeHost, machine, run } from './fake-host';
+import { nextLook } from '../proposals/beat';
+import { BAND_PROPS, HOME, NOW, PLUGIN, fakeHost, machine, run } from './fake-host';
 import type { FakeHost } from './fake-host';
 
 const MINUTE = 60_000;
@@ -350,7 +351,65 @@ describe('proposals', () => {
     await host.clock.settle();
     expect(host.commands).toEqual([WAKE]);
     expect((await run($, 'heartbeat', 'status')).text).toBe(
-      'This session is the heartbeat, every 55m, skipping a wake when no other session in the home was active in that time (last activity 0m ago). 0 of 5 proposals showing.'
+      'This session is the heartbeat, every 55m, skipping a wake when no other session in the home was active in that time (last activity 0m ago). 0 of 5 proposals showing. Its next look 09:55.'
     );
+  });
+});
+
+describe('heartbeat band', () => {
+  const drawn = async ($: Engine) =>
+    (
+      await (await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AbovePrompt', props: BAND_PROPS })).findAll({
+        type: 'Text'
+      })
+    )
+      .map((element) => element.text)
+      .join('|');
+
+  const ended = ($: Engine, answer: string, turnId = 't1') =>
+    $.turn.complete({ answer, durationMs: 0, isAborted: false, turnId, reason: 'answer' });
+
+  test('shows in the heartbeat session only, with its interval and next look', async ($, on) => {
+    const { host } = heartbeatHost(on);
+    await start($, host);
+    expect(await drawn($)).not.toContain('Heartbeat');
+    await run($, 'heartbeat');
+    await host.clock.settle();
+    const band = await drawn($);
+    expect(band).toContain('💓|Heartbeat|every 55m · next look ');
+    expect(band).toContain(' · 0 of 5 showing');
+  });
+
+  test('says what each tick did: a look by its closing line, a skip by its reason', async ($, on) => {
+    const { host } = await bound($, on);
+    await ended($, 'Read the queue.\n\n**Proposed 2: Draft the reply; Run the sync.**');
+    host.transcripts = { 'session-9': NOW };
+    await host.clock.advance(55 * MINUTE);
+    const band = await drawn($);
+    expect(band).toContain('skipped: home idle');
+    expect(band).toContain('looked: Proposed 2: Draft the reply; Run the sync.');
+    expect(band.indexOf('skipped: home idle'), 'newest first').toBeLessThan(band.indexOf('looked:'));
+  });
+
+  test("an ordinary turn in the heartbeat's tab is not read as a look", async ($, on) => {
+    await bound($, on);
+    await ended($, 'Proposed 1: x.');
+    await ended($, 'Just chatting.', 't2');
+    const band = await drawn($);
+    expect(band).toContain('looked: Proposed 1: x.');
+    expect(band).not.toContain('Just chatting');
+  });
+
+  test('a heartbeat that lost the job hides its band', async ($, on) => {
+    const { host } = await bound($, on);
+    host.proposals.heartbeat = { owner: 'session-7@newer', everyMinutes: 55 };
+    await host.clock.advance(55 * MINUTE);
+    expect(await drawn($)).not.toContain('Heartbeat');
+  });
+
+  test('a next look the Mac slept through reads late', () => {
+    const due = Date.parse('2026-03-11T10:00:00+08:00');
+    expect(nextLook(due, due + MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look 10:00');
+    expect(nextLook(due, due + 2 * MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look 10:00 (late)');
   });
 });

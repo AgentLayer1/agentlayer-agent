@@ -103,3 +103,40 @@ export const parseList = (stdout: string): ProposalList | null => {
     return null;
   }
 };
+
+/**
+ * How many of the heartbeat's latest ticks its band keeps.
+ */
+export const LOG_SIZE = 3;
+
+/**
+ * One tick of the heartbeat as its band shows it: when, and what came of it.
+ */
+export interface BeatEvent {
+  at: number;
+  text: string;
+}
+
+export const logged = (log: readonly BeatEvent[], event: BeatEvent): BeatEvent[] => [event, ...log].slice(0, LOG_SIZE);
+
+/**
+ * A clock time, 24-hour, in the home's timezone.
+ */
+export const clockIn = (epochMs: number, timeZone: string): string =>
+  new Date(epochMs).toLocaleTimeString('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false });
+
+/**
+ * The last line of a wake turn's answer, its one-line ending, without markdown emphasis.
+ */
+export const closingLine = (answer: string): string =>
+  answer
+    .split('\n')
+    .map((line) => line.replace(/[*_`]/g, '').trim())
+    .filter(Boolean)
+    .at(-1) ?? '';
+
+/**
+ * When the next look is due; late once the clock is a minute past it, as after the Mac slept through it.
+ */
+export const nextLook = (nextAt: number, now: number, timeZone: string): string =>
+  `next look ${clockIn(nextAt, timeZone)}${now - nextAt > MINUTE_MS ? ' (late)' : ''}`;

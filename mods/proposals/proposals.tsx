@@ -3,16 +3,22 @@ import type { EngineInterface, On } from 'claude-code';
 
 import { PROPOSALS_FEATURE } from '../shared/catalog';
 import { cliArgv, cliError } from '../shared/cli';
+import { TURN_REASONS } from '../shared/turns';
+import { clip } from '../tasks/task';
 import type { Queue } from '../types';
 import {
   CHOICES,
   DECISION_AT_END,
   MINUTE_MS,
+  clockIn,
+  closingLine,
   dayIn,
   decisionInDraft,
+  lastWrite,
+  logged,
+  nextLook,
   parseDecision,
   parseHeartbeat,
-  lastWrite,
   parseList,
   type Decision,
   type ProposalList
@@ -70,8 +76,25 @@ async function wake($: EngineInterface, now: number, zone: string): Promise<void
     await update($, beat, (current) => ({ ...current, clearedId }));
     await $.command.run({ command: 'clear' });
   }
-  await update($, beat, (current) => ({ ...current, wokeOn: today }));
+  await update($, beat, (current) => ({ ...current, wokeOn: today, awaiting: [...(current.awaiting ?? []), 'look'] }));
   refill($);
+}
+
+async function note($: EngineInterface, at: number, text: string): Promise<void> {
+  await update($, beat, (current) => ({ ...current, log: logged(current.log ?? [], { at, text }) }));
+}
+
+// Each tick, whatever it decides, moves the band's clock on and says what it saw.
+async function ticked($: EngineInterface, list: Bound, now: number, text: string): Promise<void> {
+  await update($, beat, (current) => ({
+    ...current,
+    nextAt: now + list.heartbeat.everyMinutes * MINUTE_MS,
+    showing: list.showing.length,
+    target: list.target
+  }));
+  if (text) {
+    await note($, now, text);
+  }
 }
 
 // The heartbeat is this running process, named by a token it picks once and keeps in session state: a /clear or a
@@ -117,16 +140,25 @@ async function tick($: EngineInterface): Promise<void> {
     }
     ticker?.cancel();
     ticker = undefined;
+    await update($, beat, (current) => ({ ...current, isHeartbeat: false }));
     return;
   }
-  if (isBusy || list.room === 0) {
+  const now = await $.clock.now();
+  if (isBusy) {
+    await ticked($, list, now, 'skipped: a turn was running');
     return;
   }
-  const [now, used] = await Promise.all([$.clock.now(), lastUse($)]);
+  if (list.room === 0) {
+    await ticked($, list, now, 'skipped: proposals full');
+    return;
+  }
+  const used = await lastUse($);
   // A home it can't see is treated as in use, since skipping would stop the heartbeat for good.
   if (used !== null && now - used >= list.heartbeat.everyMinutes * MINUTE_MS) {
+    await ticked($, list, now, 'skipped: home idle');
     return;
   }
+  await ticked($, list, now, '');
   await wake($, now, list.timezone);
 }
 
@@ -140,9 +172,21 @@ async function arm($: EngineInterface): Promise<Bound | null> {
   }
   const list = await readList($);
   if (!isOwner(list, owner)) {
+    await update($, beat, (current) => ({ ...current, isHeartbeat: false }));
     return null;
   }
-  ticker = $.clock.every(list.heartbeat.everyMinutes * MINUTE_MS, () => void tick($));
+  const { everyMinutes } = list.heartbeat;
+  const now = await $.clock.now();
+  ticker = $.clock.every(everyMinutes * MINUTE_MS, () => void tick($));
+  await update($, beat, (current) => ({
+    ...current,
+    isHeartbeat: true,
+    everyMinutes,
+    zone: list.timezone,
+    nextAt: now + everyMinutes * MINUTE_MS,
+    showing: list.showing.length,
+    target: list.target
+  }));
   return list;
 }
 
@@ -155,9 +199,12 @@ async function status($: EngineInterface): Promise<string> {
   if (!list.heartbeat) {
     return `No heartbeat. ${showing}. /heartbeat makes this session the one.`;
   }
-  const who = isOwner(list, owner) ? 'This session' : 'Another session';
+  const mine = isOwner(list, owner);
+  const who = mine ? 'This session' : 'Another session';
   const seen = used === null ? "its sessions can't be seen" : used === 0 ? 'no other session yet' : `last activity ${Math.round((now - used) / MINUTE_MS)}m ago`;
-  return `${who} is the heartbeat, every ${list.heartbeat.everyMinutes}m, skipping a wake when no other session in the home was active in that time (${seen}). ${showing}.`;
+  const { nextAt } = await read($, beat);
+  const next = mine && nextAt ? ` Its ${nextLook(nextAt, now, list.timezone)}.` : '';
+  return `${who} is the heartbeat, every ${list.heartbeat.everyMinutes}m, skipping a wake when no other session in the home was active in that time (${seen}). ${showing}.${next}`;
 }
 
 async function heartbeat($: EngineInterface, args: string): Promise<string> {
@@ -167,6 +214,9 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
   }
   if (ask.kind === 'now') {
     // A refill only: the day's clear belongs to the heartbeat's own clock, never to a session that asked for one.
+    await update($, beat, (current) =>
+      current.isHeartbeat ? { ...current, awaiting: [...(current.awaiting ?? []), 'look'] } : current
+    );
     refill($);
     return 'Looking for proposals now.';
   }
@@ -220,6 +270,52 @@ export const registerProposals = (on: On): void => {
   });
 
   on('command.run', { command: 'heartbeat' }, async ($, e) => ({ text: await heartbeat($, e.args) }));
+
+  // A wake's turn ends on the skill's one-line ending, which is what the band says it did.
+  on('turn.complete', { reason: TURN_REASONS }, async ($, e, next) => {
+    const { awaiting = [] } = await read($, beat);
+    const kind = awaiting[0];
+    if (e.agentId === undefined && kind) {
+      const [now, line] = [await $.clock.now(), closingLine(e.answer)];
+      const verb = kind === 'refresh' ? 'refreshed' : 'looked';
+      await update($, beat, (current) => ({ ...current, awaiting: (current.awaiting ?? []).slice(1) }));
+      await note($, now, e.reason === 'answer' ? `${verb}: ${line || 'done'}` : `${verb}: stopped (${e.reason})`);
+    }
+    return next(e);
+  });
+
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const below = await next(e);
+    const state = await read($, beat);
+    if (!state.isHeartbeat || e.props.hasSurvey) {
+      return below;
+    }
+    const { Box, Text } = $.ui.resolve(e);
+    const zone = state.zone ?? 'UTC';
+    const now = await $.clock.now();
+    const head = [
+      `every ${state.everyMinutes ?? 55}m`,
+      state.nextAt ? nextLook(state.nextAt, now, zone) : '',
+      state.target ? `${state.showing ?? 0} of ${state.target} showing` : ''
+    ].filter(Boolean);
+    const width = Math.max(20, e.props.bodyColumns - 2);
+    return (
+      <Box flexDirection="column">
+        <Box gap={1}>
+          <Text color="magenta">💓</Text>
+          <Text weight="semibold">Heartbeat</Text>
+          <Text dimColor>{head.join(' · ')}</Text>
+        </Box>
+        {(state.log ?? []).map((event) => (
+          <Box paddingLeft={3} gap={1}>
+            <Text dimColor>{clockIn(event.at, zone)}</Text>
+            <Text>{clip(event.text, width - 6)}</Text>
+          </Box>
+        ))}
+        {below}
+      </Box>
+    );
+  });
 
   // A sidebar click can land after a half-written prompt; the decision runs, the prompt never reaches the model, and
   // the draft goes back in the box.
