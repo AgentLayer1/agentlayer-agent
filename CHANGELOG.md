@@ -47,6 +47,54 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.0.9] - 2026-11-21
+
+The heartbeat shows what it is doing, keeps the best five proposals instead of stopping at five, and keeps the brain fresh between syncs.
+
+### Added
+- A band above the heartbeat's prompt: what it is doing now (looking for proposals, refreshing the
+  brain) or a countdown to the next look, yellow when a look is overdue; the interval, the
+  proposals showing and the brain's age; and the last three ticks, each with a mark (✓ proposed,
+  · nothing new, ↻ refreshed, – skipped, ✗ stopped), repeated skips folded into one line.
+- A brain refresh, `/agentlayer:sync brain`: sync's maintenance steps (snapshot, code, compile, lint,
+  prune, links, the flywheel, the dashboard and sidebar, history) with none of its questions,
+  briefings or reviews. The heartbeat runs one when six hours have passed since the last sync or
+  refresh and a session has written since, clearing its conversation first; `/heartbeat now` runs
+  one when it is due. It stamps its own watermark, so the full sync's nudge keeps nudging.
+- Sessions the sidebar opens (Discuss on a task or goal, a proposal's Start, Start heartbeat) land in
+  the agent's own workspace that fits the work, selected and focused: one the heartbeat named for
+  the proposal, the work's folder, a project's name, or the kind of work in the title. With no fit,
+  they open in the agent's own workspace, never another agent's.
+- `list_sessions.ts --brief`: one line per session (id, age, branch, topic, latest ask).
+
+### Changed
+- The heartbeat looks whether or not five proposals show. `proposal_add` takes `retire` (with an
+  optional `for`) to withdraw cards a stronger candidate outranks, a live session already covers, or
+  that no longer hold, in the same write as the adds; a card retired for a replacement that is
+  refused stays. Every look gathers candidates, leaves out work a session started in the last six
+  hours, names each proposal's folder and workspace, and ends on one line.
+- After each look or refresh the heartbeat rebuilds the dashboard and the cmux sidebar.
+- The sync tracker draws a brain refresh's own nine phases under its name, keeps it out of the
+  full-sync history, and clears it when it ends.
+- The sidebar's Discuss sparkles are no longer dimmed.
+- To show you a file, the agent puts its absolute path in the reply, which the terminal makes a link
+  you Cmd-click (Ctrl-click off macOS) to open in your default app, instead of handing you an
+  `! open` command.
+
+### Fixed
+- Leaving the heartbeat's session (exit, logout, a closed tab) gives the heartbeat up, so the next
+  `/heartbeat` no longer reports taking over from a session that is gone; after a crash it says it
+  replaced an earlier heartbeat that stops at its next tick if still open.
+- A proposal's publish read the last saved work model, so it could put an old tasks summary back on
+  the sidebar; it now scans the task files.
+- `/heartbeat now` checks the live owner before clearing, and a refresh that fails before it stamps
+  isn't retried until its window passes.
+- A word typed after a `/proposal` decision is no longer taken for a workspace.
+
+### Upgrade
+- `template/AGENTS.md: mandatory` — Platform's "Keep the live home out of harm's way" paragraph
+  shows a file as its absolute path to Cmd-click, never an `! open` command.
+
 ## [1.0.8] - 2026-11-21
 
 The heartbeat follows the home instead of the clock, and the PROPOSED list waits until you open it.
