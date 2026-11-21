@@ -15,12 +15,13 @@ export const REFRESH_RETRY_MS = 6 * 60 * MINUTE_MS;
 // Named, so a word typed after a decision is never taken for a workspace.
 const WORKSPACE_FLAG = '--workspace=';
 
+const DECISION = `(${CHOICES.join('|')})\\s+(\\S+)(?:\\s+${WORKSPACE_FLAG}(\\S+))?`;
+const DECISION_ALONE = new RegExp(`^${DECISION}$`);
+
 /**
  * A `/proposal` decision typed after whatever was half-written in the prompt, as a sidebar button types it.
  */
-export const DECISION_AT_END = new RegExp(
-  `/proposal\\s+(${CHOICES.join('|')})\\s+(\\S+)(?:\\s+${WORKSPACE_FLAG}(\\S+))?\\s*$`
-);
+export const DECISION_AT_END = new RegExp(`/proposal\\s+${DECISION}\\s*$`);
 
 export interface Decision {
   choice: Choice;
@@ -31,28 +32,23 @@ export interface Decision {
 
 const isChoice = (word: string | undefined): word is Choice => CHOICES.some((choice) => choice === word);
 
-export const parseDecision = (args: string): Decision | null => {
-  const [choice, id, flag, ...rest] = args.trim().split(/\s+/);
-  const workspace = flag?.startsWith(WORKSPACE_FLAG) ? flag.slice(WORKSPACE_FLAG.length) : undefined;
-  if (!isChoice(choice) || !id || rest.length > 0 || (flag !== undefined && !workspace)) {
+const decisionOf = (match: RegExpExecArray | null): Decision | null => {
+  const [, choice, id, workspace] = match ?? [];
+  if (!isChoice(choice) || !id) {
     return null;
   }
   return workspace ? { choice, id, workspace } : { choice, id };
 };
+
+export const parseDecision = (args: string): Decision | null => decisionOf(DECISION_ALONE.exec(args.trim()));
 
 /**
  * The decision at the end of a submitted prompt, and the draft typed before it.
  */
 export const decisionInDraft = (text: string): (Decision & { draft: string }) | null => {
   const match = DECISION_AT_END.exec(text);
-  const choice = match?.[1];
-  const id = match?.[2];
-  const workspace = match?.[3];
-  if (!match || !isChoice(choice) || !id) {
-    return null;
-  }
-  const draft = text.slice(0, match.index).trimEnd();
-  return workspace ? { choice, id, workspace, draft } : { choice, id, draft };
+  const decision = decisionOf(match);
+  return match && decision ? { ...decision, draft: text.slice(0, match.index).trimEnd() } : null;
 };
 
 type HeartbeatAsk = { kind: 'bind'; every: string } | { kind: 'off' } | { kind: 'now' } | { kind: 'status' };
@@ -132,7 +128,7 @@ export const parseList = (stdout: string): ProposalList | null => {
   }
 };
 
-export const LOG_SIZE = 3;
+const LOG_SIZE = 3;
 
 export const logged = (log: readonly HeartbeatEvent[], event: HeartbeatEvent): HeartbeatEvent[] =>
   [event, ...log].slice(0, LOG_SIZE);

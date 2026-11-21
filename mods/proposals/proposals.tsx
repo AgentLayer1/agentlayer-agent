@@ -91,10 +91,6 @@ async function look($: EngineInterface): Promise<void> {
   });
 }
 
-function refill($: EngineInterface): void {
-  $.clock.after(0, () => void look($));
-}
-
 // A brain refresh and the day's first wake clear the conversation first, so the heartbeat's context stays small. A
 // refresh runs sync's maintenance steps, then the look reads the brain it left.
 async function wake($: EngineInterface, now: number, zone: string, refresh = false): Promise<void> {
@@ -121,14 +117,18 @@ async function note($: EngineInterface, at: number, text: string): Promise<void>
   await update($, beat, (current) => ({ ...current, log: logged(current.log ?? [], { at, text }) }));
 }
 
+const refreshedMs = (list: ProposalList): number => Date.parse(list.refreshedAt) || 0;
+
+// What the band shows of the list, as of a tick at `now`.
+const seen = (list: Bound, now: number) => ({
+  nextAt: now + list.heartbeat.everyMinutes * MINUTE_MS,
+  showing: list.showing.length,
+  target: list.target,
+  refreshedAt: refreshedMs(list)
+});
+
 async function ticked($: EngineInterface, list: Bound, now: number, text: string): Promise<void> {
-  await update($, beat, (current) => ({
-    ...current,
-    nextAt: now + list.heartbeat.everyMinutes * MINUTE_MS,
-    showing: list.showing.length,
-    target: list.target,
-    refreshedAt: Date.parse(list.refreshedAt) || 0
-  }));
+  await update($, beat, (current) => ({ ...current, ...seen(list, now) }));
   if (text) {
     await note($, now, text);
   }
@@ -188,7 +188,7 @@ async function tick($: EngineInterface): Promise<void> {
   const used = await lastUse($);
   const { refreshTriedAt = 0 } = await read($, beat);
   // A refresh waits for something to absorb: a session written since the last sync or refresh.
-  const absorbs = used === null || used > (Date.parse(list.refreshedAt) || 0);
+  const absorbs = used === null || used > refreshedMs(list);
   if (list.refreshDue && absorbs && now - refreshTriedAt >= REFRESH_RETRY_MS) {
     await ticked($, list, now, '');
     await wake($, now, list.timezone, true);
@@ -224,16 +224,13 @@ async function arm($: EngineInterface): Promise<Bound | null> {
     isHeartbeat: true,
     everyMinutes,
     zone: list.timezone,
-    nextAt: now + everyMinutes * MINUTE_MS,
-    showing: list.showing.length,
-    target: list.target,
-    refreshedAt: Date.parse(list.refreshedAt) || 0
+    ...seen(list, now)
   }));
   return list;
 }
 
 async function status($: EngineInterface): Promise<string> {
-  const [list, now, { owner }, used] = await Promise.all([readList($), $.clock.now(), read($, beat), lastUse($)]);
+  const [list, now, { owner, nextAt }, used] = await Promise.all([readList($), $.clock.now(), read($, beat), lastUse($)]);
   if (!list) {
     return "Couldn't read the proposals.";
   }
@@ -243,10 +240,9 @@ async function status($: EngineInterface): Promise<string> {
   }
   const mine = isOwner(list, owner);
   const who = mine ? 'This session' : 'Another session';
-  const seen = used === null ? "its sessions can't be seen" : used === 0 ? 'no other session yet' : `last activity ${Math.round((now - used) / MINUTE_MS)}m ago`;
-  const { nextAt } = await read($, beat);
+  const activity = used === null ? "its sessions can't be seen" : used === 0 ? 'no other session yet' : `last activity ${Math.round((now - used) / MINUTE_MS)}m ago`;
   const next = mine && nextAt ? ` Its ${nextLook(nextAt, now, list.timezone)}.` : '';
-  return `${who} is the heartbeat, every ${list.heartbeat.everyMinutes}m, skipping a wake when no other session in the home was active in that time (${seen}). ${showing}.${next}`;
+  return `${who} is the heartbeat, every ${list.heartbeat.everyMinutes}m, skipping a wake when no other session in the home was active in that time (${activity}). ${showing}.${next}`;
 }
 
 async function heartbeat($: EngineInterface, args: string): Promise<string> {
@@ -263,7 +259,7 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
       $.clock.after(0, () => void wake($, now, list.timezone, true));
       return 'Refreshing the brain, then looking for proposals.';
     }
-    refill($);
+    $.clock.after(0, () => void look($));
     return 'Looking for proposals now.';
   }
   if (ask.kind === 'off') {

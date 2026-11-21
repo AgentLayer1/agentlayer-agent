@@ -123,6 +123,10 @@ export const addProposals = (
 interface Retiring {
   id: string;
   reason: string;
+  /**
+   * The source of the new proposal it makes way for, when it is retired only for that one.
+   */
+  for?: string | undefined;
 }
 
 interface Retired {
@@ -167,6 +171,45 @@ export const retireProposals = (ledger: ProposalLedger, retiring: readonly Retir
     },
     { ledger, retired: [], refused: [] }
   );
+};
+
+interface Swapped extends Added {
+  retired: Retired['retired'];
+  kept: Retired['refused'];
+}
+
+/**
+ * Retires, then adds, as one change to the ledger. A card retired to make way for a proposal that was refused is put
+ * back as it was, so a swap never only shrinks the list.
+ */
+export const swapProposals = (
+  ledger: ProposalLedger,
+  inputs: readonly ProposalInput[],
+  retiring: readonly Retiring[],
+  now: Date,
+  makeId: () => string = randomId
+): Swapped => {
+  const withdrawn = retireProposals(ledger, retiring, now);
+  const grown = addProposals(withdrawn.ledger, inputs, now, makeId);
+  const refusedSources = new Set(grown.refused.map(({ source }) => source));
+  const putBack = new Set(
+    retiring
+      .filter((item) => item.for !== undefined && refusedSources.has(item.for))
+      .map(({ id }) => id)
+      .filter((id) => withdrawn.retired.some((retired) => retired.id === id))
+  );
+  const before = new Map(ledger.proposals.map((proposal) => [proposal.id, proposal]));
+  return {
+    ...grown,
+    ledger: {
+      ...grown.ledger,
+      proposals: grown.ledger.proposals.map((proposal) =>
+        putBack.has(proposal.id) ? (before.get(proposal.id) ?? proposal) : proposal
+      )
+    },
+    retired: withdrawn.retired.filter(({ id }) => !putBack.has(id)),
+    kept: [...withdrawn.refused, ...[...putBack].map((id) => ({ id, reason: 'its replacement was refused' }))]
+  };
 };
 
 /**
@@ -270,8 +313,8 @@ export const parseEvery = (text: string): number | Error => {
 /**
  * The later of the last full sync and the last brain refresh, as an ISO time; '' when neither ever ran.
  */
-export const lastRefreshed = (syncedAt: string | undefined, refreshedAt: string | undefined): string =>
-  [syncedAt ?? '', refreshedAt ?? ''].filter(Boolean).sort((a, b) => ms(a) - ms(b)).at(-1) ?? '';
+export const lastRefreshed = (syncedAt = '', refreshedAt = ''): string =>
+  ms(syncedAt) >= ms(refreshedAt) ? syncedAt : refreshedAt;
 
 /**
  * Whether the heartbeat should refresh the brain: nothing has synced or refreshed it in the last `REFRESH_EVERY_HOURS`.

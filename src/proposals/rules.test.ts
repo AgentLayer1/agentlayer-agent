@@ -14,7 +14,8 @@ import {
   releaseHeartbeat,
   retireProposals,
   roomFor,
-  showingNow
+  showingNow,
+  swapProposals
 } from './rules';
 
 const NOW = new Date('2026-11-20T10:00:00+08:00');
@@ -203,4 +204,21 @@ test('a refresh is due six hours after the later of the last sync and the last r
   expect(refreshDue('', NOW)).toBe(true);
   expect(refreshDue(hoursAgo(5.99), NOW)).toBe(false);
   expect(refreshDue(hoursAgo(6), NOW)).toBe(true);
+});
+
+test('a swap retires first, so a full backlog still takes the replacement, and a refused one puts its card back', () => {
+  const full = addProposals(
+    EMPTY_LEDGER,
+    Array.from({ length: BACKLOG }, (_, index) => input(`task:aa-${index}`)),
+    NOW,
+    counter()
+  ).ledger;
+  const swapped = swapProposals(full, [input('task:bb-1')], [{ id: 'p-0', reason: 'outranked', for: 'task:bb-1' }], NOW);
+  expect(swapped.added.map(({ source }) => source)).toEqual(['task:bb-1']);
+  expect(swapped.retired.map(({ id }) => id)).toEqual(['p-0']);
+  const refused = swapProposals(full, [input('task:aa-3')], [{ id: 'p-0', reason: 'outranked', for: 'task:aa-3' }], NOW);
+  expect(refused.added).toEqual([]);
+  expect(refused.retired).toEqual([]);
+  expect(refused.kept).toEqual([{ id: 'p-0', reason: 'its replacement was refused' }]);
+  expect(refused.ledger.proposals.find(({ id }) => id === 'p-0')?.state).toBe('waiting');
 });

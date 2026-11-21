@@ -3,7 +3,7 @@ import { FOLDERS } from '@/config';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { z } from 'zod';
 import { readProposalLedger, writeProposalLedger } from './ledger';
-import { addProposals, BACKLOG, retireProposals, showingNow, TARGET } from './rules';
+import { BACKLOG, showingNow, swapProposals, TARGET } from './rules';
 import { publishTo } from './start';
 
 const text = (max: number) => z.string().trim().max(max);
@@ -69,21 +69,16 @@ export const tools: ToolDef[] = [
         throw new Error('Pass proposals to add, retire to withdraw, or both.');
       }
       const now = new Date();
-      const current = readProposalLedger();
-      // A card retired for a stronger one stays when that one is refused, so a swap never only shrinks the list.
-      const refusedSources = new Set(addProposals(current, proposals, now).refused.map(({ source }) => source));
-      const kept = retire.filter((item) => item.for !== undefined && refusedSources.has(item.for));
-      const withdrawn = retireProposals(current, retire.filter((item) => !kept.includes(item)), now);
-      const { ledger, added, refused } = addProposals(withdrawn.ledger, proposals, now);
-      if (added.length || withdrawn.retired.length) {
+      const { ledger, added, refused, retired, kept } = swapProposals(readProposalLedger(), proposals, retire, now);
+      if (added.length || retired.length) {
         writeProposalLedger(ledger);
         publishTo(ADAPTERS, FOLDERS.HOME);
       }
       return {
         added: added.map(({ id, title }) => ({ id, title })),
         refused,
-        retired: withdrawn.retired,
-        keptShowing: [...withdrawn.refused, ...kept.map(({ id }) => ({ id, reason: 'its replacement was refused' }))],
+        retired,
+        keptShowing: kept,
         showing: showingNow(ledger, now).map(({ id, title }) => ({ id, title }))
       };
     }

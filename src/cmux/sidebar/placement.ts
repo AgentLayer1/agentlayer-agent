@@ -84,7 +84,7 @@ const holdsHeartbeat = (workspace: PlaceWorkspace, agent: PlaceAgent): boolean =
  * The agent's own workspace: the one titled `Agent <Name>`, else one opened in its home, preferring one without the
  * heartbeat's tab.
  */
-export const anchorOf = (workspaces: readonly PlaceWorkspace[], agent: PlaceAgent): PlaceWorkspace | undefined =>
+const anchorOf = (workspaces: readonly PlaceWorkspace[], agent: PlaceAgent): PlaceWorkspace | undefined =>
   workspaces.find((workspace) => flat(workspace.title) === flat(`agent ${agent.name}`)) ??
   workspaces
     .filter((workspace) => workspace.directory === agent.home)
