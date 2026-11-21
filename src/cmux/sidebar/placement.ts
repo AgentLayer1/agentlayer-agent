@@ -3,9 +3,6 @@
  * and bun can test it.
  */
 
-/**
- * The parts of a cmux workspace the choice reads.
- */
 export interface PlaceWorkspace {
   id: string;
   title: string;
@@ -84,7 +81,8 @@ const holdsHeartbeat = (workspace: PlaceWorkspace, agent: PlaceAgent): boolean =
   agent.heartbeatSurface !== undefined && workspace.tabs.some((tab) => tab.surfaceId === agent.heartbeatSurface);
 
 /**
- * The agent's own workspace: the one titled `Agent <Name>`, else one opened in its home, its heartbeat's last.
+ * The agent's own workspace: the one titled `Agent <Name>`, else one opened in its home, preferring one without the
+ * heartbeat's tab.
  */
 export const anchorOf = (workspaces: readonly PlaceWorkspace[], agent: PlaceAgent): PlaceWorkspace | undefined =>
   workspaces.find((workspace) => flat(workspace.title) === flat(`agent ${agent.name}`)) ??
@@ -92,10 +90,17 @@ export const anchorOf = (workspaces: readonly PlaceWorkspace[], agent: PlaceAgen
     .filter((workspace) => workspace.directory === agent.home)
     .toSorted((a, b) => Number(holdsHeartbeat(a, agent)) - Number(holdsHeartbeat(b, agent)))[0];
 
-// An agent's anchor and the group it sits in are that agent's alone.
-const claimedBy = (workspace: PlaceWorkspace, anchor: PlaceWorkspace | undefined): boolean =>
+// An agent's anchor is its own, and so is the group it sits in, unless another agent's anchor shares that group.
+const claimedBy = (
+  workspace: PlaceWorkspace,
+  anchor: PlaceWorkspace | undefined,
+  rivals: readonly (PlaceWorkspace | undefined)[]
+): boolean =>
   anchor !== undefined &&
-  (workspace.id === anchor.id || (anchor.group !== undefined && workspace.group === anchor.group));
+  (workspace.id === anchor.id ||
+    (anchor.group !== undefined &&
+      workspace.group === anchor.group &&
+      !rivals.some((rival) => rival !== undefined && rival.id !== anchor.id && rival.group === anchor.group)));
 
 const worksIn = (workspace: PlaceWorkspace, agent: PlaceAgent): boolean =>
   directoriesOf(workspace).some((directory) =>
@@ -138,12 +143,14 @@ export const placeFor = (
   const local = workspaces.filter((workspace) => !workspace.remote);
   const anchor = anchorOf(local, agent);
   const otherAnchors = others.map((other) => anchorOf(local, other));
+  const allAnchors = [anchor, ...otherAnchors];
   const isTheirs = (workspace: PlaceWorkspace): boolean =>
-    !claimedBy(workspace, anchor) &&
-    (otherAnchors.some((other) => claimedBy(workspace, other)) ||
-      others.some((other) => worksIn(workspace, other) && !worksIn(workspace, agent)));
+    otherAnchors.some((other) => other?.id === workspace.id) ||
+    (!claimedBy(workspace, anchor, allAnchors) &&
+      (otherAnchors.some((other) => claimedBy(workspace, other, allAnchors)) ||
+        others.some((other) => worksIn(workspace, other) && !worksIn(workspace, agent))));
   const mine = local.filter(
-    (workspace) => !isTheirs(workspace) && (claimedBy(workspace, anchor) || worksIn(workspace, agent))
+    (workspace) => !isTheirs(workspace) && (claimedBy(workspace, anchor, allAnchors) || worksIn(workspace, agent))
   );
   const choices = mine.filter((workspace) => !holdsHeartbeat(workspace, agent) || mine.length === 1);
   const best = choices

@@ -17,7 +17,7 @@ First, the tasks summary in `<HOME>/projects/TASKS.md`. When it holds only its p
 bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" proposals list
 ```
 
-It prints the five (or fewer) showing, with their ids, and the room left. A full list is not a reason to stop: every showing card is weighed again below. When this skill was run with `workspaces: A | B | …`, those are the titles of the cmux workspaces open now, across every agent on the machine; keep them for step 4. If session start listed `extensions/skills/proposals.md`, read it now: the operator's own rules for what to propose, and they win where they disagree with this file.
+It prints the five (or fewer) showing, with their ids, and the room left. A full list is not a reason to stop: every showing card is weighed again below. When this skill was run with `workspaces: ["A", "B", …]` (a JSON list), those are the titles of the cmux workspaces open now, across every agent on the machine; keep them for step 4. If session start listed `extensions/skills/proposals.md`, read it now: the operator's own rules for what to propose, and they win where they disagree with this file.
 
 ## 2. Gather candidates
 
@@ -40,7 +40,7 @@ Skip this session's own entry. Drop any candidate, and mark for retiring any sho
 
 ## 4. Keep the best five
 
-Rank the showing cards and the candidates together, most pressing first: overdue or due today, someone waiting on the operator, then what unblocks the most. The top five should show. In one `proposal_add` call, add the candidates that made it and `retire` each showing card that didn't, or that step 3 marked, or that is no longer true (its task closed, its PR merged), each with a short reason. Never retire a card to make room for filler: a card only goes for a clearly stronger candidate or because it no longer holds. A card put off with Later isn't showing and is left alone.
+Rank the showing cards and the candidates together, most pressing first: overdue or due today, someone waiting on the operator, then what unblocks the most. The top five should show. In one `proposal_add` call, add the candidates that made it and `retire` each showing card that didn't, or that step 3 marked, or that is no longer true (its task closed, its PR merged), each with a short reason. A card retired only to make way for a new one names that one's source in `for`, so it stays if the new one is refused. Never retire a card to make room for filler: a card only goes for a clearly stronger candidate or because it no longer holds. A card put off with Later isn't showing and is left alone.
 
 `proposal_add` refuses a source already waiting, started in the last day or skipped in the last week; for each refusal, add the next-best candidate you hold in another call, until five show or your candidates run out. Each new proposal is a session a stranger could run:
 

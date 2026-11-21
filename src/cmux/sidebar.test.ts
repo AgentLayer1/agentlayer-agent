@@ -88,7 +88,7 @@ run('Start types the choice into the agent’s heartbeat, and the card stays unt
   expect(sidebar.tap('Start')).toEqual({
     kind: 'cmux',
     method: 'surface.send_text',
-    params: { surface_id: 'w-nova-s2-surface', workspace_id: 'w-nova', text: '/proposal start p-a1 w-nova\n' }
+    params: { surface_id: 'w-nova-s2-surface', workspace_id: 'w-nova', text: '/proposal start p-a1 --workspace=w-nova\n' }
   });
   expect(sidebar.visibleTexts(), 'a Start that fails leaves the card where it was').toContain('Reply to the supplier');
   const decided = { ...NOVA_ENTRY, proposals: NOVA_ENTRY.proposals.filter(({ id }) => id !== 'p-a1') };
@@ -173,7 +173,7 @@ run('a home whose heartbeat isn’t open in cmux shows its proposals with how to
 });
 
 const HEARTBEAT_LINE =
-  'Opens a session in Scout’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing.';
+  'Opens a session in Scout’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing, and refreshes the brain every 6 hours when there’s something new.';
 
 run('a home without a heartbeat gets a card that opens one in a focused tab of the selected workspace', () => {
   const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
@@ -678,7 +678,7 @@ run("a session opens in its own agent's workspace, focused, never in another joi
   fromElsewhere.tap('PROPOSED');
   fromElsewhere.tap('Reply to the supplier');
   expect(fromElsewhere.tap('Start')?.params?.text, "Nova's own workspace, though Downloads is selected").toBe(
-    '/proposal start p-a1 w-nova\n'
+    '/proposal start p-a1 --workspace=w-nova\n'
   );
   const discussing = onProjects(both);
   discussing.tap('acme-app');

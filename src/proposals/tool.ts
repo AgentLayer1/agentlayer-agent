@@ -12,7 +12,12 @@ const RETIRE = z.object({
   id: z.string().trim().min(1).describe('A showing proposal, by its id.'),
   reason: text(160)
     .min(1)
-    .describe('Why it goes: "outranked by the overdue tax reply", "a session is already on pw-045", "the task closed".')
+    .describe('Why it goes: "outranked by the overdue tax reply", "a session is already on pw-045", "the task closed".'),
+  for: z
+    .string()
+    .trim()
+    .optional()
+    .describe('The source of the new proposal in this call that replaces it; if that one is refused, this card stays.')
 });
 
 const PROPOSAL = z.object({
@@ -64,7 +69,11 @@ export const tools: ToolDef[] = [
         throw new Error('Pass proposals to add, retire to withdraw, or both.');
       }
       const now = new Date();
-      const withdrawn = retireProposals(readProposalLedger(), retire, now);
+      const current = readProposalLedger();
+      // A card retired for a stronger one stays when that one is refused, so a swap never only shrinks the list.
+      const refusedSources = new Set(addProposals(current, proposals, now).refused.map(({ source }) => source));
+      const kept = retire.filter((item) => item.for !== undefined && refusedSources.has(item.for));
+      const withdrawn = retireProposals(current, retire.filter((item) => !kept.includes(item)), now);
       const { ledger, added, refused } = addProposals(withdrawn.ledger, proposals, now);
       if (added.length || withdrawn.retired.length) {
         writeProposalLedger(ledger);
@@ -74,7 +83,7 @@ export const tools: ToolDef[] = [
         added: added.map(({ id, title }) => ({ id, title })),
         refused,
         retired: withdrawn.retired,
-        keptShowing: withdrawn.refused,
+        keptShowing: [...withdrawn.refused, ...kept.map(({ id }) => ({ id, reason: 'its replacement was refused' }))],
         showing: showingNow(ledger, now).map(({ id, title }) => ({ id, title }))
       };
     }

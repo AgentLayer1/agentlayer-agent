@@ -1,14 +1,26 @@
 // Pure helpers for the proposals feature: no engine calls, so tests can run them as they are.
 
+import type { HeartbeatEvent } from '../types';
+
 export const CHOICES = ['start', 'later', 'skip'] as const;
 type Choice = (typeof CHOICES)[number];
 
 export const MINUTE_MS = 60_000;
 
 /**
+ * The least time between two brain refreshes the heartbeat tries, the CLI's `REFRESH_EVERY_HOURS`.
+ */
+export const REFRESH_RETRY_MS = 6 * 60 * MINUTE_MS;
+
+// Named, so a word typed after a decision is never taken for a workspace.
+const WORKSPACE_FLAG = '--workspace=';
+
+/**
  * A `/proposal` decision typed after whatever was half-written in the prompt, as a sidebar button types it.
  */
-export const DECISION_AT_END = new RegExp(`/proposal\\s+(${CHOICES.join('|')})\\s+(\\S+)(?:\\s+(\\S+))?\\s*$`);
+export const DECISION_AT_END = new RegExp(
+  `/proposal\\s+(${CHOICES.join('|')})\\s+(\\S+)(?:\\s+${WORKSPACE_FLAG}(\\S+))?\\s*$`
+);
 
 export interface Decision {
   choice: Choice;
@@ -20,8 +32,9 @@ export interface Decision {
 const isChoice = (word: string | undefined): word is Choice => CHOICES.some((choice) => choice === word);
 
 export const parseDecision = (args: string): Decision | null => {
-  const [choice, id, workspace, ...rest] = args.trim().split(/\s+/);
-  if (!isChoice(choice) || !id || rest.length > 0) {
+  const [choice, id, flag, ...rest] = args.trim().split(/\s+/);
+  const workspace = flag?.startsWith(WORKSPACE_FLAG) ? flag.slice(WORKSPACE_FLAG.length) : undefined;
+  if (!isChoice(choice) || !id || rest.length > 0 || (flag !== undefined && !workspace)) {
     return null;
   }
   return workspace ? { choice, id, workspace } : { choice, id };
@@ -119,24 +132,11 @@ export const parseList = (stdout: string): ProposalList | null => {
   }
 };
 
-/**
- * How many of the heartbeat's latest ticks its band keeps.
- */
 export const LOG_SIZE = 3;
 
-/**
- * One tick of the heartbeat as its band shows it: when, and what came of it.
- */
-export interface BeatEvent {
-  at: number;
-  text: string;
-}
+export const logged = (log: readonly HeartbeatEvent[], event: HeartbeatEvent): HeartbeatEvent[] =>
+  [event, ...log].slice(0, LOG_SIZE);
 
-export const logged = (log: readonly BeatEvent[], event: BeatEvent): BeatEvent[] => [event, ...log].slice(0, LOG_SIZE);
-
-/**
- * A clock time, 24-hour, in the home's timezone.
- */
 export const clockIn = (epochMs: number, timeZone: string): string =>
   new Date(epochMs).toLocaleTimeString('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false });
 
@@ -171,13 +171,14 @@ export const ago = (epochMs: number, now: number): string => {
 };
 
 const WORKSPACE_LINE = /^\s*\*?\s*workspace:\S+\s+(.+?)(?:\s+\[selected\])?\s*$/;
+// cmux titles an unnamed workspace by its folder, which names no kind of work.
+const PATH_TITLE = /^(\/|~|…\/)/;
 
 /**
- * The workspace titles in `cmux workspace list`'s output, in its order; a title that is only a path is left out, since
- * it names no kind of work.
+ * The workspace titles in `cmux workspace list`'s output, in its order, those that are only a folder left out.
  */
 export const workspaceTitles = (stdout: string): string[] =>
   stdout
     .split('\n')
     .map((line) => WORKSPACE_LINE.exec(line)?.[1]?.trim() ?? '')
-    .filter((title) => title !== '' && !title.includes('/'));
+    .filter((title) => title !== '' && !PATH_TITLE.test(title));

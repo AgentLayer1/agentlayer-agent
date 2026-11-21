@@ -274,7 +274,7 @@ export const lastRefreshed = (syncedAt: string | undefined, refreshedAt: string 
   [syncedAt ?? '', refreshedAt ?? ''].filter(Boolean).sort((a, b) => ms(a) - ms(b)).at(-1) ?? '';
 
 /**
- * Whether the heartbeat should refresh the brain: nothing has synced or refreshed it in the last six hours.
+ * Whether the heartbeat should refresh the brain: nothing has synced or refreshed it in the last `REFRESH_EVERY_HOURS`.
  */
 export const refreshDue = (lastAt: string, now: Date): boolean =>
   !lastAt || now.getTime() - ms(lastAt) >= REFRESH_EVERY_HOURS * 60 * 60 * 1000;

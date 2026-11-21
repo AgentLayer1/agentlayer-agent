@@ -574,7 +574,7 @@ var isInside = (directory, folder) => folder !== "" && (directory === folder || 
 var directoriesOf = (workspace) => [workspace.directory, ...workspace.tabs.map((tab) => tab.directory ?? "")].filter(Boolean);
 var holdsHeartbeat = (workspace, agent) => agent.heartbeatSurface !== undefined && workspace.tabs.some((tab) => tab.surfaceId === agent.heartbeatSurface);
 var anchorOf = (workspaces, agent) => workspaces.find((workspace) => flat(workspace.title) === flat(`agent ${agent.name}`)) ?? workspaces.filter((workspace) => workspace.directory === agent.home).toSorted((a, b) => Number(holdsHeartbeat(a, agent)) - Number(holdsHeartbeat(b, agent)))[0];
-var claimedBy = (workspace, anchor) => anchor !== undefined && (workspace.id === anchor.id || anchor.group !== undefined && workspace.group === anchor.group);
+var claimedBy = (workspace, anchor, rivals) => anchor !== undefined && (workspace.id === anchor.id || anchor.group !== undefined && workspace.group === anchor.group && !rivals.some((rival) => rival !== undefined && rival.id !== anchor.id && rival.group === anchor.group));
 var worksIn = (workspace, agent) => directoriesOf(workspace).some((directory) => [agent.home, ...agent.folders].some((folder) => isInside(directory, folder)));
 var scoreOf = (workspace, hint, home) => {
   const title = flat(workspace.title);
@@ -597,8 +597,9 @@ var placeFor = (workspaces, agent, others, hint) => {
   const local = workspaces.filter((workspace) => !workspace.remote);
   const anchor = anchorOf(local, agent);
   const otherAnchors = others.map((other) => anchorOf(local, other));
-  const isTheirs = (workspace) => !claimedBy(workspace, anchor) && (otherAnchors.some((other) => claimedBy(workspace, other)) || others.some((other) => worksIn(workspace, other) && !worksIn(workspace, agent)));
-  const mine = local.filter((workspace) => !isTheirs(workspace) && (claimedBy(workspace, anchor) || worksIn(workspace, agent)));
+  const allAnchors = [anchor, ...otherAnchors];
+  const isTheirs = (workspace) => otherAnchors.some((other) => other?.id === workspace.id) || !claimedBy(workspace, anchor, allAnchors) && (otherAnchors.some((other) => claimedBy(workspace, other, allAnchors)) || others.some((other) => worksIn(workspace, other) && !worksIn(workspace, agent)));
+  const mine = local.filter((workspace) => !isTheirs(workspace) && (claimedBy(workspace, anchor, allAnchors) || worksIn(workspace, agent)));
   const choices = mine.filter((workspace) => !holdsHeartbeat(workspace, agent) || mine.length === 1);
   const best = choices.map((workspace) => ({ workspace, score: scoreOf(workspace, hint, agent.home) })).filter(({ score }) => score >= ONE_WORD).toSorted((a, b) => b.score - a.score || (b.workspace.latestAt ?? 0) - (a.workspace.latestAt ?? 0))[0];
   const selected = local.find((workspace) => workspace.selected && !isTheirs(workspace));
@@ -1029,7 +1030,7 @@ var body = ({ entry, item }, decide) => {
   ]);
 };
 var heartbeatBody = (entry) => VStack({ spacing: 5, alignment: "leading" }, [
-  Text(`Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing.`).font(11).color("secondary"),
+  Text(`Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing, and refreshes the brain every 6 hours when there’s something new.`).font(11).color("secondary"),
   HStack({ spacing: 4 }, [
     choiceButton("Start heartbeat", () => openSession(entry, "/heartbeat"), entry.colors?.primary ?? PURPLE),
     Spacer({ minLength: 0 })
@@ -1057,7 +1058,7 @@ var proposalsSection = () => {
           folders: item.folder ? [item.folder] : [],
           words: `${item.title} ${item.trigger}`
         }) : null;
-        const where = target?.kind === "workspace" ? ` ${target.id}` : "";
+        const where = target?.kind === "workspace" ? ` --workspace=${target.id}` : "";
         cmux("surface.send_text", {
           surface_id: place.surfaceId,
           workspace_id: place.workspaceId,

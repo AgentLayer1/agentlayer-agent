@@ -152,6 +152,8 @@ export interface HeartbeatClock {
   /** How many proposals showed at the last tick, and the most there are. */
   showing?: number;
   target?: number;
+  /** When this heartbeat last started a brain refresh, epoch ms, so a failed one isn't retried every tick. */
+  refreshTriedAt?: number;
   /** When a sync or brain refresh last ran, epoch ms; 0 when never. */
   refreshedAt?: number;
   /** The latest ticks, newest first. */

@@ -10,6 +10,7 @@ import {
   CHOICES,
   DECISION_AT_END,
   MINUTE_MS,
+  REFRESH_RETRY_MS,
   ago,
   clockIn,
   closingLine,
@@ -26,7 +27,7 @@ import {
   type ProposalList
 } from './beat';
 
-const USAGE = `Usage: /proposal <${CHOICES.join('|')}> <id> [workspace]`;
+const USAGE = `Usage: /proposal <${CHOICES.join('|')}> <id> [--workspace=<id>]`;
 // Inside the engine's short bound on every session.end hook.
 const RELEASE_TIMEOUT_MS = 1000;
 // TODO(windows): cmux is a macOS app, found only in /Applications.
@@ -74,14 +75,24 @@ async function workspacesNow($: EngineInterface): Promise<string[]> {
   return listed?.exitCode === 0 ? workspaceTitles(listed.stdout) : [];
 }
 
-function refill($: EngineInterface): void {
-  $.clock.after(0, async () => {
-    const titles = await workspacesNow($);
-    await $.command.run({
-      command: `${$.plugin.name}:proposals`,
-      args: titles.length ? `workspaces: ${titles.join(' | ')}` : ''
-    });
+// Queued just before its command runs, so a prompt typed while cmux answers isn't read as the wake's turn.
+async function expectTurn($: EngineInterface, kind: string): Promise<void> {
+  await update($, beat, (current) =>
+    current.isHeartbeat ? { ...current, awaiting: [...(current.awaiting ?? []), kind] } : current
+  );
+}
+
+async function look($: EngineInterface): Promise<void> {
+  const titles = await workspacesNow($);
+  await expectTurn($, 'look');
+  await $.command.run({
+    command: `${$.plugin.name}:proposals`,
+    args: titles.length ? `workspaces: ${JSON.stringify(titles)}` : ''
   });
+}
+
+function refill($: EngineInterface): void {
+  $.clock.after(0, () => void look($));
 }
 
 // A brain refresh and the day's first wake clear the conversation first, so the heartbeat's context stays small. A
@@ -95,19 +106,21 @@ async function wake($: EngineInterface, now: number, zone: string, refresh = fal
     await update($, beat, (current) => ({ ...current, clearedId, awaiting: [] }));
     await $.command.run({ command: 'clear' });
   }
-  const turns = refresh ? ['refresh', 'look'] : ['look'];
-  await update($, beat, (current) => ({ ...current, wokeOn: today, awaiting: [...(current.awaiting ?? []), ...turns] }));
-  if (refresh) {
-    $.clock.after(0, () => void $.command.run({ command: `${$.plugin.name}:sync`, args: 'brain' }));
-  }
-  refill($);
+  // A refresh is tried once per window, so one that fails before it stamps doesn't run again on every tick.
+  await update($, beat, (current) => ({ ...current, wokeOn: today, ...(refresh ? { refreshTriedAt: now } : {}) }));
+  $.clock.after(0, async () => {
+    if (refresh) {
+      await expectTurn($, 'refresh');
+      await $.command.run({ command: `${$.plugin.name}:sync`, args: 'brain' });
+    }
+    await look($);
+  });
 }
 
 async function note($: EngineInterface, at: number, text: string): Promise<void> {
   await update($, beat, (current) => ({ ...current, log: logged(current.log ?? [], { at, text }) }));
 }
 
-// Each tick, whatever it decides, moves the band's clock on and says what it saw.
 async function ticked($: EngineInterface, list: Bound, now: number, text: string): Promise<void> {
   await update($, beat, (current) => ({
     ...current,
@@ -173,8 +186,10 @@ async function tick($: EngineInterface): Promise<void> {
     return;
   }
   const used = await lastUse($);
+  const { refreshTriedAt = 0 } = await read($, beat);
   // A refresh waits for something to absorb: a session written since the last sync or refresh.
-  if (list.refreshDue && (used === null || used > (Date.parse(list.refreshedAt) || 0))) {
+  const absorbs = used === null || used > (Date.parse(list.refreshedAt) || 0);
+  if (list.refreshDue && absorbs && now - refreshTriedAt >= REFRESH_RETRY_MS) {
     await ticked($, list, now, '');
     await wake($, now, list.timezone, true);
     return;
@@ -242,15 +257,12 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
   if (ask.kind === 'now') {
     // The heartbeat's own tab refreshes the brain first when one is due; anywhere else it is a refill only, since a
     // clear belongs to the heartbeat, never to a session that asked for a look.
-    const list = (await read($, beat)).isHeartbeat ? await readList($) : null;
-    if (list?.refreshDue) {
+    const [list, { owner }] = await Promise.all([readList($), read($, beat)]);
+    if (isOwner(list, owner) && list.refreshDue) {
       const now = await $.clock.now();
       $.clock.after(0, () => void wake($, now, list.timezone, true));
       return 'Refreshing the brain, then looking for proposals.';
     }
-    await update($, beat, (current) =>
-      current.isHeartbeat ? { ...current, awaiting: [...(current.awaiting ?? []), 'look'] } : current
-    );
     refill($);
     return 'Looking for proposals now.';
   }

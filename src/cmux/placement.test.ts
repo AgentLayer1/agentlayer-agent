@@ -88,6 +88,17 @@ test("remote workspaces never qualify, and with no anchor and another agent's se
   expect(place(NOVA, { words: 'x' }, [workspace('w-free', 'Scratch', { selected: true })])).toEqual(at('w-free'));
 });
 
+test("two agents anchored in one group share it: neither claims the other's anchor or the group by itself", () => {
+  const shared = [
+    workspace('w-nova', 'Agent Nova', { directory: '/homes/Nova', group: 'g' }),
+    workspace('w-ada', 'Agent Ada', { directory: '/homes/Ada', group: 'g' }),
+    workspace('w-ada-reviews', 'Ada reviews', { directory: '/code/ada-mono', group: 'g' })
+  ];
+  expect(place(NOVA, { words: 'Review the PR' }, shared)).toEqual(at('w-nova'));
+  expect(place(NOVA, { workspace: 'Agent Ada' }, shared)).toEqual(at('w-nova'));
+  expect(place(ADA, { words: 'Review the PR' }, shared)).toEqual(at('w-ada-reviews'));
+});
+
 test('ties go to the most recently active workspace', () => {
   const twins = [
     workspace('w-scout', 'Agent Scout', { directory: '/homes/Scout', group: 'g1' }),

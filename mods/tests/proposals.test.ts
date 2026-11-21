@@ -60,7 +60,7 @@ describe('proposals', () => {
 
   test('/proposal without a choice and an id prints usage and decides nothing', async ($, on) => {
     const { host } = heartbeatHost(on);
-    expect((await run($, 'proposal', 'maybe p-1')).text).toBe('Usage: /proposal <start|later|skip> <id> [workspace]');
+    expect((await run($, 'proposal', 'maybe p-1')).text).toBe('Usage: /proposal <start|later|skip> <id> [--workspace=<id>]');
     expect(cliCalls(host)).toEqual([]);
   });
 
@@ -75,9 +75,9 @@ describe('proposals', () => {
 
   test('a Start the sidebar placed carries its workspace to the CLI, typed or after a draft', async ($, on) => {
     const { host, filled } = heartbeatHost(on);
-    await run($, 'proposal', 'start p-1 W-9');
+    await run($, 'proposal', 'start p-1 --workspace=W-9');
     expect(host.argv.at(-1)?.slice(2)).toEqual(['proposals', 'decide', 'start', 'p-1', '--workspace=W-9']);
-    await $.prompt.submit({ text: 'half a thought/proposal start p-2 W-3' });
+    await $.prompt.submit({ text: 'half a thought/proposal start p-2 --workspace=W-3' });
     await host.clock.settle();
     expect(host.argv.at(-1)?.slice(2)).toEqual(['proposals', 'decide', 'start', 'p-2', '--workspace=W-3']);
     expect(filled).toEqual(['half a thought']);
@@ -88,10 +88,19 @@ describe('proposals', () => {
       '  workspace:1  …/Documents/Agents/Nova',
       '* workspace:2  Agent Nova  [selected]',
       '  workspace:3  Code Reviews',
-      '  workspace:4  Compliance & KYC'
+      '  workspace:4  Compliance & KYC',
+      '  workspace:5  iOS/Mac release'
     ].join('\n');
-    expect(workspaceTitles(listed)).toEqual(['Agent Nova', 'Code Reviews', 'Compliance & KYC']);
+    expect(workspaceTitles(listed)).toEqual(['Agent Nova', 'Code Reviews', 'Compliance & KYC', 'iOS/Mac release']);
     expect(workspaceTitles('{"ok":true}')).toEqual([]);
+  });
+
+  test('a word typed after a decision is not taken for a workspace, so the prompt reaches the model', async ($, on) => {
+    const { host, submitted } = heartbeatHost(on);
+    await $.prompt.submit({ text: 'why did /proposal start p-1 now' });
+    expect(submitted).toEqual(['why did /proposal start p-1 now']);
+    expect(cliCalls(host)).toEqual([]);
+    expect((await run($, 'proposal', 'start p-1 now')).text).toStartWith('Usage:');
   });
 
   test('an ordinary prompt passes through untouched', async ($, on) => {
@@ -474,6 +483,28 @@ describe('brain refresh', () => {
     expect(band).toContain('refreshed: 🧠 Brain refreshed: compiled 3, lint fixed 1, flywheel closed 0, stalled 2.');
     expect(band).toContain('looked: Proposed 1: Decide on ab-012.');
     expect(band).toMatch(/brain refreshed (1h|2h) ago/);
+  });
+
+  test('a refresh that ends without stamping is not tried again until its window passes', async ($, on) => {
+    const { host } = await bound($, on);
+    host.proposals.refreshDue = true;
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands).toEqual(['clear', REFRESH, WAKE]);
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands, 'the next tick only looks').toEqual(['clear', REFRESH, WAKE, WAKE]);
+    await host.clock.advance(5 * 55 * MINUTE);
+    expect(host.commands.filter((command) => command === REFRESH), '330 minutes on, still inside the window').toHaveLength(1);
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands.filter((command) => command === REFRESH), '385 minutes on, it tries again').toHaveLength(2);
+  });
+
+  test('/heartbeat now in a session that just lost the heartbeat never clears it', async ($, on) => {
+    const { host } = await bound($, on);
+    host.proposals.heartbeat = { owner: 'session-7@newer', everyMinutes: 55 };
+    host.proposals.refreshDue = true;
+    expect((await run($, 'heartbeat', 'now')).text).toBe('Looking for proposals now.');
+    await host.clock.settle();
+    expect(host.commands).toEqual([WAKE]);
   });
 
   test('/heartbeat now in the heartbeat refreshes first when one is due; elsewhere it only looks', async ($, on) => {

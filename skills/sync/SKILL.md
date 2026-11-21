@@ -36,7 +36,7 @@ The heartbeat runs this unattended, so nobody is there to answer: **never call `
 5. **Step 11**: one `dashboard` call with `{ refresh: true }` (not `sync: true`), which refreshes the dashboards and the cmux sidebar and records the run as a brain refresh, so the full-sync nudge keeps nudging.
 6. **Step 12**: commit the brain history.
 
-Skip steps 6–10 and 13, and write no output block. End with one line, which the heartbeat's band shows: `🧠 Brain refreshed: compiled <n>, lint fixed <n>, flywheel closed <n>, stalled <n>.` followed by the stalled tasks as `<id> (<n>d)`, comma-separated, when there are any. A step that fails is one clause on that line (`compile failed: <reason>`), never a stop.
+Skip steps 6–10 and 13, and write no output block. End with one line, which the heartbeat's band shows, so nothing goes on a line after it: `🧠 Brain refreshed: compiled <n>, lint fixed <n>, flywheel closed <n>, stalled <n>.`, with the stalled tasks appended to that same line as `<id> (<n>d)`, comma-separated, when there are any. A step that fails is one clause on that line (`compile failed: <reason>`), never a stop.
 
 ## Why this shape
 

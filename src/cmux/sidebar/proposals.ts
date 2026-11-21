@@ -84,7 +84,7 @@ const body = ({ entry, item }: Shown, decide: (choice: Choice, place: HeartbeatP
 const heartbeatBody = (entry: HomeEntry) =>
   VStack({ spacing: 5, alignment: 'leading' }, [
     Text(
-      `Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing.`
+      `Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing, and refreshes the brain every 6 hours when there’s something new.`
     )
       .font(11)
       .color('secondary'),
@@ -134,7 +134,7 @@ export const proposalsSection = (): HostSection => {
                   words: `${item.title} ${item.trigger}`
                 })
               : null;
-          const where = target?.kind === 'workspace' ? ` ${target.id}` : '';
+          const where = target?.kind === 'workspace' ? ` --workspace=${target.id}` : '';
           cmux('surface.send_text', {
             surface_id: place.surfaceId,
             workspace_id: place.workspaceId,
