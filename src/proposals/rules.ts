@@ -1,4 +1,3 @@
-import type { SessionPlace } from '@/sessions/launch';
 import { DAY_MS, isoMs, localISO, nowISO, nowTime, shiftDate, todayDate } from '@/shared/date';
 import { freshId, shortId } from '@/shared/utils';
 import type { Proposal, ProposalLedger } from './ledger';
@@ -14,15 +13,6 @@ export const TARGET = 5;
  * The most proposals waiting at once, those put off included; more are refused.
  */
 export const BACKLOG = 20;
-/**
- * The heartbeat's interval when none is set: inside the prompt cache's hour, so a wake reads the cache.
- */
-export const DEFAULT_EVERY_MINUTES = 55;
-/**
- * How long the brain may go without a sync or a refresh before the heartbeat refreshes it.
- */
-export const REFRESH_EVERY_HOURS = 6;
-const EVERY_RANGE = { min: 5, max: 24 * 60 } as const;
 const LATER_HOUR = '08:00';
 
 // A source started within a day, or skipped within a week, isn't proposed again.
@@ -285,47 +275,3 @@ export const showingNow = (ledger: ProposalLedger, now: Date): ProposalCard[] =>
  */
 export const roomFor = (ledger: ProposalLedger, now: Date): number =>
   Math.max(0, Math.min(TARGET - showingNow(ledger, now).length, BACKLOG - ledger.proposals.filter(isWaiting).length));
-
-const DURATION = /^(\d+)\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours)$/i;
-
-/**
- * Minutes from `15m`, `15 mins`, `1h` or `90 minutes`, within 5 minutes and a day; an error saying why otherwise.
- */
-export const parseEvery = (text: string): number | Error => {
-  const match = DURATION.exec(text.trim());
-  if (!match) {
-    return new Error(`"${text}" isn't a duration like 15m, 15 mins, 1h or 90 minutes.`);
-  }
-  const amount = Number(match[1]);
-  const minutes = /^h/i.test(match[2] ?? '') ? amount * 60 : amount;
-  return minutes < EVERY_RANGE.min || minutes > EVERY_RANGE.max
-    ? new Error(`Pick an interval between ${EVERY_RANGE.min} minutes and 24 hours.`)
-    : minutes;
-};
-
-/**
- * The later of the last full sync and the last brain refresh, as an ISO time; '' when neither ever ran.
- */
-export const lastRefreshed = (syncedAt = '', refreshedAt = ''): string =>
-  isoMs(syncedAt) >= isoMs(refreshedAt) ? syncedAt : refreshedAt;
-
-/**
- * Whether the heartbeat should refresh the brain: nothing has synced or refreshed it in the last `REFRESH_EVERY_HOURS`.
- */
-export const refreshDue = (lastAt: string, now: Date): boolean =>
-  !lastAt || now.getTime() - isoMs(lastAt) >= REFRESH_EVERY_HOURS * 60 * 60 * 1000;
-
-export const setHeartbeat = (
-  ledger: ProposalLedger,
-  owner: string,
-  places: readonly SessionPlace[],
-  everyMinutes: number
-): ProposalLedger => ({ ...ledger, heartbeat: { owner, places: [...places], everyMinutes } });
-
-export const clearHeartbeat = (ledger: ProposalLedger): ProposalLedger => ({ ...ledger, heartbeat: null });
-
-/**
- * Clears the heartbeat only while `owner` still holds it, so a session that exits never clears a newer one.
- */
-export const releaseHeartbeat = (ledger: ProposalLedger, owner: string): ProposalLedger =>
-  ledger.heartbeat?.owner === owner ? clearHeartbeat(ledger) : ledger;

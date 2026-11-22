@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { bundleSidebar, DIST } from './build';
 import { homeEntry } from './entry';
 import { renderSidebar } from './file';
-import { CMUX_DATA, NOVA, NOVA_HOME, NOVA_LEDGER, SCOUT, SCOUT_HOME, SCOUT_LEDGER, selecting } from './preview/fixture';
+import { CMUX_DATA, NOVA, NOVA_HOME, NOVA_STATE, SCOUT, SCOUT_HOME, SCOUT_STATE, selecting } from './preview/fixture';
 import { previewText } from './preview/preview';
 import { hasRuntime, mount } from './runtime-harness';
 import type { HomeEntry } from './sidebar/data';
@@ -13,7 +13,7 @@ import type { NoteLedger } from '@/notes/ledger';
 import { nowISO } from '@/shared/date';
 
 const run = test.skipIf(!hasRuntime);
-const NOVA_ENTRY = homeEntry(NOVA_HOME, NOVA, NOVA_LEDGER);
+const NOVA_ENTRY = homeEntry(NOVA_HOME, NOVA, NOVA_STATE);
 
 const installed = (homes: Record<string, HomeEntry> = { [NOVA_HOME]: NOVA_ENTRY }) =>
   renderSidebar({ version: '1.1.0', homes, bundle: readFileSync(DIST, 'utf8') });
@@ -50,7 +50,7 @@ run('the Manager leaves out the heartbeat’s own tab until it needs you', () =>
   expect(mount(installed(noHeartbeat), CMUX_DATA).visibleTexts()).toContain('Morning brief');
 });
 
-const SCOUT_ENTRY = homeEntry(SCOUT_HOME, SCOUT, SCOUT_LEDGER);
+const SCOUT_ENTRY = homeEntry(SCOUT_HOME, SCOUT, SCOUT_STATE);
 
 run('PROPOSED leads the Manager above NEEDS YOU, its cards closed and its put-off and started ones hidden', () => {
   const sidebar = mount(installed(), CMUX_DATA);
@@ -714,12 +714,15 @@ run('NOTES opens while a note is unread, and its buttons type the choice into th
       }
     ]
   };
-  const sidebar = mount(installed({ [NOVA_HOME]: homeEntry(NOVA_HOME, NOVA, NOVA_LEDGER, notes) }), CMUX_DATA);
+  const sidebar = mount(installed({ [NOVA_HOME]: homeEntry(NOVA_HOME, NOVA, { ...NOVA_STATE, notes }) }), CMUX_DATA);
   expect(sidebar.visibleTexts(), 'open on its own, since the note is unread').toContain('The pricing page still shows last year');
   sidebar.tap('The pricing page still shows last year');
   expect(sidebar.tap('Useful')?.params?.text).toBe('/note useful n-1\n');
   expect(sidebar.tap('Start')?.params?.text, "in Nova's own workspace").toBe('/note start n-1 --workspace=w-nova\n');
-  const read = homeEntry(NOVA_HOME, NOVA, NOVA_LEDGER, { notes: notes.notes.map((note) => ({ ...note, reaction: 'dismissed' as const })) });
+  const read = homeEntry(NOVA_HOME, NOVA, {
+    ...NOVA_STATE,
+    notes: { notes: notes.notes.map((note) => ({ ...note, reaction: 'dismissed' as const })) }
+  });
   expect(read.notes, 'a dismissed note leaves').toEqual([]);
 });
 

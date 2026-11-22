@@ -2,7 +2,6 @@ import { FILES } from '@/config';
 import { isRecord } from '@/shared/json-block';
 import { isUnreadable, writeJsonAtomic } from '@/shared/utils';
 import { readFileSync } from 'node:fs';
-import type { SessionPlace } from '@/sessions/launch';
 
 // Retired: the agent withdrew it, outranked, taken up by a session already, or no longer true.
 const STATES = ['waiting', 'started', 'skipped', 'retired'] as const;
@@ -57,21 +56,11 @@ export interface Proposal {
   decidedAt: string;
 }
 
-/**
- * The session that keeps proposals coming, by the token its process chose, and the places adapters can reach it.
- */
-export interface Heartbeat {
-  owner: string;
-  places: SessionPlace[];
-  everyMinutes: number;
-}
-
 export interface ProposalLedger {
-  heartbeat: Heartbeat | null;
   proposals: Proposal[];
 }
 
-export const EMPTY_LEDGER: ProposalLedger = { heartbeat: null, proposals: [] };
+export const EMPTY_LEDGER: ProposalLedger = { proposals: [] };
 
 const TEXT_FIELDS = [
   'id',
@@ -120,35 +109,12 @@ const parseProposal = (data: unknown): Proposal | null => {
   };
 };
 
-const parsePlace = (data: unknown): SessionPlace | null =>
-  isRecord(data) &&
-  data.adapter === 'cmux' &&
-  typeof data.surfaceId === 'string' &&
-  typeof data.workspaceId === 'string'
-    ? { adapter: 'cmux', surfaceId: data.surfaceId, workspaceId: data.workspaceId }
-    : null;
-
-const parseHeartbeat = (data: unknown): Heartbeat | null => {
-  if (!isRecord(data) || typeof data.owner !== 'string' || typeof data.everyMinutes !== 'number') {
-    return null;
-  }
-  const places = Array.isArray(data.places) ? data.places.map(parsePlace) : [];
-  return {
-    owner: data.owner,
-    everyMinutes: data.everyMinutes,
-    places: places.filter((place): place is SessionPlace => place !== null)
-  };
-};
-
 export const parseLedger = (data: unknown): ProposalLedger => {
   if (!isRecord(data)) {
     return EMPTY_LEDGER;
   }
   const proposals = Array.isArray(data.proposals) ? data.proposals.map(parseProposal) : [];
-  return {
-    heartbeat: parseHeartbeat(data.heartbeat),
-    proposals: proposals.filter((proposal): proposal is Proposal => proposal !== null)
-  };
+  return { proposals: proposals.filter((proposal): proposal is Proposal => proposal !== null) };
 };
 
 export const readProposalLedger = (): ProposalLedger => {

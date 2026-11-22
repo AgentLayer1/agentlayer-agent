@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { homeEntry } from './entry';
 import { mergeHomes, newerCode, orderHomes, parseSidebar, renderSidebar } from './file';
-import { NOVA, NOVA_HOME, NOVA_LEDGER, SCOUT, SCOUT_HOME, SCOUT_LEDGER } from './preview/fixture';
+import { NOVA, NOVA_HOME, NOVA_STATE, SCOUT, SCOUT_HOME, SCOUT_STATE } from './preview/fixture';
 
-const NOVA_ENTRY = homeEntry(NOVA_HOME, NOVA, NOVA_LEDGER);
-const SCOUT_ENTRY = homeEntry(SCOUT_HOME, SCOUT, SCOUT_LEDGER);
+const NOVA_ENTRY = homeEntry(NOVA_HOME, NOVA, NOVA_STATE);
+const SCOUT_ENTRY = homeEntry(SCOUT_HOME, SCOUT, SCOUT_STATE);
 const anyHome = () => true;
 const BUNDLE = '/*\n * AgentLayer · cmux sidebar\n */\nsidebar(() => Text("x"));\n';
 

@@ -1,15 +1,12 @@
-import type { SessionPlace } from '@/sessions/launch';
 import { log } from '@/shared/log';
 import type { Note } from './ledger';
 
 /**
- * What an adapter may need to deliver a note: the home, the agent's name, and where the heartbeat's session is, when
- * an adapter can reach it.
+ * What an adapter may need to deliver a note: the home and the agent's name.
  */
 export interface NoteContext {
   home: string;
   agentName: string;
-  heartbeat: SessionPlace | null;
 }
 
 /**
@@ -27,7 +24,7 @@ export interface NoteAdapter {
    */
   group?: string;
   /**
-   * Whether this adapter can reach the operator from here (an app is installed, the heartbeat has a place in it).
+   * Whether this adapter can reach the operator from here (an app is installed, the session it notifies is open).
    */
   available: (context: NoteContext) => boolean;
   /**
@@ -56,13 +53,19 @@ export const chosenAdapters = (
   const usable = adapters.filter(
     (adapter) => (adapter.always || named.length === 0 || named.includes(adapter.name)) && adapter.available(context)
   );
-  return usable.filter((adapter, index) => !adapter.group || usable.findIndex(({ group }) => group === adapter.group) === index);
+  return usable.filter(
+    (adapter, index) => !adapter.group || usable.findIndex(({ group }) => group === adapter.group) === index
+  );
 };
 
 /**
  * Delivers one note through each adapter and says which took it; one that fails is logged and the rest still run.
  */
-export const deliverNote = async (note: Note, adapters: readonly NoteAdapter[], context: NoteContext): Promise<string[]> => {
+export const deliverNote = async (
+  note: Note,
+  adapters: readonly NoteAdapter[],
+  context: NoteContext
+): Promise<string[]> => {
   const results = await Promise.all(
     adapters.map(async (adapter) => {
       if (!adapter.deliver) {
@@ -72,7 +75,9 @@ export const deliverNote = async (note: Note, adapters: readonly NoteAdapter[], 
         await adapter.deliver(note, context);
         return adapter.name;
       } catch (error) {
-        log.with('notes').warn(`${adapter.name} didn't deliver ${note.id}: ${error instanceof Error ? error.message : String(error)}`);
+        log
+          .with('notes')
+          .warn(`${adapter.name} didn't deliver ${note.id}: ${error instanceof Error ? error.message : String(error)}`);
         return null;
       }
     })
@@ -88,6 +93,8 @@ export const publishNotes = (adapters: readonly NoteAdapter[], context: NoteCont
     try {
       adapter.publish?.(context);
     } catch (error) {
-      log.with('notes').warn(`${adapter.name} didn't redraw: ${error instanceof Error ? error.message : String(error)}`);
+      log
+        .with('notes')
+        .warn(`${adapter.name} didn't redraw: ${error instanceof Error ? error.message : String(error)}`);
     }
   });

@@ -1,8 +1,9 @@
 import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { EMPTY_NOTES, type NoteLedger } from '@/notes/ledger';
+import { readHeartbeat, type Heartbeat } from '@/heartbeat/ledger';
+import { EMPTY_NOTES, readNotes, type NoteLedger } from '@/notes/ledger';
 import { recentNotes } from '@/notes/rules';
-import type { ProposalLedger } from '@/proposals/ledger';
+import { EMPTY_LEDGER, readProposalLedger, type ProposalLedger } from '@/proposals/ledger';
 import { proposalCards } from '@/proposals/rules';
 import { reportKind } from '@/reports/kinds';
 import { configuredRepoPaths, homeLauncher } from '@/config';
@@ -52,8 +53,23 @@ const reportItem = (home: string, report: WorkReport): ReportItem => {
   return { title, kind, hue: nameHue(kind), ...lastUpdate(report), status, target: targetOf(home, path) };
 };
 
+/**
+ * What the sidebar draws of a home besides its work: the proposals waiting, the notes sent, and the heartbeat.
+ */
+export interface HomeState {
+  proposals: ProposalLedger;
+  notes: NoteLedger;
+  heartbeat: Heartbeat | null;
+}
+
+export const readHomeState = (): HomeState => ({
+  proposals: readProposalLedger(),
+  notes: readNotes(),
+  heartbeat: readHeartbeat()
+});
+
 // The heartbeat's cmux tab, where the sidebar's buttons type; null when it isn't a cmux session.
-const heartbeatPlace = ({ heartbeat }: ProposalLedger): HeartbeatPlace | null => {
+const heartbeatPlace = (heartbeat: Heartbeat | null): HeartbeatPlace | null => {
   const place = heartbeat?.places.find((item) => item.adapter === 'cmux');
   return place ? { surfaceId: place.surfaceId, workspaceId: place.workspaceId } : null;
 };
@@ -62,7 +78,11 @@ const heartbeatPlace = ({ heartbeat }: ProposalLedger): HeartbeatPlace | null =>
  * What the sidebar shows of the home at `home`: its agent, pages, each project's counts and live tasks, its pins, its
  * newest reports, its goals, the proposals waiting with the heartbeat that decides them, and today's and yesterday's notes.
  */
-export const homeEntry = (home: string, work: Work, ledger: ProposalLedger, notes: NoteLedger = EMPTY_NOTES): HomeEntry => {
+export const homeEntry = (
+  home: string,
+  work: Work,
+  { proposals = EMPTY_LEDGER, notes = EMPTY_NOTES, heartbeat = null }: Partial<HomeState> = {}
+): HomeEntry => {
   // An index line without a link names a report nothing can open.
   const openable = byLastUpdate(work.reports.filter((report) => report.path !== ''));
   const tasks = live(work)
@@ -106,7 +126,7 @@ export const homeEntry = (home: string, work: Work, ledger: ProposalLedger, note
     olderReports: Math.max(0, openable.length - REPORT_LIMIT),
     goals: goalsView(work),
     tasksSummary: work.tasksSummary,
-    proposals: proposalCards(ledger),
+    proposals: proposalCards(proposals),
     notes: recentNotes(notes, new Date()).map(({ id, title, body, next, sources, at, prompt, reaction }) => ({
       id,
       title,
@@ -117,7 +137,7 @@ export const homeEntry = (home: string, work: Work, ledger: ProposalLedger, note
       canStart: prompt !== '',
       reaction
     })),
-    heartbeat: heartbeatPlace(ledger),
+    heartbeat: heartbeatPlace(heartbeat),
     launcher: homeLauncher(home),
     codeFolders: configuredRepoPaths(),
     home,

@@ -85,3 +85,9 @@ export const freshId = (taken: ReadonlySet<string>, makeId: () => string): strin
   const id = makeId();
   return taken.has(id) ? freshId(taken, makeId) : id;
 };
+
+/**
+ * The value of `--<name>=<value>` among a command's arguments.
+ */
+export const flagOf = (args: readonly string[], name: string): string | undefined =>
+  args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);

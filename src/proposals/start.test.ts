@@ -1,4 +1,4 @@
-import { expect, spyOn, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { FILES, FOLDERS } from '@/config';
@@ -113,7 +113,7 @@ test('Later and Skip record the choice and publish', () => {
   expect(decideProposal('p-none', 'skip', context([]))).toBe('No proposal p-none.');
 });
 
-test('a ledger that won’t parse is never written over, a Start on it opens nothing, and the list fails rather than show no heartbeat', () => {
+test('a ledger that won’t parse is never written over, a Start on it opens nothing, and the list fails rather than show none', () => {
   const id = seed();
   const broken = `${readFileSync(FILES.PROPOSALS, 'utf-8')}}`;
   mkdirSync(dirname(FILES.PROPOSALS), { recursive: true });
@@ -125,27 +125,6 @@ test('a ledger that won’t parse is never written over, a Start on it opens not
   expect(runProposalsCommand('list', ['--json'])).toBe(1);
   expect(readFileSync(FILES.PROPOSALS, 'utf-8')).toBe(broken);
   rmSync(FILES.PROPOSALS, { force: true });
-});
-
-test('binding a new owner says it replaced the one before; rebinding the same owner, or one released, does not', () => {
-  rmSync(FILES.PROPOSALS, { force: true });
-  const said = spyOn(console, 'log').mockImplementation(() => {});
-  try {
-    runProposalsCommand('heartbeat', ['--owner=first']);
-    runProposalsCommand('heartbeat', ['--owner=first', '--every=15m']);
-    runProposalsCommand('heartbeat', ['--owner=second']);
-    runProposalsCommand('heartbeat', ['--release', '--owner=first']);
-    expect(readProposalLedger().heartbeat?.owner, 'first no longer holds it').toBe('second');
-    runProposalsCommand('heartbeat', ['--release', '--owner=second']);
-    expect(readProposalLedger().heartbeat).toBeNull();
-    runProposalsCommand('heartbeat', ['--owner=third']);
-    const lines = said.mock.calls.map(([line]) => String(line));
-    expect(lines.map((line) => line.includes('replaced an earlier heartbeat'))).toEqual([false, false, true, false]);
-    expect(readProposalLedger().heartbeat?.owner).toBe('third');
-  } finally {
-    said.mockRestore();
-    rmSync(FILES.PROPOSALS, { force: true });
-  }
 });
 
 test('the core never imports an adapter', () => {

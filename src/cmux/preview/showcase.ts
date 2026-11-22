@@ -5,7 +5,9 @@
  * groups and workspaces both come from AGENTS, so the two sides of a screenshot tell one story.
  */
 import { join } from 'node:path';
+import type { Heartbeat } from '@/heartbeat/ledger';
 import type { ProposalLedger } from '@/proposals/ledger';
+import type { HomeState } from '../entry';
 import { parseGoals } from '@/work/goals';
 import { DEFAULT_AGENT_COLORS } from '@/shared/persona';
 import { WORK_SCHEMA, type Work } from '@/work/model';
@@ -440,11 +442,6 @@ export const SHOWCASE_NOVA = quietHome(
  * What Oppi has ready, its heartbeat the Morning brief tab in its own workspace.
  */
 export const SHOWCASE_OPPI_LEDGER: ProposalLedger = {
-  heartbeat: {
-    owner: 'oppi-heartbeat',
-    everyMinutes: 55,
-    places: [{ adapter: 'cmux', surfaceId: 'w-oppi-morning-brief-surface', workspaceId: 'w-oppi' }]
-  },
   proposals: [
     proposal('p-o1', 'Finish the reply to the accountant', {
       trigger: 'The accountant wrote two hours ago',
@@ -469,15 +466,21 @@ export const SHOWCASE_OPPI_LEDGER: ProposalLedger = {
   ]
 };
 
+export const SHOWCASE_OPPI_HEARTBEAT: Heartbeat = {
+  owner: 'oppi-heartbeat',
+  everyMinutes: 55,
+  places: [{ adapter: 'cmux', surfaceId: 'w-oppi-morning-brief-surface', workspaceId: 'w-oppi' }]
+};
+
+export const SHOWCASE_OPPI_STATE: Partial<HomeState> = {
+  proposals: SHOWCASE_OPPI_LEDGER,
+  heartbeat: SHOWCASE_OPPI_HEARTBEAT
+};
+
 /**
  * What Nova has ready, its heartbeat the month-end tab.
  */
 export const SHOWCASE_NOVA_LEDGER: ProposalLedger = {
-  heartbeat: {
-    owner: 'nova-heartbeat',
-    everyMinutes: 55,
-    places: [{ adapter: 'cmux', surfaceId: 'w-nova-month-end-surface', workspaceId: 'w-nova' }]
-  },
   proposals: [
     proposal('p-n1', 'Put tomorrow’s call on one page', {
       trigger: 'You have a call tomorrow at 10:30',
@@ -485,4 +488,15 @@ export const SHOWCASE_NOVA_LEDGER: ProposalLedger = {
       reach: 'Writes one report.'
     })
   ]
+};
+
+export const SHOWCASE_NOVA_HEARTBEAT: Heartbeat = {
+  owner: 'nova-heartbeat',
+  everyMinutes: 55,
+  places: [{ adapter: 'cmux', surfaceId: 'w-nova-month-end-surface', workspaceId: 'w-nova' }]
+};
+
+export const SHOWCASE_NOVA_STATE: Partial<HomeState> = {
+  proposals: SHOWCASE_NOVA_LEDGER,
+  heartbeat: SHOWCASE_NOVA_HEARTBEAT
 };

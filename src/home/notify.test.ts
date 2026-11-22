@@ -16,7 +16,7 @@ const NOTE: Note = {
   reaction: ''
 };
 
-const CONTEXT: NoteContext = { home: '/h', agentName: 'Oppi', heartbeat: null };
+const CONTEXT: NoteContext = { home: '/h', agentName: 'Oppi' };
 
 test('a title becomes an AppleScript string that quotes and backslashes cannot break out of', () => {
   expect(appleScriptString('A "quoted" \\ title')).toBe('"A \\"quoted\\" \\\\ title"');

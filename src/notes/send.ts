@@ -1,5 +1,4 @@
 import { FOLDERS } from '@/config';
-import { readProposalLedger } from '@/proposals/ledger';
 import { agentDisplayName } from '@/shared/agent-name';
 import { chosenAdapters, deliverNote, publishNotes, type NoteAdapter, type NoteContext } from './adapter';
 import { readNotes, writeNotes } from './ledger';
@@ -7,8 +6,7 @@ import { addNotes, DAILY_CAP, notesOn, type NoteInput } from './rules';
 
 export const noteContext = (): NoteContext => ({
   home: FOLDERS.HOME,
-  agentName: agentDisplayName(),
-  heartbeat: readProposalLedger().heartbeat?.places[0] ?? null
+  agentName: agentDisplayName()
 });
 
 interface Sent {
@@ -30,12 +28,18 @@ interface Sent {
 /**
  * Adds the notes the rules allow, delivers each through every chosen adapter, and redraws.
  */
-export const sendNotes = async (inputs: readonly NoteInput[], adapters: readonly NoteAdapter[], now: Date): Promise<Sent> => {
+export const sendNotes = async (
+  inputs: readonly NoteInput[],
+  adapters: readonly NoteAdapter[],
+  now: Date
+): Promise<Sent> => {
   const { ledger, added, refused } = addNotes(readNotes(), inputs, now);
   writeNotes(ledger);
   const context = noteContext();
   const chosen = chosenAdapters(adapters, context, process.env);
-  const results = await Promise.all(added.map(async (note) => ({ note, delivered: await deliverNote(note, chosen, context) })));
+  const results = await Promise.all(
+    added.map(async (note) => ({ note, delivered: await deliverNote(note, chosen, context) }))
+  );
   if (added.length) {
     publishNotes(chosen, context);
   }

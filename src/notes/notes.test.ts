@@ -60,7 +60,7 @@ test('reactions record how a note landed, per lens, and an unknown id changes no
   });
 });
 
-const CONTEXT: NoteContext = { home: '/h', agentName: 'Oppi', heartbeat: null };
+const CONTEXT: NoteContext = { home: '/h', agentName: 'Oppi' };
 
 const fake = (name: string, available = true, fails = false, fields: Partial<NoteAdapter> = {}) => {
   const got: string[] = [];

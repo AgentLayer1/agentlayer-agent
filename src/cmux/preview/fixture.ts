@@ -1,5 +1,7 @@
 import { join } from 'node:path';
+import type { Heartbeat } from '@/heartbeat/ledger';
 import type { Proposal, ProposalLedger } from '@/proposals/ledger';
+import type { HomeState } from '../entry';
 import { parseGoals } from '@/work/goals';
 import { WORK_SCHEMA, type Work, type WorkReport, type WorkTask } from '@/work/model';
 
@@ -189,11 +191,6 @@ export const LATER_UNTIL = new Date((NOW + 60 * 60) * 1000).toISOString();
  * brief tab in its own workspace.
  */
 export const NOVA_LEDGER: ProposalLedger = {
-  heartbeat: {
-    owner: 'nova-heartbeat',
-    everyMinutes: 55,
-    places: [{ adapter: 'cmux', surfaceId: 'w-nova-s2-surface', workspaceId: 'w-nova' }]
-  },
   proposals: [
     proposal('p-a1', 'Reply to the supplier', {
       trigger: 'The supplier wrote two hours ago',
@@ -220,11 +217,18 @@ export const NOVA_LEDGER: ProposalLedger = {
   ]
 };
 
+export const NOVA_HEARTBEAT: Heartbeat = {
+  owner: 'nova-heartbeat',
+  everyMinutes: 55,
+  places: [{ adapter: 'cmux', surfaceId: 'w-nova-s2-surface', workspaceId: 'w-nova' }]
+};
+
+export const NOVA_STATE: Partial<HomeState> = { proposals: NOVA_LEDGER, heartbeat: NOVA_HEARTBEAT };
+
 /**
  * Scout's one proposal, with no heartbeat to start it from.
  */
 export const SCOUT_LEDGER: ProposalLedger = {
-  heartbeat: null,
   proposals: [
     proposal('p-b1', 'Audit the dark mode colours', {
       trigger: 'Two screens failed the contrast check',
@@ -233,6 +237,8 @@ export const SCOUT_LEDGER: ProposalLedger = {
     })
   ]
 };
+
+export const SCOUT_STATE: Partial<HomeState> = { proposals: SCOUT_LEDGER };
 
 const session = (
   workspace: string,

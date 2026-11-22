@@ -5,13 +5,9 @@ import {
   addProposals,
   BACKLOG,
   decide,
-  lastRefreshed,
   nextMorning,
-  parseEvery,
   proposalCards,
   type ProposalInput,
-  refreshDue,
-  releaseHeartbeat,
   retireProposals,
   roomFor,
   showingNow,
@@ -131,33 +127,12 @@ test('what a surface is given never carries a prompt or a source', () => {
   expect(cards.every((card) => !('source' in card) && !('prompt' in card))).toBe(true);
 });
 
-test('intervals read as minutes, within 5 minutes and a day', () => {
-  expect(['15m', '15 mins', '1h', '2 hours', '90 minutes'].map(parseEvery)).toEqual([15, 15, 60, 120, 90]);
-  expect(parseEvery('2m')).toBeInstanceOf(Error);
-  expect(parseEvery('25h')).toBeInstanceOf(Error);
-  expect(parseEvery('soon')).toBeInstanceOf(Error);
-});
-
 test('a ledger read back keeps what it can and drops what it cannot use', () => {
   const ledger = withTwo();
   const broken = { ...ledger.proposals[0], prompt: 42 };
-  const parsed = parseLedger({
-    heartbeat: { owner: 's-1', everyMinutes: 55, places: [{ adapter: 'cmux', surfaceId: 'a', workspaceId: 'b' }, 7] },
-    proposals: [broken, ledger.proposals[1], 'junk']
-  });
+  const parsed = parseLedger({ proposals: [broken, ledger.proposals[1], 'junk'] });
   expect(parsed.proposals.map(({ id }) => id)).toEqual(['p-1']);
-  expect(parsed.heartbeat).toEqual({
-    owner: 's-1',
-    everyMinutes: 55,
-    places: [{ adapter: 'cmux', surfaceId: 'a', workspaceId: 'b' }]
-  });
   expect(parseLedger('nonsense')).toEqual(EMPTY_LEDGER);
-});
-
-test('an exiting heartbeat releases only the claim it still holds', () => {
-  const held: ProposalLedger = { ...EMPTY_LEDGER, heartbeat: { owner: 'a@1', places: [], everyMinutes: 55 } };
-  expect(releaseHeartbeat(held, 'a@1').heartbeat).toBeNull();
-  expect(releaseHeartbeat(held, 'b@2')).toBe(held);
 });
 
 test('retiring withdraws a showing proposal, whose source can come straight back', () => {
@@ -194,16 +169,6 @@ test('a ledger written before folder and workspace existed still reads, with bot
   });
   const [read] = parseLedger(old).proposals;
   expect([read?.id, read?.folder, read?.workspace]).toEqual(['p-0', '', '']);
-});
-
-test('a refresh is due six hours after the later of the last sync and the last refresh, and at once when neither ran', () => {
-  const hoursAgo = (hours: number) => new Date(NOW.getTime() - hours * 60 * 60 * 1000).toISOString();
-  expect(lastRefreshed(hoursAgo(9), hoursAgo(2))).toBe(hoursAgo(2));
-  expect(lastRefreshed(hoursAgo(1), undefined)).toBe(hoursAgo(1));
-  expect(lastRefreshed(undefined, undefined)).toBe('');
-  expect(refreshDue('', NOW)).toBe(true);
-  expect(refreshDue(hoursAgo(5.99), NOW)).toBe(false);
-  expect(refreshDue(hoursAgo(6), NOW)).toBe(true);
 });
 
 test('a swap retires first, so a full backlog still takes the replacement, and a refused one puts its card back', () => {

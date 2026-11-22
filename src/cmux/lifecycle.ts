@@ -1,13 +1,11 @@
 import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
-import { readNotes } from '@/notes/ledger';
-import { readProposalLedger } from '@/proposals/ledger';
 import { log } from '@/shared/log';
 import { pluginVersion } from '@/shared/naming';
 import { writeFileAtomic } from '@/shared/utils';
 import { cmuxTooOld, MIN_CMUX } from './app';
 import { DIST } from './build';
 import type { Work } from '@/work/model';
-import { homeEntry } from './entry';
+import { homeEntry, readHomeState } from './entry';
 import {
   mergeHomes,
   newerCode,
@@ -106,7 +104,7 @@ export const refreshSidebarQuietly = (
   target: SidebarTarget = defaultTarget()
 ): RefreshResult | 'failed' => {
   try {
-    return refreshSidebar(home, homeEntry(home, work, readProposalLedger(), readNotes()), target);
+    return refreshSidebar(home, homeEntry(home, work, readHomeState()), target);
   } catch (error) {
     log.with('cmux').warn(`sidebar refresh skipped: ${error instanceof Error ? error.message : String(error)}`);
     return 'failed';

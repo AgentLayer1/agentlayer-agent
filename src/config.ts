@@ -272,7 +272,11 @@ export const FILES = {
   get NOTES() {
     return resolve(dataRoot(), 'notes.json');
   },
-  /** Sessions the agent proposes and the heartbeat that keeps them coming (proposals/ledger.ts). */
+  /** The session that keeps the home's work coming, absent when there is none (heartbeat/ledger.ts). */
+  get HEARTBEAT() {
+    return resolve(dataRoot(), 'heartbeat.json');
+  },
+  /** Sessions the agent proposes (proposals/ledger.ts). */
   get PROPOSALS() {
     return resolve(dataRoot(), 'proposals.json');
   },

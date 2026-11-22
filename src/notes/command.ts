@@ -2,6 +2,7 @@ import { ADAPTERS, NOTE_ADAPTERS } from '@/adapters';
 import { FOLDERS } from '@/config';
 import { startPrompt } from '@/sessions/launch';
 import { CLI_COMMAND } from '@/shared/naming';
+import { flagOf } from '@/shared/utils';
 import { chosenAdapters, publishNotes } from './adapter';
 import { notesProblem, readNotes, writeNotes, type NoteLedger } from './ledger';
 import { DAILY_CAP, lensRecord, notesOn, react, roomToday, sentLately } from './rules';
@@ -74,7 +75,7 @@ export const runNotesCommand = (command: string | undefined, args: readonly stri
       console.error(note ? `${note.title} has no session to start.` : `No note ${id}.`);
       return 1;
     }
-    const workspace = args.find((arg) => arg.startsWith('--workspace='))?.slice('--workspace='.length);
+    const workspace = flagOf(args, 'workspace');
     const opened = startPrompt(note, {
       home: FOLDERS.HOME,
       adapters: ADAPTERS,

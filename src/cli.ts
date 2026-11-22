@@ -89,8 +89,9 @@ Groups:
   compile                           Knowledge-compile state (synthesis runs in Claude Code, not here)
   knowledge                         Wiki maintenance (lint)
   notices                           What to nudge the operator about (upgrade, sync) as JSON; \`notices record <id> --outcome=acted|snoozed\` logs what they did
+  heartbeat                         The session that keeps the home's work coming: status, bind, release, off
   notes                             What the agent found and sent on its own, at most three a day: list, react, start
-  proposals                         Sessions the agent proposes and the heartbeat that keeps them coming: list, decide, heartbeat
+  proposals                         Sessions the agent proposes: list, decide
   prune                             Delete memory/YYYY-MM-DD*.md older than 14 days
   links                             Rewrite bare task IDs + shorthand into [[wikilinks]]
   dashboard                         Rebuild the Agent OS dashboard at <HOME>/dashboard.html + projects/TASKS.md (open in any browser)
@@ -196,11 +197,16 @@ Notes commands:
                                     Open a session on the note's next step, in that cmux workspace when named
 
 Proposals commands:
-  proposals list [--json]           What's showing, the room for more, and the heartbeat's interval
+  proposals list [--json]           What's showing and the room for more
   proposals decide <start|later|skip> <id>
                                     Start it (a fresh session runs its prompt), put it off until morning, or drop it
-  proposals heartbeat --owner=<token> [--every=<duration>]
-                                    Make the session holding that token the heartbeat (/heartbeat passes its own), looking every 55m unless set (15m, 2h); --release ends it if that token still holds it; --off for none
+
+Heartbeat commands:
+  heartbeat status [--json]         Who the heartbeat is, its interval, the brain's last refresh, and the room for proposals and notes
+  heartbeat bind --owner=<token> [--every=<duration>]
+                                    Make the session holding that token the heartbeat (/heartbeat passes its own), looking every 55m unless set (15m, 2h)
+  heartbeat release --owner=<token> End that session's heartbeat, if that token still holds it
+  heartbeat off                     No heartbeat
 
 Database commands:
   database list                     List configured AGENT_DB_<NAME> connections (name + host/db, never credentials)
@@ -620,6 +626,11 @@ async function run(): Promise<void> {
   if (group === 'notes') {
     const { runNotesCommand } = await import('@/notes/command');
     process.exit(runNotesCommand(command, args));
+  }
+
+  if (group === 'heartbeat') {
+    const { runHeartbeatCommand } = await import('@/heartbeat/command');
+    process.exit(runHeartbeatCommand(command, args));
   }
 
   if (group === 'proposals') {
