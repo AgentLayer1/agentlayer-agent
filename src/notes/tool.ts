@@ -35,6 +35,14 @@ const NOTE = z.object({
     .default('')
     .describe(
       'When the next step is work a session can do, its whole first message: what to do, what it may touch (drafts only), and where to stop. Empty otherwise.'
+    ),
+  folder: text(400)
+    .default('')
+    .describe('The folder the next step works in: the repo path for code work; empty when none fits.'),
+  workspace: text(100)
+    .default('')
+    .describe(
+      "The title of the agent's workspace a session on the next step belongs in, from the list the heartbeat was given; empty when none fits."
     )
 });
 

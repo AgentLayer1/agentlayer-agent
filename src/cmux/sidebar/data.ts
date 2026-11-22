@@ -164,6 +164,11 @@ export interface NoteItem {
    * When a note put off with Later shows again, an ISO time with an offset; '' when it shows now.
    */
   laterUntil: string;
+  /**
+   * The folder the next step works in, and the workspace the agent picked for it; '' when none was named.
+   */
+  folder: string;
+  workspace: string;
 }
 
 /**

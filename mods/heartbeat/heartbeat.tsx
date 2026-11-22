@@ -182,9 +182,13 @@ async function scout($: EngineInterface, status: HeartbeatStatus): Promise<void>
   if (!status.notes.room) {
     return;
   }
+  const titles = await workspacesNow($);
   await update($, beat, (current) => ({ ...current, notesThisWake: 0 }));
   await expectTurn($, 'notes');
-  await $.command.run({ command: `${$.plugin.name}:notes` });
+  await $.command.run({
+    command: `${$.plugin.name}:notes`,
+    args: titles.length ? `workspaces: ${JSON.stringify(titles)}` : ''
+  });
 }
 
 async function note($: EngineInterface, event: HeartbeatEvent): Promise<void> {

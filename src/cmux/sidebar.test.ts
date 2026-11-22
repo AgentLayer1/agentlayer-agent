@@ -766,7 +766,9 @@ run('a note and the proposals share INBOX, newest first, with the same three but
     next: 'Update the pricing table.',
     prompt: '',
     reaction: '',
-    laterUntil: ''
+    laterUntil: '',
+    folder: '',
+    workspace: ''
   };
   const notes: NoteLedger = { notes: [note] };
   const sidebar = mount(installed({ [NOVA_HOME]: homeEntry(NOVA_HOME, NOVA, { ...NOVA_STATE, notes }) }), CMUX_DATA);

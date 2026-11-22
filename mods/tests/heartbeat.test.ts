@@ -534,6 +534,8 @@ describe('notes', () => {
     host.status.refreshDue = true;
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual(['clear', REFRESH, SCOUT, WAKE]);
+    const argsOf = (command: string) => host.commandArgs[host.commands.indexOf(command)];
+    expect(argsOf(SCOUT), "scouting is handed the workspace list the look gets").toBe(argsOf(WAKE));
     host.commands.length = 0;
     host.notesRoom = 0;
     host.status.refreshedAt = new Date(host.clock.now() - 7 * 60 * MINUTE).toISOString();

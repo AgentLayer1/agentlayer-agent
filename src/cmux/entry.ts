@@ -154,14 +154,16 @@ export const homeEntry = (
     goals: goalsView(work),
     tasksSummary: work.tasksSummary,
     proposals: proposalCards(proposals),
-    notes: openNotes(notes, new Date()).map(({ id, title, body, next, sources, at, laterUntil }) => ({
+    notes: openNotes(notes, new Date()).map(({ id, title, body, next, sources, at, laterUntil, folder, workspace }) => ({
       id,
       title,
       body,
       next,
       sources,
       at,
-      laterUntil
+      laterUntil,
+      folder,
+      workspace
     })),
     folders: {
       projects: fileUrl(join(home, 'projects')),

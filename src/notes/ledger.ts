@@ -33,6 +33,11 @@ export interface Note {
    * When a note put off with Later shows again, an ISO time with an offset; '' when it shows now.
    */
   laterUntil: string;
+  /**
+   * The folder the next step's work lives in, and the title of the workspace the agent picked for it; '' when none.
+   */
+  folder: string;
+  workspace: string;
 }
 
 export interface NoteLedger {
@@ -53,19 +58,23 @@ const parseNote = (data: unknown): Note | null => {
   if (!isRecord(data) || !TEXT_FIELDS.every((field) => typeof data[field] === 'string')) {
     return null;
   }
-  const text = (field: (typeof TEXT_FIELDS)[number]): string => String(data[field]);
+  const required = (field: (typeof TEXT_FIELDS)[number]): string => String(data[field]);
+  // Fields added after the first notes went out read as '' in an older ledger.
+  const text = (field: string): string => (typeof data[field] === 'string' ? String(data[field]) : '');
   return {
-    id: text('id'),
-    at: text('at'),
-    source: text('source'),
-    lens: text('lens'),
-    title: text('title'),
-    body: text('body'),
+    id: required('id'),
+    at: required('at'),
+    source: required('source'),
+    lens: required('lens'),
+    title: required('title'),
+    body: required('body'),
     sources: strings(data.sources),
-    next: text('next'),
-    prompt: text('prompt'),
+    next: required('next'),
+    prompt: required('prompt'),
     reaction: isReaction(data.reaction) ? data.reaction : '',
-    laterUntil: typeof data.laterUntil === 'string' ? data.laterUntil : ''
+    laterUntil: text('laterUntil'),
+    folder: text('folder'),
+    workspace: text('workspace')
   };
 };
 

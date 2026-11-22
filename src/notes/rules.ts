@@ -15,7 +15,8 @@ const KEEP_MS = 60 * DAY_MS;
 // A note nobody acted on leaves the list after a week, so it can't pile up.
 const OPEN_MS = 7 * DAY_MS;
 
-export type NoteInput = Pick<Note, 'source' | 'lens' | 'title' | 'body' | 'sources' | 'next'> & Partial<Pick<Note, 'prompt'>>;
+export type NoteInput = Pick<Note, 'source' | 'lens' | 'title' | 'body' | 'sources' | 'next'> &
+  Partial<Pick<Note, 'prompt' | 'folder' | 'workspace'>>;
 
 interface Refusal {
   source: string;
@@ -79,6 +80,8 @@ export const addNotes = (
       const note: Note = {
         ...input,
         prompt: input.prompt ?? '',
+        folder: input.folder ?? '',
+        workspace: input.workspace ?? '',
         id: freshId(new Set(result.ledger.notes.map(({ id }) => id)), makeId),
         at: nowISO(now),
         reaction: '',

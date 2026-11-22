@@ -14,7 +14,9 @@ const NOTE: Note = {
   next: '',
   prompt: '',
   reaction: '',
-  laterUntil: ''
+  laterUntil: '',
+  folder: '',
+  workspace: ''
 };
 
 const CONTEXT: NoteContext = { agentName: 'Oppi' };

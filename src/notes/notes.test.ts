@@ -6,7 +6,7 @@ import { localISO, nowISO, shiftDate, todayDate } from '@/shared/date';
 import { chosenAdapters, deliverNote, type NoteAdapter, type NoteContext } from './adapter';
 import type { SessionLauncher, StartContext } from '@/sessions/launch';
 import type { MessageChoice } from '@/shared/message';
-import { EMPTY_NOTES, readNotes, writeNotes, type Note, type NoteLedger } from './ledger';
+import { EMPTY_NOTES, parseNotes, readNotes, writeNotes, type Note, type NoteLedger } from './ledger';
 import {
   addNotes,
   DAILY_CAP,
@@ -119,6 +119,17 @@ test('Start records the note before opening a session, so a repeat opens nothing
   }
 });
 
+test("a note keeps the workspace and folder the agent picked; a note from an older ledger reads both as ''", () => {
+  const [note] = addNotes(EMPTY_NOTES, [input('a', { workspace: 'Code Reviews', folder: '/code/acme' })], NOW, counter()).added;
+  if (!note) {
+    throw new Error('expected the note to be added');
+  }
+  const { workspace, folder, ...older } = note;
+  expect([workspace, folder]).toEqual(['Code Reviews', '/code/acme']);
+  const [read] = parseNotes({ notes: [older] }).notes;
+  expect([read?.workspace, read?.folder, read?.laterUntil]).toEqual(['', '', '']);
+});
+
 test('every note can be started: one without a prompt gets one built from its finding, drafts only', () => {
   const [note] = addNotes(EMPTY_NOTES, [input('a')], NOW, counter()).added;
   if (!note) {
@@ -176,7 +187,7 @@ test('of a group, the first available adapter stands in for the rest, unless the
 test('an adapter that fails is skipped and the rest still deliver', async () => {
   const good = fake('report');
   const bad = fake('cmux', true, true);
-  const note: Note = { ...input('a'), id: 'n-0', at: '', prompt: '', reaction: '', laterUntil: '' };
+  const note: Note = { ...input('a'), id: 'n-0', at: '', prompt: '', reaction: '', laterUntil: '', folder: '', workspace: '' };
   expect(await deliverNote(note, [bad.adapter, good.adapter], CONTEXT)).toEqual(['report']);
   expect(good.got).toEqual(['n-0']);
 });
