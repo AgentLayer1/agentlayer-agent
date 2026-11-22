@@ -4,8 +4,20 @@ import { resolve } from 'node:path';
 import { FILES, FOLDERS } from '@/config';
 import { localISO, nowISO, shiftDate, todayDate } from '@/shared/date';
 import { chosenAdapters, deliverNote, type NoteAdapter, type NoteContext } from './adapter';
-import { EMPTY_NOTES, type Note } from './ledger';
-import { addNotes, DAILY_CAP, decideNote, lensRecord, notePrompt, openNotes, roomToday, type NoteInput } from './rules';
+import type { SessionLauncher, StartContext } from '@/sessions/launch';
+import { EMPTY_NOTES, readNotes, writeNotes, type Note, type NoteLedger } from './ledger';
+import {
+  addNotes,
+  DAILY_CAP,
+  decideNote,
+  lensRecord,
+  notePrompt,
+  openNotes,
+  roomToday,
+  type NoteChoice,
+  type NoteInput
+} from './rules';
+import { decideOnNote } from './start';
 import { sendNotes } from './send';
 import { reportAdapter } from '@/reports/notes';
 
@@ -50,18 +62,61 @@ test('a note with nothing to back it is refused; a brain finding may cite a home
   expect(addNotes(EMPTY_NOTES, [input('y', { sources: ['knowledge/memory/index.md'] })], NOW).added, 'a brain finding cites the home').toHaveLength(1);
 });
 
+// The ledger after a decision that lands.
+const decided = (ledger: NoteLedger, id: string, choice: NoteChoice): NoteLedger => {
+  const decision = decideNote(ledger, id, choice, NOW);
+  if (decision.outcome !== 'decided') {
+    throw new Error(`expected ${choice} on ${id} to land`);
+  }
+  return decision.ledger;
+};
+
 test('a note waits until it is started or dismissed; Later only puts it off until morning; a week untouched, it leaves', () => {
   const { ledger } = addNotes(EMPTY_NOTES, [input('a'), input('b'), input('c')], NOW, counter());
   const ids = (now: Date, from = ledger) => openNotes(from, now).map(({ id }) => id);
   expect(ids(NOW)).toHaveLength(3);
-  const later = decideNote(ledger, 'n-0', 'later', NOW);
+  const later = decided(ledger, 'n-0', 'later');
   expect(later.notes[0]?.laterUntil, 'put off until the next 08:00').not.toBe('');
   expect(ids(NOW, later), 'still open, the surface hides it until then').toContain('n-0');
-  const acted = decideNote(decideNote(later, 'n-1', 'start', NOW), 'n-2', 'dismiss', NOW);
+  const acted = decided(decided(later, 'n-1', 'start'), 'n-2', 'dismiss');
   expect(ids(NOW, acted)).toEqual(['n-0']);
   expect(acted.notes.map(({ reaction }) => reaction)).toEqual(['', 'started', 'dismissed']);
   expect(ids(new Date(NOW.getTime() + 8 * 24 * HOUR), later), 'a week untouched').toEqual([]);
-  expect(decideNote(ledger, 'n-9', 'dismiss', NOW), 'an unknown id changes nothing').toEqual(ledger);
+  expect(decideNote(ledger, 'n-9', 'dismiss', NOW).outcome).toBe('unknown');
+  expect(decideNote(acted, 'n-1', 'start', NOW).outcome, 'Start is final, so a second one opens nothing').toBe('already');
+});
+
+const launcher = (fails: boolean) => {
+  const opened: string[] = [];
+  const adapter: SessionLauncher = {
+    name: 'cmux',
+    locate: () => ({ adapter: 'cmux', surfaceId: 's', workspaceId: 'w' }),
+    start: (input) => {
+      if (fails) {
+        throw new Error('cmux is not running');
+      }
+      opened.push(input.promptFile);
+      return 'Opened it in a new tab.';
+    }
+  };
+  return { adapter, opened };
+};
+
+test('Start records the note before opening a session, so a repeat opens nothing, and puts it back when the session fails', () => {
+  rmSync(FILES.NOTES, { force: true });
+  try {
+    writeNotes(addNotes(EMPTY_NOTES, [input('a'), input('b')], NOW, counter()).ledger);
+    const context = (adapter: SessionLauncher): StartContext => ({ home: FOLDERS.HOME, adapters: [adapter], env: {}, now: NOW });
+    const works = launcher(false);
+    expect(decideOnNote('n-0', 'start', context(works.adapter))).toBe('Started: Found a. Opened it in a new tab.');
+    expect(decideOnNote('n-0', 'start', context(works.adapter))).toBe('Found a: already started.');
+    expect(works.opened).toHaveLength(1);
+    const broken = launcher(true);
+    expect(decideOnNote('n-1', 'start', context(broken.adapter))).toBe("Couldn't start Found b: cmux is not running");
+    expect(readNotes().notes[1]?.reaction, 'put back, so it can be started again').toBe('');
+  } finally {
+    rmSync(FILES.NOTES, { force: true });
+  }
 });
 
 test('every note can be started: one without a prompt gets one built from its finding, drafts only', () => {
@@ -78,7 +133,7 @@ test('every note can be started: one without a prompt gets one built from its fi
 
 test('a lens record counts a started note as useful', () => {
   const { ledger } = addNotes(EMPTY_NOTES, [input('a'), input('b', { lens: 'signals' })], NOW, counter());
-  expect(lensRecord(decideNote(ledger, 'n-0', 'start', NOW))).toEqual({
+  expect(lensRecord(decided(ledger, 'n-0', 'start'))).toEqual({
     'public-drift': { lastAt: nowISO(NOW), notes: 1, useful: 1, dismissed: 0 },
     signals: { lastAt: nowISO(NOW), notes: 1, useful: 0, dismissed: 0 }
   });

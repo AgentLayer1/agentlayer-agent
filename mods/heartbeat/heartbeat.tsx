@@ -24,7 +24,9 @@ import {
   parseStatus,
   workspaceTitles,
   MESSAGE_CHOICES,
-  MESSAGE_DECISION,
+  MESSAGE_AT_END,
+  decisionInDraft,
+  parseDecision,
   type Decision,
   type HeartbeatStatus
 } from './beat';
@@ -110,16 +112,9 @@ async function readStatus($: EngineInterface): Promise<HeartbeatStatus | null> {
   return runCli($, ['heartbeat', 'status', '--json']).then(parseStatus, () => null);
 }
 
-// A message is a proposal (`p-…`) or a note (`n-…`); its id says which CLI decides it. A proposal's Dismiss is its Skip.
+// A message is a proposal or a note; the CLI finds which by its id.
 async function decide($: EngineInterface, { choice, id, workspace }: Decision): Promise<string> {
-  const where = workspace ? [`--workspace=${workspace}`] : [];
-  if (id.startsWith('p-')) {
-    return said($, ['proposals', 'decide', choice === 'dismiss' ? 'skip' : choice, id, ...where]);
-  }
-  if (id.startsWith('n-')) {
-    return said($, ['notes', 'decide', choice, id, ...where]);
-  }
-  return USAGE;
+  return said($, ['messages', 'decide', choice, id, ...(workspace ? [`--workspace=${workspace}`] : [])]);
 }
 
 // A decision's answer in place of the prompt it ended, with the draft typed before it put back in the box.
@@ -387,7 +382,7 @@ export const registerHeartbeat = (on: On): void => {
   });
 
   on('command.run', { command: 'message' }, async ($, e) => {
-    const decision = MESSAGE_DECISION.parse(e.args);
+    const decision = parseDecision(e.args);
     return { text: decision ? await decide($, decision) : USAGE };
   });
 
@@ -502,8 +497,8 @@ export const registerHeartbeat = (on: On): void => {
 
   // A sidebar click can land after a half-written prompt; the decision runs, the prompt never reaches the model, and
   // the draft goes back in the box.
-  on('prompt.submit', { text: MESSAGE_DECISION.atEnd }, async ($, e, next) => {
-    const found = e.command ? null : MESSAGE_DECISION.inDraft(e.text);
+  on('prompt.submit', { text: MESSAGE_AT_END }, async ($, e, next) => {
+    const found = e.command ? null : decisionInDraft(e.text);
     return found ? dropped($, await decide($, found), found.draft) : next(e);
   });
 };

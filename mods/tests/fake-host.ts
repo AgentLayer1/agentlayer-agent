@@ -222,7 +222,7 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
   if (release && host.status.heartbeat?.owner === release[1]) {
     host.status.heartbeat = null;
   }
-  if (/^(heartbeat|proposals) /.test(args)) {
+  if (/^(heartbeat|proposals|messages) /.test(args)) {
     return ran(0, `ran ${args}`);
   }
   if (args.startsWith('notices')) {

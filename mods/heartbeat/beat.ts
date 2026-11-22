@@ -15,49 +15,41 @@ export const REFRESH_RETRY_MS = 6 * 60 * MINUTE_MS;
 // Named, so a word typed after a decision is never taken for a workspace.
 const WORKSPACE_FLAG = '--workspace=';
 
-export interface Decision<C extends string = MessageChoice> {
-  choice: C;
+export interface Decision {
+  choice: MessageChoice;
   id: string;
   /** The cmux workspace a Start opens its session in, when the sidebar picked one. */
   workspace?: string;
 }
 
-export interface DecisionGrammar<C extends string> {
-  /** The decision typed after whatever was half-written in the prompt, as a sidebar button types it. */
-  atEnd: RegExp;
-  parse: (args: string) => Decision<C> | null;
-  /** The decision at the end of a submitted prompt, and the draft typed before it. */
-  inDraft: (text: string) => (Decision<C> & { draft: string }) | null;
-}
-
-// `/<command> <choice> <id> [--workspace=<id>]`.
-const decisionGrammar = <C extends string>(command: string, choices: readonly C[]): DecisionGrammar<C> => {
-  const decision = `(${choices.join('|')})\\s+(\\S+)(?:\\s+${WORKSPACE_FLAG}(\\S+))?`;
-  const alone = new RegExp(`^${decision}$`);
-  const atEnd = new RegExp(`/${command}\\s+${decision}\\s*$`);
-  const decisionOf = (match: RegExpExecArray | null): Decision<C> | null => {
-    const [, word, id, workspace] = match ?? [];
-    const choice = choices.find((item) => item === word);
-    if (!choice || !id) {
-      return null;
-    }
-    return workspace ? { choice, id, workspace } : { choice, id };
-  };
-  return {
-    atEnd,
-    parse: (args) => decisionOf(alone.exec(args.trim())),
-    inDraft: (text) => {
-      const match = atEnd.exec(text);
-      const found = decisionOf(match);
-      return match && found ? { ...found, draft: text.slice(0, match.index).trimEnd() } : null;
-    }
-  };
-};
+const DECISION = `(${MESSAGE_CHOICES.join('|')})\\s+(\\S+)(?:\\s+${WORKSPACE_FLAG}(\\S+))?`;
+const DECISION_ALONE = new RegExp(`^${DECISION}$`);
 
 /**
- * `/message <start|later|dismiss> <id>`: a decision on anything the agent surfaced, a proposal or a note.
+ * A `/message <start|later|dismiss> <id>` typed after whatever was half-written in the prompt, as a sidebar button
+ * types it.
  */
-export const MESSAGE_DECISION = decisionGrammar('message', MESSAGE_CHOICES);
+export const MESSAGE_AT_END = new RegExp(`/message\\s+${DECISION}\\s*$`);
+
+const decisionOf = (match: RegExpExecArray | null): Decision | null => {
+  const [, word, id, workspace] = match ?? [];
+  const choice = MESSAGE_CHOICES.find((item) => item === word);
+  if (!choice || !id) {
+    return null;
+  }
+  return workspace ? { choice, id, workspace } : { choice, id };
+};
+
+export const parseDecision = (args: string): Decision | null => decisionOf(DECISION_ALONE.exec(args.trim()));
+
+/**
+ * The decision at the end of a submitted prompt, and the draft typed before it.
+ */
+export const decisionInDraft = (text: string): (Decision & { draft: string }) | null => {
+  const match = MESSAGE_AT_END.exec(text);
+  const found = decisionOf(match);
+  return match && found ? { ...found, draft: text.slice(0, match.index).trimEnd() } : null;
+};
 
 type HeartbeatAsk = { kind: 'bind'; every: string } | { kind: 'off' } | { kind: 'now' } | { kind: 'status' };
 

@@ -47,7 +47,7 @@ const bound = async ($: Engine, on: On, every = '') => {
 
 const heartbeatCalls = (host: FakeHost) => cliCalls(host).filter((args) => args.startsWith('heartbeat ') && !args.startsWith('heartbeat status'));
 
-const cliCalls = (host: FakeHost) => host.argv.map((argv) => argv.slice(2).join(' ')).filter((args) => /^(proposals|heartbeat) /.test(args));
+const cliCalls = (host: FakeHost) => host.argv.map((argv) => argv.slice(2).join(' ')).filter((args) => /^(proposals|heartbeat|messages) /.test(args));
 
 const drawnBand = async ($: Engine) =>
   (await (await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AbovePrompt', props: BAND_PROPS })).findAll({ type: 'Text' }))
@@ -58,28 +58,24 @@ describe('the heartbeat', () => {
   test('/message decides a proposal through the CLI with no model turn', async ($, on) => {
     const { host } = heartbeatHost(on);
     const { text } = await run($, 'message', 'start p-1');
-    expect(text).toBe('ran proposals decide start p-1');
-    expect(host.argv.at(-1)?.slice(2)).toEqual(['proposals', 'decide', 'start', 'p-1']);
+    expect(text).toBe('ran messages decide start p-1');
+    expect(host.argv.at(-1)?.slice(2)).toEqual(['messages', 'decide', 'start', 'p-1']);
     expect(host.cwd.at(-1)).toBe(HOME);
   });
 
-  test('/message without a choice and an id, or with an id of no kind, prints usage and decides nothing', async ($, on) => {
+  test('/message without a choice and an id prints usage and decides nothing', async ($, on) => {
     const { host } = heartbeatHost(on);
-    const usage = 'Usage: /message <start|later|dismiss> <id> [--workspace=<id>]';
-    expect((await run($, 'message', 'maybe p-1')).text).toBe(usage);
-    expect((await run($, 'message', 'start x-1')).text).toBe(usage);
+    expect((await run($, 'message', 'maybe p-1')).text).toBe('Usage: /message <start|later|dismiss> <id> [--workspace=<id>]');
     expect(cliCalls(host)).toEqual([]);
   });
 
-  test("a proposal's Dismiss is its Skip, and a note's choice goes to the notes CLI as it is", async ($, on) => {
+  test('every choice on any message goes to the CLI as it is, which finds the message by its id', async ($, on) => {
     const { host } = heartbeatHost(on);
     await run($, 'message', 'dismiss p-1');
-    await run($, 'message', 'later n-1');
     await run($, 'message', 'start n-2 --workspace=W-4');
-    expect(host.argv.slice(-3).map((argv) => argv.slice(2).join(' '))).toEqual([
-      'proposals decide skip p-1',
-      'notes decide later n-1',
-      'notes decide start n-2 --workspace=W-4'
+    expect(host.argv.slice(-2).map((argv) => argv.slice(2).join(' '))).toEqual([
+      'messages decide dismiss p-1',
+      'messages decide start n-2 --workspace=W-4'
     ]);
   });
 
@@ -87,7 +83,7 @@ describe('the heartbeat', () => {
     const { host, submitted, filled } = heartbeatHost(on);
     const result = await $.prompt.submit({ text: 'hello there/message dismiss p-2' });
     await host.clock.settle();
-    expect(result).toEqual({ drop: 'ran proposals decide skip p-2' });
+    expect(result).toEqual({ drop: 'ran messages decide dismiss p-2' });
     expect(submitted).toEqual([]);
     expect(filled).toEqual(['hello there']);
   });
@@ -95,10 +91,10 @@ describe('the heartbeat', () => {
   test('a Start the sidebar placed carries its workspace to the CLI, typed or after a draft', async ($, on) => {
     const { host, filled } = heartbeatHost(on);
     await run($, 'message', 'start p-1 --workspace=W-9');
-    expect(host.argv.at(-1)?.slice(2)).toEqual(['proposals', 'decide', 'start', 'p-1', '--workspace=W-9']);
+    expect(host.argv.at(-1)?.slice(2)).toEqual(['messages', 'decide', 'start', 'p-1', '--workspace=W-9']);
     await $.prompt.submit({ text: 'half a thought/message start p-2 --workspace=W-3' });
     await host.clock.settle();
-    expect(host.argv.at(-1)?.slice(2)).toEqual(['proposals', 'decide', 'start', 'p-2', '--workspace=W-3']);
+    expect(host.argv.at(-1)?.slice(2)).toEqual(['messages', 'decide', 'start', 'p-2', '--workspace=W-3']);
     expect(filled).toEqual(['half a thought']);
   });
 
@@ -594,7 +590,7 @@ describe('notes', () => {
     const result = await $.prompt.submit({ text: 'half a thought/message start n-3 --workspace=W-2' });
     await host.clock.settle();
     expect(result && 'drop' in result, 'answered here, not sent on').toBe(true);
-    expect(host.argv.at(-1)?.slice(2)).toEqual(['notes', 'decide', 'start', 'n-3', '--workspace=W-2']);
+    expect(host.argv.at(-1)?.slice(2)).toEqual(['messages', 'decide', 'start', 'n-3', '--workspace=W-2']);
     expect(submitted).toEqual([]);
     expect(filled).toEqual(['half a thought']);
   });

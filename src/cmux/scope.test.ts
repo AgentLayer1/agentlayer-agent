@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { homeOf, scopedHome, type ScopeWorkspace } from './sidebar/scope';
+import { homeOf, scopedHome, workspaceHome, type ScopeWorkspace } from './sidebar/scope';
 
 const NOVA = '/Users/ada/Agents/Nova';
 const SCOUT = '/Users/ada/Agents/Scout';
@@ -47,6 +47,18 @@ test('then the agent with the newest session anywhere, then the first home', () 
   expect(scopedHome(HOMES, workspaces, null)).toBe(SCOUT);
   expect(scopedHome(HOMES, [workspace('a', '/tmp', true)], null)).toBe(NOVA);
   expect(scopedHome([], [], null)).toBeUndefined();
+});
+
+test("a workspace's own agent is its folder's, else its newest session's, and none when neither is in a home", () => {
+  expect(workspaceHome(HOMES, [workspace('a', SCOUT, true, [{ directory: NOVA, lastActivityAt: 9 }])])).toBe(SCOUT);
+  expect(workspaceHome(HOMES, [workspace('a', '/code/app', true, [{ directory: NOVA, lastActivityAt: 9 }])])).toBe(
+    NOVA
+  );
+  const unowned = [
+    workspace('a', '/Downloads', true),
+    workspace('b', NOVA, false, [{ directory: NOVA, lastActivityAt: 9 }])
+  ];
+  expect(workspaceHome(HOMES, unowned), 'no agent is told, even with one active elsewhere').toBeUndefined();
 });
 
 test('a pick wins only in the workspace it was made in, and only for a home that joined', () => {

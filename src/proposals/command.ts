@@ -3,8 +3,7 @@ import { FOLDERS } from '@/config';
 import { CLI_COMMAND } from '@/shared/naming';
 import { flagOf } from '@/shared/utils';
 import { ledgerProblem, readProposalLedger } from './ledger';
-import { roomFor, showingNow, TARGET } from './rules';
-import { CHOICES } from './shown';
+import { CHOICES, roomFor, showingNow, TARGET } from './rules';
 import { decideProposal } from './start';
 
 const USAGE = [

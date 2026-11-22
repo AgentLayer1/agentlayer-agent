@@ -358,7 +358,7 @@ var packLines = (items, label, firstWidth, width) => items.reduce(({ lines, used
 }, { lines: [[]], used: 0 }).lines;
 
 // src/cmux/sidebar/data.ts
-var SCHEMA = 10;
+var SCHEMA = 11;
 
 // src/cmux/sidebar/style.ts
 var hueColor = (hue) => {
@@ -1031,79 +1031,87 @@ var heartbeatRoute = (place) => {
   const found = place && (data.workspaces() ?? []).find((workspace) => workspace.tabs.some((tab) => tab.surfaceId === place.surfaceId && (workspace.agents ?? []).some((agent) => agent.panelId === tab.id && isRunningClaude(agent))));
   return place && found ? { surfaceId: place.surfaceId, workspaceId: found.id } : null;
 };
-var choiceButton = (label, onTap, tint) => Text(label).font(11).weight("semibold").color(tint ? "#ffffff" : "secondary").paddingHorizontal(tint ? 14 : 9).paddingVertical(5).background(tint ?? null).cornerRadius(8).hoverBackground(tint ?? "#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(onTap);
-var heartbeatActions = (entry, buttons, hint) => {
-  const place = () => heartbeatRoute(entry.heartbeat);
-  const type = (command) => {
-    const target = place();
-    if (target) {
-      cmux("surface.send_text", { surface_id: target.surfaceId, workspace_id: target.workspaceId, text: `${command}
-` });
-    }
-  };
-  return [
-    when2(() => place() !== null, () => HStack({ spacing: 4 }, [...buttons(type), Spacer({ minLength: 0 })]).paddingTop(3)),
-    when2(() => place() === null, () => Text(hint).font(10).color("tertiary").paddingTop(3))
-  ];
-};
 
-// src/proposals/shown.ts
+// src/shared/later.ts
 var isShown = (laterUntil, nowMs) => laterUntil === "" || Date.parse(laterUntil) <= nowMs;
 
 // src/cmux/sidebar/messages.ts
-var DAY_MS2 = 24 * 60 * 60 * 1000;
-var hhmm = (iso) => iso.slice(11, 16);
-var startCommand = (entry, message) => {
-  const target = message.kind === "proposal" ? placeSession(entry, {
-    workspace: message.item.workspace ?? "",
-    folders: message.item.folder ? [message.item.folder] : [],
-    words: `${message.item.title} ${message.item.trigger}`
-  }) : placeSession(entry, { words: `${message.item.title} ${message.item.next}` });
-  return `/message start ${message.item.id}${target.kind === "workspace" ? ` --workspace=${target.id}` : ""}`;
-};
-var details = (message) => message.kind === "proposal" ? [
-  Text(message.item.trigger).font(11).color("tertiary"),
-  ...message.item.quote ? [Text(`“${message.item.quote}”`).font(11).italic().color("secondary")] : [],
-  Text(message.item.detail).font(11).color("secondary"),
-  Text(message.item.reach).font(10).color("tertiary")
-] : [
-  Text(message.item.body).font(11).color("secondary"),
-  Text(`Next: ${message.item.next}`).font(11),
-  ...message.item.sources.map((url) => Text(url).font(10).color("tertiary").lineLimit(1).truncation("middle"))
-];
-var body = ({ entry, message }) => VStack({ spacing: 5, alignment: "leading" }, [
-  ...details(message),
-  ...heartbeatActions(entry, (type) => [
-    choiceButton("Start", () => type(startCommand(entry, message)), entry.colors?.primary ?? PURPLE),
-    choiceButton("Later", () => type(`/message later ${message.item.id}`)),
-    choiceButton("Dismiss", () => type(`/message dismiss ${message.item.id}`))
-  ], `Run /heartbeat in one of ${entry.name}’s sessions to act on these here.`)
-]);
 var PROPOSAL_BADGE = { text: "Proposal", color: PURPLE, icon: "sparkles" };
 var NOTE_BADGE = { text: "Note", color: ACCENT, icon: "note.text" };
-var card = (shown) => {
-  const { message, key } = shown;
+var choiceButton = (label, onTap, tint) => Text(label).font(11).weight("semibold").color(tint ? "#ffffff" : "secondary").paddingHorizontal(tint ? 14 : 9).paddingVertical(5).background(tint ?? null).cornerRadius(8).hoverBackground(tint ?? "#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(onTap);
+var sentAt = (at) => {
+  const day = at.slice(0, 10);
+  return day === today() ? clock(at.slice(11, 16)) : dayTitle(day, today());
+};
+var lookOf2 = (message) => {
   if (message.kind === "proposal") {
     const { item } = message;
     return {
-      key,
-      title: item.title,
-      ...item.estimate ? { span: `~${item.estimate}` } : {},
-      badges: [PROPOSAL_BADGE, ...item.due ? [{ text: item.due, color: ORANGE, icon: "calendar" }] : []],
-      ...item.trigger ? { summary: item.trigger } : {},
-      searchText: `${item.trigger} ${item.detail}`,
-      body: () => body(shown)
+      hint: {
+        workspace: item.workspace ?? "",
+        folders: item.folder ? [item.folder] : [],
+        words: `${item.title} ${item.trigger}`
+      },
+      details: () => [
+        Text(item.trigger).font(11).color("tertiary"),
+        ...item.quote ? [Text(`“${item.quote}”`).font(11).italic().color("secondary")] : [],
+        Text(item.detail).font(11).color("secondary"),
+        Text(item.reach).font(10).color("tertiary")
+      ],
+      face: {
+        ...item.estimate ? { span: `~${item.estimate}` } : {},
+        badges: [PROPOSAL_BADGE, ...item.due ? [{ text: item.due, color: ORANGE, icon: "calendar" }] : []],
+        ...item.trigger ? { summary: item.trigger } : {},
+        searchText: `${item.trigger} ${item.detail}`
+      }
     };
   }
   const { item } = message;
   return {
-    key,
+    hint: { words: `${item.title} ${item.next}` },
+    details: () => [
+      Text(item.body).font(11).color("secondary"),
+      Text(`Next: ${item.next}`).font(11),
+      ...item.sources.map((url) => Text(url).font(10).color("tertiary").lineLimit(1).truncation("middle"))
+    ],
+    face: { span: sentAt(item.at), badges: [NOTE_BADGE], summary: item.next, searchText: `${item.body} ${item.next}` }
+  };
+};
+var actions = (entry, id, start) => {
+  const route = computed(() => heartbeatRoute(entry.heartbeat));
+  const type = (command) => {
+    const target = route();
+    if (target) {
+      cmux("surface.send_text", {
+        surface_id: target.surfaceId,
+        workspace_id: target.workspaceId,
+        text: `${command}
+`
+      });
+    }
+  };
+  return [
+    when2(() => route() !== null, () => HStack({ spacing: 4 }, [
+      choiceButton("Start", () => type(start()), entry.colors?.primary ?? PURPLE),
+      choiceButton("Later", () => type(`/message later ${id}`)),
+      choiceButton("Dismiss", () => type(`/message dismiss ${id}`)),
+      Spacer({ minLength: 0 })
+    ]).paddingTop(3)),
+    when2(() => route() === null, () => Text(`Run /heartbeat in one of ${entry.name}’s sessions to act on these here.`).font(10).color("tertiary").paddingTop(3))
+  ];
+};
+var card = ({ entry, message }) => {
+  const { item } = message;
+  const { hint, details, face } = lookOf2(message);
+  const start = () => {
+    const target = placeSession(entry, hint);
+    return `/message start ${item.id}${target.kind === "workspace" ? ` --workspace=${target.id}` : ""}`;
+  };
+  return {
+    key: `${entry.home}#${item.id}`,
     title: item.title,
-    span: hhmm(item.at),
-    badges: [NOTE_BADGE],
-    summary: item.next,
-    searchText: `${item.body} ${item.next}`,
-    body: () => body(shown)
+    ...face,
+    body: () => VStack({ spacing: 5, alignment: "leading" }, [...details(), ...actions(entry, item.id, start)])
   };
 };
 var heartbeatBody = (entry) => VStack({ spacing: 5, alignment: "leading" }, [
@@ -1113,28 +1121,38 @@ var heartbeatBody = (entry) => VStack({ spacing: 5, alignment: "leading" }, [
     Spacer({ minLength: 0 })
   ]).paddingTop(3)
 ]);
-var heartbeatCard = (home, entry) => ({
-  key: `${home}#heartbeat`,
+var heartbeatCard = (entry) => ({
+  key: `${entry.home}#heartbeat`,
   title: `Start ${entry.name}’s heartbeat`,
   body: () => heartbeatBody(entry)
 });
+var newestFirst = (a, b) => Date.parse(b.message.item.at) - Date.parse(a.message.item.at);
 var messagesSection = (scope) => {
-  const homes = Object.entries(DATA.homes).filter(([, entry]) => entry.schema === SCHEMA);
+  const entries = Object.values(DATA.homes).filter((entry) => entry.schema === SCHEMA);
+  const minute = computed(() => Math.floor(nowMs() / 60000) * 60000);
   const inScope = computed(() => {
     const home = scope();
-    return home ? homes.filter(([path]) => path === home) : homes;
+    return home ? entries.filter((entry) => entry.home === home) : entries;
   });
-  const live = ([, entry]) => heartbeatRoute(entry.heartbeat) !== null;
-  const waiting = ([home, entry]) => [
+  const reachable = computed(() => entries.filter((entry) => heartbeatRoute(entry.heartbeat) !== null).map((entry) => entry.home).join(`
+`));
+  const waiting = (entry, now) => [
     ...entry.proposals.map((item) => ({ kind: "proposal", item })),
     ...(entry.notes ?? []).map((item) => ({ kind: "note", item }))
-  ].filter(({ item }) => isShown(item.laterUntil, nowMs())).map((message) => ({ key: `${home}#${message.item.id}`, entry, message }));
-  const newestFirst = (a, b) => Date.parse(b.message.item.at) - Date.parse(a.message.item.at);
-  const cards = computed(() => [
-    ...inScope().filter(live).flatMap(waiting).toSorted(newestFirst).map(card),
-    ...inScope().filter((home) => !live(home)).flatMap((home) => [heartbeatCard(...home), ...waiting(home).toSorted(newestFirst).map(card)])
-  ]);
-  const fresh = () => inScope().some(([, entry]) => (entry.notes ?? []).some((note) => nowMs() - Date.parse(note.at) < DAY_MS2));
+  ].filter(({ item }) => isShown(item.laterUntil, now)).map((message) => ({ entry, message }));
+  const cards = computed(() => {
+    const now = minute();
+    const live = new Set(reachable().split(`
+`));
+    return [
+      ...inScope().filter((entry) => live.has(entry.home)).flatMap((entry) => waiting(entry, now)).toSorted(newestFirst).map(card),
+      ...inScope().filter((entry) => !live.has(entry.home)).flatMap((entry) => [heartbeatCard(entry), ...waiting(entry, now).toSorted(newestFirst).map(card)])
+    ];
+  });
+  const fresh = computed(() => {
+    const now = minute();
+    return inScope().some((entry) => (entry.notes ?? []).some((note) => isShown(note.laterUntil, now) && now - Date.parse(note.at) < DAY_MS));
+  });
   return {
     label: "INBOX",
     icon: "tray.full.fill",
@@ -1148,14 +1166,14 @@ var messagesSection = (scope) => {
 // src/cmux/sidebar/scope.ts
 var homeOf = (homes, path) => path ? homes.filter((home) => path === home || path.startsWith(`${home}/`)).toSorted((a, b) => b.length - a.length)[0] : undefined;
 var newestHome = (homes, agents = []) => agents.toSorted((a, b) => b.lastActivityAt - a.lastActivityAt).map((agent) => homeOf(homes, agent.directory)).find((home) => home !== undefined);
-var scopedHome = (homes, workspaces, pin) => {
-  const selected = workspaces.find((workspace) => workspace.selected);
-  const picked = pin && selected && pin.workspaceId === selected.id && homes.includes(pin.home) ? pin.home : undefined;
-  return picked ?? homeOf(homes, selected?.directory) ?? newestHome(homes, selected?.agents) ?? newestHome(homes, workspaces.flatMap((workspace) => workspace.agents ?? [])) ?? homes[0];
-};
 var workspaceHome = (homes, workspaces) => {
   const selected = workspaces.find((workspace) => workspace.selected);
   return homeOf(homes, selected?.directory) ?? newestHome(homes, selected?.agents);
+};
+var scopedHome = (homes, workspaces, pin) => {
+  const selected = workspaces.find((workspace) => workspace.selected);
+  const picked = pin && selected && pin.workspaceId === selected.id && homes.includes(pin.home) ? pin.home : undefined;
+  return picked ?? workspaceHome(homes, workspaces) ?? newestHome(homes, workspaces.flatMap((workspace) => workspace.agents ?? [])) ?? homes[0];
 };
 
 // src/cmux/sidebar/main.ts
@@ -1172,7 +1190,7 @@ var app = () => {
     }
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
-  const messages = messagesSection(() => workspaceHome(homes, workspaces()));
+  const messages = messagesSection(computed(() => workspaceHome(homes, workspaces())));
   const heartbeats = computed(() => new Set(Object.values(DATA.homes).flatMap((entry) => entry.schema === SCHEMA ? heartbeatRoute(entry.heartbeat)?.surfaceId ?? [] : [])));
   const isQuietHeartbeat = (card) => card.focusId !== undefined && heartbeats().has(card.focusId) && isRunningClaude(card.agent) && card.agent.status !== "needs_input";
   const pill = () => HStack({ spacing: 2 }, [

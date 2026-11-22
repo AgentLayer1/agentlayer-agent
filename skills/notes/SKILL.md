@@ -19,7 +19,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes list --json
 
 ## 2. Pick one lens
 
-Take the lens that produced a note least recently, skipping one whose notes were mostly dismissed; prefer one whose notes were marked useful. One lens per run keeps the run short.
+Take the lens that produced a note least recently, skipping one whose notes were mostly dismissed; prefer one whose notes were started. One lens per run keeps the run short.
 
 | Lens | Look for | Where |
 |---|---|---|

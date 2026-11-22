@@ -1,7 +1,7 @@
 import { startPrompt, type StartContext } from '@/sessions/launch';
 import { ledgerProblem, readProposalLedger, writeProposalLedger } from './ledger';
 import { decide, reopen } from './rules';
-import type { Choice } from './shown';
+import type { Choice } from './rules';
 
 /**
  * Applies the operator's choice and says what happened. Start marks the proposal started before opening anything, so a

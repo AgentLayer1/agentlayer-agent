@@ -90,7 +90,8 @@ Groups:
   knowledge                         Wiki maintenance (lint)
   notices                           What to nudge the operator about (upgrade, sync) as JSON; \`notices record <id> --outcome=acted|snoozed\` logs what they did
   heartbeat                         The session that keeps the home's work coming: status, bind, release, off
-  notes                             What the agent found and sent on its own, at most three a day: list, decide
+  messages                          What the agent surfaced on its own, proposals and notes alike: decide
+  notes                             What the agent found and sent on its own, at most three a day: list
   proposals                         Sessions the agent proposes: list, decide
   prune                             Delete memory/YYYY-MM-DD*.md older than 14 days
   links                             Rewrite bare task IDs + shorthand into [[wikilinks]]
@@ -192,8 +193,8 @@ Sidebar commands for cmux (this CLI's, not the cmux app's own; run them from a t
 
 Notes commands:
   notes list [--json]               Today's notes, the room left, and each lens's record
-  notes decide <start|later|dismiss> <id> [--workspace=<id>]
-                                    Open a session on it (in that cmux workspace when named), put it off until morning, or drop it
+  messages decide <start|later|dismiss> <id> [--workspace=<id>]
+                                    Open a session on a proposal or a note (in that cmux workspace when named), put it off until morning, or drop it
 
 Proposals commands:
   proposals list [--json]           What's showing and the room for more
@@ -620,6 +621,11 @@ async function run(): Promise<void> {
     const { collectNotices } = await import('@/notices/notices');
     console.log(JSON.stringify(await collectNotices()));
     return;
+  }
+
+  if (group === 'messages') {
+    const { runMessagesCommand } = await import('@/messages/command');
+    process.exit(runMessagesCommand(command, args));
   }
 
   if (group === 'notes') {

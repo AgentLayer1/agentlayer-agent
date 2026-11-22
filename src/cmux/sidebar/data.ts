@@ -3,7 +3,7 @@ import type { AgentColors } from '../../shared/persona';
 /**
  * The entry format's version. A sidebar shows an entry with another schema as "update this agent".
  */
-export const SCHEMA = 10;
+export const SCHEMA = 11;
 
 export interface TaskItem {
   id: string;
@@ -282,7 +282,7 @@ export interface HomeEntry {
   /**
    * `file://` URL of the folder each Agents tab section shows, for its Finder button; absent in an older entry.
    */
-  folders?: Partial<Record<'projects' | 'reports' | 'recent', string>>;
+  folders?: Record<'projects' | 'reports' | 'recent', string>;
   heartbeat: HeartbeatPlace | null;
   /**
    * What starts Claude in this home: `agent` when it bills its own subscription, else `claude`.

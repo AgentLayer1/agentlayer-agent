@@ -1,9 +1,12 @@
 import { DAY_MS, isoMs, nextMorning, nowISO } from '@/shared/date';
 import { freshId, shortId } from '@/shared/utils';
 import type { Proposal, ProposalLedger } from './ledger';
-import { isShown, type Choice } from './shown';
+import { isShown } from '@/shared/later';
 
 const randomId = shortId('p');
+
+export const CHOICES = ['start', 'later', 'skip'] as const;
+export type Choice = (typeof CHOICES)[number];
 
 /**
  * How many proposals the heartbeat keeps showing.

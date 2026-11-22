@@ -40,7 +40,7 @@ const app = () => {
     }
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
-  const messages = messagesSection(() => workspaceHome(homes, workspaces()));
+  const messages = messagesSection(computed(() => workspaceHome(homes, workspaces())));
   const heartbeats = computed(
     () =>
       new Set(

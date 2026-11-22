@@ -3,7 +3,7 @@
  * imports nothing, because the sidebar bundles it into cmux's runtime, where its typecheck has no Node or Bun.
  */
 
-const DAY_MS = 86_400_000;
+export const DAY_MS = 86_400_000;
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

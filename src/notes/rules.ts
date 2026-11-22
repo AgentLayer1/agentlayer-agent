@@ -100,18 +100,35 @@ export const openNotes = (ledger: NoteLedger, now: Date): Note[] =>
 export const NOTE_CHOICES = ['start', 'later', 'dismiss'] as const;
 export type NoteChoice = (typeof NOTE_CHOICES)[number];
 
+type NoteDecision =
+  | { outcome: 'decided'; ledger: NoteLedger; note: Note }
+  | { outcome: 'unknown' }
+  | { outcome: 'already'; note: Note };
+
 /**
- * Records the operator's choice: Start and Dismiss are final, Later puts the note off until the next morning.
+ * Records the operator's choice. Start and Dismiss are final, so a second Start changes nothing and a double click
+ * can't open two sessions; Later puts the note off until the next morning and can be chosen again.
  */
-export const decideNote = (ledger: NoteLedger, id: string, choice: NoteChoice, now: Date): NoteLedger => ({
-  notes: ledger.notes.map((note) => {
-    if (note.id !== id) {
-      return note;
-    }
-    return choice === 'later'
-      ? { ...note, laterUntil: nextMorning(now) }
-      : { ...note, reaction: choice === 'start' ? 'started' : 'dismissed', laterUntil: '' };
-  })
+export const decideNote = (ledger: NoteLedger, id: string, choice: NoteChoice, now: Date): NoteDecision => {
+  const found = ledger.notes.find((note) => note.id === id);
+  if (!found) {
+    return { outcome: 'unknown' };
+  }
+  if (found.reaction === 'started' || found.reaction === 'dismissed') {
+    return { outcome: 'already', note: found };
+  }
+  const note: Note =
+    choice === 'later'
+      ? { ...found, laterUntil: nextMorning(now) }
+      : { ...found, reaction: choice === 'start' ? 'started' : 'dismissed', laterUntil: '' };
+  return { outcome: 'decided', ledger: { notes: ledger.notes.map((item) => (item.id === id ? note : item)) }, note };
+};
+
+/**
+ * Puts a started note back, when its session couldn't open.
+ */
+export const reopenNote = (ledger: NoteLedger, id: string): NoteLedger => ({
+  notes: ledger.notes.map((note) => (note.id === id ? { ...note, reaction: '' } : note))
 });
 
 /**

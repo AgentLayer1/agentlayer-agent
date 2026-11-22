@@ -11,7 +11,7 @@ The `agentlayer` plugin: an MCP server, hook handlers, a CLI, skills and mods th
 | `src/tools.ts` | The tool registry: one import per domain's `tool.ts` |
 | `src/config.ts` | Home paths (resolved live, never frozen), plugin identity, timezone |
 | `src/bootstrap.ts`, `src/test.ts` | The server's first import (settings env), and the test preload that pins a throwaway home |
-| `src/<domain>/` | One folder per domain or pack: `api`, `appstore`, `browser`, `cmux`, `database`, `github`, `heartbeat`, `helpdesk`, `home`, `knowledge`, `media`, `notes`, `proposals`, `reports`, `seed`, `seo`, `sessions`, `slack`, `status`, `tasks`, `upgrade`, `work`, `worktree` |
+| `src/<domain>/` | One folder per domain or pack: `api`, `appstore`, `browser`, `cmux`, `database`, `github`, `heartbeat`, `helpdesk`, `home`, `knowledge`, `media`, `messages`, `notes`, `proposals`, `reports`, `seed`, `seo`, `sessions`, `slack`, `status`, `tasks`, `upgrade`, `work`, `worktree` |
 | `src/cmux/sidebar/` | The cmux sidebar's own code, run by cmux and not by Bun: its own `tsconfig.json` (no Bun or Node types), bundled into the committed `dist/sidebar.js` by `bun run cmux:build` |
 | `src/hooks/` | Session start (context, banner), the shell guard, and `handlers.ts`, which speaks each host's hook protocol |
 | `src/notices/`, `src/statusline/`, `src/roadmap/` | Banner and prompt-row notices, the status line, roadmap data |

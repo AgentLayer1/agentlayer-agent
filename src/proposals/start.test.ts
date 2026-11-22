@@ -128,6 +128,6 @@ test('the core never imports an adapter', () => {
   const sources = readdirSync(dir).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'));
   const logic = sources.filter((name) => !['tool.ts', 'command.ts'].includes(name));
   const offenders = logic.filter((name) => /from '@\/(cmux|adapters)/.test(readFileSync(resolve(dir, name), 'utf-8')));
-  expect(logic.length).toBeGreaterThan(3);
+  expect(logic.length).toBeGreaterThan(2);
   expect(offenders).toEqual([]);
 });

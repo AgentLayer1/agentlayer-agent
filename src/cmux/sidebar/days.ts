@@ -5,7 +5,7 @@ import { today } from './tasks';
 import { openTarget, targetKey } from './view';
 
 // 24-hour `HH:MM` as the entry writes it, shown as `8:30 AM`.
-const clock = (time: string): string => {
+export const clock = (time: string): string => {
   const [hour, minute] = time.split(':').map(Number);
   if (hour === undefined || minute === undefined || Number.isNaN(hour) || Number.isNaN(minute)) {
     return time;
@@ -16,7 +16,7 @@ const clock = (time: string): string => {
 /**
  * Today and Yesterday by name, then the weekday and date, worded against the sidebar's day so it turns at midnight.
  */
-const dayTitle = (date: string, day: string): string => {
+export const dayTitle = (date: string, day: string): string => {
   const days = daysUntil(date, day);
   if (days === 0) {
     return 'Today';

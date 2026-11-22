@@ -31,8 +31,16 @@ const newestHome = (homes: readonly string[], agents: ScopeWorkspace['agents'] =
     .find((home) => home !== undefined);
 
 /**
- * Which agent the sidebar shows: the one picked in this workspace, else the workspace's own folder's,
- * else its newest session's, else whichever agent was active last.
+ * The agent the selected workspace belongs to: its folder's, else its newest session's; undefined when neither says.
+ */
+export const workspaceHome = (homes: readonly string[], workspaces: readonly ScopeWorkspace[]): string | undefined => {
+  const selected = workspaces.find((workspace) => workspace.selected);
+  return homeOf(homes, selected?.directory) ?? newestHome(homes, selected?.agents);
+};
+
+/**
+ * Which agent the sidebar shows: the one picked in this workspace, else the workspace's own agent, else whichever agent
+ * was active last.
  */
 export const scopedHome = (
   homes: readonly string[],
@@ -43,20 +51,11 @@ export const scopedHome = (
   const picked = pin && selected && pin.workspaceId === selected.id && homes.includes(pin.home) ? pin.home : undefined;
   return (
     picked ??
-    homeOf(homes, selected?.directory) ??
-    newestHome(homes, selected?.agents) ??
+    workspaceHome(homes, workspaces) ??
     newestHome(
       homes,
       workspaces.flatMap((workspace) => workspace.agents ?? [])
     ) ??
     homes[0]
   );
-};
-
-/**
- * The agent the selected workspace belongs to: its folder's, else its newest session's; undefined when neither says.
- */
-export const workspaceHome = (homes: readonly string[], workspaces: readonly ScopeWorkspace[]): string | undefined => {
-  const selected = workspaces.find((workspace) => workspace.selected);
-  return homeOf(homes, selected?.directory) ?? newestHome(homes, selected?.agents);
 };
