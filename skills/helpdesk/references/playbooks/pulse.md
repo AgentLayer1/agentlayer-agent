@@ -21,7 +21,7 @@ These steps are the default. A profile's `## Pulse` section adds to them (extra 
    - **Tasks:** `task_query` with the project and `includeClosed: true` (closed tasks are hidden otherwise), keeping tasks whose title names a ticket and whose `updated` is after the last pulse: `done` takes the closed-as-completed row, `cancelled` the closed-as-not-planned row.
 
    Before acting, read the ticket (`helpdesk_ticket`): skip it when a private note or a customer reply already came after the card's question or close, so a pulse never drafts the same reply twice. Then do that state's support part: usually a draft through the [draft](draft.md) playbook. Adding the user's answer to the card (`github_issue_comment`) or task (`task_thread`) waits for the operator's yes, with the answer's text shown and no contact details in it.
-8. **Offer the drafts.** Tickets waiting on a reply, and the replies from step 7, can each get a draft through the [draft](draft.md) playbook. One yes covers the batch: each lands as a private note for a person to edit and send.
+8. **Offer the drafts.** Tickets waiting on a reply, and the replies from step 7, can each get a draft through the [draft](draft.md) playbook. One yes covers the batch: each lands as a private note for a person to edit and send. When the profile's `## Pulse` says its notes go ahead without asking, skip the question: post them and list each ticket with what was written.
 9. **Save.** Write the report, then show it in chat:
 
 ```

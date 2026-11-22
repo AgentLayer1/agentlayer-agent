@@ -20,7 +20,8 @@ Run it in rounds with `AskUserQuestion`, a few questions at a time. Each questio
    - what needs a person first;
    - which streams to collapse into a count;
    - what else to check or report;
-   - who reads it, and what the summary must say.
+   - who reads it, and what the summary must say;
+   - whether its private notes may go ahead without asking (a yes is written into `## Pulse` in those words).
 
    Then ask whether this adds to the default or replaces it.
 3. **Raising.**
