@@ -6,7 +6,7 @@ exports[`session start, per host and home state Claude Code, initialized home 1`
   "stderr": 
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=claude
 fatal: not a git repository (or any of the parent directories): .git
-<TIMESTAMP> WARN  [🪝 session] [start] hook fired (post-init)
+<TIMESTAMP> WARN  [🪝 session] [start] hook fired (claude)
   🦊 Agent:     Nova · v<VERSION>
   ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
@@ -46,10 +46,10 @@ exports[`session start, per host and home state Claude Code, pre-init home 1`] =
 ,
   "stdout": 
 "{"systemMessage":"
-\\u001b[1m\\u001b[38;2;180;86;168m ╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗\\u001b[0m
-\\u001b[1m\\u001b[38;2;180;86;168m ╠═╣ ║ ╦ ║╣  ║║║  ║ \\u001b[0m
-\\u001b[1m\\u001b[38;2;180;86;168m ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ \\u001b[0m
-\\u001b[1m\\u001b[38;2;59;170;112m===OPPI=== 🐙\\u001b[0m
+ ╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗
+ ╠═╣ ║ ╦ ║╣  ║║║  ║ 
+ ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ 
+===OPPI=== 🐙
 
 → Not set up yet, run /agentlayer:init to get started.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"The agentlayer plugin is loaded, but \`/agentlayer:init\` hasn't been run yet — the Agent home directory and identity files don't exist.
 
@@ -70,10 +70,10 @@ exports[`session start, per host and home state Claude Code, stranded home 1`] =
 ,
   "stdout": 
 "{"systemMessage":"
-\\u001b[1m\\u001b[38;2;180;86;168m ╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗\\u001b[0m
-\\u001b[1m\\u001b[38;2;180;86;168m ╠═╣ ║ ╦ ║╣  ║║║  ║ \\u001b[0m
-\\u001b[1m\\u001b[38;2;180;86;168m ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ \\u001b[0m
-\\u001b[1m\\u001b[38;2;59;170;112m===OPPI=== 🐙\\u001b[0m
+ ╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗
+ ╠═╣ ║ ╦ ║╣  ║║║  ║ 
+ ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ 
+===OPPI=== 🐙
 
 → <HOME> has a SOUL.md but no .state/version.json recording this agent — see the note below. Do NOT run init.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"The agentlayer plugin is loaded and \`<HOME>\` looks like an agent home (it has a SOUL.md), but no \`.state/version.json\` records \`agentlayer\`, which is how this agent recognises its own home. Until that's resolved the agent's data is unreachable: sessions won't be captured and its tools will refuse to run.
 
@@ -93,7 +93,7 @@ exports[`session start, per host and home state Claude Code in its terminal, ini
   "stderr": 
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=claude
 fatal: not a git repository (or any of the parent directories): .git
-<TIMESTAMP> WARN  [🪝 session] [start] hook fired (post-init)
+<TIMESTAMP> WARN  [🪝 session] [start] hook fired (claude)
   🦊 Agent:     Nova · v<VERSION>
   ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
@@ -152,7 +152,7 @@ fatal: not a git repository (or any of the parent directories): .git
     ✗ session tail     0.0KB
     ✗ today's reports  0.0KB
     ○ pinned reports   0.0KB  (none pinned)
-    ○ history          0.0KB  (off · run $history)","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<!-- agent static context · harness: codex · plugin root: <ROOT> · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs $upgrade · delivered by the plugin's SessionStart hook because Codex has no @-import -->
+    ○ history          0.0KB  (off · run $history)","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<!-- agent static context · harness: codex · plugin root: <ROOT> · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs $upgrade · delivered by the plugin's SessionStart hook because this host has no @-import -->
 
 <!-- agentlayer glossary for codex: the skills are written in Claude Code's terms; read each one as follows -->
 - \`\${CLAUDE_PLUGIN_ROOT}\` → the plugin root, \`<ROOT>\`
@@ -203,6 +203,7 @@ exports[`session start, per host and home state Codex, pre-init home 1`] = `
   "exit": 0,
   "stderr": 
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=codex --home=<HOME>
+<TIMESTAMP> INFO  [🪝 session] [start] hook fired (pre-init)
 "
 ,
   "stdout": 
@@ -235,6 +236,7 @@ exports[`session start, per host and home state Codex, stranded home 1`] = `
   "exit": 0,
   "stderr": 
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=codex --home=<HOME>
+<TIMESTAMP> WARN  [🪝 session] [start] hook fired (home marker missing at <HOME>)
 "
 ,
   "stdout": 
@@ -271,7 +273,7 @@ exports[`session start, per host and home state no protocol, initialized home 1`
   "stderr": 
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start
 fatal: not a git repository (or any of the parent directories): .git
-<TIMESTAMP> WARN  [🪝 session] [start] hook fired (post-init)
+<TIMESTAMP> WARN  [🪝 session] [start] hook fired (claude)
   🦊 Agent:     Nova · v<VERSION>
   ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
   ⟳  Sync:      Brain never synced · run /agentlayer:sync

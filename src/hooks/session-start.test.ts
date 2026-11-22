@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { AGENT_SLUG, FILES, FOLDERS, PLUGIN_VERSION, staticContextFiles } from '@/config';
 import { CLI_FILE, HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
-import { sessionStart, sessionStartInject } from '@/hooks/session-start';
+import { sessionStart } from '@/hooks/session-start';
 import { codexHost } from '@/hosts/codex';
 import { DIALECT, renderGlossary, SKILL_PREFIX } from '@/hosts/dialect';
 import { recordOutcome } from '@/notices/ledger';
@@ -137,7 +137,7 @@ describe('sessionStart', () => {
           'IDENTITY.md': '# Identity\n\n## Who\n\n- **Name:** Scout\n',
           'USER.md': '# About Ada\n'
         }),
-      () => sessionStartInject(codexHost, codexHost.delivery)
+      () => sessionStart({ host: codexHost })
     );
     expect(first.additionalContext).toContain(`${AGENT_SLUG} static context · harness: codex`);
     expect(first.additionalContext).toContain('<!-- file: SOUL.md -->');
@@ -151,7 +151,7 @@ describe('sessionStart', () => {
   test("codex protocol: a glossary reads every Claude Code term the skills use, and names skills Codex's way", async () => {
     const result = await withHome(
       (home) => markedHome(home, { 'SOUL.md': '# Soul\n' }),
-      () => sessionStartInject(codexHost, codexHost.delivery)
+      () => sessionStart({ host: codexHost })
     );
     const terms = Object.values(DIALECT);
     expect(terms.length).toBeGreaterThan(5);
@@ -170,7 +170,7 @@ describe('sessionStart', () => {
   test('codex protocol: a home not set up yet gets the glossary too, and is told to run $init', async () => {
     const result = await withHome(
       () => {},
-      () => sessionStartInject(codexHost, codexHost.delivery)
+      () => sessionStart({ host: codexHost })
     );
     expect(result.systemMessage).toContain('$init');
     expect(result.systemMessage).not.toContain(SKILL_PREFIX);
@@ -180,7 +180,7 @@ describe('sessionStart', () => {
   test('codex protocol: the banner rides systemMessage, free of ANSI escapes', async () => {
     const result = await withHome(
       (home) => markedHome(home, { 'SOUL.md': '# Soul\n' }),
-      () => sessionStartInject(codexHost, codexHost.delivery)
+      () => sessionStart({ host: codexHost })
     );
     expect(result.systemMessage).toContain('Agent:');
     expect(result.systemMessage).toContain('Context');
@@ -192,7 +192,7 @@ describe('sessionStart', () => {
     const banner = (identity: Record<string, string>) =>
       withHome(
         (home) => markedHome(home, { 'SOUL.md': '# Soul\n', ...identity }),
-        () => sessionStartInject(codexHost, codexHost.delivery)
+        () => sessionStart({ host: codexHost })
       ).then((result) => result.systemMessage);
     expect(await banner({ 'IDENTITY.md': '# Identity\n\n- **Name:** Scout\n- **Emoji:** 🦉\n' })).toContain('  🦉 Agent:     Scout');
     expect(await banner({})).toContain('  🤖 Agent:');
@@ -217,7 +217,7 @@ describe('sessionStart', () => {
   test('codex protocol: a pre-init directory gets the setup hint', async () => {
     const hint = await withHome(
       () => {},
-      () => sessionStartInject(codexHost, codexHost.delivery)
+      () => sessionStart({ host: codexHost })
     );
     expect(hint.systemMessage).toContain('init');
     expect(hint.systemMessage).not.toMatch(/\x1b\[/);
@@ -323,7 +323,7 @@ describe('sessionStart', () => {
   test('welcome: Codex gets the same welcome through the shared assembler', async () => {
     const result = await withHome(
       (home) => markedHome(home, { [cadence]: '{ "welcome": "pending" }' }),
-      () => sessionStartInject(codexHost, codexHost.delivery)
+      () => sessionStart({ host: codexHost })
     );
     expect(result.additionalContext).toContain('## First Session Since Init');
   });
@@ -370,7 +370,7 @@ describe('sessionStart', () => {
     );
     const codex = await withHome(
       (home) => markedHome(home, files),
-      () => sessionStartInject(codexHost, codexHost.delivery)
+      () => sessionStart({ host: codexHost })
     );
     expect(colored.systemMessage).toContain(`${ANSI.bold}${ANSI.red}⟳`);
     expect(plain.systemMessage).toContain('⟳  Sync:      Brain 9 days behind');

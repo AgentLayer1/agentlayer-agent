@@ -6,8 +6,7 @@
  *    `additionalContext` becomes developer context) but fires SessionStart on the
  *    first turn rather than at launch, and has no `@-import`, so the static stack
  *    (identity files, indexes, task board) is sent ahead of the same dynamic lane. The hook is registered with `additionalContextLimit: 0`, since
- *    Codex otherwise truncates the context at about 2,500 tokens. See
- *    `sessionStartInject`.
+ *    Codex otherwise truncates the context at about 2,500 tokens.
  *
  * Three disjoint paths:
  *  - **Pre-init**: nothing scaffolded here — emit the banner + setup hint. NO
@@ -26,7 +25,7 @@
  */
 import { AGENT_SLUG, FILES, FOLDERS, isInitialized, PLUGIN_NAME, staticContextFiles } from '@/config';
 import { assembleContext } from '@/hooks/context';
-import type { HostAdapter, InjectDelivery } from '@/hosts/contract';
+import type { HostAdapter } from '@/hosts/contract';
 import { renderGlossary, SKILL_PREFIX } from '@/hosts/dialect';
 import { DEFAULT_HOST } from '@/hosts/registry';
 import { drainDeferredCaptures } from '@/knowledge/session-capture';
@@ -87,97 +86,76 @@ const strandedHomeResult = (): SessionStartResult => {
   };
 };
 
-// Codex renders systemMessage through ratatui, which prints ANSI escapes as raw bytes.
+// A terminal that can't render ANSI prints the escapes as raw bytes (Codex's ratatui does).
 const PLAIN_BANNER = [...BANNER_LINES, BANNER_TAG].join('\n');
 
 /**
- * The payload for a host that has the hook send the static stack (Codex): the files Claude Code gets through the
- * `.claude/CLAUDE.md` bridge, each introduced by its home-relative path, then the
- * same dynamic lane Claude gets, with the same banner as `systemMessage`. Pre-init
- * and stranded homes get Claude's guidance.
- */
-export async function sessionStartInject(host: HostAdapter, delivery: InjectDelivery): Promise<SessionStartResult> {
-  const inHostDialect = (text: string): string => text.replaceAll(SKILL_PREFIX, delivery.skillPrefix);
-  if (!isInitialized()) {
-    const result = existsSync(FILES.SOUL) ? strandedHomeResult() : PRE_INIT_RESULT;
-    return {
-      ...result,
-      systemMessage: inHostDialect(result.systemMessage.replace(BANNER, PLAIN_BANNER)),
-      additionalContext: [renderGlossary(host.name, delivery.glossary), inHostDialect(result.additionalContext)]
-        .filter(Boolean)
-        .join('\n\n')
-    };
-  }
-  await drainDeferredCaptures().catch((err: unknown) => log.error('deferred captures not drained', err));
-  const files = staticContextFiles()
-    .filter((path) => existsSync(path))
-    .map((path) => {
-      const name = relative(FOLDERS.HOME, path).split(sep).join('/');
-      try {
-        return `<!-- file: ${name} -->\n${readText(path).trimEnd()}`;
-      } catch (err) {
-        log.error(`hook failed (${host.name}): ${name} unreadable`, err);
-        return `<!-- ${AGENT_SLUG}: ${name} unreadable: ${err instanceof Error ? err.message : String(err)} -->`;
-      }
-    });
-  // The static files never depend on git or reports, so a dynamic-lane failure costs
-  // only the lane, the same containment Claude's path has.
-  const lane = await assembleContext({ host })
-    .then(({ context, banner, hasIssues }) => {
-      (hasIssues ? log.warn.bind(log) : log.info.bind(log))(`hook fired (${host.name})\n` + stripAnsi(banner));
-      return {
-        banner: stripAnsi(banner),
-        hasIssues,
-        parts: context.trim() ? [`<!-- session context (dynamic lane) -->\n${context.trimEnd()}`] : []
-      };
-    })
-    .catch((err: unknown) => {
-      log.error(`hook failed (${host.name}): dynamic lane skipped`, err);
-      const message = err instanceof Error ? err.message : String(err);
-      return {
-        banner: `⚠ dynamic session context unavailable: ${message}`,
-        hasIssues: true,
-        parts: [`<!-- ${AGENT_SLUG}: dynamic session context unavailable: ${message} -->`]
-      };
-    });
-  const additionalContext =
-    [
-      `<!-- ${AGENT_SLUG} static context · harness: ${host.name} · plugin root: ${FOLDERS.ROOT} · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs ${delivery.skillPrefix}upgrade · delivered by the plugin's SessionStart hook because Codex has no @-import -->`,
-      renderGlossary(host.name, delivery.glossary),
-      ...files,
-      ...lane.parts
-    ].join('\n\n') + '\n';
-  return { systemMessage: inHostDialect(lane.banner), additionalContext, hasIssues: lane.hasIssues };
-}
-
-/**
- * `promptRow` when a prompt row draws nudges and alerts; `color` only where the host is known to render ANSI.
+ * `promptRow` when a prompt row draws nudges and alerts; `color` only where the host's terminal renders ANSI.
  */
 export async function sessionStart({
+  host = DEFAULT_HOST,
   promptRow = false,
-  color = false,
-  host = DEFAULT_HOST
-}: { promptRow?: boolean; color?: boolean; host?: HostAdapter } = {}): Promise<SessionStartResult> {
+  color = false
+}: { host?: HostAdapter; promptRow?: boolean; color?: boolean } = {}): Promise<SessionStartResult> {
+  const inject = host.delivery.kind === 'inject' ? host.delivery : undefined;
+  const inHostDialect = (text: string): string => (inject ? text.replaceAll(SKILL_PREFIX, inject.skillPrefix) : text);
+  const glossary = inject ? [renderGlossary(host.name, inject.glossary)] : [];
   try {
     if (!isInitialized()) {
       // A SOUL.md with no data dir isn't a fresh directory — it's a scaffolded
       // brain whose marker is missing, or another agent's home. Telling either
       // one to run init is wrong, and destructive for the first: init offers to
       // overwrite exactly the identity files that are sitting right there.
-      if (existsSync(FILES.SOUL)) {
+      const stranded = existsSync(FILES.SOUL);
+      if (stranded) {
         log.warn(`hook fired (home marker missing at ${FOLDERS.HOME})`);
-        return strandedHomeResult();
+      } else {
+        log.info('hook fired (pre-init)');
       }
-      log.info('hook fired (pre-init)');
-      return PRE_INIT_RESULT;
+      const result = stranded ? strandedHomeResult() : PRE_INIT_RESULT;
+      return {
+        ...result,
+        systemMessage: inHostDialect(color ? result.systemMessage : result.systemMessage.replace(BANNER, PLAIN_BANNER)),
+        additionalContext: [...glossary, inHostDialect(result.additionalContext)].join('\n\n')
+      };
     }
-    const { context, banner, hasIssues } = await assembleContext({ promptRow, host });
+    await drainDeferredCaptures().catch((err: unknown) => log.error('deferred captures not drained', err));
+    const lane = await assembleContext({ promptRow, host }).catch((err: unknown) => {
+      log.error(`hook failed (${host.name}): dynamic lane skipped`, err);
+      const message = err instanceof Error ? err.message : String(err);
+      return {
+        context: `<!-- ${AGENT_SLUG}: dynamic session context unavailable: ${message} -->`,
+        banner: `⚠ dynamic session context unavailable: ${message}`,
+        hasIssues: true
+      };
+    });
     // Mirror what the operator sees into the log file so context-assembly
     // issues (missing knowledge dir, git unavailable, oversized payload) are
     // diagnosable after the fact.
-    const emit = hasIssues ? log.warn.bind(log) : log.info.bind(log);
-    emit('hook fired (post-init)\n' + stripAnsi(banner));
-    return { systemMessage: '\n' + (color ? banner : stripAnsi(banner)), additionalContext: context, hasIssues };
+    (lane.hasIssues ? log.warn.bind(log) : log.info.bind(log))(`hook fired (${host.name})\n` + stripAnsi(lane.banner));
+    const banner = color ? lane.banner : stripAnsi(lane.banner);
+    if (!inject) {
+      return { systemMessage: '\n' + banner, additionalContext: lane.context, hasIssues: lane.hasIssues };
+    }
+    const files = staticContextFiles()
+      .filter((path) => existsSync(path))
+      .map((path) => {
+        const name = relative(FOLDERS.HOME, path).split(sep).join('/');
+        try {
+          return `<!-- file: ${name} -->\n${readText(path).trimEnd()}`;
+        } catch (err) {
+          log.error(`hook failed (${host.name}): ${name} unreadable`, err);
+          return `<!-- ${AGENT_SLUG}: ${name} unreadable: ${err instanceof Error ? err.message : String(err)} -->`;
+        }
+      });
+    const additionalContext =
+      [
+        `<!-- ${AGENT_SLUG} static context · harness: ${host.name} · plugin root: ${FOLDERS.ROOT} · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs ${inject.skillPrefix}upgrade · delivered by the plugin's SessionStart hook because this host has no @-import -->`,
+        ...glossary,
+        ...files,
+        ...(lane.context.trim() ? [`<!-- session context (dynamic lane) -->\n${lane.context.trimEnd()}`] : [])
+      ].join('\n\n') + '\n';
+    return { systemMessage: inHostDialect(banner), additionalContext, hasIssues: lane.hasIssues };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log.error('hook failed', err);

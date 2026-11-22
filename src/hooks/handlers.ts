@@ -67,13 +67,10 @@ export const runGuard = async (flag: Flag): Promise<number> => {
 
 export const runSessionStart = async (flag: Flag): Promise<number> => {
   const host = hostOf(flag);
-  const { sessionStart, sessionStartInject } = await import('@/hooks/session-start');
+  const { sessionStart } = await import('@/hooks/session-start');
   const isTerminal = host?.terminal() ?? false;
   const { rowDraws } = await import('@/notices/notices');
-  const result =
-    host?.delivery.kind === 'inject'
-      ? await sessionStartInject(host, host.delivery)
-      : await sessionStart({ promptRow: isTerminal && rowDraws(), color: isTerminal, host });
+  const result = await sessionStart({ host, promptRow: isTerminal && rowDraws(), color: isTerminal });
   if (!host) {
     console.log(JSON.stringify(result, null, 2));
     return 0;
