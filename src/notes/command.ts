@@ -4,14 +4,14 @@ import { startPrompt } from '@/proposals/start';
 import { CLI_COMMAND } from '@/shared/naming';
 import { chosenAdapters, publishNotes } from './adapter';
 import { notesProblem, readNotes, writeNotes, type NoteLedger } from './ledger';
-import { DAILY_CAP, lensRecord, notesOn, react, REPEAT_MS, roomToday } from './rules';
+import { DAILY_CAP, lensRecord, notesOn, react, roomToday, sentLately } from './rules';
 import { noteContext } from './send';
 
 // A changed note shows wherever notes are listed, not at the next unrelated redraw.
 const saveAndPublish = (ledger: NoteLedger): void => {
   writeNotes(ledger);
-  const context = noteContext(new Date());
-  publishNotes(chosenAdapters(NOTE_ADAPTERS, context), context);
+  const context = noteContext();
+  publishNotes(chosenAdapters(NOTE_ADAPTERS, context, process.env), context);
 };
 
 const USAGE = [
@@ -34,9 +34,7 @@ const list = (args: readonly string[]): number => {
   const today = notesOn(ledger, now);
   const room = roomToday(ledger, now);
   if (args.includes('--json')) {
-    const recent = ledger.notes
-      .filter((note) => now.getTime() - (Date.parse(note.at) || 0) < REPEAT_MS)
-      .map(({ id, at, source, lens, title, reaction }) => ({ id, at, source, lens, title, reaction }));
+    const recent = sentLately(ledger, now).map(({ id, at, source, lens, title, reaction }) => ({ id, at, source, lens, title, reaction }));
     console.log(JSON.stringify({ cap: DAILY_CAP, room, today: today.length, recent, lenses: lensRecord(ledger) }));
     return 0;
   }
@@ -71,8 +69,7 @@ export const runNotesCommand = (command: string | undefined, args: readonly stri
       console.error(USAGE);
       return 1;
     }
-    const ledger = readNotes();
-    const note = ledger.notes.find((item) => item.id === id);
+    const note = readNotes().notes.find((item) => item.id === id);
     if (!note?.prompt) {
       console.error(note ? `${note.title} has no session to start.` : `No note ${id}.`);
       return 1;
@@ -89,7 +86,10 @@ export const runNotesCommand = (command: string | undefined, args: readonly stri
       console.log(`Couldn't start it: ${opened.error}`);
       return 1;
     }
-    saveAndPublish(react(ledger, id, 'started') ?? ledger);
+    const started = react(readNotes(), id, 'started');
+    if (started) {
+      saveAndPublish(started);
+    }
     console.log(`Started: ${note.title}. ${opened.where}`);
     return 0;
   }

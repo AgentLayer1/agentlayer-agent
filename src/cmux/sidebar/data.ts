@@ -134,7 +134,6 @@ export interface NoteItem {
   body: string;
   next: string;
   sources: string[];
-  lens: string;
   /**
    * When it went out, an ISO time with an offset.
    */

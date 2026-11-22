@@ -1007,28 +1007,31 @@ var heartbeatRoute = (place) => {
   return place && found ? { surfaceId: place.surfaceId, workspaceId: found.id } : null;
 };
 var choiceButton = (label, onTap, tint) => Text(label).font(11).weight("semibold").color(tint ? "#ffffff" : "secondary").paddingHorizontal(tint ? 14 : 9).paddingVertical(5).background(tint ?? null).cornerRadius(8).hoverBackground(tint ?? "#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(onTap);
-var body = ({ entry, item }, decide) => {
+var heartbeatActions = (entry, buttons, hint) => {
   const place = () => heartbeatRoute(entry.heartbeat);
-  const choose = (choice) => () => {
+  const type = (command) => {
     const target = place();
     if (target) {
-      decide(choice, target);
+      cmux("surface.send_text", { surface_id: target.surfaceId, workspace_id: target.workspaceId, text: `${command}
+` });
     }
   };
-  return VStack({ spacing: 5, alignment: "leading" }, [
-    Text(item.trigger).font(11).color("tertiary"),
-    ...item.quote ? [Text(`“${item.quote}”`).font(11).italic().color("secondary")] : [],
-    Text(item.detail).font(11).color("secondary"),
-    Text(item.reach).font(10).color("tertiary"),
-    when2(() => place() !== null, () => HStack({ spacing: 4 }, [
-      choiceButton("Start", choose("start"), entry.colors?.primary ?? PURPLE),
-      choiceButton("Later", choose("later")),
-      choiceButton("Skip", choose("skip")),
-      Spacer({ minLength: 0 })
-    ]).paddingTop(3)),
-    when2(() => place() === null, () => Text(`Run /heartbeat in one of ${entry.name}’s sessions to start these.`).font(10).color("tertiary").paddingTop(3))
-  ]);
+  return [
+    when2(() => place() !== null, () => HStack({ spacing: 4 }, [...buttons(type), Spacer({ minLength: 0 })]).paddingTop(3)),
+    when2(() => place() === null, () => Text(hint).font(10).color("tertiary").paddingTop(3))
+  ];
 };
+var body = ({ entry, item }, command) => VStack({ spacing: 5, alignment: "leading" }, [
+  Text(item.trigger).font(11).color("tertiary"),
+  ...item.quote ? [Text(`“${item.quote}”`).font(11).italic().color("secondary")] : [],
+  Text(item.detail).font(11).color("secondary"),
+  Text(item.reach).font(10).color("tertiary"),
+  ...heartbeatActions(entry, (type) => [
+    choiceButton("Start", () => type(command("start")), entry.colors?.primary ?? PURPLE),
+    choiceButton("Later", () => type(command("later"))),
+    choiceButton("Skip", () => type(command("skip")))
+  ], `Run /heartbeat in one of ${entry.name}’s sessions to start these.`)
+]);
 var heartbeatBody = (entry) => VStack({ spacing: 5, alignment: "leading" }, [
   Text(`Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing, and refreshes the brain every 6 hours when there’s something new.`).font(11).color("secondary"),
   HStack({ spacing: 4 }, [
@@ -1052,19 +1055,13 @@ var proposalsSection = () => {
       ],
       ...item.trigger ? { summary: item.trigger } : {},
       searchText: `${item.trigger} ${item.detail}`,
-      body: () => body(proposal, (choice, place) => {
+      body: () => body(proposal, (choice) => {
         const target = choice === "start" ? placeSession(entry, {
           workspace: item.workspace ?? "",
           folders: item.folder ? [item.folder] : [],
           words: `${item.title} ${item.trigger}`
         }) : null;
-        const where = target?.kind === "workspace" ? ` --workspace=${target.id}` : "";
-        cmux("surface.send_text", {
-          surface_id: place.surfaceId,
-          workspace_id: place.workspaceId,
-          text: `/proposal ${choice} ${item.id}${where}
-`
-        });
+        return `/proposal ${choice} ${item.id}${target?.kind === "workspace" ? ` --workspace=${target.id}` : ""}`;
       })
     };
   };
@@ -1090,14 +1087,7 @@ var proposalsSection = () => {
 
 // src/cmux/sidebar/notes.ts
 var hhmm = (iso) => iso.slice(11, 16);
-var body2 = ({ entry, item }, send) => {
-  const place = () => heartbeatRoute(entry.heartbeat);
-  const act = (text) => {
-    const target = place();
-    if (target) {
-      send(text, target);
-    }
-  };
+var body2 = ({ entry, item }) => {
   const start = () => {
     const target = placeSession(entry, { words: `${item.title} ${item.next}` });
     return `/note start ${item.id}${target.kind === "workspace" ? ` --workspace=${target.id}` : ""}`;
@@ -1106,13 +1096,11 @@ var body2 = ({ entry, item }, send) => {
     Text(item.body).font(11).color("secondary"),
     Text(`Next: ${item.next}`).font(11),
     ...item.sources.map((url) => Text(url).font(10).color("tertiary").lineLimit(1).truncation("middle")),
-    when2(() => place() !== null, () => HStack({ spacing: 4 }, [
-      ...item.canStart && item.reaction !== "started" ? [choiceButton("Start", () => act(start()), entry.colors?.primary ?? PURPLE)] : [],
-      ...item.reaction ? [] : [choiceButton("Useful", () => act(`/note useful ${item.id}`))],
-      choiceButton("Dismiss", () => act(`/note dismiss ${item.id}`)),
-      Spacer({ minLength: 0 })
-    ]).paddingTop(3)),
-    when2(() => place() === null, () => Text(`Run /heartbeat in one of ${entry.name}’s sessions to act on these here.`).font(10).color("tertiary").paddingTop(3))
+    ...heartbeatActions(entry, (type) => [
+      ...item.canStart && item.reaction !== "started" ? [choiceButton("Start", () => type(start()), entry.colors?.primary ?? PURPLE)] : [],
+      ...item.reaction ? [] : [choiceButton("Useful", () => type(`/note useful ${item.id}`))],
+      choiceButton("Dismiss", () => type(`/note dismiss ${item.id}`))
+    ], `Run /heartbeat in one of ${entry.name}’s sessions to act on these here.`)
   ]);
 };
 var notesSection = () => {
@@ -1130,8 +1118,7 @@ var notesSection = () => {
       ],
       summary: item.next,
       searchText: `${item.body} ${item.next}`,
-      body: () => body2(note, (text, place) => cmux("surface.send_text", { surface_id: place.surfaceId, workspace_id: place.workspaceId, text: `${text}
-` }))
+      body: () => body2(note)
     };
   };
   return {

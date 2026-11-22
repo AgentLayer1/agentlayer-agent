@@ -514,9 +514,21 @@ describe('notes', () => {
     on('tool.call', { tool: NOTE_ADD }, () => ({
       result: 'ok',
       text: JSON.stringify({
-        added: [{ id: 'n-1', source: 'site:snippet', title: 'The snippet names the old plugin', delivered: ['report'] }],
+        added: [
+          {
+            id: 'n-1',
+            source: 'site:snippet',
+            title: 'The snippet names the old plugin',
+            body: 'Search still shows the old install line.',
+            next: 'Request indexing for the install page.',
+            sources: ['https://example.com/install'],
+            canStart: true,
+            delivered: ['report']
+          }
+        ],
         refused: [],
-        roomToday: 2
+        cap: 3,
+        today: 1
       })
     }));
     const { host } = await bound($, on);
@@ -547,6 +559,16 @@ describe('notes', () => {
     await run($, 'note', 'start n-2');
     expect(host.argv.slice(-2).map((argv) => argv.slice(2).join(' '))).toEqual(['notes react useful n-1', 'notes start n-2']);
     expect((await run($, 'note', 'later n-1')).text).toBe('Usage: /note <useful|dismiss|start> <id> [--workspace=<id>]');
+  });
+
+  test('a /note the sidebar typed after a half-written prompt runs, never reaches the model, and gives the draft back', async ($, on) => {
+    const { host, submitted, filled } = heartbeatHost(on);
+    const result = await $.prompt.submit({ text: 'half a thought/note start n-3 --workspace=W-2' });
+    await host.clock.settle();
+    expect(result && 'drop' in result, 'answered here, not sent on').toBe(true);
+    expect(host.argv.at(-1)?.slice(2)).toEqual(['notes', 'start', 'n-3', '--workspace=W-2']);
+    expect(submitted).toEqual([]);
+    expect(filled).toEqual(['half a thought']);
   });
 });
 

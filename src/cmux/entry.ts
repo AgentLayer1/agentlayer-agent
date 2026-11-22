@@ -107,13 +107,12 @@ export const homeEntry = (home: string, work: Work, ledger: ProposalLedger, note
     goals: goalsView(work),
     tasksSummary: work.tasksSummary,
     proposals: proposalCards(ledger),
-    notes: recentNotes(notes, new Date()).map(({ id, title, body, next, sources, lens, at, prompt, reaction }) => ({
+    notes: recentNotes(notes, new Date()).map(({ id, title, body, next, sources, at, prompt, reaction }) => ({
       id,
       title,
       body,
       next,
       sources,
-      lens,
       at,
       canStart: prompt !== '',
       reaction

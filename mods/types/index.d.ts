@@ -159,9 +159,10 @@ export interface HeartbeatClock {
   /** How many proposals showed at the last tick, and the most there are. */
   showing?: number;
   target?: number;
-  /** The local day the last notes went out, and how many had gone out that day. */
+  /** The local day the last notes went out, how many had gone out that day, and the day's cap. */
   notesDay?: string;
   notesSent?: number;
+  notesCap?: number;
   /** When this heartbeat last started a brain refresh, epoch ms, so a failed one isn't retried every tick. */
   refreshTriedAt?: number;
   /** When a sync or brain refresh last ran, epoch ms; 0 when never. */

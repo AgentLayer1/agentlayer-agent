@@ -47,39 +47,49 @@ export const choiceButton = (label: string, onTap: () => void, tint?: string) =>
     .fixedSize('horizontal')
     .onTap(onTap);
 
-const body = ({ entry, item }: Shown, decide: (choice: Choice, place: HeartbeatPlace) => void) => {
+/**
+ * A card's buttons, each typing its command into the agent's heartbeat; with no heartbeat to reach, the hint instead.
+ */
+export const heartbeatActions = (
+  entry: HomeEntry,
+  buttons: (type: (command: string) => void) => ReturnType<typeof choiceButton>[],
+  hint: string
+) => {
   const place = () => heartbeatRoute(entry.heartbeat);
-  const choose = (choice: Choice) => () => {
+  const type = (command: string) => {
     const target = place();
     if (target) {
-      decide(choice, target);
+      cmux('surface.send_text', { surface_id: target.surfaceId, workspace_id: target.workspaceId, text: `${command}\n` });
     }
   };
-  return VStack({ spacing: 5, alignment: 'leading' }, [
+  return [
+    when(
+      () => place() !== null,
+      () => HStack({ spacing: 4 }, [...buttons(type), Spacer({ minLength: 0 })]).paddingTop(3)
+    ),
+    when(
+      () => place() === null,
+      () => Text(hint).font(10).color('tertiary').paddingTop(3)
+    )
+  ];
+};
+
+const body = ({ entry, item }: Shown, command: (choice: Choice) => string) =>
+  VStack({ spacing: 5, alignment: 'leading' }, [
     Text(item.trigger).font(11).color('tertiary'),
     ...(item.quote ? [Text(`“${item.quote}”`).font(11).italic().color('secondary')] : []),
     Text(item.detail).font(11).color('secondary'),
     Text(item.reach).font(10).color('tertiary'),
-    when(
-      () => place() !== null,
-      () =>
-        HStack({ spacing: 4 }, [
-          choiceButton('Start', choose('start'), entry.colors?.primary ?? PURPLE),
-          choiceButton('Later', choose('later')),
-          choiceButton('Skip', choose('skip')),
-          Spacer({ minLength: 0 })
-        ]).paddingTop(3)
-    ),
-    when(
-      () => place() === null,
-      () =>
-        Text(`Run /heartbeat in one of ${entry.name}’s sessions to start these.`)
-          .font(10)
-          .color('tertiary')
-          .paddingTop(3)
+    ...heartbeatActions(
+      entry,
+      (type) => [
+        choiceButton('Start', () => type(command('start')), entry.colors?.primary ?? PURPLE),
+        choiceButton('Later', () => type(command('later'))),
+        choiceButton('Skip', () => type(command('skip')))
+      ],
+      `Run /heartbeat in one of ${entry.name}’s sessions to start these.`
     )
   ]);
-};
 
 const heartbeatBody = (entry: HomeEntry) =>
   VStack({ spacing: 5, alignment: 'leading' }, [
@@ -124,7 +134,7 @@ export const proposalsSection = (): HostSection => {
       ...(item.trigger ? { summary: item.trigger } : {}),
       searchText: `${item.trigger} ${item.detail}`,
       body: () =>
-        body(proposal, (choice, place) => {
+        body(proposal, (choice) => {
           // Start names the workspace the session belongs in, picked here where cmux's workspaces are known.
           const target =
             choice === 'start'
@@ -134,12 +144,7 @@ export const proposalsSection = (): HostSection => {
                   words: `${item.title} ${item.trigger}`
                 })
               : null;
-          const where = target?.kind === 'workspace' ? ` --workspace=${target.id}` : '';
-          cmux('surface.send_text', {
-            surface_id: place.surfaceId,
-            workspace_id: place.workspaceId,
-            text: `/proposal ${choice} ${item.id}${where}\n`
-          });
+          return `/proposal ${choice} ${item.id}${target?.kind === 'workspace' ? ` --workspace=${target.id}` : ''}`;
         })
     };
   };

@@ -1,7 +1,7 @@
+import { existsSync } from 'node:fs';
 import type { NoteAdapter } from '@/notes/adapter';
-import { buildWork } from '@/work/build';
-import { callCmux, cmuxVersion, type CmuxCall } from './app';
-import { refreshSidebarQuietly } from './lifecycle';
+import { callCmux, CMUX_APP, type CmuxCall } from './app';
+import { cmuxAdapter } from './proposals';
 
 /**
  * Notes through cmux, over a given runner so a test can watch the calls: a desktop notification that cmux ties to
@@ -9,6 +9,7 @@ import { refreshSidebarQuietly } from './lifecycle';
  */
 export const cmuxNotesAdapterWith = (run: (args: string[]) => CmuxCall, installed: () => boolean): NoteAdapter => ({
   name: 'cmux',
+  group: 'notify',
   available: ({ heartbeat }) => heartbeat?.adapter === 'cmux' && installed(),
   deliver: (note, { agentName, heartbeat }) => {
     if (heartbeat?.adapter !== 'cmux') {
@@ -21,9 +22,7 @@ export const cmuxNotesAdapterWith = (run: (args: string[]) => CmuxCall, installe
       throw new Error(result.output || 'cmux didn’t take the notification.');
     }
   },
-  publish: ({ home }) => {
-    refreshSidebarQuietly(home, buildWork());
-  }
+  publish: ({ home }) => cmuxAdapter.publish(home)
 });
 
-export const cmuxNotesAdapter = cmuxNotesAdapterWith(callCmux, () => cmuxVersion() !== null);
+export const cmuxNotesAdapter = cmuxNotesAdapterWith(callCmux, () => existsSync(CMUX_APP));

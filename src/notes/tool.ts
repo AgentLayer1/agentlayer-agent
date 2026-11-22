@@ -40,7 +40,7 @@ const NOTE = z.object({
 export const tools: ToolDef[] = [
   defineTool({
     name: 'note_add',
-    description: `Send notes: short findings checked against a live public source, each with one next step. At most ${DAILY_CAP} a day; a note on a source sent in the last two weeks, or with nothing to back it, is refused. Each note is written to reports/notes/ and delivered through every adapter the home can reach (the heartbeat's tab, notifications, the cmux Manager). Returns what went out, through which adapters, what was refused and why, and the room left today.`,
+    description: `Send notes: short findings checked against a live source, each with one next step. At most ${DAILY_CAP} a day; a note on a source sent in the last two weeks, or with nothing to back it, is refused. Each note is written to reports/notes/ and delivered through every adapter the home can reach (the heartbeat's tab, notifications, the cmux Manager). Returns what went out, through which adapters, what was refused and why, and how many of the day's cap went out today.`,
     inputSchema: {
       notes: z.array(NOTE).min(1).max(DAILY_CAP).describe('The notes to send, best first.')
     },

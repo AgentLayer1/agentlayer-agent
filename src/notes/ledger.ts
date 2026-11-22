@@ -29,7 +29,6 @@ export interface Note {
    */
   prompt: string;
   reaction: Reaction;
-  delivered: string[];
 }
 
 export interface NoteLedger {
@@ -61,8 +60,7 @@ const parseNote = (data: unknown): Note | null => {
     sources: strings(data.sources),
     next: text('next'),
     prompt: text('prompt'),
-    reaction: isReaction(data.reaction) ? data.reaction : '',
-    delivered: strings(data.delivered)
+    reaction: isReaction(data.reaction) ? data.reaction : ''
   };
 };
 

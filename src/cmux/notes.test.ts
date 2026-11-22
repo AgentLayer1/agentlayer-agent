@@ -13,17 +13,10 @@ const NOTE: Note = {
   sources: [],
   next: '',
   prompt: '',
-  reaction: '',
-  delivered: []
+  reaction: ''
 };
 
-const context = (heartbeat: NoteContext['heartbeat']): NoteContext => ({
-  home: '/h',
-  agentName: 'Oppi',
-  env: {},
-  now: new Date(),
-  heartbeat
-});
+const context = (heartbeat: NoteContext['heartbeat']): NoteContext => ({ home: '/h', agentName: 'Oppi', heartbeat });
 
 const PLACE = { adapter: 'cmux', surfaceId: 's-1', workspaceId: 'w-1' } as const;
 

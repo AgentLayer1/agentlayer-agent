@@ -7,7 +7,7 @@ import type { Note, NoteLedger, Reaction } from './ledger';
 export const DAILY_CAP = 3;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-export const REPEAT_MS = 14 * DAY_MS;
+const REPEAT_MS = 14 * DAY_MS;
 const KEEP_MS = 60 * DAY_MS;
 
 export type NoteInput = Pick<Note, 'source' | 'lens' | 'title' | 'body' | 'sources' | 'next'> & Partial<Pick<Note, 'prompt'>>;
@@ -34,8 +34,16 @@ const isSourceRef = (text: string): boolean =>
 /**
  * The notes sent on `now`'s day in the home's timezone.
  */
-export const notesOn = (ledger: NoteLedger, now: Date): Note[] =>
-  ledger.notes.filter((note) => todayDate(new Date(ms(note.at))) === todayDate(now));
+export const notesOn = (ledger: NoteLedger, now: Date): Note[] => {
+  const day = todayDate(now);
+  return ledger.notes.filter((note) => todayDate(new Date(ms(note.at))) === day);
+};
+
+/**
+ * The notes of the last two weeks, whose sources can't be noted again yet.
+ */
+export const sentLately = (ledger: NoteLedger, now: Date): Note[] =>
+  ledger.notes.filter((note) => now.getTime() - ms(note.at) < REPEAT_MS);
 
 export const roomToday = (ledger: NoteLedger, now: Date): number => Math.max(0, DAILY_CAP - notesOn(ledger, now).length);
 
@@ -51,7 +59,7 @@ const blockedBy = (ledger: NoteLedger, input: NoteInput, now: Date): string => {
   if (roomToday(ledger, now) === 0) {
     return `${DAILY_CAP} notes already went out today`;
   }
-  if (ledger.notes.some((note) => note.source === input.source && now.getTime() - ms(note.at) < REPEAT_MS)) {
+  if (sentLately(ledger, now).some((note) => note.source === input.source)) {
     return 'noted in the last two weeks';
   }
   return input.sources.some(isSourceRef) ? '' : 'no source to back it: a URL, or a file in the home';
@@ -77,8 +85,7 @@ export const addNotes = (
         prompt: input.prompt ?? '',
         id: freshId(new Set(result.ledger.notes.map(({ id }) => id)), makeId),
         at: nowISO(now),
-        reaction: '',
-        delivered: []
+        reaction: ''
       };
       return { ...result, ledger: { notes: [...result.ledger.notes, note] }, added: [...result.added, note] };
     },
@@ -97,12 +104,6 @@ export const recentNotes = (ledger: NoteLedger, now: Date): Note[] => {
     .toSorted((a, b) => Number(a.reaction !== '') - Number(b.reaction !== '') || ms(b.at) - ms(a.at));
 };
 
-export const delivered = (ledger: NoteLedger, id: string, adapters: readonly string[]): NoteLedger => ({
-  notes: ledger.notes.map((note) =>
-    note.id === id ? { ...note, delivered: [...new Set([...note.delivered, ...adapters])] } : note
-  )
-});
-
 /**
  * Records how the operator took a note; null when no note has the id.
  */
@@ -111,13 +112,18 @@ export const react = (ledger: NoteLedger, id: string, reaction: Exclude<Reaction
     ? { notes: ledger.notes.map((note) => (note.id === id ? { ...note, reaction } : note)) }
     : null;
 
+interface LensStats {
+  lastAt: string;
+  notes: number;
+  useful: number;
+  dismissed: number;
+}
+
 /**
  * Each lens's record: when it last produced a note, and how its notes were received.
  */
-export const lensRecord = (
-  ledger: NoteLedger
-): Record<string, { lastAt: string; notes: number; useful: number; dismissed: number }> =>
-  ledger.notes.reduce<Record<string, { lastAt: string; notes: number; useful: number; dismissed: number }>>(
+export const lensRecord = (ledger: NoteLedger): Record<string, LensStats> =>
+  ledger.notes.reduce<Record<string, LensStats>>(
     (record, note) => {
       const current = record[note.lens] ?? { lastAt: '', notes: 0, useful: 0, dismissed: 0 };
       return {

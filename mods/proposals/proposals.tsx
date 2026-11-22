@@ -8,7 +8,6 @@ import { clip } from '../tasks/task';
 import type { HeartbeatEvent, Queue } from '../types';
 import {
   CHOICES,
-  DECISION_AT_END,
   MINUTE_MS,
   REFRESH_RETRY_MS,
   ago,
@@ -17,25 +16,25 @@ import {
   dayIn,
   eventView,
   isLate,
-  decisionInDraft,
   lastWrite,
   logged,
   nextLook,
   noticeText,
   notesRoom,
   notesSent,
-  parseDecision,
   parseHeartbeat,
   parseList,
   workspaceTitles,
+  NOTE_CHOICES,
+  NOTE_DECISION,
+  PROPOSAL_DECISION,
   type Decision,
+  type NoteChoice,
   type ProposalList
 } from './beat';
 
 const USAGE = `Usage: /proposal <${CHOICES.join('|')}> <id> [--workspace=<id>]`;
-const NOTE_USAGE = 'Usage: /note <useful|dismiss|start> <id> [--workspace=<id>]';
-// Mirrors DAILY_CAP in src/notes/rules.ts; mods can't import plugin source.
-const NOTES_A_DAY = 3;
+const NOTE_USAGE = `Usage: /note <${NOTE_CHOICES.join('|')}> <id> [--workspace=<id>]`;
 // Inside the engine's short bound on every session.end hook.
 const RELEASE_TIMEOUT_MS = 1000;
 // TODO(windows): cmux is a macOS app, found only in /Applications.
@@ -118,6 +117,21 @@ async function readList($: EngineInterface): Promise<ProposalList | null> {
 
 async function decide($: EngineInterface, { choice, id, workspace }: Decision): Promise<string> {
   return said($, ['proposals', 'decide', choice, id, ...(workspace ? [`--workspace=${workspace}`] : [])]);
+}
+
+async function noteSaid($: EngineInterface, { choice, id, workspace }: Decision<NoteChoice>): Promise<string> {
+  if (choice !== 'start') {
+    return said($, ['notes', 'react', choice, id]);
+  }
+  return said($, ['notes', 'start', id, ...(workspace ? [`--workspace=${workspace}`] : [])]);
+}
+
+// A decision's answer in place of the prompt it ended, with the draft typed before it put back in the box.
+function dropped($: EngineInterface, text: string, draft: string): { drop: string } {
+  if (draft) {
+    $.clock.after(0, () => void $.prompt.fill({ text: draft, mode: 'replace' }));
+  }
+  return { drop: text };
 }
 
 // The open workspaces' titles, so the look can name the one each proposal belongs in; none when cmux can't answer.
@@ -377,32 +391,27 @@ export const registerProposals = (on: On): void => {
   });
 
   on('command.run', { command: 'proposal' }, async ($, e) => {
-    const decision = parseDecision(e.args);
+    const decision = PROPOSAL_DECISION.parse(e.args);
     return { text: decision ? await decide($, decision) : USAGE };
   });
 
   on('command.run', { command: 'heartbeat' }, async ($, e) => ({ text: await heartbeat($, e.args) }));
 
   on('command.run', { command: 'note' }, async ($, e) => {
-    const words = e.args.trim().split(/\s+/);
-    const [choice, id] = words.filter((word) => !word.startsWith('--'));
-    if (!id || (choice !== 'useful' && choice !== 'dismiss' && choice !== 'start')) {
-      return { text: NOTE_USAGE };
-    }
-    const where = choice === 'start' ? words.filter((word) => word.startsWith('--workspace=')) : [];
-    return { text: await said($, choice === 'start' ? ['notes', 'start', id, ...where] : ['notes', 'react', choice, id]) };
+    const decision = NOTE_DECISION.parse(e.args);
+    return { text: decision ? await noteSaid($, decision) : NOTE_USAGE };
   });
 
   // A note the session sends lands in its scrollback as a notice the model never reads; the heartbeat's band counts it.
   on('tool.call', { tool: /__note_add$/ }, async ($, e, next) => {
     const result = await next(e);
-    const sent = notesSent(e, result.text ?? '');
+    const sent = notesSent(result.text ?? '');
     if (sent?.notes.length) {
       await Promise.all(
         sent.notes.map((item) => $.session.append({ message: { type: 'system', content: [{ type: 'text', text: noticeText(item) }] } }))
       );
       const [now, { zone = 'UTC' }] = await Promise.all([$.clock.now(), read($, beat)]);
-      await update($, beat, (current) => ({ ...current, notesDay: dayIn(now, zone), notesSent: NOTES_A_DAY - sent.roomToday }));
+      await update($, beat, (current) => ({ ...current, notesDay: dayIn(now, zone), notesSent: sent.today, notesCap: sent.cap }));
     }
     return result;
   });
@@ -451,7 +460,7 @@ export const registerProposals = (on: On): void => {
       `every ${state.everyMinutes ?? 55}m`,
       state.target ? `${state.showing ?? 0} of ${state.target} proposals showing` : '',
       state.refreshedAt ? `brain refreshed ${ago(state.refreshedAt, now)}` : '',
-      state.notesSent && state.notesDay === dayIn(now, zone) ? `${state.notesSent} of ${NOTES_A_DAY} notes today` : ''
+      state.notesSent && state.notesDay === dayIn(now, zone) ? `${state.notesSent} of ${state.notesCap ?? state.notesSent} notes today` : ''
     ].filter(Boolean);
     // The time, the mark and the gaps around them.
     const width = Math.max(20, e.props.bodyColumns - 13);
@@ -490,15 +499,12 @@ export const registerProposals = (on: On): void => {
 
   // A sidebar click can land after a half-written prompt; the decision runs, the prompt never reaches the model, and
   // the draft goes back in the box.
-  on('prompt.submit', { text: DECISION_AT_END }, async ($, e, next) => {
-    const found = e.command ? null : decisionInDraft(e.text);
-    if (!found) {
-      return next(e);
-    }
-    const text = await decide($, found);
-    if (found.draft) {
-      $.clock.after(0, () => void $.prompt.fill({ text: found.draft, mode: 'replace' }));
-    }
-    return { drop: text };
+  on('prompt.submit', { text: PROPOSAL_DECISION.atEnd }, async ($, e, next) => {
+    const found = e.command ? null : PROPOSAL_DECISION.inDraft(e.text);
+    return found ? dropped($, await decide($, found), found.draft) : next(e);
+  });
+  on('prompt.submit', { text: NOTE_DECISION.atEnd }, async ($, e, next) => {
+    const found = e.command ? null : NOTE_DECISION.inDraft(e.text);
+    return found ? dropped($, await noteSaid($, found), found.draft) : next(e);
   });
 };

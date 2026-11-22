@@ -3,14 +3,12 @@ import type { SessionPlace } from '@/proposals/adapter';
 import type { Note } from './ledger';
 
 /**
- * What an adapter may need to deliver a note: the home, the process's environment, the clock, and where the
- * heartbeat's session is, when an adapter can reach it.
+ * What an adapter may need to deliver a note: the home, the agent's name, and where the heartbeat's session is, when
+ * an adapter can reach it.
  */
 export interface NoteContext {
   home: string;
   agentName: string;
-  env: Readonly<Record<string, string | undefined>>;
-  now: Date;
   heartbeat: SessionPlace | null;
 }
 
@@ -20,6 +18,14 @@ export interface NoteContext {
  */
 export interface NoteAdapter {
   name: string;
+  /**
+   * Runs even when `AGENT_NOTES_DELIVER` leaves it out, so a home with nothing else set up still keeps every note.
+   */
+  always?: boolean;
+  /**
+   * Adapters in one group stand in for each other: only the first available one, in list order, is used.
+   */
+  group?: string;
   /**
    * Whether this adapter can reach the operator from here (an app is installed, the heartbeat has a place in it).
    */
@@ -34,20 +40,23 @@ export interface NoteAdapter {
   publish?: (context: NoteContext) => void;
 }
 
-// The report is always written, so a home with nothing else configured still keeps every note.
-const ALWAYS = 'report';
-
 /**
- * The adapters to use: every available one, or only those `AGENT_NOTES_DELIVER` names (comma-separated) and the report.
+ * The adapters to use: every available one, or only those `AGENT_NOTES_DELIVER` names (comma-separated) and the
+ * always-on ones, and of each group the first.
  */
-export const chosenAdapters = (adapters: readonly NoteAdapter[], context: NoteContext): NoteAdapter[] => {
-  const named = (context.env.AGENT_NOTES_DELIVER ?? '')
+export const chosenAdapters = (
+  adapters: readonly NoteAdapter[],
+  context: NoteContext,
+  env: Readonly<Record<string, string | undefined>>
+): NoteAdapter[] => {
+  const named = (env.AGENT_NOTES_DELIVER ?? '')
     .split(',')
     .map((name) => name.trim())
     .filter(Boolean);
-  return adapters.filter(
-    (adapter) => (named.length === 0 || named.includes(adapter.name) || adapter.name === ALWAYS) && adapter.available(context)
+  const usable = adapters.filter(
+    (adapter) => (adapter.always || named.length === 0 || named.includes(adapter.name)) && adapter.available(context)
   );
+  return usable.filter((adapter, index) => !adapter.group || usable.findIndex(({ group }) => group === adapter.group) === index);
 };
 
 /**

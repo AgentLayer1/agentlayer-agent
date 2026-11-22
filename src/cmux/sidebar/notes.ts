@@ -1,8 +1,8 @@
 import type { HostSection, SectionCard } from 'cmux-custom-manager/sections';
-import { SCHEMA, type HeartbeatPlace, type HomeEntry, type NoteItem } from './data';
-import { choiceButton, heartbeatRoute } from './proposals';
+import { SCHEMA, type HomeEntry, type NoteItem } from './data';
+import { choiceButton, heartbeatActions } from './proposals';
 import { placeSession } from './session';
-import { GREEN, PURPLE, when } from './style';
+import { GREEN, PURPLE } from './style';
 
 interface Shown {
   key: string;
@@ -12,14 +12,7 @@ interface Shown {
 
 const hhmm = (iso: string): string => iso.slice(11, 16);
 
-const body = ({ entry, item }: Shown, send: (text: string, place: HeartbeatPlace) => void) => {
-  const place = () => heartbeatRoute(entry.heartbeat);
-  const act = (text: string) => {
-    const target = place();
-    if (target) {
-      send(text, target);
-    }
-  };
+const body = ({ entry, item }: Shown) => {
   // Start names the workspace the session belongs in, picked here where cmux's workspaces are known.
   const start = () => {
     const target = placeSession(entry, { words: `${item.title} ${item.next}` });
@@ -29,19 +22,14 @@ const body = ({ entry, item }: Shown, send: (text: string, place: HeartbeatPlace
     Text(item.body).font(11).color('secondary'),
     Text(`Next: ${item.next}`).font(11),
     ...item.sources.map((url) => Text(url).font(10).color('tertiary').lineLimit(1).truncation('middle')),
-    when(
-      () => place() !== null,
-      () =>
-        HStack({ spacing: 4 }, [
-          ...(item.canStart && item.reaction !== 'started' ? [choiceButton('Start', () => act(start()), entry.colors?.primary ?? PURPLE)] : []),
-          ...(item.reaction ? [] : [choiceButton('Useful', () => act(`/note useful ${item.id}`))]),
-          choiceButton('Dismiss', () => act(`/note dismiss ${item.id}`)),
-          Spacer({ minLength: 0 })
-        ]).paddingTop(3)
-    ),
-    when(
-      () => place() === null,
-      () => Text(`Run /heartbeat in one of ${entry.name}’s sessions to act on these here.`).font(10).color('tertiary').paddingTop(3)
+    ...heartbeatActions(
+      entry,
+      (type) => [
+        ...(item.canStart && item.reaction !== 'started' ? [choiceButton('Start', () => type(start()), entry.colors?.primary ?? PURPLE)] : []),
+        ...(item.reaction ? [] : [choiceButton('Useful', () => type(`/note useful ${item.id}`))]),
+        choiceButton('Dismiss', () => type(`/note dismiss ${item.id}`))
+      ],
+      `Run /heartbeat in one of ${entry.name}’s sessions to act on these here.`
     )
   ]);
 };
@@ -68,10 +56,7 @@ export const notesSection = (): HostSection => {
       ],
       summary: item.next,
       searchText: `${item.body} ${item.next}`,
-      body: () =>
-        body(note, (text, place) =>
-          cmux('surface.send_text', { surface_id: place.surfaceId, workspace_id: place.workspaceId, text: `${text}\n` })
-        )
+      body: () => body(note)
     };
   };
   return {

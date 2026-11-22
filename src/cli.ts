@@ -192,7 +192,8 @@ Sidebar commands for cmux (this CLI's, not the cmux app's own; run them from a t
 Notes commands:
   notes list [--json]               Today's notes, the room left, and each lens's record
   notes react <useful|dismiss> <id> Say how a note landed; the next scouting reads it
-  notes start <id>                  Open a session on the note's next step
+  notes start <id> [--workspace=<id>]
+                                    Open a session on the note's next step, in that cmux workspace when named
 
 Proposals commands:
   proposals list [--json]           What's showing, the room for more, and the heartbeat's interval

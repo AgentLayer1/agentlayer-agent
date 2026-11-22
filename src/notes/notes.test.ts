@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { FILES, FOLDERS } from '@/config';
 import { localISO, nowISO, shiftDate, todayDate } from '@/shared/date';
 import { chosenAdapters, deliverNote, type NoteAdapter, type NoteContext } from './adapter';
-import { EMPTY_NOTES, readNotes, type Note } from './ledger';
+import { EMPTY_NOTES, type Note } from './ledger';
 import { addNotes, DAILY_CAP, lensRecord, react, roomToday, type NoteInput } from './rules';
 import { sendNotes } from './send';
 import { reportAdapter } from '@/reports/notes';
@@ -60,12 +60,13 @@ test('reactions record how a note landed, per lens, and an unknown id changes no
   });
 });
 
-const context = (env: Record<string, string> = {}): NoteContext => ({ home: '/h', agentName: 'Oppi', env, now: NOW, heartbeat: null });
+const CONTEXT: NoteContext = { home: '/h', agentName: 'Oppi', heartbeat: null };
 
-const fake = (name: string, available = true, fails = false) => {
+const fake = (name: string, available = true, fails = false, fields: Partial<NoteAdapter> = {}) => {
   const got: string[] = [];
   const adapter: NoteAdapter = {
     name,
+    ...fields,
     available: () => available,
     deliver: (note) => {
       if (fails) {
@@ -77,28 +78,35 @@ const fake = (name: string, available = true, fails = false) => {
   return { adapter, got };
 };
 
-test('every available adapter delivers, unless AGENT_NOTES_DELIVER names a subset; the report always runs', () => {
-  const adapters = [fake('report').adapter, fake('cmux').adapter, fake('mac', false).adapter, fake('slack').adapter];
-  const names = (env: Record<string, string>) => chosenAdapters(adapters, context(env)).map(({ name }) => name);
+test('every available adapter delivers, unless AGENT_NOTES_DELIVER names a subset; an always-on one runs regardless', () => {
+  const adapters = [fake('report', true, false, { always: true }).adapter, fake('cmux').adapter, fake('mac', false).adapter, fake('slack').adapter];
+  const names = (env: Record<string, string>) => chosenAdapters(adapters, CONTEXT, env).map(({ name }) => name);
   expect(names({})).toEqual(['report', 'cmux', 'slack']);
   expect(names({ AGENT_NOTES_DELIVER: 'slack' })).toEqual(['report', 'slack']);
   expect(names({ AGENT_NOTES_DELIVER: 'mac' }), 'a named adapter still has to be available').toEqual(['report']);
 });
 
+test('of a group, the first available adapter stands in for the rest, unless the setting leaves it out', () => {
+  const notifiers = (first: boolean) => [fake('cmux', first, false, { group: 'notify' }).adapter, fake('mac', true, false, { group: 'notify' }).adapter];
+  const names = (first: boolean, env: Record<string, string> = {}) => chosenAdapters(notifiers(first), CONTEXT, env).map(({ name }) => name);
+  expect(names(true)).toEqual(['cmux']);
+  expect(names(false), 'cmux out of reach').toEqual(['mac']);
+  expect(names(true, { AGENT_NOTES_DELIVER: 'mac' })).toEqual(['mac']);
+});
+
 test('an adapter that fails is skipped and the rest still deliver', async () => {
   const good = fake('report');
   const bad = fake('cmux', true, true);
-  const note: Note = { ...input('a'), id: 'n-0', at: '', prompt: '', reaction: '', delivered: [] };
-  expect(await deliverNote(note, [bad.adapter, good.adapter], context())).toEqual(['report']);
+  const note: Note = { ...input('a'), id: 'n-0', at: '', prompt: '', reaction: '' };
+  expect(await deliverNote(note, [bad.adapter, good.adapter], CONTEXT)).toEqual(['report']);
   expect(good.got).toEqual(['n-0']);
 });
 
-test('a sent note lands in reports/notes and the ledger records who delivered it', async () => {
+test('a sent note lands in reports/notes, and the result says who delivered it and how many went out today', async () => {
   rmSync(FILES.NOTES, { force: true });
   const sent = await sendNotes([input('site:snippet', { prompt: 'Fix it, then stop.' })], [reportAdapter], NOW);
-  expect(sent.added.map(({ delivered }) => delivered)).toEqual([['report']]);
-  expect(sent.roomToday).toBe(DAILY_CAP - 1);
-  expect(readNotes().notes[0]?.delivered).toEqual(['report']);
+  expect(sent.added.map(({ delivered, canStart }) => ({ delivered, canStart }))).toEqual([{ delivered: ['report'], canStart: true }]);
+  expect([sent.today, sent.cap]).toEqual([1, DAILY_CAP]);
   const folder = resolve(FOLDERS.REPORTS, 'notes');
   const [file] = existsSync(folder) ? readdirSync(folder) : [];
   const text = readFileSync(resolve(folder, file ?? ''), 'utf-8');

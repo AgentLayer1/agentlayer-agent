@@ -13,25 +13,21 @@ const NOTE: Note = {
   sources: [],
   next: '',
   prompt: '',
-  reaction: '',
-  delivered: []
+  reaction: ''
 };
 
-const context = (heartbeat: NoteContext['heartbeat']): NoteContext => ({ home: '/h', agentName: 'Oppi', env: {}, now: new Date(), heartbeat });
+const CONTEXT: NoteContext = { home: '/h', agentName: 'Oppi', heartbeat: null };
 
 test('a title becomes an AppleScript string that quotes and backslashes cannot break out of', () => {
   expect(appleScriptString('A "quoted" \\ title')).toBe('"A \\"quoted\\" \\\\ title"');
 });
 
-test('a Mac with no cmux heartbeat gets a plain notification naming where the note is; cmux or another OS gets none', () => {
+test('a Mac gets a plain notification naming where the note is; another OS gets none', () => {
   const calls: string[][] = [];
-  const adapter = macNotesAdapterWith((argv) => (calls.push(argv), true), 'darwin', () => true);
-  const inCmux = context({ adapter: 'cmux', surfaceId: 's', workspaceId: 'w' });
-  expect(adapter.available(context(null))).toBe(true);
-  expect(adapter.available(inCmux)).toBe(false);
-  expect(macNotesAdapterWith(() => true, 'darwin', () => false).available(inCmux), 'cmux on record but gone').toBe(true);
-  expect(macNotesAdapterWith(() => true, 'win32', () => false).available(context(null))).toBe(false);
-  adapter.deliver?.(NOTE, context(null));
+  const adapter = macNotesAdapterWith((argv) => (calls.push(argv), true), 'darwin');
+  expect(adapter.available(CONTEXT)).toBe(true);
+  expect(macNotesAdapterWith(() => true, 'win32').available(CONTEXT)).toBe(false);
+  adapter.deliver?.(NOTE, CONTEXT);
   expect(calls).toEqual([
     [
       '/usr/bin/osascript',
