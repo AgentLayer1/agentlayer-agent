@@ -156,6 +156,14 @@ describe('the heartbeat', () => {
     expect(host.commands).toEqual([WAKE, WAKE]);
   });
 
+  test('a bare /heartbeat in the tab that already is the heartbeat only says so; an interval still rebinds', async ($, on) => {
+    const { host } = await bound($, on);
+    expect((await run($, 'heartbeat')).text).toStartWith('This session is the heartbeat, every 55m');
+    await host.clock.settle();
+    expect(host.commands, 'no second look').toEqual([]);
+    expect((await run($, 'heartbeat', '15m')).text).toContain('--every=15m');
+  });
+
   test('/heartbeat with proposals already full still looks, since a better one can replace a card', async ($, on) => {
     const { host } = heartbeatHost(on);
     host.status.showing = 5;

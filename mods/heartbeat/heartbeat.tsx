@@ -467,6 +467,14 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
     await arm($);
     return text;
   }
+  // A bare /heartbeat in the tab that already is the heartbeat (a menu pick, an argument lost) changes nothing; only an
+  // interval rebinds it.
+  if (!ask.every) {
+    const [status, owner] = await Promise.all([readStatus($), heldToken($)]);
+    if (isOwner(status, owner)) {
+      return describe($);
+    }
+  }
   const every = ask.every ? [`--every=${ask.every}`] : [];
   const text = await said($, ['heartbeat', 'bind', `--owner=${await ownerOf($)}`, ...every]);
   return `${text}${await firstLook($, await arm($))}`;
