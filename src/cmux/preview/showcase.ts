@@ -476,18 +476,18 @@ export const SHOWCASE_OPPI_STATE: Partial<HomeState> = {
   proposals: SHOWCASE_OPPI_LEDGER,
   heartbeat: SHOWCASE_OPPI_HEARTBEAT,
   recent: [
-    changed('2026-11-09', '09:52', 'sd-201', 'projects', 'support-desk', 'tasks', 'sd-201.md'),
-    changed('2026-11-09', '09:40', 'sweep', 'reports', 'helpdesk', '2026-11-09-0940-support.md'),
-    changed('2026-11-09', '09:31', 'Refund macros', 'projects', 'support-desk', 'macros.md'),
-    changed('2026-11-09', '09:15', 'review', 'reports', 'reviews', '2026-11-09-0915-review:.md'),
-    changed('2026-11-09', '08:44', 'ac-101', 'projects', 'acme-app', 'tasks', 'ac-101.md'),
-    changed('2026-11-09', '08:30', 'morning', 'reports', 'briefings', '2026-11-09-0830-morning.md'),
-    changed('2026-11-09', '08:12', 'Memory', 'knowledge', 'memory', 'index.md'),
-    changed('2026-11-08', '21:00', 'evening', 'reports', 'briefings', '2026-11-08-2100-evening.md'),
-    changed('2026-11-08', '18:20', 'Acme roadmap', 'projects', 'acme-app', 'roadmap.html'),
-    changed('2026-11-08', '15:02', 'Preferences', 'knowledge', 'user', 'preferences.md'),
-    changed('2026-11-08', '11:47', 'Pricing experiments', 'knowledge', 'concepts', 'pricing-experiments.md'),
-    changed('2026-11-06', '10:05', 'bm-301', 'projects', 'billing-migration', 'tasks', 'bm-301.md')
+    changed('2026-11-09', '09:52', 'sd-201', 'task', 'projects', 'support-desk', 'tasks', 'sd-201.md'),
+    changed('2026-11-09', '09:40', 'sweep', 'helpdesk', 'reports', 'helpdesk', '2026-11-09-0940-support.md'),
+    changed('2026-11-09', '09:31', 'Refund macros', 'doc', 'projects', 'support-desk', 'macros.md'),
+    changed('2026-11-09', '09:15', 'review', 'reviews', 'reports', 'reviews', '2026-11-09-0915-review:.md'),
+    changed('2026-11-09', '08:44', 'ac-101', 'task', 'projects', 'acme-app', 'tasks', 'ac-101.md'),
+    changed('2026-11-09', '08:30', 'morning', 'briefings', 'reports', 'briefings', '2026-11-09-0830-morning.md'),
+    changed('2026-11-09', '08:12', 'Memory', 'memory', 'knowledge', 'memory', 'index.md'),
+    changed('2026-11-08', '21:00', 'evening', 'briefings', 'reports', 'briefings', '2026-11-08-2100-evening.md'),
+    changed('2026-11-08', '18:20', 'Acme roadmap', 'roadmap', 'projects', 'acme-app', 'roadmap.html'),
+    changed('2026-11-08', '15:02', 'Preferences', 'knowledge', 'knowledge', 'user', 'preferences.md'),
+    changed('2026-11-08', '11:47', 'Pricing tests', 'knowledge', 'knowledge', 'concepts', 'pricing-tests.md'),
+    changed('2026-11-06', '10:05', 'bm-301', 'task', 'projects', 'billing-migration', 'tasks', 'bm-301.md')
   ]
 };
 

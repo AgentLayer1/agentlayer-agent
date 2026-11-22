@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { homeEntry } from './entry';
 import { NOVA, NOVA_HOME } from './preview/fixture';
-import { isRecentPath, readRecentFiles, RECENT_LIMIT } from './recent';
+import { readRecentFiles, RECENT_LIMIT, type HomeFolders } from './recent';
 
 const NOW = Date.UTC(2026, 10, 9, 2, 0);
 const MINUTE = 60_000;
@@ -13,18 +13,34 @@ const DAY = 24 * 60 * MINUTE;
 const dirs: string[] = [];
 afterEach(() => dirs.splice(0).forEach((dir) => rmSync(dir, { recursive: true, force: true })));
 
-// Each file is written `ago` milliseconds before NOW.
-const homeWith = (files: Record<string, { ago: number; text?: string }>): string => {
-  const home = mkdtempSync(join(tmpdir(), 'recent-home-'));
-  dirs.push(home);
+const tempDir = (): string => {
+  const dir = mkdtempSync(join(tmpdir(), 'recent-home-'));
+  dirs.push(dir);
+  return dir;
+};
+
+// A home with its projects, reports and knowledge where init puts them.
+const layout = (home: string): HomeFolders => ({
+  home,
+  projects: join(home, 'projects'),
+  reports: join(home, 'reports'),
+  knowledge: join(home, 'knowledge')
+});
+
+// Each file is written `ago` milliseconds before NOW, at a path below `root`.
+const writeFiles = (root: string, files: Record<string, { ago: number; text?: string }>): void =>
   Object.entries(files).forEach(([path, { ago, text = '' }]) => {
-    const absolute = join(home, path);
+    const absolute = join(root, path);
     mkdirSync(dirname(absolute), { recursive: true });
     writeFileSync(absolute, text);
     const at = (NOW - ago) / 1000;
     utimesSync(absolute, at, at);
   });
-  return home;
+
+const homeWith = (files: Record<string, { ago: number; text?: string }>): HomeFolders => {
+  const home = tempDir();
+  writeFiles(home, files);
+  return layout(home);
 };
 
 const kept = [
@@ -67,12 +83,7 @@ const left = [
   'notes.md'
 ];
 
-test('Recent keeps the operator’s documents and leaves out state, raw inputs and generated pages', () => {
-  expect(kept.filter((path) => !isRecentPath(path))).toEqual([]);
-  expect(left.filter(isRecentPath)).toEqual([]);
-});
-
-test('the scan finds what the rule keeps, newest first, and nothing it leaves out', () => {
+test('the scan keeps the operator’s documents, newest first, and leaves out state, raw inputs and generated pages', () => {
   const all = [...kept, ...left];
   const home = homeWith(Object.fromEntries(all.map((path, index) => [path, { ago: index * MINUTE }])));
   const found = readRecentFiles(home, NOW).map((file) => file.path);
@@ -90,7 +101,10 @@ test('a note and its page are one row that opens the page, dated by the newer of
     [join('reports', 'plans', 'guide.html')]: { ago: 6 * MINUTE, text: '<title>The guide</title>' }
   });
   const found = readRecentFiles(home, NOW);
-  expect(found.map(({ path, title }) => ({ path, title })), 'a note with no title of its own takes the page’s').toEqual([
+  expect(
+    found.map(({ path, title }) => ({ path, title })),
+    'a note with no title of its own takes the page’s'
+  ).toEqual([
     { path: html, title: 'Helpdesk profile' },
     { path: join('reports', 'plans', 'old.md'), title: 'old' },
     { path: join('reports', 'plans', 'guide.html'), title: 'The guide' }
@@ -125,19 +139,74 @@ test('only the last 30 days count, and at most RECENT_LIMIT files', () => {
 });
 
 test('a missing home reads as nothing changed', () => {
-  expect(readRecentFiles(join(tmpdir(), 'no-such-home-for-recent'), NOW)).toEqual([]);
+  expect(readRecentFiles(layout(join(tmpdir(), 'no-such-home-for-recent')), NOW)).toEqual([]);
 });
 
-test('the entry titles tasks and reports from the work model, and tags a project’s files with it', () => {
-  const file = (title: string, ...path: string[]) => ({ path: join(...path), date: '2026-11-09', time: '09:00', title });
+test('each file carries its kind and project from where it sits', () => {
+  const home = homeWith({
+    [join('projects', 'acme-app', 'tasks', 'ac-101.md')]: { ago: 0 },
+    [join('projects', 'acme-app', 'roadmap.html')]: { ago: MINUTE },
+    [join('projects', 'acme-app', 'pricing.html')]: { ago: 2 * MINUTE },
+    [join('projects', 'acme-app', 'README.md')]: { ago: 3 * MINUTE },
+    [join('reports', 'plans', 'spec.md')]: { ago: 4 * MINUTE },
+    [join('knowledge', 'concepts', 'idea.md')]: { ago: 5 * MINUTE },
+    [join('knowledge', 'memory', 'index.md')]: { ago: 6 * MINUTE },
+    [join('extensions', 'skills', 'briefing.md')]: { ago: 7 * MINUTE },
+    'roadmap.html': { ago: 8 * MINUTE },
+    'SOUL.md': { ago: 9 * MINUTE }
+  });
+  expect(readRecentFiles(home, NOW).map(({ kind, project }) => `${kind}:${project}`)).toEqual([
+    'task:acme-app',
+    'roadmap:acme-app',
+    'page:acme-app',
+    'doc:acme-app',
+    'plans:',
+    'knowledge:',
+    'memory:',
+    'extension:',
+    'roadmap:',
+    'identity:'
+  ]);
+});
+
+test('projects, reports and knowledge kept outside the home are found where they live, and open from the home', () => {
+  const home = tempDir();
+  const elsewhere = tempDir();
+  writeFiles(home, { 'USER.md': { ago: 3 * MINUTE }, [join('projects', 'acme-app', 'README.md')]: { ago: 0 } });
+  writeFiles(elsewhere, {
+    [join('work', 'acme-app', 'tasks', 'ac-101.md')]: { ago: MINUTE },
+    [join('notes', 'user', 'profile.md')]: { ago: 2 * MINUTE },
+    [join('out', 'plans', 'spec.md')]: { ago: 4 * MINUTE }
+  });
+  const found = readRecentFiles(
+    { home, projects: join(elsewhere, 'work'), reports: join(elsewhere, 'out'), knowledge: join(elsewhere, 'notes') },
+    NOW
+  );
+  expect(found.map(({ path, kind }) => [join(home, path), kind])).toEqual([
+    [join(elsewhere, 'work', 'acme-app', 'tasks', 'ac-101.md'), 'task'],
+    [join(elsewhere, 'notes', 'user', 'profile.md'), 'knowledge'],
+    [join(home, 'USER.md'), 'identity'],
+    [join(elsewhere, 'out', 'plans', 'spec.md'), 'plans']
+  ]);
+});
+
+test('the entry titles tasks and reports from the work model, and a report keeps its Reports kind', () => {
+  const file = (title: string, kind: string, project: string, ...path: string[]) => ({
+    path: join(...path),
+    kind,
+    project,
+    date: '2026-11-09',
+    time: '09:00',
+    title
+  });
   const { recent } = homeEntry(NOVA_HOME, NOVA, {
     recent: [
-      file('ac-101', 'projects', 'acme-app', 'tasks', 'ac-101.md'),
-      file('morning', 'reports', 'briefings', '2026-11-09-0830-morning.md'),
-      file('Acme roadmap', 'projects', 'acme-app', 'roadmap.html'),
-      file('Profile', 'knowledge', 'user', 'profile.md'),
-      file('Memory', 'knowledge', 'memory', 'index.md'),
-      file('About Ada', 'USER.md')
+      file('ac-101', 'task', 'acme-app', 'projects', 'acme-app', 'tasks', 'ac-101.md'),
+      file('morning', 'briefings', '', 'reports', 'briefings', '2026-11-09-0830-morning.md'),
+      file('Acme roadmap', 'roadmap', 'acme-app', 'projects', 'acme-app', 'roadmap.html'),
+      file('Profile', 'knowledge', '', 'knowledge', 'user', 'profile.md'),
+      file('Memory', 'memory', '', 'knowledge', 'memory', 'index.md'),
+      file('About Ada', 'identity', '', 'USER.md')
     ]
   });
   expect(recent?.map(({ title, kind, project }) => ({ title, kind, project }))).toEqual([
@@ -152,5 +221,8 @@ test('the entry titles tasks and reports from the work model, and tags a project
     kind: 'page',
     url: `file://${join(NOVA_HOME, 'projects', 'acme-app', 'roadmap.html')}`
   });
-  expect(recent?.[0]?.target).toEqual({ kind: 'file', path: join(NOVA_HOME, 'projects', 'acme-app', 'tasks', 'ac-101.md') });
+  expect(recent?.[0]?.target).toEqual({
+    kind: 'file',
+    path: join(NOVA_HOME, 'projects', 'acme-app', 'tasks', 'ac-101.md')
+  });
 });

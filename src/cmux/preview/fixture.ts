@@ -224,8 +224,11 @@ const NOVA_HEARTBEAT: Heartbeat = {
   places: [{ adapter: 'cmux', surfaceId: 'w-nova-s2-surface', workspaceId: 'w-nova' }]
 };
 
-export const changed = (date: string, time: string, title: string, ...path: string[]): RecentFile => ({
+// A project's files carry its slug, the folder after projects/.
+export const changed = (date: string, time: string, title: string, kind: string, ...path: string[]): RecentFile => ({
   path: join(...path),
+  kind,
+  project: path[0] === 'projects' ? (path[1] ?? '') : '',
   date,
   time,
   title
@@ -236,14 +239,18 @@ export const changed = (date: string, time: string, title: string, ...path: stri
  * and the memory index a week back.
  */
 const NOVA_RECENT: RecentFile[] = [
-  changed('2026-11-09', '09:40', 'ac-101', 'projects', 'acme-app', 'tasks', 'ac-101.md'),
-  changed('2026-11-09', '08:30', 'morning', 'reports', 'briefings', '2026-11-09-0830-morning.md'),
-  changed('2026-11-08', '17:05', 'Acme roadmap', 'projects', 'acme-app', 'roadmap.html'),
-  changed('2026-11-08', '11:20', 'Profile', 'knowledge', 'user', 'profile.md'),
-  changed('2026-11-03', '21:00', 'Memory', 'knowledge', 'memory', 'index.md')
+  changed('2026-11-09', '09:40', 'ac-101', 'task', 'projects', 'acme-app', 'tasks', 'ac-101.md'),
+  changed('2026-11-09', '08:30', 'morning', 'briefings', 'reports', 'briefings', '2026-11-09-0830-morning.md'),
+  changed('2026-11-08', '17:05', 'Acme roadmap', 'roadmap', 'projects', 'acme-app', 'roadmap.html'),
+  changed('2026-11-08', '11:20', 'Profile', 'knowledge', 'knowledge', 'user', 'profile.md'),
+  changed('2026-11-03', '21:00', 'Memory', 'memory', 'knowledge', 'memory', 'index.md')
 ];
 
-export const NOVA_STATE: Partial<HomeState> = { proposals: NOVA_LEDGER, heartbeat: NOVA_HEARTBEAT, recent: NOVA_RECENT };
+export const NOVA_STATE: Partial<HomeState> = {
+  proposals: NOVA_LEDGER,
+  heartbeat: NOVA_HEARTBEAT,
+  recent: NOVA_RECENT
+};
 
 /**
  * Scout's one proposal, with no heartbeat to start it from.

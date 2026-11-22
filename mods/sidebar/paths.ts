@@ -1,4 +1,5 @@
-// Pure, so the contract test can hold it to the plugin's rule (src/cmux/recent.ts isRecentPath), which it copies.
+// Pure, so the contract test can hold it to what the scanner (src/cmux/recent.ts) finds in a home's default layout,
+// which it copies. Folders kept outside the home (AGENT_PROJECTS and the like) wait for the next refresh.
 
 const EXTENSIONS = ['.md', '.html', '.pdf', '.csv', '.txt', '.png', '.jpg'];
 const ROOT_FILES = ['USER.md', 'SOUL.md', 'IDENTITY.md', 'AGENTS.md', 'roadmap.html'];

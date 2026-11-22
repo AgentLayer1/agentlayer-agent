@@ -23,7 +23,7 @@ import {
   type ReportItem,
   type TaskItem
 } from './sidebar/data';
-import { readRecentFiles, recentPlace, stemOf, type RecentFile } from './recent';
+import { readRecentFiles, stemOf, type RecentFile } from './recent';
 
 // Enough for a few weeks of reports while keeping the shared sidebar file small; the dashboard lists them all.
 export const REPORT_LIMIT = 40;
@@ -77,16 +77,15 @@ export const readHomeState = (): HomeState => ({
 const recentItems = (home: string, work: Work, files: readonly RecentFile[]): RecentItem[] => {
   const tasks = new Map(work.tasks.map((task) => [task.path, task.title]));
   const reports = new Map(work.reports.map((report) => [report.path, report]));
-  return files.map(({ path, date, time, title }) => {
+  return files.map(({ path, kind: placed, project, date, time, title }) => {
     const report = reports.get(path) ?? reports.get(`${stemOf(path)}.md`);
-    const place = recentPlace(path);
     // A report keeps the kind the Reports section gives it.
-    const kind = report ? reportKind(report) : place.kind;
+    const kind = report ? reportKind(report) : placed;
     return {
       title: tasks.get(path) ?? report?.title ?? title,
       kind,
       hue: nameHue(kind),
-      project: place.project,
+      project,
       date,
       time,
       target: targetOf(home, path)

@@ -1,5 +1,5 @@
 import { readdirSync, statSync, type Dirent } from 'node:fs';
-import { basename, dirname, extname, join, sep } from 'node:path';
+import { basename, dirname, extname, join, relative } from 'node:path';
 import { FOLDERS, TIMEZONE } from '@/config';
 import { documentTitle } from '@/reports/read';
 import { DAY_MS } from '@/shared/date';
@@ -13,15 +13,7 @@ const WINDOW_MS = 30 * DAY_MS;
 
 const EXTENSIONS = new Set(['.md', '.html', '.pdf', '.csv', '.txt', '.png', '.jpg']);
 
-const ROOT_FILES = new Set(['USER.md', 'SOUL.md', 'IDENTITY.md', 'AGENTS.md', 'roadmap.html']);
-
-const TOP_FOLDERS = new Set(['projects', 'reports', 'knowledge', 'extensions']);
-
-// Rewritten by the plugin on every change, so they'd always lead the list.
-const GENERATED = new Set([join('projects', 'TASKS.md'), join('reports', 'index.md'), join('reports', 'pinned.md')]);
-
-// Folders no recent file can sit under, skipped without reading them.
-const SKIPPED = new Set([join('knowledge', 'raw'), join('knowledge', 'memory', 'archive'), join('reports', 'captures')]);
+const IDENTITY_FILES = new Set(['USER.md', 'SOUL.md', 'IDENTITY.md', 'AGENTS.md']);
 
 const DAILY_MEMORY = /^\d{4}-\d{2}-\d{2}\.md$/;
 
@@ -30,9 +22,17 @@ const DAILY_MEMORY = /^\d{4}-\d{2}-\d{2}\.md$/;
  */
 export interface RecentFile {
   /**
-   * HOME-relative; the page when a note and its page share a name.
+   * HOME-relative (`../` for a folder kept outside the home); the page when a note and its page share a name.
    */
   path: string;
+  /**
+   * What sort of file it is by where it sits (`task`, `roadmap`, a report's folder, `knowledge`).
+   */
+  kind: string;
+  /**
+   * The slug of the project it sits in, '' when none.
+   */
+  project: string;
   /**
    * When it last changed, in the home's timezone: `YYYY-MM-DD` and `HH:MM`.
    */
@@ -41,63 +41,87 @@ export interface RecentFile {
   title: string;
 }
 
-interface Changed {
+/**
+ * Where the home keeps each part of itself; projects, reports and knowledge can each live outside it.
+ */
+export interface HomeFolders {
+  home: string;
+  projects: string;
+  reports: string;
+  knowledge: string;
+}
+
+const homeFolders = (): HomeFolders => ({
+  home: FOLDERS.HOME,
+  projects: FOLDERS.PROJECTS,
+  reports: FOLDERS.REPORTS,
+  knowledge: FOLDERS.KNOWLEDGE
+});
+
+interface Place {
+  kind: string;
+  project: string;
+}
+
+/**
+ * A part of the home Recent looks in: a folder, which subfolders it walks (none without `enters`), which files count,
+ * and what each one is. `parts` is a path below the zone's folder.
+ */
+interface Zone {
+  folder: string;
+  enters?: (parts: readonly string[]) => boolean;
+  keeps: (parts: readonly string[]) => boolean;
+  place: (parts: readonly string[]) => Place;
+}
+
+const everything = (): boolean => true;
+
+const kindOnly = (kind: string) => (): Place => ({ kind, project: '' });
+
+const projectPlace = (parts: readonly string[]): Place => {
+  const [project = '', folder = ''] = parts;
+  const name = parts.at(-1) ?? '';
+  const kind =
+    name === 'roadmap.html' ? 'roadmap' : folder === 'tasks' ? 'task' : extname(name) === '.html' ? 'page' : 'doc';
+  return { kind, project };
+};
+
+// The operator's documents only. The plugin's state, raw inputs and the pages it regenerates on every change
+// (dashboard.html, projects/TASKS.md, reports/index.md) sit outside every zone.
+const zonesOf = ({ home, projects, reports, knowledge }: HomeFolders): Zone[] => [
+  {
+    folder: home,
+    keeps: ([name = '']) => IDENTITY_FILES.has(name) || name === 'roadmap.html',
+    place: ([name]) => ({ kind: name === 'roadmap.html' ? 'roadmap' : 'identity', project: '' })
+  },
+  { folder: projects, enters: everything, keeps: (parts) => parts.length > 1, place: projectPlace },
+  {
+    folder: reports,
+    // Screenshot captures, not reports.
+    enters: ([category]) => category !== 'captures',
+    keeps: (parts) => parts.length > 1,
+    place: ([category = '']) => ({ kind: category, project: '' })
+  },
+  { folder: join(knowledge, 'user'), keeps: everything, place: kindOnly('knowledge') },
+  { folder: join(knowledge, 'concepts'), keeps: everything, place: kindOnly('knowledge') },
+  {
+    folder: join(knowledge, 'memory'),
+    keeps: ([name = '']) => name === 'index.md' || DAILY_MEMORY.test(name),
+    place: kindOnly('memory')
+  },
+  {
+    folder: join(home, 'extensions', 'skills'),
+    keeps: ([name = '']) => extname(name) === '.md',
+    place: kindOnly('extension')
+  }
+];
+
+interface Changed extends Place {
   path: string;
   mtimeMs: number;
 }
 
 const isHidden = (name: string): boolean => name.startsWith('.') || name === 'node_modules';
-
-/**
- * Whether a HOME-relative file belongs in Recent: the operator's documents, not the plugin's state, raw inputs or
- * generated pages.
- */
-export const isRecentPath = (path: string): boolean => {
-  const parts = path.split(sep);
-  const [top = '', second = '', third = ''] = parts;
-  if (parts.some(isHidden) || !EXTENSIONS.has(extname(path)) || GENERATED.has(path)) {
-    return false;
-  }
-  if (parts.length === 1) {
-    return ROOT_FILES.has(path);
-  }
-  if (top === 'projects') {
-    return true;
-  }
-  if (top === 'reports') {
-    return parts.length > 2 && second !== 'captures';
-  }
-  if (top === 'knowledge') {
-    return (
-      parts.length === 3 &&
-      (second === 'user' ||
-        second === 'concepts' ||
-        (second === 'memory' && (third === 'index.md' || DAILY_MEMORY.test(third))))
-    );
-  }
-  return top === 'extensions' && second === 'skills' && parts.length === 3 && extname(path) === '.md';
-};
-
-/**
- * Where a Recent file sits: its kind by folder, and the project it belongs to ('' outside projects/).
- */
-export const recentPlace = (path: string): { kind: string; project: string } => {
-  const [top = '', second = '', third = ''] = path.split(sep);
-  const project = top === 'projects' ? second : '';
-  if (basename(path) === 'roadmap.html') {
-    return { kind: 'roadmap', project };
-  }
-  if (top === 'projects') {
-    return { kind: third === 'tasks' ? 'task' : extname(path) === '.html' ? 'page' : 'doc', project };
-  }
-  if (top === 'reports') {
-    return { kind: second, project };
-  }
-  if (top === 'knowledge') {
-    return { kind: second === 'memory' ? 'memory' : 'knowledge', project };
-  }
-  return { kind: top === 'extensions' ? 'extension' : 'identity', project };
-};
 
 const entriesOf = (folder: string): Dirent[] => {
   try {
@@ -107,16 +131,19 @@ const entriesOf = (folder: string): Dirent[] => {
   }
 };
 
-const entersFolder = (path: string): boolean =>
-  !isHidden(basename(path)) && !SKIPPED.has(path) && (dirname(path) !== '.' || TOP_FOLDERS.has(path));
-
-const walk = (home: string, folder: string): Changed[] =>
-  entriesOf(join(home, folder)).flatMap((entry) => {
-    const path = folder ? join(folder, entry.name) : entry.name;
-    if (entry.isDirectory()) {
-      return entersFolder(path) ? walk(home, path) : [];
+const walk = (home: string, zone: Zone, below: readonly string[] = []): Changed[] =>
+  entriesOf(join(zone.folder, ...below)).flatMap((entry) => {
+    const parts = [...below, entry.name];
+    if (isHidden(entry.name)) {
+      return [];
     }
-    return entry.isFile() && isRecentPath(path) ? [{ path, mtimeMs: statSync(join(home, path)).mtimeMs }] : [];
+    if (entry.isDirectory()) {
+      return zone.enters?.(parts) ? walk(home, zone, parts) : [];
+    }
+    const absolute = join(zone.folder, ...parts);
+    return entry.isFile() && EXTENSIONS.has(extname(entry.name)) && zone.keeps(parts)
+      ? [{ path: relative(home, absolute), mtimeMs: statSync(absolute).mtimeMs, ...zone.place(parts) }]
+      : [];
   });
 
 /**
@@ -131,7 +158,7 @@ const pairNotes = (files: readonly Changed[]): Changed[] => {
   const groups = Map.groupBy(files, (file) => (isPaired(file.path) ? stemOf(file.path) : file.path));
   return [...groups.values()].flatMap((group) => {
     const shown = group.find((file) => extname(file.path) === '.html') ?? group[0];
-    return shown ? [{ path: shown.path, mtimeMs: Math.max(...group.map((file) => file.mtimeMs)) }] : [];
+    return shown ? [{ ...shown, mtimeMs: Math.max(...group.map((file) => file.mtimeMs)) }] : [];
   });
 };
 
@@ -150,16 +177,18 @@ const titleOf = (home: string, path: string): string => {
 };
 
 /**
- * The newest files the operator would want back, newest first: at most RECENT_LIMIT changed in the last 30 days.
+ * The newest files the operator would want back, newest first: at most RECENT_LIMIT changed in the last 30 days,
+ * looked for wherever the home keeps its projects, reports and knowledge.
  */
-export const readRecentFiles = (home: string = FOLDERS.HOME, now: number = Date.now()): RecentFile[] => {
+export const readRecentFiles = (folders: HomeFolders = homeFolders(), now: number = Date.now()): RecentFile[] => {
   const format = new Intl.DateTimeFormat('sv-SE', { timeZone: TIMEZONE, dateStyle: 'short', timeStyle: 'short' });
-  return pairNotes(walk(home, ''))
+  const { home } = folders;
+  return pairNotes(zonesOf(folders).flatMap((zone) => walk(home, zone)))
     .filter((file) => now - file.mtimeMs <= WINDOW_MS)
     .toSorted((a, b) => b.mtimeMs - a.mtimeMs || a.path.localeCompare(b.path))
     .slice(0, RECENT_LIMIT)
-    .map(({ path, mtimeMs }) => {
+    .map(({ path, kind, project, mtimeMs }) => {
       const stamp = format.format(mtimeMs);
-      return { path, date: stamp.slice(0, 10), time: stamp.slice(11, 16), title: titleOf(home, path) };
+      return { path, kind, project, date: stamp.slice(0, 10), time: stamp.slice(11, 16), title: titleOf(home, path) };
     });
 };

@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import { HOME_MARKER_FILES, PLUGIN_SOURCE_ROOT, RUNTIME_DIR, agentSlug, pluginName } from '@/shared/naming';
-import { readdirSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { DATA_DIR, HOME_MARKERS } from '../../mods/manuals/repo';
 import { LIVE_STATUSES } from '../../mods/tasks/statuses';
 import { isValidTransition } from '@/tasks/schema';
@@ -12,7 +13,7 @@ import { DEFAULT_AGENT_NAME } from '@/shared/persona';
 import { TASK_REF } from '@/tasks/prefix';
 import { MAY_HOLD_ID, linkTaskIds } from '../../mods/tasks/link';
 import { showsInRecent } from '../../mods/sidebar/paths';
-import { isRecentPath } from '@/cmux/recent';
+import { readRecentFiles } from '@/cmux/recent';
 
 describe('mods', () => {
   test("the task linker's id shape is the plugin's, collision prefixes and four-digit ids included", () => {
@@ -58,7 +59,7 @@ describe('mods', () => {
     expect(commands.filter((name) => skills.has(name))).toEqual([]);
   });
 
-  test("the sidebar refresh asks for a refresh on exactly the files the sidebar's Recent lists", () => {
+  test("the sidebar refresh asks for a refresh on exactly the files the sidebar's Recent finds in a home's default layout", () => {
     const paths = [
       'USER.md',
       'roadmap.html',
@@ -74,7 +75,6 @@ describe('mods', () => {
       'reports/index.md',
       'reports/pinned.md',
       'reports/plans/spec.md',
-      'reports/plans/spec.html',
       'reports/captures/shot.png',
       'reports/loose.md',
       'knowledge/index.md',
@@ -92,9 +92,26 @@ describe('mods', () => {
       '.state/work.json',
       '.claude/rules/xcode.md'
     ];
-    const kept = paths.filter(isRecentPath);
-    expect(kept.length).toBeGreaterThan(8);
-    expect(paths.filter(showsInRecent)).toEqual(kept);
+    const home = mkdtempSync(join(tmpdir(), 'recent-contract-'));
+    try {
+      paths.forEach((path) => {
+        mkdirSync(dirname(join(home, path)), { recursive: true });
+        writeFileSync(join(home, path), '');
+      });
+      const folders = {
+        home,
+        projects: join(home, 'projects'),
+        reports: join(home, 'reports'),
+        knowledge: join(home, 'knowledge')
+      };
+      const found = readRecentFiles(folders)
+        .map((item) => item.path)
+        .toSorted();
+      expect(found.length).toBeGreaterThan(8);
+      expect(paths.filter(showsInRecent).toSorted()).toEqual(found);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
   });
 
   test('the dashboard catalog lists every feature the module registers', () => {
