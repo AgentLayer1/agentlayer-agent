@@ -23,9 +23,9 @@ export const codexHost = {
       pluginRoot: `the plugin root, \`${FOLDERS.ROOT}\``,
       toolPrefix: `\`mcp__${PLUGIN_NAME}__<tool>\`, the same tool on this host's ${PLUGIN_NAME} MCP server`,
       askUser:
-        'no such tool here: ask in chat (the question, then numbered options with the recommended one first), then stop and wait for the answer',
+        "this host's question tool if it offers one (`request_user_input_async`, or `request_user_input` in Plan mode); otherwise ask in chat (the question, then numbered options with the recommended one first). Either way, end your turn and wait for the answer",
       subagent:
-        "this host's own subagent if it has one; otherwise do each part yourself, one after another, to the same output contract",
+        "this host's subagent tool if it offers one (`spawn_agent`); otherwise do each part yourself, one after another, to the same output contract",
       skill: '`$<name>`, the same skill run the way this host runs one',
       webSearch: "this host's web search, or the agent's `web_search` tool",
       webFetch: "this host's page fetch, or `curl`"

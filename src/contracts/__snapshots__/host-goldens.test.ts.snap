@@ -157,8 +157,8 @@ fatal: not a git repository (or any of the parent directories): .git
 <!-- agentlayer glossary for codex: the skills are written in Claude Code's terms; read each one as follows -->
 - \`\${CLAUDE_PLUGIN_ROOT}\` → the plugin root, \`<ROOT>\`
 - \`mcp__plugin_agentlayer_agent__<tool>\` → \`mcp__agentlayer__<tool>\`, the same tool on this host's agentlayer MCP server
-- \`AskUserQuestion\` → no such tool here: ask in chat (the question, then numbered options with the recommended one first), then stop and wait for the answer
-- \`Agent, a subagent\` → this host's own subagent if it has one; otherwise do each part yourself, one after another, to the same output contract
+- \`AskUserQuestion\` → this host's question tool if it offers one (\`request_user_input_async\`, or \`request_user_input\` in Plan mode); otherwise ask in chat (the question, then numbered options with the recommended one first). Either way, end your turn and wait for the answer
+- \`Agent, a subagent\` → this host's subagent tool if it offers one (\`spawn_agent\`); otherwise do each part yourself, one after another, to the same output contract
 - \`/agentlayer:<name> or Skill(agentlayer:<name>)\` → \`$<name>\`, the same skill run the way this host runs one
 - \`WebSearch\` → this host's web search, or the agent's \`web_search\` tool
 - \`WebFetch\` → this host's page fetch, or \`curl\`
@@ -216,8 +216,8 @@ exports[`session start, per host and home state Codex, pre-init home 1`] = `
 → Not set up yet, run $init to get started.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<!-- agentlayer glossary for codex: the skills are written in Claude Code's terms; read each one as follows -->
 - \`\${CLAUDE_PLUGIN_ROOT}\` → the plugin root, \`<ROOT>\`
 - \`mcp__plugin_agentlayer_agent__<tool>\` → \`mcp__agentlayer__<tool>\`, the same tool on this host's agentlayer MCP server
-- \`AskUserQuestion\` → no such tool here: ask in chat (the question, then numbered options with the recommended one first), then stop and wait for the answer
-- \`Agent, a subagent\` → this host's own subagent if it has one; otherwise do each part yourself, one after another, to the same output contract
+- \`AskUserQuestion\` → this host's question tool if it offers one (\`request_user_input_async\`, or \`request_user_input\` in Plan mode); otherwise ask in chat (the question, then numbered options with the recommended one first). Either way, end your turn and wait for the answer
+- \`Agent, a subagent\` → this host's subagent tool if it offers one (\`spawn_agent\`); otherwise do each part yourself, one after another, to the same output contract
 - \`/agentlayer:<name> or Skill(agentlayer:<name>)\` → \`$<name>\`, the same skill run the way this host runs one
 - \`WebSearch\` → this host's web search, or the agent's \`web_search\` tool
 - \`WebFetch\` → this host's page fetch, or \`curl\`
@@ -249,8 +249,8 @@ exports[`session start, per host and home state Codex, stranded home 1`] = `
 → <HOME> has a SOUL.md but no .state/version.json recording this agent — see the note below. Do NOT run init.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<!-- agentlayer glossary for codex: the skills are written in Claude Code's terms; read each one as follows -->
 - \`\${CLAUDE_PLUGIN_ROOT}\` → the plugin root, \`<ROOT>\`
 - \`mcp__plugin_agentlayer_agent__<tool>\` → \`mcp__agentlayer__<tool>\`, the same tool on this host's agentlayer MCP server
-- \`AskUserQuestion\` → no such tool here: ask in chat (the question, then numbered options with the recommended one first), then stop and wait for the answer
-- \`Agent, a subagent\` → this host's own subagent if it has one; otherwise do each part yourself, one after another, to the same output contract
+- \`AskUserQuestion\` → this host's question tool if it offers one (\`request_user_input_async\`, or \`request_user_input\` in Plan mode); otherwise ask in chat (the question, then numbered options with the recommended one first). Either way, end your turn and wait for the answer
+- \`Agent, a subagent\` → this host's subagent tool if it offers one (\`spawn_agent\`); otherwise do each part yourself, one after another, to the same output contract
 - \`/agentlayer:<name> or Skill(agentlayer:<name>)\` → \`$<name>\`, the same skill run the way this host runs one
 - \`WebSearch\` → this host's web search, or the agent's \`web_search\` tool
 - \`WebFetch\` → this host's page fetch, or \`curl\`
