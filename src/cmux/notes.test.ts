@@ -12,7 +12,8 @@ const NOTE: Note = {
   body: '',
   sources: [],
   next: '',
-  reaction: '',
+  state: 'waiting',
+  decidedAt: '',
   laterUntil: '',
   folder: '',
   workspace: ''

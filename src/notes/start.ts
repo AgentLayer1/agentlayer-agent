@@ -17,7 +17,7 @@ export const decideOnNote = (id: string, choice: MessageChoice, context: StartCo
     return `No note ${id}.`;
   }
   if (decision.outcome === 'already') {
-    return `${decision.note.title}: already ${decision.note.reaction}.`;
+    return `${decision.note.title}: already ${decision.note.state}.`;
   }
   const { note } = decision;
   writeNotes(decision.ledger);

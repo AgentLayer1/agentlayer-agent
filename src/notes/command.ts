@@ -18,11 +18,11 @@ const list = (args: readonly string[]): number => {
   const today = notesOn(ledger, now);
   const room = roomToday(ledger, now);
   if (args.includes('--json')) {
-    const recent = sentLately(ledger, now).map(({ id, at, source, lens, title, reaction }) => ({ id, at, source, lens, title, reaction }));
+    const recent = sentLately(ledger, now).map(({ id, at, source, lens, title, state }) => ({ id, at, source, lens, title, state }));
     console.log(JSON.stringify({ cap: DAILY_CAP, room, today: today.length, recent, lenses: lensRecord(ledger) }));
     return 0;
   }
-  const lines = today.map(({ id, title, reaction }) => `${id}  ${title}${reaction ? ` (${reaction})` : ''}`);
+  const lines = today.map(({ id, title, state }) => `${id}  ${title}${state === 'waiting' ? '' : ` (${state})`}`);
   console.log([`${today.length} of ${DAILY_CAP} notes today · room for ${room}`, ...lines].join('\n'));
   return 0;
 };

@@ -53,7 +53,7 @@ test('decide finds a message by its id in either ledger, and Dismiss means the s
     expect(runMessagesCommand('decide', ['dismiss', proposalId])).toBe(0);
     expect(runMessagesCommand('decide', ['dismiss', noteId])).toBe(0);
     expect(readProposalLedger().proposals[0]?.state).toBe('dismissed');
-    expect(readNotes().notes[0]?.reaction).toBe('dismissed');
+    expect(readNotes().notes[0]?.state).toBe('dismissed');
     expect(runMessagesCommand('decide', ['dismiss', 'x-9'])).toBe(0);
     expect(said.mock.calls.map(([line]) => String(line))).toEqual([
       'Dismissed: Reply.',

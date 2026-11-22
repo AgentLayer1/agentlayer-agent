@@ -80,7 +80,8 @@ test('a note waits until it is started or dismissed; Later only puts it off unti
   expect(ids(NOW, later), 'still open, the surface hides it until then').toContain('n-0');
   const acted = decided(decided(later, 'n-1', 'start'), 'n-2', 'dismiss');
   expect(ids(NOW, acted)).toEqual(['n-0']);
-  expect(acted.notes.map(({ reaction }) => reaction)).toEqual(['', 'started', 'dismissed']);
+  expect(acted.notes.map(({ state }) => state)).toEqual(['waiting', 'started', 'dismissed']);
+  expect(acted.notes.map(({ decidedAt }) => decidedAt), 'a decision records when').toEqual(['', nowISO(NOW), nowISO(NOW)]);
   expect(ids(new Date(NOW.getTime() + 8 * 24 * HOUR), later), 'a week untouched').toEqual([]);
   expect(decideNote(ledger, 'n-9', 'dismiss', NOW).outcome).toBe('unknown');
   expect(decideNote(acted, 'n-1', 'start', NOW).outcome, 'Start is final, so a second one opens nothing').toBe('already');
@@ -113,7 +114,7 @@ test('Start records the note before opening a session, so a repeat opens nothing
     expect(works.opened).toHaveLength(1);
     const broken = launcher(true);
     expect(decideOnNote('n-1', 'start', context(broken.adapter))).toBe("Couldn't start Found b: cmux is not running");
-    expect(readNotes().notes[1]?.reaction, 'put back, so it can be started again').toBe('');
+    expect(readNotes().notes[1]?.state, 'put back, so it can be started again').toBe('waiting');
   } finally {
     rmSync(FILES.NOTES, { force: true });
   }
@@ -134,6 +135,15 @@ test('a note put off near the end of its week waits until its Later time, not th
   }
   const atLaterTime = new Date(Date.parse(later.note.laterUntil) + HOUR);
   expect(openNotes(later.ledger, atLaterTime).map(({ id }) => id)).toEqual(['n-0']);
+});
+
+test('a note recorded before notes had a state reads its reaction as the state it meant', () => {
+  const base = { id: 'n-0', at: nowISO(NOW), source: 's', lens: 'signals', title: 't', body: 'b', sources: [], next: 'x' };
+  const read = parseNotes({ notes: [{ ...base, reaction: '' }, { ...base, id: 'n-1', reaction: 'dismissed' }] }).notes;
+  expect(read.map(({ state, decidedAt }) => [state, decidedAt])).toEqual([
+    ['waiting', ''],
+    ['dismissed', '']
+  ]);
 });
 
 test("a note keeps the workspace and folder the agent picked; a note from an older ledger reads both as ''", () => {
@@ -204,7 +214,7 @@ test('of a group, the first available adapter stands in for the rest, unless the
 test('an adapter that fails is skipped and the rest still deliver', async () => {
   const good = fake('report');
   const bad = fake('cmux', true, true);
-  const note: Note = { ...input('a'), id: 'n-0', at: '', reaction: '', laterUntil: '', folder: '', workspace: '' };
+  const note: Note = { ...input('a'), id: 'n-0', at: '', state: 'waiting', decidedAt: '', laterUntil: '', folder: '', workspace: '' };
   expect(await deliverNote(note, [bad.adapter, good.adapter], CONTEXT)).toEqual(['report']);
   expect(good.got).toEqual(['n-0']);
 });

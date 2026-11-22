@@ -780,7 +780,8 @@ run('a note and the proposals share INBOX, newest first, with the same three but
     body: 'The page lists the old plans.',
     sources: ['https://example.com/pricing'],
     next: 'Update the pricing table.',
-    reaction: '',
+    state: 'waiting',
+    decidedAt: '',
     laterUntil: '',
     folder: '',
     workspace: ''
@@ -799,8 +800,8 @@ run('a note and the proposals share INBOX, newest first, with the same three but
   );
   const decided = (changes: Partial<Note>) =>
     homeEntry(NOVA_HOME, NOVA, { ...NOVA_STATE, notes: { notes: [{ ...note, ...changes }] } }).notes;
-  expect(decided({ reaction: 'dismissed' }), 'a dismissed note leaves').toEqual([]);
-  expect(decided({ reaction: 'started' }), 'a started one too').toEqual([]);
+  expect(decided({ state: 'dismissed' }), 'a dismissed note leaves').toEqual([]);
+  expect(decided({ state: 'started' }), 'a started one too').toEqual([]);
   const putOff = mount(
     installed({ [NOVA_HOME]: homeEntry(NOVA_HOME, NOVA, { ...NOVA_STATE, notes: { notes: [{ ...note, laterUntil: '2999-01-01T08:00:00+08:00' }] } }) }),
     CMUX_DATA

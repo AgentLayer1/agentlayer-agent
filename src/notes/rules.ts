@@ -59,7 +59,7 @@ const blockedBy = (ledger: NoteLedger, input: NoteInput, now: Date): string => {
   if (sentLately(ledger, now).some((note) => note.source === input.source)) {
     return 'noted in the last two weeks';
   }
-  if (ledger.notes.some((note) => note.source === input.source && note.reaction === 'dismissed')) {
+  if (ledger.notes.some((note) => note.source === input.source && note.state === 'dismissed')) {
     return 'dismissed by the operator';
   }
   return input.sources.some(isSourceRef) ? '' : 'no source to back it: a URL, or a file in the home';
@@ -86,7 +86,8 @@ export const addNotes = (
         workspace: input.workspace ?? '',
         id: freshId(new Set(result.ledger.notes.map(({ id }) => id)), makeId),
         at: nowISO(now),
-        reaction: '',
+        state: 'waiting',
+        decidedAt: '',
         laterUntil: ''
       };
       return { ...result, ledger: { notes: [...result.ledger.notes, note] }, added: [...result.added, note] };
@@ -100,7 +101,7 @@ export const addNotes = (
  */
 export const openNotes = (ledger: NoteLedger, now: Date): Note[] =>
   ledger.notes
-    .filter((note) => note.reaction === '' && now.getTime() - Math.max(isoMs(note.at), isoMs(note.laterUntil)) < OPEN_MS)
+    .filter((note) => note.state === 'waiting' && now.getTime() - Math.max(isoMs(note.at), isoMs(note.laterUntil)) < OPEN_MS)
     .toSorted((a, b) => isoMs(b.at) - isoMs(a.at));
 
 type NoteDecision =
@@ -117,13 +118,13 @@ export const decideNote = (ledger: NoteLedger, id: string, choice: MessageChoice
   if (!found) {
     return { outcome: 'unknown' };
   }
-  if (found.reaction === 'started' || found.reaction === 'dismissed') {
+  if (found.state !== 'waiting') {
     return { outcome: 'already', note: found };
   }
   const note: Note =
     choice === 'later'
       ? { ...found, laterUntil: nextMorning(now) }
-      : { ...found, reaction: choice === 'start' ? 'started' : 'dismissed', laterUntil: '' };
+      : { ...found, state: choice === 'start' ? 'started' : 'dismissed', laterUntil: '', decidedAt: nowISO(now) };
   return { outcome: 'decided', ledger: { notes: ledger.notes.map((item) => (item.id === id ? note : item)) }, note };
 };
 
@@ -131,7 +132,7 @@ export const decideNote = (ledger: NoteLedger, id: string, choice: MessageChoice
  * Puts a started note back, when its session couldn't open.
  */
 export const reopenNote = (ledger: NoteLedger, id: string): NoteLedger => ({
-  notes: ledger.notes.map((note) => (note.id === id ? { ...note, reaction: '' } : note))
+  notes: ledger.notes.map((note) => (note.id === id ? { ...note, state: 'waiting', decidedAt: '' } : note))
 });
 
 /**
@@ -167,8 +168,8 @@ export const lensRecord = (ledger: NoteLedger): Record<string, LensStats> =>
       return new Map(record).set(note.lens, {
         lastAt: isoMs(note.at) > isoMs(current.lastAt) ? note.at : current.lastAt,
         notes: current.notes + 1,
-        started: current.started + Number(note.reaction === 'started'),
-        dismissed: current.dismissed + Number(note.reaction === 'dismissed')
+        started: current.started + Number(note.state === 'started'),
+        dismissed: current.dismissed + Number(note.state === 'dismissed')
       });
     }, new Map<string, LensStats>())
   );

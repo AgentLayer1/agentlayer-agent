@@ -3,8 +3,8 @@ import { isRecord } from '@/shared/json-block';
 import { jsonProblem, writeJsonChecked } from '@/shared/utils';
 import { readFileSync } from 'node:fs';
 
-const REACTIONS = ['', 'dismissed', 'started'] as const;
-export type Reaction = (typeof REACTIONS)[number];
+const STATES = ['waiting', 'started', 'dismissed'] as const;
+export type NoteState = (typeof STATES)[number];
 
 /**
  * A short finding the agent checked against a live source and sent on its own, with one next step.
@@ -24,7 +24,11 @@ export interface Note {
   body: string;
   sources: string[];
   next: string;
-  reaction: Reaction;
+  state: NoteState;
+  /**
+   * When the operator started or dismissed it, an ISO time; '' while it waits.
+   */
+  decidedAt: string;
   /**
    * When a note put off with Later shows again, an ISO time with an offset; '' when it shows now.
    */
@@ -44,7 +48,15 @@ export const EMPTY_NOTES: NoteLedger = { notes: [] };
 
 const TEXT_FIELDS = ['id', 'at', 'source', 'lens', 'title', 'body', 'next'] as const;
 
-const isReaction = (value: unknown): value is Reaction => REACTIONS.some((reaction) => reaction === value);
+const isState = (value: unknown): value is NoteState => STATES.some((state) => state === value);
+
+// A note recorded before notes had a state says how the operator took it as `reaction` ('' while it waited).
+const stateOf = (data: Record<string, unknown>): NoteState => {
+  if (isState(data.state)) {
+    return data.state;
+  }
+  return data.reaction === 'started' || data.reaction === 'dismissed' ? data.reaction : 'waiting';
+};
 
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
@@ -66,7 +78,8 @@ const parseNote = (data: unknown): Note | null => {
     body: required('body'),
     sources: strings(data.sources),
     next: required('next'),
-    reaction: isReaction(data.reaction) ? data.reaction : '',
+    state: stateOf(data),
+    decidedAt: text('decidedAt'),
     laterUntil: text('laterUntil'),
     folder: text('folder'),
     workspace: text('workspace')
