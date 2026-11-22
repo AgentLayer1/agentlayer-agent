@@ -78,6 +78,28 @@ export interface ReportItem {
   target: PinTarget;
 }
 
+/**
+ * A file in the home that changed lately: a task, a report, a project page, a knowledge article.
+ */
+export interface RecentItem {
+  title: string;
+  /**
+   * What sort of file it is (`task`, `roadmap`, a report's kind), and the hue its chip takes.
+   */
+  kind: string;
+  hue: number;
+  /**
+   * The slug of the project it sits in, '' when none.
+   */
+  project: string;
+  /**
+   * `YYYY-MM-DD` and `HH:MM` it last changed; the sidebar words the day against today.
+   */
+  date: string;
+  time: string;
+  target: PinTarget;
+}
+
 export interface GoalItem {
   /**
    * Its place in its block, from 1.
@@ -240,6 +262,10 @@ export interface HomeEntry {
    * How many older reports were left out, which the dashboard still lists.
    */
   olderReports: number;
+  /**
+   * The files changed lately, newest first; absent in an entry an older plugin wrote.
+   */
+  recent?: RecentItem[];
   goals: GoalsItem;
   /**
    * What the open tasks add up to, as sync or the heartbeat last wrote it in TASKS.md; null when none is written.
@@ -267,7 +293,7 @@ export interface HomeEntry {
 
 export interface StartPage {
   tab: 'manager' | 'agents';
-  section?: 'projects' | 'reports' | 'goals';
+  section?: 'projects' | 'reports' | 'recent' | 'goals';
   /**
    * Cards that start open: `tasks` for the Tasks card, or a project's slug.
    */

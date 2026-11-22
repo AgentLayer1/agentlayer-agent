@@ -11,6 +11,8 @@ import { DEFAULT_AGENT_NAME as MODS_DEFAULT_NAME } from '../../mods/shared/agent
 import { DEFAULT_AGENT_NAME } from '@/shared/persona';
 import { TASK_REF } from '@/tasks/prefix';
 import { MAY_HOLD_ID, linkTaskIds } from '../../mods/tasks/link';
+import { showsInRecent } from '../../mods/sidebar/paths';
+import { isRecentPath } from '@/cmux/recent';
 
 describe('mods', () => {
   test("the task linker's id shape is the plugin's, collision prefixes and four-digit ids included", () => {
@@ -54,6 +56,45 @@ describe('mods', () => {
     const commands = MOD_FEATURES.flatMap((feature) => feature.commands.map((command) => command.name));
     expect(commands.length).toBeGreaterThan(5);
     expect(commands.filter((name) => skills.has(name))).toEqual([]);
+  });
+
+  test("the sidebar refresh asks for a refresh on exactly the files the sidebar's Recent lists", () => {
+    const paths = [
+      'USER.md',
+      'roadmap.html',
+      'dashboard.html',
+      'notes.md',
+      'projects/TASKS.md',
+      'projects/acme/README.md',
+      'projects/acme/tasks/ac-001.md',
+      'projects/acme/tasks/archive/ac-000.md',
+      'projects/acme/data.json',
+      'projects/acme/node_modules/pkg/README.md',
+      'projects/.obsidian/x.md',
+      'reports/index.md',
+      'reports/pinned.md',
+      'reports/plans/spec.md',
+      'reports/plans/spec.html',
+      'reports/captures/shot.png',
+      'reports/loose.md',
+      'knowledge/index.md',
+      'knowledge/user/profile.md',
+      'knowledge/user/assets/avatar.jpg',
+      'knowledge/concepts/idea.md',
+      'knowledge/memory/index.md',
+      'knowledge/memory/2026-03-10.md',
+      'knowledge/memory/archive/decisions-2026-02.md',
+      'knowledge/memory/notes.md',
+      'knowledge/raw/sessions/2026-03-10.md',
+      'extensions/skills/briefing.md',
+      'extensions/skills/helper.ts',
+      'scripts/run.md',
+      '.state/work.json',
+      '.claude/rules/xcode.md'
+    ];
+    const kept = paths.filter(isRecentPath);
+    expect(kept.length).toBeGreaterThan(8);
+    expect(paths.filter(showsInRecent)).toEqual(kept);
   });
 
   test('the dashboard catalog lists every feature the module registers', () => {

@@ -8,6 +8,7 @@ import { registerHeartbeat } from '../heartbeat/heartbeat';
 import { registerQueue } from '../queue/queue';
 import { registerReports } from '../reports/reports';
 import { registerSetup } from '../setup/setup';
+import { registerSidebar } from '../sidebar/sidebar';
 import { registerSync } from '../sync/tracker';
 import { registerTasks } from '../tasks/tasks';
 
@@ -22,4 +23,5 @@ export const register: Register = (on) => {
   registerHeartbeat(on);
   registerSetup(on);
   registerAgents(on);
+  registerSidebar(on);
 };

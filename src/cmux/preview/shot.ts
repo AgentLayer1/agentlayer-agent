@@ -18,6 +18,7 @@ export const PAGES = {
   manager: { tab: 'manager' },
   projects: { tab: 'agents', section: 'projects', expanded: ['tasks', 'support-desk'] },
   reports: { tab: 'agents', section: 'reports' },
+  recent: { tab: 'agents', section: 'recent' },
   goals: { tab: 'agents', section: 'goals' }
 } as const satisfies Record<string, StartPage>;
 

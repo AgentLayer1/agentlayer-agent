@@ -170,6 +170,16 @@ export const AGENTS_FEATURE = {
   tools: []
 } as const satisfies ModFeature;
 
+export const SIDEBAR_FEATURE = {
+  id: 'sidebar',
+  title: 'Sidebar refresh',
+  summary:
+    "A file this conversation writes or edits in the home shows in the cmux sidebar's Recent within seconds, with no model turn.",
+  where: 'the cmux sidebar',
+  commands: [],
+  tools: []
+} as const satisfies ModFeature;
+
 export const MOD_FEATURES: readonly ModFeature[] = [
   COMMANDS_FEATURE,
   TASKS_FEATURE,
@@ -180,5 +190,6 @@ export const MOD_FEATURES: readonly ModFeature[] = [
   QUEUE_FEATURE,
   HEARTBEAT_FEATURE,
   SETUP_FEATURE,
-  AGENTS_FEATURE
+  AGENTS_FEATURE,
+  SIDEBAR_FEATURE
 ];

@@ -4,8 +4,8 @@
  *
  *   Manager   what each agent proposes, then every session, sorted by what needs you (cmux Manager)
  *   Agents    a chip per agent, then the chosen agent's Projects (its tasks and projects by state), Reports (its pins
- *             and newest reports by day) and Goals (the year's theme, then today, this week, this month and this
- *             year), with its dashboard and roadmap a tap away
+ *             and newest reports by day), Recent (the files changed lately, by day) and Goals (the year's theme, then
+ *             today, this week, this month and this year), with its dashboard and roadmap beside the Projects search
  *
  * The workspace you're in picks the agent; a chip picks another.
  *
@@ -863,6 +863,7 @@ var stateGroup = (entry, title, projects, tasksOf) => {
   ]);
 };
 var projectsBody = (entry) => {
+  const { dashboard, roadmap } = entry;
   const [query, setQuery] = signal("");
   const listed = listedTasks(entry);
   const tasksOf = entry.tasks.reduce((byProject, task) => byProject.set(task.project, [...byProject.get(task.project) ?? [], task]), new Map);
@@ -870,7 +871,11 @@ var projectsBody = (entry) => {
   const searching = () => query().trim() !== "";
   return VStack({ spacing: 10 }, [
     ...entry.tasksSummary ? [summaryBanner(entry.tasksSummary)] : [],
-    searchField("Search tasks…", setQuery),
+    HStack({ spacing: 4 }, [
+      searchField("Search tasks…", setQuery),
+      toolIcon("square.grid.3x3", "Dashboard", () => cmux("browser.tab.new", { url: `${dashboard}#today` })),
+      ...roadmap ? [toolIcon("map", "Roadmap", () => cmux("browser.tab.new", { url: roadmap }))] : []
+    ]),
     when2(searching, () => VStack({ spacing: 1 }, [
       dividedList(found, (item) => item.task.id, (item) => taskRow(entry, item.task, item.color)),
       Text(() => found().length ? "" : "No matching tasks.").font(11).color("tertiary").paddingHorizontal(4)
@@ -886,7 +891,7 @@ var projectsBody = (entry) => {
   ]);
 };
 
-// src/cmux/sidebar/reports.ts
+// src/cmux/sidebar/days.ts
 var clock = (time) => {
   const [hour, minute] = time.split(":").map(Number);
   if (hour === undefined || minute === undefined || Number.isNaN(hour) || Number.isNaN(minute)) {
@@ -904,30 +909,62 @@ var dayTitle = (date, day) => {
   }
   return shortDate(date, { weekday: true }) ?? (date || "Undated");
 };
-var badge2 = (label, color) => HStack({ spacing: 4 }, [
-  Circle({ size: 6 }).fill(color),
-  Text(label).font(10).color("secondary").lineLimit(1).truncation("tail")
-]).fixedSize("horizontal");
-var STATUS_COLOR = { clean: GREEN, findings: ORANGE, critical: RED, draft: GREY };
-var statusBadge = (status) => pill(status, STATUS_COLOR[status] ?? GREY);
-var reportRow = (item) => listRow(VStack({ spacing: 3, alignment: "leading" }, [
+var byDay = (items) => items.reduce((groups, item) => {
+  const last = groups.at(-1);
+  return last && last.date === item.date ? [...groups.slice(0, -1), { date: last.date, items: [...last.items, item] }] : [...groups, { date: item.date, items: [item] }];
+}, []);
+var datedRow = (item, extras = []) => listRow(VStack({ spacing: 3, alignment: "leading" }, [
   Text(item.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail"),
   HStack({ spacing: 6 }, [
-    badge2(item.kind, hueColor(item.hue)),
-    ...item.status ? [statusBadge(item.status)] : [],
+    HStack({ spacing: 4 }, [
+      Circle({ size: 6 }).fill(hueColor(item.hue)),
+      Text(item.kind).font(10).color("secondary").lineLimit(1).truncation("tail")
+    ]).fixedSize("horizontal"),
+    ...extras,
     Spacer({ minLength: 0 }),
     keepWidth(Text(clock(item.time)).font(10).monospaced().color("tertiary"))
   ])
 ])).onTap(() => openTarget(item.target));
+var dayCards = (groups, searching, row) => ForEach({ items: groups, key: (group) => group.date }, (group) => {
+  const age = daysUntil(group().date, today());
+  const [open, setOpen] = signal(age !== null && age >= -1);
+  return foldCard({
+    title: () => dayTitle(group().date, today()),
+    count: () => group().items.length,
+    icon: "calendar",
+    color: ACCENT,
+    expanded: () => open() || searching(),
+    setExpanded: setOpen
+  }, () => dividedList(() => group().items, (item) => targetKey(item.target), row));
+});
+
+// src/cmux/sidebar/recent.ts
+var recentBody = (entry) => {
+  const { recent } = entry;
+  if (!recent) {
+    return note(`Update ${entry.name} to see its recent files.`);
+  }
+  const colorOf = projectColors(entry);
+  const row = (item) => datedRow(item, item.project ? [pill(item.project, colorOf(item.project))] : []);
+  const [query, setQuery] = signal("");
+  const days = computed(() => byDay(recent.filter((item) => matchesQuery(query(), item.title, item.kind, item.project))));
+  const searching = () => query().trim() !== "";
+  return VStack({ spacing: 10 }, [
+    searchField("Search recent files…", setQuery),
+    VStack({ spacing: 6 }, [dayCards(days, searching, row)]),
+    Text(() => days().length ? "" : searching() ? "No matching files." : "Nothing changed in the last 30 days.").font(11).color("tertiary").paddingHorizontal(4)
+  ]);
+};
+
+// src/cmux/sidebar/reports.ts
+var STATUS_COLOR = { clean: GREEN, findings: ORANGE, critical: RED, draft: GREY };
+var statusBadge = (status) => pill(status, STATUS_COLOR[status] ?? GREY);
+var reportRow = (item) => datedRow(item, item.status ? [statusBadge(item.status)] : []);
 var pinRow = ({ pin, project }) => listRow(HStack({ spacing: 6 }, [
   Text(pin.icon).font(11).frame({ width: 14 }),
   Text(pin.title).font(12).opacity(TITLE_OPACITY).lineLimit(2).truncation("tail").frame({ maxWidth: "infinity", alignment: "leading" }),
   ...project ? [pill(project.slug, project.color)] : []
 ])).onTap(() => openTarget(pin.target));
-var byDay = (reports) => reports.reduce((groups, report) => {
-  const last = groups.at(-1);
-  return last && last.date === report.date ? [...groups.slice(0, -1), { date: last.date, reports: [...last.reports, report] }] : [...groups, { date: report.date, reports: [report] }];
-}, []);
 var reportsBody = (entry) => {
   const [query, setQuery] = signal("");
   const pinned = [
@@ -938,7 +975,6 @@ var reportsBody = (entry) => {
   const days = computed(() => byDay(entry.reports.filter((report) => matchesQuery(query(), report.title, report.kind))));
   const empty = computed(() => !shownPins().length && !days().length);
   const searching = () => query().trim() !== "";
-  const showing = (open) => () => open() || searching();
   const [pinsOpen, setPinsOpen] = signal(true);
   return VStack({ spacing: 10 }, [
     searchField("Search reports…", setQuery),
@@ -948,21 +984,10 @@ var reportsBody = (entry) => {
         count: () => shownPins().length,
         icon: "pin.fill",
         color: ORANGE,
-        expanded: showing(pinsOpen),
+        expanded: () => pinsOpen() || searching(),
         setExpanded: setPinsOpen
       }, () => dividedList(shownPins, (item) => targetKey(item.pin.target), pinRow))),
-      ForEach({ items: days, key: (group) => group.date }, (group) => {
-        const age = daysUntil(group().date, today());
-        const [open, setOpen] = signal(age !== null && age >= -1);
-        return foldCard({
-          title: () => dayTitle(group().date, today()),
-          count: () => group().reports.length,
-          icon: "calendar",
-          color: ACCENT,
-          expanded: showing(open),
-          setExpanded: setOpen
-        }, () => dividedList(() => group().reports, (report) => targetKey(report.target), reportRow));
-      })
+      dayCards(days, searching, reportRow)
     ]),
     Text(() => empty() ? searching() ? "No matching reports." : "No reports yet." : "").font(11).color("tertiary").paddingHorizontal(4),
     ...entry.olderReports ? [
@@ -972,28 +997,24 @@ var reportsBody = (entry) => {
 };
 
 // src/cmux/sidebar/agent.ts
-var PROJECTS = { id: "projects", label: "Projects", page: "today", body: projectsBody };
+var PROJECTS = { id: "projects", label: "Projects", body: projectsBody };
 var SECTIONS2 = [
   PROJECTS,
-  { id: "reports", label: "Reports", page: "reports", body: reportsBody },
-  { id: "goals", label: "Goals", page: "today/goals", body: goalsBody }
+  { id: "reports", label: "Reports", body: reportsBody },
+  { id: "recent", label: "Recent", body: recentBody },
+  { id: "goals", label: "Goals", body: goalsBody }
 ];
 var agentPage = (options) => {
   const [section, setSection] = signal(SECTIONS2.find((item) => item.id === DATA.open?.section) ?? PROJECTS);
   return VStack({ spacing: 8 }, [
     agentHeader(options),
-    scopedPage(options.home, (entry) => {
-      const { dashboard, roadmap } = entry;
-      return VStack({ spacing: 8 }, [
-        HStack({ spacing: 4 }, [
-          ...SECTIONS2.map((item) => chip(item.label, () => section() === item, () => setSection(item))),
-          Spacer({ minLength: 4 }),
-          toolIcon("square.grid.3x3", "Dashboard", () => cmux("browser.tab.new", { url: `${dashboard}#${section().page}` })),
-          ...roadmap ? [toolIcon("map", "Roadmap", () => cmux("browser.tab.new", { url: roadmap }))] : []
-        ]),
-        ForEach({ items: () => [section()], key: (item) => item.label }, (item) => item().body(entry))
-      ]);
-    })
+    scopedPage(options.home, (entry) => VStack({ spacing: 8 }, [
+      HStack({ spacing: 4 }, [
+        ...SECTIONS2.map((item) => chip(item.label, () => section() === item, () => setSection(item))),
+        Spacer({ minLength: 0 })
+      ]),
+      ForEach({ items: () => [section()], key: (item) => item.label }, (item) => item().body(entry))
+    ]))
   ]).paddingHorizontal(6);
 };
 

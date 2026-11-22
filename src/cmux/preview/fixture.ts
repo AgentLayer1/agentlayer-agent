@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import type { Heartbeat } from '@/heartbeat/ledger';
 import type { Proposal, ProposalLedger } from '@/proposals/ledger';
 import type { HomeState } from '../entry';
+import type { RecentFile } from '../recent';
 import { parseGoals } from '@/work/goals';
 import { WORK_SCHEMA, type Work, type WorkReport, type WorkTask } from '@/work/model';
 
@@ -223,7 +224,26 @@ const NOVA_HEARTBEAT: Heartbeat = {
   places: [{ adapter: 'cmux', surfaceId: 'w-nova-s2-surface', workspaceId: 'w-nova' }]
 };
 
-export const NOVA_STATE: Partial<HomeState> = { proposals: NOVA_LEDGER, heartbeat: NOVA_HEARTBEAT };
+export const changed = (date: string, time: string, title: string, ...path: string[]): RecentFile => ({
+  path: join(...path),
+  date,
+  time,
+  title
+});
+
+/**
+ * What Nova changed lately, newest first: a task and a report the work model titles, a project roadmap, the profile,
+ * and the memory index a week back.
+ */
+const NOVA_RECENT: RecentFile[] = [
+  changed('2026-11-09', '09:40', 'ac-101', 'projects', 'acme-app', 'tasks', 'ac-101.md'),
+  changed('2026-11-09', '08:30', 'morning', 'reports', 'briefings', '2026-11-09-0830-morning.md'),
+  changed('2026-11-08', '17:05', 'Acme roadmap', 'projects', 'acme-app', 'roadmap.html'),
+  changed('2026-11-08', '11:20', 'Profile', 'knowledge', 'user', 'profile.md'),
+  changed('2026-11-03', '21:00', 'Memory', 'knowledge', 'memory', 'index.md')
+];
+
+export const NOVA_STATE: Partial<HomeState> = { proposals: NOVA_LEDGER, heartbeat: NOVA_HEARTBEAT, recent: NOVA_RECENT };
 
 /**
  * Scout's one proposal, with no heartbeat to start it from.

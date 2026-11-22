@@ -4,8 +4,8 @@
  *
  *   Manager   what each agent proposes, then every session, sorted by what needs you (cmux Manager)
  *   Agents    a chip per agent, then the chosen agent's Projects (its tasks and projects by state), Reports (its pins
- *             and newest reports by day) and Goals (the year's theme, then today, this week, this month and this
- *             year), with its dashboard and roadmap a tap away
+ *             and newest reports by day), Recent (the files changed lately, by day) and Goals (the year's theme, then
+ *             today, this week, this month and this year), with its dashboard and roadmap beside the Projects search
  *
  * The workspace you're in picks the agent; a chip picks another.
  *

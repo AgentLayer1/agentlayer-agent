@@ -19,9 +19,11 @@ import {
   type PinItem,
   type PinTarget,
   type ProjectCard,
+  type RecentItem,
   type ReportItem,
   type TaskItem
 } from './sidebar/data';
+import { readRecentFiles, recentPlace, stemOf, type RecentFile } from './recent';
 
 // Enough for a few weeks of reports while keeping the shared sidebar file small; the dashboard lists them all.
 export const REPORT_LIMIT = 40;
@@ -54,19 +56,43 @@ const reportItem = (home: string, report: WorkReport): ReportItem => {
 };
 
 /**
- * What the sidebar draws of a home besides its work: the proposals waiting, the notes sent, and the heartbeat.
+ * What the sidebar draws of a home besides its work: the proposals waiting, the notes sent, the heartbeat, and the
+ * files changed lately.
  */
 export interface HomeState {
   proposals: ProposalLedger;
   notes: NoteLedger;
   heartbeat: Heartbeat | null;
+  recent: RecentFile[];
 }
 
 export const readHomeState = (): HomeState => ({
   proposals: readProposalLedger(),
   notes: readNotes(),
-  heartbeat: readHeartbeat()
+  heartbeat: readHeartbeat(),
+  recent: readRecentFiles()
 });
+
+// A row shows a page over its note, and the reports index may name either one.
+const recentItems = (home: string, work: Work, files: readonly RecentFile[]): RecentItem[] => {
+  const tasks = new Map(work.tasks.map((task) => [task.path, task.title]));
+  const reports = new Map(work.reports.map((report) => [report.path, report]));
+  return files.map(({ path, date, time, title }) => {
+    const report = reports.get(path) ?? reports.get(`${stemOf(path)}.md`);
+    const place = recentPlace(path);
+    // A report keeps the kind the Reports section gives it.
+    const kind = report ? reportKind(report) : place.kind;
+    return {
+      title: tasks.get(path) ?? report?.title ?? title,
+      kind,
+      hue: nameHue(kind),
+      project: place.project,
+      date,
+      time,
+      target: targetOf(home, path)
+    };
+  });
+};
 
 // The heartbeat's cmux tab, where the sidebar's buttons type; null when it isn't a cmux session.
 const heartbeatPlace = (heartbeat: Heartbeat | null): HeartbeatPlace | null => {
@@ -76,12 +102,13 @@ const heartbeatPlace = (heartbeat: Heartbeat | null): HeartbeatPlace | null => {
 
 /**
  * What the sidebar shows of the home at `home`: its agent, pages, each project's counts and live tasks, its pins, its
- * newest reports, its goals, the proposals waiting with the heartbeat that decides them, and today's and yesterday's notes.
+ * newest reports, the files changed lately, its goals, the proposals waiting with the heartbeat that decides them, and
+ * today's and yesterday's notes.
  */
 export const homeEntry = (
   home: string,
   work: Work,
-  { proposals = EMPTY_LEDGER, notes = EMPTY_NOTES, heartbeat = null }: Partial<HomeState> = {}
+  { proposals = EMPTY_LEDGER, notes = EMPTY_NOTES, heartbeat = null, recent = [] }: Partial<HomeState> = {}
 ): HomeEntry => {
   // An index line without a link names a report nothing can open.
   const openable = byLastUpdate(work.reports.filter((report) => report.path !== ''));
@@ -124,6 +151,7 @@ export const homeEntry = (
     pins: work.pins.map((pin) => pinItem(home, pin)),
     reports: openable.slice(0, REPORT_LIMIT).map((report) => reportItem(home, report)),
     olderReports: Math.max(0, openable.length - REPORT_LIMIT),
+    recent: recentItems(home, work, recent),
     goals: goalsView(work),
     tasksSummary: work.tasksSummary,
     proposals: proposalCards(proposals),

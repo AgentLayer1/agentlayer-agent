@@ -13,10 +13,10 @@ const INDEX_LINE = /^- (\d{2}:\d{2}) · \[((?:\\.|[^\]\\])+)\](?:\(([^)]+)\))?(?
 /** Category segment from a path like `reports/plans/2026-…md` → `plans`. */
 const categoryOf = (path: string): string => path.split('/')[1] ?? '';
 
-/** Display title for an orphan report file (one written outside report_write,
- *  e.g. a plan-mode export): frontmatter `title:`, else the first H1, else the
- *  filename. */
-const orphanTitle = (content: string, fileName: string): string => {
+/**
+ * A markdown file's title: frontmatter `title:`, else the first H1, else the file name.
+ */
+export const documentTitle = (content: string, fileName: string): string => {
   const { frontmatter, body } = splitFrontmatter(content);
   const fmTitle = frontmatter
     .match(/^title:[ \t]*(.+)$/m)?.[1]
@@ -95,7 +95,7 @@ export const readReports = (): WorkReport[] => {
       const changed = changedAt(format, path);
       refs.push({
         ...(stamp ? { date: stamp[1], time: `${stamp[2]}:${stamp[3]}` } : (changed ?? { date: '', time: '' })),
-        title: orphanTitle(body, fileName),
+        title: documentTitle(body, fileName),
         path,
         skill: '',
         status: '',

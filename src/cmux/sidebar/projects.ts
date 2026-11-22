@@ -17,6 +17,7 @@ import {
   ORANGE,
   progressBar,
   RED,
+  toolIcon,
   when
 } from './style';
 import { count, taskRow, today } from './tasks';
@@ -228,6 +229,7 @@ const stateGroup = (
  * The scoped agent's work: a search over its tasks, every task at a glance, then its projects by state.
  */
 export const projectsBody = (entry: HomeEntry) => {
+  const { dashboard, roadmap } = entry;
   const [query, setQuery] = signal('');
   const listed = listedTasks(entry);
   const tasksOf = entry.tasks.reduce(
@@ -238,7 +240,12 @@ export const projectsBody = (entry: HomeEntry) => {
   const searching = () => query().trim() !== '';
   return VStack({ spacing: 10 }, [
     ...(entry.tasksSummary ? [summaryBanner(entry.tasksSummary)] : []),
-    searchField('Search tasks…', setQuery),
+    // The dashboard and roadmap ride the search row, which leaves the section chips the full width.
+    HStack({ spacing: 4 }, [
+      searchField('Search tasks…', setQuery),
+      toolIcon('square.grid.3x3', 'Dashboard', () => cmux('browser.tab.new', { url: `${dashboard}#today` })),
+      ...(roadmap ? [toolIcon('map', 'Roadmap', () => cmux('browser.tab.new', { url: roadmap }))] : [])
+    ]),
     when(searching, () =>
       VStack({ spacing: 1 }, [
         dividedList(

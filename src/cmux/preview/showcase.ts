@@ -11,7 +11,7 @@ import type { HomeState } from '../entry';
 import { parseGoals } from '@/work/goals';
 import { DEFAULT_AGENT_COLORS } from '@/shared/persona';
 import { WORK_SCHEMA, type Work } from '@/work/model';
-import { closed, NOVA_GOALS, NOVA_HOME, NOW, project, proposal, report, SCOUT_HOME, task } from './fixture';
+import { changed, closed, NOVA_GOALS, NOVA_HOME, NOW, project, proposal, report, SCOUT_HOME, task } from './fixture';
 
 export const OPPI_HOME = join('/Users', 'ada', 'Documents', 'Agents', 'Oppi');
 
@@ -474,7 +474,21 @@ const SHOWCASE_OPPI_HEARTBEAT: Heartbeat = {
 
 export const SHOWCASE_OPPI_STATE: Partial<HomeState> = {
   proposals: SHOWCASE_OPPI_LEDGER,
-  heartbeat: SHOWCASE_OPPI_HEARTBEAT
+  heartbeat: SHOWCASE_OPPI_HEARTBEAT,
+  recent: [
+    changed('2026-11-09', '09:52', 'sd-201', 'projects', 'support-desk', 'tasks', 'sd-201.md'),
+    changed('2026-11-09', '09:40', 'sweep', 'reports', 'helpdesk', '2026-11-09-0940-support.md'),
+    changed('2026-11-09', '09:31', 'Refund macros', 'projects', 'support-desk', 'macros.md'),
+    changed('2026-11-09', '09:15', 'review', 'reports', 'reviews', '2026-11-09-0915-review:.md'),
+    changed('2026-11-09', '08:44', 'ac-101', 'projects', 'acme-app', 'tasks', 'ac-101.md'),
+    changed('2026-11-09', '08:30', 'morning', 'reports', 'briefings', '2026-11-09-0830-morning.md'),
+    changed('2026-11-09', '08:12', 'Memory', 'knowledge', 'memory', 'index.md'),
+    changed('2026-11-08', '21:00', 'evening', 'reports', 'briefings', '2026-11-08-2100-evening.md'),
+    changed('2026-11-08', '18:20', 'Acme roadmap', 'projects', 'acme-app', 'roadmap.html'),
+    changed('2026-11-08', '15:02', 'Preferences', 'knowledge', 'user', 'preferences.md'),
+    changed('2026-11-08', '11:47', 'Pricing experiments', 'knowledge', 'concepts', 'pricing-experiments.md'),
+    changed('2026-11-06', '10:05', 'bm-301', 'projects', 'billing-migration', 'tasks', 'bm-301.md')
+  ]
 };
 
 /**

@@ -20,7 +20,7 @@ export interface ExtractedArticle {
   markdown: string;
 }
 
-function extractTitleTag(html: string): string | null {
+export function extractTitleTag(html: string): string | null {
   const m = TITLE_RE.exec(html);
   if (!m) return null;
   return m[1].replace(/\s+/g, ' ').trim() || null;

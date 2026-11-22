@@ -536,14 +536,14 @@ run('Reports lists the pins, then the newest reports by day, worded against the 
   expect(texts).not.toContain('AT WORK');
 });
 
-run('a report opens as a full tab, and Dashboard opens the dashboard’s Reports page', () => {
+run('a report opens as a full tab, and the dashboard icon sits on Projects only', () => {
   const sidebar = onReports();
   expect(sidebar.tap('Morning brief — Mon 9 Nov')).toEqual({
     kind: 'cmux',
     method: 'file.open',
     params: { path: join(NOVA_HOME, 'reports', 'briefings', '2026-11-09-0830-morning.md') }
   });
-  expect(sidebar.tap('Dashboard')?.params).toEqual({ url: `${NOVA_ENTRY.dashboard}#reports` });
+  expect(() => sidebar.tap('Dashboard')).toThrow();
   sidebar.tap('Projects');
   expect(sidebar.tap('Dashboard')?.params).toEqual({ url: `${NOVA_ENTRY.dashboard}#today` });
 });
@@ -565,6 +565,54 @@ run('reports past the entry’s limit point to the dashboard', () => {
   expect(sidebar.tap('3 older reports are on the dashboard.')?.params).toEqual({
     url: `${NOVA_ENTRY.dashboard}#reports`
   });
+});
+
+const onRecent = (homes?: Record<string, HomeEntry>) => {
+  const sidebar = onProjects(homes);
+  sidebar.tap('Recent');
+  return sidebar;
+};
+
+run('Recent lists the files changed lately by day, titled from the work model, with their kind and project', () => {
+  const texts = onRecent().visibleTexts();
+  const cards = ['Today', 'Yesterday', 'Tue 3 Nov'];
+  expect(texts.filter((text) => cards.includes(text))).toEqual(cards);
+  const titles = ['Ship the invoice export', 'Morning brief — Mon 9 Nov', 'Acme roadmap', 'Profile'];
+  expect(texts.filter((text) => titles.includes(text)), 'newest first').toEqual(titles);
+  expect(texts, 'earlier days start folded').not.toContain('Memory');
+  expect(texts).toEqual(expect.arrayContaining(['task', 'briefing', 'roadmap', 'knowledge', 'acme-app', '9:40 AM']));
+});
+
+run('a recent file opens as a full tab', () => {
+  const sidebar = onRecent();
+  expect(sidebar.tap('Acme roadmap')?.params).toEqual({
+    url: pathToFileURL(join(NOVA_HOME, 'projects', 'acme-app', 'roadmap.html')).href
+  });
+  expect(sidebar.tap('Ship the invoice export')).toEqual({
+    kind: 'cmux',
+    method: 'file.open',
+    params: { path: join(NOVA_HOME, 'projects', 'acme-app', 'tasks', 'ac-101.md') }
+  });
+});
+
+run('the recent search matches titles, kinds and projects, folded days included', () => {
+  const sidebar = onRecent();
+  sidebar.type('memory');
+  expect(sidebar.visibleTexts()).toContain('Memory');
+  expect(sidebar.visibleTexts()).not.toContain('Profile');
+  sidebar.type('acme-app');
+  expect(sidebar.visibleTexts()).toEqual(expect.arrayContaining(['Ship the invoice export', 'Acme roadmap']));
+  expect(sidebar.visibleTexts()).not.toContain('Profile');
+  sidebar.type('nothing like this');
+  expect(sidebar.visibleTexts()).toContain('No matching files.');
+});
+
+run('Recent says when nothing changed, and asks an older agent for an update', () => {
+  expect(onRecent({ [NOVA_HOME]: { ...NOVA_ENTRY, recent: [] } }).visibleTexts()).toContain(
+    'Nothing changed in the last 30 days.'
+  );
+  const { recent: _left, ...older } = NOVA_ENTRY;
+  expect(onRecent({ [NOVA_HOME]: older }).visibleTexts()).toContain('Update Nova to see its recent files.');
 });
 
 run('a dozen agents all get a chip', () => {
@@ -652,8 +700,10 @@ run('yesterday’s daily goals leave today empty, with the command that sets the
   ]);
 });
 
-run('the Dashboard icon on Goals opens the dashboard’s Goals', () => {
-  expect(onGoals().tap('Dashboard')?.params).toEqual({ url: `${NOVA_ENTRY.dashboard}#today/goals` });
+run('Goals leaves the dashboard and roadmap icons to Projects, so the section chips keep the row', () => {
+  const sidebar = onGoals();
+  expect(() => sidebar.tap('Dashboard')).toThrow();
+  expect(() => sidebar.tap('Roadmap')).toThrow();
 });
 
 run('the Discuss icon on a task or a goal opens a session about it, and the task row still opens its file', () => {
