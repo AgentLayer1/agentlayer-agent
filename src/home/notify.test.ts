@@ -22,12 +22,12 @@ test('a title becomes an AppleScript string that quotes and backslashes cannot b
   expect(appleScriptString('A "quoted" \\ title')).toBe('"A \\"quoted\\" \\\\ title"');
 });
 
-test('a Mac gets a plain notification naming where the note is; another OS gets none', () => {
+test('a Mac gets a plain notification naming where the note is; another OS gets none', async () => {
   const calls: string[][] = [];
-  const adapter = macNotesAdapterWith((argv) => (calls.push(argv), true), 'darwin');
+  const adapter = macNotesAdapterWith(async (argv) => (calls.push(argv), true), 'darwin');
   expect(adapter.available(CONTEXT)).toBe(true);
-  expect(macNotesAdapterWith(() => true, 'win32').available(CONTEXT)).toBe(false);
-  adapter.deliver?.(NOTE, CONTEXT);
+  expect(macNotesAdapterWith(async () => true, 'win32').available(CONTEXT)).toBe(false);
+  await adapter.deliver?.(NOTE, CONTEXT);
   expect(calls).toEqual([
     [
       '/usr/bin/osascript',

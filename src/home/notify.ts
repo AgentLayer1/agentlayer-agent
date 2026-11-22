@@ -11,20 +11,20 @@ const OSASCRIPT = '/usr/bin/osascript';
  * Notes as a plain macOS notification, standing in for a notifier earlier in the list that can't reach the operator.
  * A click can't open a terminal tab, so the notification says where the note is.
  */
-export const macNotesAdapterWith = (run: (argv: string[]) => boolean, platform: string): NoteAdapter => ({
+export const macNotesAdapterWith = (run: (argv: string[]) => Promise<boolean>, platform: string): NoteAdapter => ({
   name: 'macos',
   group: 'notify',
   // TODO(windows): no desktop notification off macOS yet; the heartbeat's tab and the report still carry every note.
   available: () => platform === 'darwin',
-  deliver: (note, { agentName }) => {
+  deliver: async (note, { agentName }) => {
     const script = `display notification ${appleScriptString(`${note.title} · in the heartbeat's tab and reports/notes`)} with title ${appleScriptString(`${agentName} · Note`)}`;
-    if (!run([OSASCRIPT, '-e', script])) {
+    if (!(await run([OSASCRIPT, '-e', script]))) {
       throw new Error('osascript didn’t show the notification.');
     }
   }
 });
 
 export const macNotesAdapter = macNotesAdapterWith(
-  (argv) => Bun.spawnSync(argv, { stdout: 'ignore', stderr: 'ignore', timeout: 10_000 }).exitCode === 0,
+  async (argv) => (await Bun.spawn(argv, { stdout: 'ignore', stderr: 'ignore', timeout: 10_000 }).exited) === 0,
   process.platform
 );
