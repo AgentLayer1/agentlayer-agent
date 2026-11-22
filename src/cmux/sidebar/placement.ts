@@ -38,6 +38,11 @@ export interface WorkHint {
 
 export type Placement = { kind: 'workspace'; id: string } | { kind: 'new' };
 
+/**
+ * Where a session goes when no workspace fits the work: the agent's own workspace first, or the focused one first.
+ */
+export type Fallback = 'agent' | 'selected';
+
 const PICKED = 100;
 const IN_FOLDER = 90;
 const SAME_NAME = 80;
@@ -130,15 +135,16 @@ const scoreOf = (workspace: PlaceWorkspace, hint: WorkHint, home: string): numbe
 };
 
 /**
- * Where a session for `hint` opens: the agent's workspace that best fits the work, else the agent's own workspace,
- * else the selected one when it isn't another agent's, else a new workspace. Remote workspaces can't take startup
- * input, so they never qualify.
+ * Where a session for `hint` opens: the agent's workspace that best fits the work, else (by `fallback`) the agent's own
+ * workspace and the selected one when it isn't another agent's, else a new workspace. Remote workspaces can't take
+ * startup input, so they never qualify.
  */
 export const placeFor = (
   workspaces: readonly PlaceWorkspace[],
   agent: PlaceAgent,
   others: readonly PlaceAgent[],
-  hint: WorkHint
+  hint: WorkHint,
+  fallback: Fallback = 'agent'
 ): Placement => {
   const local = workspaces.filter((workspace) => !workspace.remote);
   const anchor = anchorOf(local, agent);
@@ -158,6 +164,6 @@ export const placeFor = (
     .filter(({ score }) => score >= ONE_WORD)
     .toSorted((a, b) => b.score - a.score || (b.workspace.latestAt ?? 0) - (a.workspace.latestAt ?? 0))[0];
   const selected = local.find((workspace) => workspace.selected && !isTheirs(workspace));
-  const target = best?.workspace ?? anchor ?? selected;
+  const target = best?.workspace ?? (fallback === 'selected' ? (selected ?? anchor) : (anchor ?? selected));
   return target ? { kind: 'workspace', id: target.id } : { kind: 'new' };
 };

@@ -430,6 +430,7 @@ var ORANGE = "#FF9F0A";
 var RED = "#FF453A";
 var GREY = "#8E8E93";
 var PURPLE = "#BF5AF2";
+var PINK = "#FF375F";
 var YELLOW = "#FFD60A";
 var note = (text) => Text(text).font(11).color("tertiary").paddingHorizontal(10);
 var banner = (label, text) => HStack({ spacing: 10 }, [
@@ -595,7 +596,7 @@ var scoreOf = (workspace, hint, home) => {
   ];
   return Math.max(...scores);
 };
-var placeFor = (workspaces, agent, others, hint) => {
+var placeFor = (workspaces, agent, others, hint, fallback = "agent") => {
   const local = workspaces.filter((workspace) => !workspace.remote);
   const anchor = anchorOf(local, agent);
   const otherAnchors = others.map((other) => anchorOf(local, other));
@@ -605,7 +606,7 @@ var placeFor = (workspaces, agent, others, hint) => {
   const choices = mine.filter((workspace) => !holdsHeartbeat(workspace, agent) || mine.length === 1);
   const best = choices.map((workspace) => ({ workspace, score: scoreOf(workspace, hint, agent.home) })).filter(({ score }) => score >= ONE_WORD).toSorted((a, b) => b.score - a.score || (b.workspace.latestAt ?? 0) - (a.workspace.latestAt ?? 0))[0];
   const selected = local.find((workspace) => workspace.selected && !isTheirs(workspace));
-  const target = best?.workspace ?? anchor ?? selected;
+  const target = best?.workspace ?? (fallback === "selected" ? selected ?? anchor : anchor ?? selected);
   return target ? { kind: "workspace", id: target.id } : { kind: "new" };
 };
 
@@ -616,7 +617,7 @@ var agentOf = (entry) => ({
   folders: entry.codeFolders ?? [],
   ...entry.heartbeat ? { heartbeatSurface: entry.heartbeat.surfaceId } : {}
 });
-var placeSession = (entry, hint) => placeFor(data.workspaces() ?? [], agentOf(entry), Object.values(DATA.homes).filter((other) => other.home !== entry.home).map(agentOf), hint);
+var placeSession = (entry, hint, fallback = "agent") => placeFor(data.workspaces() ?? [], agentOf(entry), Object.values(DATA.homes).filter((other) => other.home !== entry.home).map(agentOf), hint, fallback);
 var openSession = (entry, command, hint = {}) => {
   const input = `${entry.launcher} "${command}"\r`;
   const target = placeSession(entry, hint);
@@ -1036,12 +1037,20 @@ var heartbeatRoute = (place) => {
 var isShown = (laterUntil, nowMs) => laterUntil === "" || Date.parse(laterUntil) <= nowMs;
 
 // src/cmux/sidebar/messages.ts
-var PROPOSAL_BADGE = { text: "Proposal", color: PURPLE, icon: "sparkles" };
+var PROPOSAL_BADGE = { text: "Proposal", color: PINK, icon: "sparkles" };
 var NOTE_BADGE = { text: "Note", color: ACCENT, icon: "note.text" };
 var choiceButton = (label, onTap, tint) => Text(label).font(11).weight("semibold").color(tint ? "#ffffff" : "secondary").paddingHorizontal(tint ? 14 : 9).paddingVertical(5).background(tint ?? null).cornerRadius(8).hoverBackground(tint ?? "#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(onTap);
 var sentAt = (at) => {
   const day = at.slice(0, 10);
   return day === today() ? clock(at.slice(11, 16)) : dayTitle(day, today());
+};
+var fact = (symbol, text, tone, look = {}) => {
+  const plain = Text(text).font(11).color(tone);
+  const styled = look.italic ? plain.italic() : plain;
+  return HStack({ spacing: 5, alignment: "top" }, [
+    Image(symbol).font(9).color(tone).frame({ width: 12 }).paddingTop(2),
+    look.oneLine ? styled.lineLimit(1).truncation("middle") : styled
+  ]);
 };
 var lookOf2 = (message) => {
   if (message.kind === "proposal") {
@@ -1053,10 +1062,10 @@ var lookOf2 = (message) => {
         words: `${item.title} ${item.trigger}`
       },
       details: () => [
-        Text(item.trigger).font(11).color("tertiary"),
-        ...item.quote ? [Text(`“${item.quote}”`).font(11).italic().color("secondary")] : [],
-        Text(item.detail).font(11).color("secondary"),
-        Text(item.reach).font(10).color("tertiary")
+        Text(item.detail).font(11),
+        fact("bolt.fill", item.trigger, "secondary"),
+        ...item.quote ? [fact("quote.opening", item.quote, "secondary", { italic: true })] : [],
+        fact("lock.fill", item.reach, "tertiary")
       ],
       face: {
         ...item.estimate ? { span: `~${item.estimate}` } : {},
@@ -1068,11 +1077,15 @@ var lookOf2 = (message) => {
   }
   const { item } = message;
   return {
-    hint: { words: `${item.title} ${item.next}` },
+    hint: {
+      workspace: item.workspace,
+      folders: item.folder ? [item.folder] : [],
+      words: `${item.title} ${item.next}`
+    },
     details: () => [
-      Text(item.body).font(11).color("secondary"),
-      Text(`Next: ${item.next}`).font(11),
-      ...item.sources.map((url) => Text(url).font(10).color("tertiary").lineLimit(1).truncation("middle"))
+      Text(item.body).font(11),
+      fact("arrow.turn.down.right", item.next, "secondary"),
+      VStack({ spacing: 1, alignment: "leading" }, item.sources.map((source) => fact("paperclip", source, "tertiary", { oneLine: true })))
     ],
     face: { span: sentAt(item.at), badges: [NOTE_BADGE], summary: item.next, searchText: `${item.body} ${item.next}` }
   };
@@ -1104,7 +1117,7 @@ var card = ({ entry, message }) => {
   const { item } = message;
   const { hint, details, face } = lookOf2(message);
   const start = () => {
-    const target = placeSession(entry, hint);
+    const target = placeSession(entry, hint, "selected");
     return `/message start ${item.id}${target.kind === "workspace" ? ` --workspace=${target.id}` : ""}`;
   };
   return {
@@ -1149,15 +1162,11 @@ var messagesSection = (scope) => {
       ...inScope().filter((entry) => !live.has(entry.home)).flatMap((entry) => [heartbeatCard(entry), ...waiting(entry, now).toSorted(newestFirst).map(card)])
     ];
   });
-  const fresh = computed(() => {
-    const now = minute();
-    return inScope().some((entry) => (entry.notes ?? []).some((note) => isShown(note.laterUntil, now) && now - Date.parse(note.at) < DAY_MS));
-  });
   return {
     label: "INBOX",
     icon: "tray.full.fill",
     color: PURPLE,
-    folded: () => !fresh(),
+    folded: true,
     expandFirst: false,
     cards
   };

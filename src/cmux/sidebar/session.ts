@@ -1,5 +1,5 @@
 import type { HomeEntry } from './data';
-import { placeFor, type PlaceAgent, type Placement, type WorkHint } from './placement';
+import { placeFor, type Fallback, type PlaceAgent, type Placement, type WorkHint } from './placement';
 import { YELLOW } from './style';
 
 const agentOf = (entry: HomeEntry): PlaceAgent => ({
@@ -12,14 +12,15 @@ const agentOf = (entry: HomeEntry): PlaceAgent => ({
 /**
  * The workspace a session for `hint` belongs in, among the agent's own; the other joined agents' are never chosen.
  */
-export const placeSession = (entry: HomeEntry, hint: WorkHint): Placement =>
+export const placeSession = (entry: HomeEntry, hint: WorkHint, fallback: Fallback = 'agent'): Placement =>
   placeFor(
     data.workspaces() ?? [],
     agentOf(entry),
     Object.values(DATA.homes)
       .filter((other) => other.home !== entry.home)
       .map(agentOf),
-    hint
+    hint,
+    fallback
   );
 
 /**

@@ -99,6 +99,20 @@ test("two agents anchored in one group share it: neither claims the other's anch
   expect(place(ADA, { words: 'Review the PR' }, shared)).toEqual(at('w-ada-reviews'));
 });
 
+test("INBOX's fallback is the focused workspace, then the agent's own, and never another agent's focused one", () => {
+  const unowned = [...LAYOUT, workspace('w-loose', 'Downloads', { directory: '/Users/ada/Downloads', selected: true })].map(
+    (item) => (item.id === 'w-scout' ? { ...item, selected: false } : item)
+  );
+  const inbox = (layout: PlaceWorkspace[]) =>
+    placeFor(layout, NOVA, [SCOUT, ADA], { words: 'nothing that fits' }, 'selected');
+  expect(inbox(unowned), 'the focused workspace, belonging to no agent').toEqual({ kind: 'workspace', id: 'w-loose' });
+  expect(inbox(LAYOUT), "Scout's is focused, so Nova's own").toEqual({ kind: 'workspace', id: 'w-nova' });
+  expect(place(NOVA, { words: 'nothing that fits' }, unowned), 'the default still prefers the agent’s own').toEqual({
+    kind: 'workspace',
+    id: 'w-nova'
+  });
+});
+
 test('ties go to the most recently active workspace', () => {
   const twins = [
     workspace('w-scout', 'Agent Scout', { directory: '/homes/Scout', group: 'g1' }),

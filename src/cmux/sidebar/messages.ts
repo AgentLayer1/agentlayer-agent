@@ -1,12 +1,11 @@
 import type { CardBadge, HostSection, SectionCard } from 'cmux-custom-manager/sections';
 import { isShown } from '../../shared/message';
-import { DAY_MS } from '../../work/due';
 import { SCHEMA, type HomeEntry, type NoteItem, type ProposalItem } from './data';
 import { clock, dayTitle } from './days';
 import { heartbeatRoute } from './heartbeat';
 import type { WorkHint } from './placement';
 import { openSession, placeSession } from './session';
-import { ACCENT, nowMs, ORANGE, PURPLE, when } from './style';
+import { ACCENT, nowMs, ORANGE, PINK, PURPLE, when } from './style';
 import { today } from './tasks';
 
 type Message = { kind: 'proposal'; item: ProposalItem } | { kind: 'note'; item: NoteItem };
@@ -16,7 +15,7 @@ interface Placed {
   message: Message;
 }
 
-const PROPOSAL_BADGE: CardBadge = { text: 'Proposal', color: PURPLE, icon: 'sparkles' };
+const PROPOSAL_BADGE: CardBadge = { text: 'Proposal', color: PINK, icon: 'sparkles' };
 const NOTE_BADGE: CardBadge = { text: 'Note', color: ACCENT, icon: 'note.text' };
 
 const choiceButton = (label: string, onTap: () => void, tint?: string) =>
@@ -39,7 +38,20 @@ const sentAt = (at: string): string => {
   return day === today() ? clock(at.slice(11, 16)) : dayTitle(day, today());
 };
 
+type Tone = 'secondary' | 'tertiary';
+
+// One line of a card's details under a small symbol saying what it is: why now, the next step, a limit, a source.
+const fact = (symbol: string, text: string, tone: Tone, look: { italic?: boolean; oneLine?: boolean } = {}) => {
+  const plain = Text(text).font(11).color(tone);
+  const styled = look.italic ? plain.italic() : plain;
+  return HStack({ spacing: 5, alignment: 'top' }, [
+    Image(symbol).font(9).color(tone).frame({ width: 12 }).paddingTop(2),
+    look.oneLine ? styled.lineLimit(1).truncation('middle') : styled
+  ]);
+};
+
 // What tells one kind from the other: where Start places its session, the details, and the face of the closed card.
+// The details read the same way for both: what it is in full colour, why and what next a step dimmer, then the limits.
 const lookOf = (message: Message) => {
   if (message.kind === 'proposal') {
     const { item } = message;
@@ -50,10 +62,10 @@ const lookOf = (message: Message) => {
         words: `${item.title} ${item.trigger}`
       } satisfies WorkHint,
       details: () => [
-        Text(item.trigger).font(11).color('tertiary'),
-        ...(item.quote ? [Text(`“${item.quote}”`).font(11).italic().color('secondary')] : []),
-        Text(item.detail).font(11).color('secondary'),
-        Text(item.reach).font(10).color('tertiary')
+        Text(item.detail).font(11),
+        fact('bolt.fill', item.trigger, 'secondary'),
+        ...(item.quote ? [fact('quote.opening', item.quote, 'secondary', { italic: true })] : []),
+        fact('lock.fill', item.reach, 'tertiary')
       ],
       face: {
         ...(item.estimate ? { span: `~${item.estimate}` } : {}),
@@ -65,11 +77,18 @@ const lookOf = (message: Message) => {
   }
   const { item } = message;
   return {
-    hint: { words: `${item.title} ${item.next}` } satisfies WorkHint,
+    hint: {
+      workspace: item.workspace,
+      folders: item.folder ? [item.folder] : [],
+      words: `${item.title} ${item.next}`
+    } satisfies WorkHint,
     details: () => [
-      Text(item.body).font(11).color('secondary'),
-      Text(`Next: ${item.next}`).font(11),
-      ...item.sources.map((url) => Text(url).font(10).color('tertiary').lineLimit(1).truncation('middle'))
+      Text(item.body).font(11),
+      fact('arrow.turn.down.right', item.next, 'secondary'),
+      VStack(
+        { spacing: 1, alignment: 'leading' },
+        item.sources.map((source) => fact('paperclip', source, 'tertiary', { oneLine: true }))
+      )
     ],
     face: { span: sentAt(item.at), badges: [NOTE_BADGE], summary: item.next, searchText: `${item.body} ${item.next}` }
   };
@@ -113,9 +132,10 @@ const actions = (entry: HomeEntry, id: string, start: () => string) => {
 const card = ({ entry, message }: Placed): SectionCard => {
   const { item } = message;
   const { hint, details, face } = lookOf(message);
-  // Start names the workspace the session belongs in, picked at the tap, where cmux's workspaces are known.
+  // Start names the workspace the session belongs in, picked at the tap, where cmux's workspaces are known: the one that
+  // fits the work, else the focused one, never another agent's.
   const start = () => {
-    const target = placeSession(entry, hint);
+    const target = placeSession(entry, hint, 'selected');
     return `/message start ${item.id}${target.kind === 'workspace' ? ` --workspace=${target.id}` : ''}`;
   };
   return {
@@ -188,18 +208,11 @@ export const messagesSection = (scope: () => string | undefined): HostSection =>
         .flatMap((entry) => [heartbeatCard(entry), ...waiting(entry, now).toSorted(newestFirst).map(card)])
     ];
   });
-  // A note from the last day that isn't put off opens the section; otherwise it waits folded, every card closed.
-  const fresh = computed(() => {
-    const now = minute();
-    return inScope().some((entry) =>
-      (entry.notes ?? []).some((note) => isShown(note.laterUntil, now) && now - Date.parse(note.at) < DAY_MS)
-    );
-  });
   return {
     label: 'INBOX',
     icon: 'tray.full.fill',
     color: PURPLE,
-    folded: () => !fresh(),
+    folded: true,
     expandFirst: false,
     cards
   };

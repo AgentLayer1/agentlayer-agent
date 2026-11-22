@@ -239,6 +239,7 @@ export const ORANGE = '#FF9F0A';
 export const RED = '#FF453A';
 export const GREY = '#8E8E93';
 export const PURPLE = '#BF5AF2';
+export const PINK = '#FF375F';
 export const YELLOW = '#FFD60A';
 
 export const note = (text: string) => Text(text).font(11).color('tertiary').paddingHorizontal(10);

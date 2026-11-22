@@ -65,19 +65,20 @@ run('INBOX leads the Manager above NEEDS YOU, its cards closed and its put-off a
   ).toEqual(['Reply to the supplier', '~5m', 'Proposal', 'due Fri', 'The supplier wrote two hours ago']);
   sidebar.tap('Reply to the supplier');
   const texts = sidebar.visibleTexts();
-  expect(between(texts, 'Reply to the supplier', 'Reproduce the rounding bug')).toEqual([
+  expect(between(texts, 'Reply to the supplier', 'Reproduce the rounding bug'), 'what it does, why now, their words, its limits').toEqual([
     'Reply to the supplier',
     '~5m',
     'Proposal',
     'due Fri',
-    'The supplier wrote two hours ago',
-    '“Can you confirm the spring order by Friday?”',
     'Drafts the reply with the quantities from the price list.',
+    'The supplier wrote two hours ago',
+    'Can you confirm the spring order by Friday?',
     'Drafts the email and sends nothing.',
     'Start',
     'Later',
     'Dismiss'
   ]);
+  expect(sidebar.propsOf('Proposal'), 'a pink of its own, apart from INBOX’s purple').toMatchObject({ color: '#FF375F' });
   expect(texts, 'the second card starts closed').not.toContain('Runs the checkout with the totals from the issue.');
   expect(texts).not.toContain('Tidy the release notes');
   expect(texts).not.toContain('Run the sync');
@@ -724,13 +725,13 @@ run('the Discuss icon on a task or a goal opens a session about it, and the task
   );
 });
 
-run("a session opens in its own agent's workspace, focused, never in another joined agent's, even the selected one", () => {
+run("a message with no fitting workspace starts in the focused one, and Discuss in the agent's own", () => {
   const both = { [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY };
   const fromElsewhere = mount(installed(both), selecting('w-other'));
   fromElsewhere.tap('INBOX');
   fromElsewhere.tap('Reply to the supplier');
-  expect(fromElsewhere.tap('Start')?.params?.text, "Nova's own workspace, though Downloads is selected").toBe(
-    '/message start p-a1 --workspace=w-nova\n'
+  expect(fromElsewhere.tap('Start')?.params?.text, 'Downloads is focused and no agent’s').toBe(
+    '/message start p-a1 --workspace=w-other\n'
   );
   const discussing = onProjects(both);
   discussing.tap('acme-app');
@@ -754,7 +755,7 @@ run("INBOX shows the selected workspace's agent only, and every agent where no a
   expect(shows('w-other'), 'Downloads, no agent').toEqual(['Reply to the supplier', 'Audit the dark mode colours']);
 });
 
-run('a note and the proposals share INBOX, newest first, with the same three buttons; a fresh note opens it', () => {
+run('a note and the proposals share INBOX, newest first, with the same three buttons; it stays folded when one arrives', () => {
   const note: Note = {
     id: 'n-1',
     at: nowISO(new Date()),
@@ -772,8 +773,9 @@ run('a note and the proposals share INBOX, newest first, with the same three but
   };
   const notes: NoteLedger = { notes: [note] };
   const sidebar = mount(installed({ [NOVA_HOME]: homeEntry(NOVA_HOME, NOVA, { ...NOVA_STATE, notes }) }), CMUX_DATA);
+  expect(sidebar.visibleTexts(), 'folded, even with a fresh note').not.toContain(note.title);
+  sidebar.tap('INBOX');
   const texts = sidebar.visibleTexts();
-  expect(texts, 'open on its own, since the note is fresh').toContain(note.title);
   expect(texts.indexOf(note.title), 'newest first').toBeLessThan(texts.indexOf('Reply to the supplier'));
   sidebar.tap(note.title);
   expect(sidebar.tap('Later')?.params?.text).toBe('/message later n-1\n');
