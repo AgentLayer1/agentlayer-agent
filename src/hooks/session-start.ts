@@ -26,7 +26,8 @@
  */
 import { AGENT_SLUG, FILES, FOLDERS, isInitialized, PLUGIN_NAME, staticContextFiles } from '@/config';
 import { assembleContext } from '@/hooks/context';
-import type { HostAdapter } from '@/hosts/contract';
+import type { HostAdapter, InjectDelivery } from '@/hosts/contract';
+import { renderGlossary, SKILL_PREFIX } from '@/hosts/dialect';
 import { DEFAULT_HOST } from '@/hosts/registry';
 import { drainDeferredCaptures } from '@/knowledge/session-capture';
 import { BANNER, BANNER_LINES, BANNER_TAG } from '@/hooks/banner';
@@ -95,10 +96,17 @@ const PLAIN_BANNER = [...BANNER_LINES, BANNER_TAG].join('\n');
  * same dynamic lane Claude gets, with the same banner as `systemMessage`. Pre-init
  * and stranded homes get Claude's guidance.
  */
-export async function sessionStartInject(host: HostAdapter): Promise<SessionStartResult> {
+export async function sessionStartInject(host: HostAdapter, delivery: InjectDelivery): Promise<SessionStartResult> {
+  const inHostDialect = (text: string): string => text.replaceAll(SKILL_PREFIX, delivery.skillPrefix);
   if (!isInitialized()) {
     const result = existsSync(FILES.SOUL) ? strandedHomeResult() : PRE_INIT_RESULT;
-    return { ...result, systemMessage: result.systemMessage.replace(BANNER, PLAIN_BANNER) };
+    return {
+      ...result,
+      systemMessage: inHostDialect(result.systemMessage.replace(BANNER, PLAIN_BANNER)),
+      additionalContext: [renderGlossary(host.name, delivery.glossary), inHostDialect(result.additionalContext)]
+        .filter(Boolean)
+        .join('\n\n')
+    };
   }
   await drainDeferredCaptures().catch((err: unknown) => log.error('deferred captures not drained', err));
   const files = staticContextFiles()
@@ -134,11 +142,12 @@ export async function sessionStartInject(host: HostAdapter): Promise<SessionStar
     });
   const additionalContext =
     [
-      `<!-- ${AGENT_SLUG} static context · harness: ${host.name} · plugin root: ${FOLDERS.ROOT} (a skill that writes ${'$'}{CLAUDE_PLUGIN_ROOT} means this path) · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs $upgrade · delivered by the plugin's SessionStart hook because Codex has no @-import -->`,
+      `<!-- ${AGENT_SLUG} static context · harness: ${host.name} · plugin root: ${FOLDERS.ROOT} · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs ${delivery.skillPrefix}upgrade · delivered by the plugin's SessionStart hook because Codex has no @-import -->`,
+      renderGlossary(host.name, delivery.glossary),
       ...files,
       ...lane.parts
     ].join('\n\n') + '\n';
-  return { systemMessage: lane.banner, additionalContext, hasIssues: lane.hasIssues };
+  return { systemMessage: inHostDialect(lane.banner), additionalContext, hasIssues: lane.hasIssues };
 }
 
 /**

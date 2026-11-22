@@ -72,7 +72,7 @@ export const runSessionStart = async (flag: Flag): Promise<number> => {
   const { rowDraws } = await import('@/notices/notices');
   const result =
     host?.delivery.kind === 'inject'
-      ? await sessionStartInject(host)
+      ? await sessionStartInject(host, host.delivery)
       : await sessionStart({ promptRow: isTerminal && rowDraws(), color: isTerminal, host });
   if (!host) {
     console.log(JSON.stringify(result, null, 2));

@@ -1,5 +1,5 @@
-import { PLUGIN_NAME } from '@/config';
 import type { HostAdapter } from '@/hosts/contract';
+import { SKILL_PREFIX } from '@/hosts/dialect';
 import { env } from '@/shared/env';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -20,7 +20,7 @@ export const claudeHost: HostAdapter = {
   homeIssues: (home) =>
     existsSync(resolve(home, 'AGENTS.md')) && !existsSync(resolve(home, '.claude', 'CLAUDE.md'))
       ? [
-          `\`.claude/CLAUDE.md\` is missing, so Claude Code loads neither the manual nor the identity stack — run \`/${PLUGIN_NAME}:upgrade\` to write the bridge`
+          `\`.claude/CLAUDE.md\` is missing, so Claude Code loads neither the manual nor the identity stack — run \`${SKILL_PREFIX}upgrade\` to write the bridge`
         ]
       : [],
   billsSubscription: true

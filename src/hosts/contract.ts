@@ -1,3 +1,5 @@
+import type { DialectTerm } from '@/hosts/dialect';
+
 /**
  * Every host the plugin runs inside. A name is stored in installed homes' hook commands, in day-file headers and
  * in the pending-capture queue, so it never changes.
@@ -23,10 +25,15 @@ export interface HostFloor {
 }
 
 /**
- * The session-start hook sends the static stack.
+ * The session-start hook sends the static stack, with a glossary for the skills' Claude Code terms.
  */
 export interface InjectDelivery {
   kind: 'inject';
+  glossary: Record<DialectTerm, string>;
+  /**
+   * How the operator runs a skill here, in front of its name.
+   */
+  skillPrefix: string;
 }
 
 export interface HostAdapter {
