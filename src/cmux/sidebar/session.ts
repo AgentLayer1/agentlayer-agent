@@ -1,5 +1,6 @@
 import type { HomeEntry } from './data';
 import { placeFor, type PlaceAgent, type Placement, type WorkHint } from './placement';
+import { YELLOW } from './style';
 
 const agentOf = (entry: HomeEntry): PlaceAgent => ({
   name: entry.name,
@@ -44,7 +45,8 @@ export const openSession = (entry: HomeEntry, command: string, hint: WorkHint = 
 export const discussIcon = (entry: HomeEntry, ref: string, hint: WorkHint = {}) =>
   Image('sparkles')
     .font(10)
-    .color('secondary')
+    .color(YELLOW)
+    .opacity(0.6)
     .padding(3)
     .help(`Discuss with ${entry.name}`)
     .onTap(() => openSession(entry, `/${entry.plugin}:discuss ${ref}`, hint));

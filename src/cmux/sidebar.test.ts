@@ -299,13 +299,19 @@ run('a task row in the Tasks card lets its project pill truncate, so its fixed-w
   expect(props?.fixedSize, 'a fixed pill is what widened the page').toBeUndefined();
 });
 
-run('the Tasks card leads with every live task counted, what is overdue or due this week, folded', () => {
+const SUMMARY = 'Checkout fixes lead this week: a total bug due tomorrow and an overdue invoice export. Launch waits on both.';
+
+run('the Tasks card leads with every live task counted, what they add up to and what is due, folded', () => {
   const texts = onProjects().visibleTexts();
-  expect(between(texts, 'Tasks', 'AT WORK'), 'title, 1 active, 1 blocked, 3 open, then the due tallies').toEqual([
+  expect(
+    between(texts, 'Tasks', 'AT WORK'),
+    'title, 1 active, 1 blocked, 3 open, the summary, then the due tallies'
+  ).toEqual([
     'Tasks',
     '1',
     '1',
     '3',
+    SUMMARY,
     '1 overdue',
     '1 due this week'
   ]);
@@ -364,21 +370,16 @@ run('each state group folds away and back on its own', () => {
   expect(sidebar.visibleTexts()).toContain('acme-app');
 });
 
-run('Projects opens on what the tasks add up to and when it was written, and an entry without one shows none', () => {
-  const texts = onProjects().visibleTexts();
-  expect(texts.slice(texts.indexOf('TASKS AT A GLANCE · 2H AGO'), texts.indexOf('TASKS AT A GLANCE · 2H AGO') + 2)).toEqual([
-    'TASKS AT A GLANCE · 2H AGO',
-    'Checkout fixes lead this week: a total bug due tomorrow and an overdue invoice export. Launch waits on both.'
-  ]);
-  expect(
-    onProjects().propsOf(
-      'Checkout fixes lead this week: a total bug due tomorrow and an overdue invoice export. Launch waits on both.'
-    ),
-    'however long the written theme, the banner stops at three lines'
-  ).toMatchObject({ lineLimit: 3, truncation: 'tail' });
-  expect(onProjects({ [NOVA_HOME]: { ...NOVA_ENTRY, tasksSummary: null } }).visibleTexts().join(' ')).not.toContain(
-    'TASKS AT A GLANCE'
-  );
+run('the folded Tasks card carries the summary on up to three lines, and an entry without one shows none', () => {
+  const sidebar = onProjects();
+  expect(sidebar.visibleTexts().join(' ')).not.toContain('TASKS AT A GLANCE');
+  expect(sidebar.propsOf(SUMMARY), 'however long the summary, it stops at three lines').toMatchObject({
+    lineLimit: 3,
+    truncation: 'tail'
+  });
+  sidebar.tap('Tasks');
+  expect(sidebar.visibleTexts(), 'the open card shows its agenda instead').not.toContain(SUMMARY);
+  expect(onProjects({ [NOVA_HOME]: { ...NOVA_ENTRY, tasksSummary: null } }).visibleTexts()).not.toContain(SUMMARY);
 });
 
 run('the search lists the tasks whose title or id has every word, in place of the cards', () => {

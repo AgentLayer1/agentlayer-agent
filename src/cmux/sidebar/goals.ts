@@ -132,17 +132,14 @@ const shelfCard = (
 export const goalsBody = (entry: HomeEntry) => {
   const { theme, blocks } = entry.goals;
   const colorOf = projectColors(entry);
-  return VStack({ spacing: 10 }, [
+  return VStack({ spacing: 6 }, [
     ...(theme ? [banner(theme.label, theme.text)] : []),
-    VStack(
-      { spacing: 6 },
-      SHELVES.map((shelf) =>
-        shelfCard(
-          shelf,
-          blocks.find((block) => block.horizon === shelf.horizon),
-          entry,
-          colorOf
-        )
+    ...SHELVES.map((shelf) =>
+      shelfCard(
+        shelf,
+        blocks.find((block) => block.horizon === shelf.horizon),
+        entry,
+        colorOf
       )
     )
   ]);

@@ -4,7 +4,6 @@ import { BUCKETS, dueBucket, type DueBucket } from '../../work/due';
 import { dueLabel } from './due';
 import {
   ACCENT,
-  banner,
   chevron,
   dividedList,
   foldingCard,
@@ -16,6 +15,7 @@ import {
   nowMs,
   ORANGE,
   progressBar,
+  PURPLE,
   RED,
   toolIcon,
   when
@@ -37,8 +37,17 @@ const ago = (writtenAt: string): string => {
       : `${Math.round(elapsed / (24 * HOUR_MS))}d ago`;
 };
 
-const summaryBanner = ({ text, writtenAt }: NonNullable<HomeEntry['tasksSummary']>) =>
-  banner(() => ['Tasks at a glance', ago(writtenAt)].filter(Boolean).join(' · '), text);
+// Where a project card shows its next task, the folded Tasks card shows what the tasks add up to, on up to three lines.
+const summaryLine = ({ text, writtenAt }: NonNullable<HomeEntry['tasksSummary']>) =>
+  HStack({ spacing: 5, alignment: 'top' }, [
+    Image('sparkles').font(9).color(PURPLE).opacity(0.7).paddingTop(2),
+    Text(text)
+      .font(11)
+      .color('secondary')
+      .lineLimit(3)
+      .truncation('tail')
+      .frame({ maxWidth: 'infinity', alignment: 'leading' })
+  ]).help(['Tasks at a glance', ago(writtenAt)].filter(Boolean).join(' · '));
 
 const linkRow = ({ icon, title, target }: PinItem) =>
   HStack({ spacing: 6 }, [
@@ -112,6 +121,7 @@ const tasksCard = (entry: HomeEntry, listed: readonly Listed[]) => {
   const tone = (wanted: string) => () =>
     listed.filter(({ task }) => dueLabel(task.due, today())?.tone === wanted).length;
   const groups = computed(() => agenda(listed, today()));
+  const summary = entry.tasksSummary;
   return foldingCard(
     VStack({ spacing: 6 }, [
       HStack({ spacing: 7 }, [
@@ -124,6 +134,7 @@ const tasksCard = (entry: HomeEntry, listed: readonly Listed[]) => {
         chevron(expanded)
       ]),
       progressBar(fraction(total('done'), total('active') + total('blocked') + total('open')), ACCENT),
+      ...(summary ? [when(() => !expanded(), () => summaryLine(summary))] : []),
       HStack({ spacing: 8 }, [
         dueTally(tone('overdue'), 'overdue', RED),
         dueTally(tone('soon'), 'due this week', ORANGE),
@@ -239,7 +250,6 @@ export const projectsBody = (entry: HomeEntry) => {
   const found = computed(() => listed.filter(({ task }) => matchesQuery(query(), task.title, task.id)));
   const searching = () => query().trim() !== '';
   return VStack({ spacing: 10 }, [
-    ...(entry.tasksSummary ? [summaryBanner(entry.tasksSummary)] : []),
     // The dashboard and roadmap ride the search row, which leaves the section chips the full width.
     HStack({ spacing: 4 }, [
       searchField('Search tasks…', setQuery),

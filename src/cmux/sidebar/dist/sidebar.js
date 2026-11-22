@@ -429,6 +429,7 @@ var ORANGE = "#FF9F0A";
 var RED = "#FF453A";
 var GREY = "#8E8E93";
 var PURPLE = "#BF5AF2";
+var YELLOW = "#FFD60A";
 var note = (text) => Text(text).font(11).color("tertiary").paddingHorizontal(10);
 var banner = (label, text) => HStack({ spacing: 10 }, [
   Image("sparkles").font(13).color(PURPLE),
@@ -625,7 +626,7 @@ var openSession = (entry, command, hint = {}) => {
     cmux("workspace.create", { cwd: entry.home, initial_input: input });
   }
 };
-var discussIcon = (entry, ref, hint = {}) => Image("sparkles").font(10).color("secondary").padding(3).help(`Discuss with ${entry.name}`).onTap(() => openSession(entry, `/${entry.plugin}:discuss ${ref}`, hint));
+var discussIcon = (entry, ref, hint = {}) => Image("sparkles").font(10).color(YELLOW).opacity(0.6).padding(3).help(`Discuss with ${entry.name}`).onTap(() => openSession(entry, `/${entry.plugin}:discuss ${ref}`, hint));
 
 // src/cmux/sidebar/due.ts
 var wordsFor = (days) => {
@@ -749,9 +750,9 @@ var shelfCard = (shelf, block, entry, colorOf) => {
 var goalsBody = (entry) => {
   const { theme, blocks } = entry.goals;
   const colorOf = projectColors(entry);
-  return VStack({ spacing: 10 }, [
+  return VStack({ spacing: 6 }, [
     ...theme ? [banner(theme.label, theme.text)] : [],
-    VStack({ spacing: 6 }, SHELVES.map((shelf) => shelfCard(shelf, blocks.find((block) => block.horizon === shelf.horizon), entry, colorOf)))
+    ...SHELVES.map((shelf) => shelfCard(shelf, blocks.find((block) => block.horizon === shelf.horizon), entry, colorOf))
   ]);
 };
 
@@ -764,7 +765,10 @@ var ago = (writtenAt) => {
   }
   return elapsed < HOUR_MS ? `${Math.max(1, Math.round(elapsed / 60000))}m ago` : elapsed < 24 * HOUR_MS ? `${Math.round(elapsed / HOUR_MS)}h ago` : `${Math.round(elapsed / (24 * HOUR_MS))}d ago`;
 };
-var summaryBanner = ({ text, writtenAt }) => banner(() => ["Tasks at a glance", ago(writtenAt)].filter(Boolean).join(" · "), text);
+var summaryLine = ({ text, writtenAt }) => HStack({ spacing: 5, alignment: "top" }, [
+  Image("sparkles").font(9).color(PURPLE).opacity(0.7).paddingTop(2),
+  Text(text).font(11).color("secondary").lineLimit(3).truncation("tail").frame({ maxWidth: "infinity", alignment: "leading" })
+]).help(["Tasks at a glance", ago(writtenAt)].filter(Boolean).join(" · "));
 var linkRow = ({ icon, title, target }) => HStack({ spacing: 6 }, [
   Text(icon).font(11).frame({ width: 14 }),
   Text(title).font(11).color("secondary").lineLimit(1).truncation("tail").frame({ maxWidth: "infinity", alignment: "leading" })
@@ -798,6 +802,7 @@ var tasksCard = (entry, listed) => {
   const total = (field) => entry.projects.reduce((sum, project) => sum + project[field], 0);
   const tone = (wanted) => () => listed.filter(({ task }) => dueLabel(task.due, today())?.tone === wanted).length;
   const groups = computed(() => agenda(listed, today()));
+  const summary = entry.tasksSummary;
   return foldingCard(VStack({ spacing: 6 }, [
     HStack({ spacing: 7 }, [
       Image("checklist").font(11).color(ACCENT),
@@ -809,6 +814,7 @@ var tasksCard = (entry, listed) => {
       chevron(expanded)
     ]),
     progressBar(fraction(total("done"), total("active") + total("blocked") + total("open")), ACCENT),
+    ...summary ? [when2(() => !expanded(), () => summaryLine(summary))] : [],
     HStack({ spacing: 8 }, [
       dueTally(tone("overdue"), "overdue", RED),
       dueTally(tone("soon"), "due this week", ORANGE),
@@ -870,7 +876,6 @@ var projectsBody = (entry) => {
   const found = computed(() => listed.filter(({ task }) => matchesQuery(query(), task.title, task.id)));
   const searching = () => query().trim() !== "";
   return VStack({ spacing: 10 }, [
-    ...entry.tasksSummary ? [summaryBanner(entry.tasksSummary)] : [],
     HStack({ spacing: 4 }, [
       searchField("Search tasks…", setQuery),
       toolIcon("square.grid.3x3", "Dashboard", () => cmux("browser.tab.new", { url: `${dashboard}#today` })),
