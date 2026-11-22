@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
+import { HOME_MARKER_FILES, PLUGIN_SOURCE_ROOT, RUNTIME_DIR, pluginName } from '@/shared/naming';
 
 /**
  * Codex kills a SessionEnd hook after 3 seconds. A capture that cannot take the
@@ -113,17 +113,41 @@ describe('deferred capture', () => {
     expect(dayFile()).toContain('[fourth-session]');
   });
 
-  test('a queue a killed drain had claimed is replayed by the next drain, then removed', async () => {
-    const claimed = resolve(DATA, 'capture-pending.1700000000000-1.jsonl');
-    const queued = {
-      transcriptPath: transcript('fifth', 2),
-      cwd: HOME,
-      sessionId: 'fifth-session',
-      mode: 'session-end'
-    };
-    writeFileSync(claimed, `${JSON.stringify(queued)}\n`, 'utf-8');
-    await drainDeferredCaptures();
-    expect(existsSync(claimed)).toBe(false);
-    expect(dayFile()).toContain('[fifth-session]');
-  });
+  test.skipIf(process.platform === 'win32')(
+    'a drain killed mid-replay leaves its claimed queue, and the next drain finishes it',
+    async () => {
+      const claimed = () =>
+        readdirSync(DATA).filter((name) => name.startsWith('capture-pending.') && name !== 'capture-pending.jsonl');
+      const stuck = resolve(HOME, 'stuck.jsonl');
+      expect(Bun.spawnSync(['mkfifo', stuck]).exitCode).toBe(0);
+      const queued = [
+        { transcriptPath: stuck, cwd: HOME, sessionId: 'stuck-session', mode: 'session-end' },
+        { transcriptPath: transcript('fifth', 2), cwd: HOME, sessionId: 'fifth-session', mode: 'session-end' }
+      ];
+      writeFileSync(PENDING, queued.map((line) => `${JSON.stringify(line)}\n`).join(''), 'utf-8');
+      const module = resolve(PLUGIN_SOURCE_ROOT, 'src', 'knowledge', 'session-capture.ts');
+      const drain = Bun.spawn(
+        ['bun', '-e', `await (await import(${JSON.stringify(module)})).drainDeferredCaptures();`],
+        { cwd: PLUGIN_SOURCE_ROOT, env: { ...process.env, AGENT_HOME: HOME }, stdout: 'ignore', stderr: 'ignore' }
+      );
+      const claimedBy = Date.now() + 5_000;
+      while (claimed().length === 0 && Date.now() < claimedBy) {
+        await Bun.sleep(20);
+      }
+      await Bun.sleep(200);
+      drain.kill('SIGKILL');
+      await drain.exited;
+      expect(claimed()).toHaveLength(1);
+      expect(dayFile()).not.toContain('[fifth-session]');
+
+      rmSync(LOCK, { recursive: true, force: true });
+      rmSync(stuck);
+      transcript('stuck', 2);
+      await drainDeferredCaptures();
+      expect(claimed()).toEqual([]);
+      expect(dayFile()).toContain('[stuck-session]');
+      expect(dayFile()).toContain('[fifth-session]');
+    },
+    15_000
+  );
 });

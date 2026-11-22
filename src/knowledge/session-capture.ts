@@ -27,7 +27,7 @@ import { nowTime, todayDate } from '@/shared/date';
 import { log as baseLog } from '@/shared/log';
 import type { TranscriptTurn } from '@/knowledge/types';
 import { existsSync, readFileSync } from 'node:fs';
-import { appendFile, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, rename, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { relative, resolve } from 'node:path';
 
@@ -207,8 +207,12 @@ const LOCK_STALE_MS = 10_000;
 const LOCK_RETRY_MS = 50;
 // Codex kills a SessionEnd hook after 3 seconds, so the wait leaves room to defer instead.
 const LOCK_MAX_WAIT_MS = 1_500;
-const PENDING_FILE = 'capture-pending.jsonl';
-const CLAIMED_RE = /^capture-pending\.\d+-\d+\.jsonl$/;
+const QUEUE_STEM = 'capture-pending';
+const PENDING_FILE = `${QUEUE_STEM}.jsonl`;
+const claimedFile = (): string => `${QUEUE_STEM}.${Date.now()}-${process.pid}.jsonl`;
+const isClaimedFile = (name: string): boolean =>
+  name !== PENDING_FILE && name.startsWith(`${QUEUE_STEM}.`) && name.endsWith('.jsonl');
+const lockDirPath = (): string => resolve(FOLDERS.DATA, 'capture.lock');
 
 /**
  * Cross-process mutex via atomic `mkdir`. Serializes the read-modify-write of
@@ -224,7 +228,7 @@ const CLAIMED_RE = /^capture-pending\.\d+-\d+\.jsonl$/;
  * *stealer's* lock — letting a third process run concurrently (ABA race).
  */
 async function acquireCaptureLock(maxWaitMs = LOCK_MAX_WAIT_MS): Promise<(() => Promise<void>) | null> {
-  const lockDir = resolve(FOLDERS.DATA, 'capture.lock');
+  const lockDir = lockDirPath();
   await mkdir(FOLDERS.DATA, { recursive: true }); // ensure lock's parent exists
   const deadline = Date.now() + maxWaitMs;
   const ownerFile = resolve(lockDir, 'owner');
@@ -248,7 +252,14 @@ async function acquireCaptureLock(maxWaitMs = LOCK_MAX_WAIT_MS): Promise<(() => 
     } catch {
       const age = await stat(lockDir)
         .then((s) => Date.now() - s.mtimeMs)
-        .catch(() => Infinity);
+        .catch(() => null);
+      // Gone between the mkdir and the stat: its holder released it, so try the mkdir again rather than steal.
+      if (age === null) {
+        if (Date.now() >= deadline) {
+          return null;
+        }
+        continue;
+      }
       if (age > LOCK_STALE_MS) {
         await forceRelease(); // steal: the dir isn't ours, so remove it unconditionally
         continue;
@@ -320,12 +331,12 @@ export async function captureSession(opts: CaptureSessionOpts): Promise<CaptureS
 const claimPendingQueue = async (): Promise<void> => {
   const pendingPath = resolve(FOLDERS.DATA, PENDING_FILE);
   if (existsSync(pendingPath)) {
-    await rename(pendingPath, resolve(FOLDERS.DATA, `capture-pending.${Date.now()}-${process.pid}.jsonl`));
+    await rename(pendingPath, resolve(FOLDERS.DATA, claimedFile()));
   }
 };
 
 const claimedQueues = async (): Promise<string[]> =>
-  (await readdir(FOLDERS.DATA).catch((): string[] => [])).filter((name) => CLAIMED_RE.test(name)).sort();
+  (await readdir(FOLDERS.DATA).catch((): string[] => [])).filter(isClaimedFile).sort();
 
 async function drainPending(): Promise<void> {
   await claimPendingQueue();
@@ -333,6 +344,8 @@ async function drainPending(): Promise<void> {
     const claimedPath = resolve(FOLDERS.DATA, name);
     const lines = (await readFile(claimedPath, 'utf-8')).split('\n').filter((line) => line.trim());
     for (const line of lines) {
+      // A live drain keeps its lock fresh, so only a dead one is judged stale and has its claimed queue replayed.
+      await utimes(lockDirPath(), new Date(), new Date()).catch(() => {});
       try {
         const queued = JSON.parse(line) as CaptureSessionOpts;
         if (!existsSync(queued.transcriptPath)) continue;
