@@ -1,7 +1,7 @@
 // Imports nothing, so the dashboard renderer can use it and stay free of the home's config.
 
 /** The plugin's own categories, in the order the dashboard lists them. A home may add its own. */
-export const REPORT_CATEGORIES = ['briefings', 'plans', 'radar', 'api', 'reviews', 'helpdesk', 'slack'] as const;
+export const REPORT_CATEGORIES = ['briefings', 'notes', 'plans', 'radar', 'api', 'reviews', 'helpdesk', 'slack'] as const;
 
 /** A category is a kebab-case folder under `reports/`; `captures` holds screenshots, not reports. */
 export const isReportCategory = (name: string): boolean => /^[a-z][a-z0-9-]*$/.test(name) && name !== 'captures';

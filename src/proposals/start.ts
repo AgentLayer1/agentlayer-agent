@@ -3,22 +3,22 @@ import { log } from '@/shared/log';
 import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { promptLaunch, type ProposalAdapter, type SessionPlace, type StartInput } from './adapter';
-import { ledgerProblem, readProposalLedger, writeProposalLedger, type Proposal } from './ledger';
+import { ledgerProblem, readProposalLedger, writeProposalLedger } from './ledger';
 import { decide, reopen } from './rules';
 import type { Choice } from './shown';
 
 // A started session reads its prompt as it opens; a day later the file has done its job.
 const PROMPT_KEEP_MS = 24 * 60 * 60 * 1000;
 
-const writePromptFile = (proposal: Proposal, now: Date): string => {
+const writePromptFile = ({ id, prompt }: { id: string; prompt: string }, now: Date): string => {
   const dir = FOLDERS.PROPOSAL_PROMPTS;
   mkdirSync(dir, { recursive: true });
   readdirSync(dir)
     .map((name) => resolve(dir, name))
     .filter((path) => now.getTime() - statSync(path).mtimeMs > PROMPT_KEEP_MS)
     .forEach((path) => rmSync(path, { force: true }));
-  const path = resolve(dir, `${proposal.id}.prompt`);
-  writeFileSync(path, proposal.prompt);
+  const path = resolve(dir, `${id}.prompt`);
+  writeFileSync(path, prompt);
   return path;
 };
 
@@ -49,6 +49,29 @@ const locateIn = (adapters: readonly ProposalAdapter[], env: DecideContext['env'
     const place = adapter.locate(env);
     return place ? [{ adapter, place }] : [];
   })[0];
+
+/**
+ * Opens a session on a prompt through the first adapter that can reach this session, beside it (or in the workspace
+ * the context names), and says where; with none, the command to run by hand.
+ */
+export const startPrompt = (
+  item: { id: string; prompt: string },
+  context: DecideContext
+): { where: string } | { error: string } => {
+  const input: StartInput = {
+    home: context.home,
+    promptFile: writePromptFile(item, context.now),
+    launcher: homeLauncher(context.home)
+  };
+  const found = locateIn(context.adapters, context.env);
+  const located =
+    found && context.workspace ? { ...found, place: { ...found.place, workspaceId: context.workspace } } : found;
+  try {
+    return { where: located ? located.adapter.start(input, located.place) : manualStart(input) };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+};
 
 export interface DecideContext {
   home: string;
@@ -83,22 +106,8 @@ export const decideProposal = (id: string, choice: Choice, context: DecideContex
     publishTo(context.adapters, context.home);
     return choice === 'later' ? `Later: ${proposal.title} comes back in the morning.` : `Skipped: ${proposal.title}.`;
   }
-  const input: StartInput = {
-    home: context.home,
-    promptFile: writePromptFile(proposal, context.now),
-    launcher: homeLauncher(context.home)
-  };
   writeProposalLedger(decision.ledger);
-  const found = locateIn(context.adapters, context.env);
-  const located =
-    found && context.workspace ? { ...found, place: { ...found.place, workspaceId: context.workspace } } : found;
-  const opened = ((): { where: string } | { error: string } => {
-    try {
-      return { where: located ? located.adapter.start(input, located.place) : manualStart(input) };
-    } catch (error) {
-      return { error: error instanceof Error ? error.message : String(error) };
-    }
-  })();
+  const opened = startPrompt(proposal, context);
   if ('error' in opened) {
     writeProposalLedger(reopen(readProposalLedger(), proposal.id));
   }

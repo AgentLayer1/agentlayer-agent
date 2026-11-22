@@ -89,6 +89,7 @@ Groups:
   compile                           Knowledge-compile state (synthesis runs in Claude Code, not here)
   knowledge                         Wiki maintenance (lint)
   notices                           What to nudge the operator about (upgrade, sync) as JSON; \`notices record <id> --outcome=acted|snoozed\` logs what they did
+  notes                             What the agent found and sent on its own, at most three a day: list, react, start
   proposals                         Sessions the agent proposes and the heartbeat that keeps them coming: list, decide, heartbeat
   prune                             Delete memory/YYYY-MM-DD*.md older than 14 days
   links                             Rewrite bare task IDs + shorthand into [[wikilinks]]
@@ -187,6 +188,11 @@ Sidebar commands for cmux (this CLI's, not the cmux app's own; run them from a t
   cmux settings --file=<ghostty|cmux> [--launcher=<claude|agent>] [--json]
                                     Compare a Mac's Ghostty or cmux settings with the recommended ones (read-only;
                                     prints what to paste and the command to run; without --json, exit 3 unless the file is complete)
+
+Notes commands:
+  notes list [--json]               Today's notes, the room left, and each lens's record
+  notes react <useful|dismiss> <id> Say how a note landed; the next scouting reads it
+  notes start <id>                  Open a session on the note's next step
 
 Proposals commands:
   proposals list [--json]           What's showing, the room for more, and the heartbeat's interval
@@ -608,6 +614,11 @@ async function run(): Promise<void> {
     const { collectNotices } = await import('@/notices/notices');
     console.log(JSON.stringify(await collectNotices()));
     return;
+  }
+
+  if (group === 'notes') {
+    const { runNotesCommand } = await import('@/notes/command');
+    process.exit(runNotesCommand(command, args));
   }
 
   if (group === 'proposals') {

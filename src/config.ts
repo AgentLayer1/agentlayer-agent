@@ -268,6 +268,10 @@ export const FILES = {
   get NOTICES() {
     return resolve(dataRoot(), 'notices.json');
   },
+  /** The notes the agent sent on its own, and how each was received (notes/ledger.ts). */
+  get NOTES() {
+    return resolve(dataRoot(), 'notes.json');
+  },
   /** Sessions the agent proposes and the heartbeat that keeps them coming (proposals/ledger.ts). */
   get PROPOSALS() {
     return resolve(dataRoot(), 'proposals.json');
