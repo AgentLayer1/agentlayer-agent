@@ -116,7 +116,7 @@ test('Later puts a proposal off until the next 08:00 in the home timezone', () =
     throw new Error('expected Later to land');
   }
   expect(showingNow(later.ledger, NOW).map(({ id }) => id)).toEqual(['p-1']);
-  const back = new Date(Date.parse(later.proposal.laterUntil));
+  const back = new Date(Date.parse(later.item.laterUntil));
   expect(showingNow(later.ledger, back).map(({ id }) => id)).toEqual(['p-0', 'p-1']);
 });
 

@@ -1,5 +1,5 @@
 import { DAY_MS, isoMs, nextMorning, nowISO, todayDate } from '@/shared/date';
-import type { MessageChoice } from '@/shared/message';
+import type { Decision, MessageChoice } from '@/messages/choices';
 import { freshId, shortId } from '@/shared/utils';
 import type { Note, NoteLedger } from './ledger';
 
@@ -104,28 +104,28 @@ export const openNotes = (ledger: NoteLedger, now: Date): Note[] =>
     .filter((note) => note.state === 'waiting' && now.getTime() - Math.max(isoMs(note.at), isoMs(note.laterUntil)) < OPEN_MS)
     .toSorted((a, b) => isoMs(b.at) - isoMs(a.at));
 
-type NoteDecision =
-  | { outcome: 'decided'; ledger: NoteLedger; note: Note }
-  | { outcome: 'unknown' }
-  | { outcome: 'already'; note: Note };
-
 /**
  * Records the operator's choice. Start and Dismiss are final, so a second Start changes nothing and a double click
  * can't open two sessions; Later puts the note off until the next morning and can be chosen again.
  */
-export const decideNote = (ledger: NoteLedger, id: string, choice: MessageChoice, now: Date): NoteDecision => {
+export const decideNote = (
+  ledger: NoteLedger,
+  id: string,
+  choice: MessageChoice,
+  now: Date
+): Decision<NoteLedger, Note> => {
   const found = ledger.notes.find((note) => note.id === id);
   if (!found) {
     return { outcome: 'unknown' };
   }
   if (found.state !== 'waiting') {
-    return { outcome: 'already', note: found };
+    return { outcome: 'already', item: found };
   }
   const note: Note =
     choice === 'later'
       ? { ...found, laterUntil: nextMorning(now) }
       : { ...found, state: choice === 'start' ? 'started' : 'dismissed', laterUntil: '', decidedAt: nowISO(now) };
-  return { outcome: 'decided', ledger: { notes: ledger.notes.map((item) => (item.id === id ? note : item)) }, note };
+  return { outcome: 'decided', ledger: { notes: ledger.notes.map((item) => (item.id === id ? note : item)) }, item: note };
 };
 
 /**

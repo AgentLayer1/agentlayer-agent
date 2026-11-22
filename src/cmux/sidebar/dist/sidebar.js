@@ -1034,7 +1034,7 @@ var heartbeatRoute = (place) => {
   return place && found ? { surfaceId: place.surfaceId, workspaceId: found.id } : null;
 };
 
-// src/shared/message.ts
+// src/messages/choices.ts
 var isShown = (laterUntil, nowMs) => laterUntil === "" || Date.parse(laterUntil) <= nowMs;
 
 // src/cmux/sidebar/messages.ts

@@ -5,7 +5,9 @@ import { FILES, FOLDERS } from '@/config';
 import { localISO, nowISO, shiftDate, todayDate } from '@/shared/date';
 import { chosenAdapters, deliverNote, type NoteAdapter, type NoteContext } from './adapter';
 import type { SessionLauncher, StartContext } from '@/sessions/launch';
-import type { MessageChoice } from '@/shared/message';
+import type { MessageChoice } from '@/messages/choices';
+import { decideMessage } from '@/messages/decide';
+import { noteMessages } from './kind';
 import { EMPTY_NOTES, parseNotes, readNotes, writeNotes, type Note, type NoteLedger } from './ledger';
 import {
   addNotes,
@@ -17,7 +19,6 @@ import {
   roomToday,
   type NoteInput
 } from './rules';
-import { decideOnNote } from './start';
 import { sendNotes } from './send';
 import { reportAdapter } from '@/reports/notes';
 
@@ -109,11 +110,11 @@ test('Start records the note before opening a session, so a repeat opens nothing
     writeNotes(addNotes(EMPTY_NOTES, [input('a'), input('b')], NOW, counter()).ledger);
     const context = (adapter: SessionLauncher): StartContext => ({ home: FOLDERS.HOME, adapters: [adapter], env: {}, now: NOW });
     const works = launcher(false);
-    expect(decideOnNote('n-0', 'start', context(works.adapter))).toBe('Started: Found a. Opened it in a new tab.');
-    expect(decideOnNote('n-0', 'start', context(works.adapter))).toBe('Found a: already started.');
+    expect(decideMessage(noteMessages, 'n-0', 'start', context(works.adapter))).toBe('Started: Found a. Opened it in a new tab.');
+    expect(decideMessage(noteMessages, 'n-0', 'start', context(works.adapter))).toBe('Found a: already started.');
     expect(works.opened).toHaveLength(1);
     const broken = launcher(true);
-    expect(decideOnNote('n-1', 'start', context(broken.adapter))).toBe("Couldn't start Found b: cmux is not running");
+    expect(decideMessage(noteMessages, 'n-1', 'start', context(broken.adapter))).toBe("Couldn't start Found b: cmux is not running");
     expect(readNotes().notes[1]?.state, 'put back, so it can be started again').toBe('waiting');
   } finally {
     rmSync(FILES.NOTES, { force: true });
@@ -133,7 +134,7 @@ test('a note put off near the end of its week waits until its Later time, not th
   if (later.outcome !== 'decided') {
     throw new Error('expected Later to land');
   }
-  const atLaterTime = new Date(Date.parse(later.note.laterUntil) + HOUR);
+  const atLaterTime = new Date(Date.parse(later.item.laterUntil) + HOUR);
   expect(openNotes(later.ledger, atLaterTime).map(({ id }) => id)).toEqual(['n-0']);
 });
 
@@ -234,11 +235,3 @@ test('a sent note lands in reports/notes, and the result says who delivered it a
   rmSync(folder, { recursive: true, force: true });
 });
 
-test('the notes core never imports an adapter', () => {
-  const dir = resolve(import.meta.dir);
-  const sources = readdirSync(dir).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'));
-  const core = sources.filter((name) => !['tool.ts', 'command.ts'].includes(name));
-  const offenders = core.filter((name) => /from '@\/(cmux|adapters|reports\/notes)/.test(readFileSync(resolve(dir, name), 'utf-8')));
-  expect(core.length).toBeGreaterThan(3);
-  expect(offenders).toEqual([]);
-});

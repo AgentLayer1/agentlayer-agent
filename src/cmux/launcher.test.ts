@@ -6,7 +6,8 @@ import { FILES, FOLDERS } from '@/config';
 import type { SessionPlace, StartInput } from '@/sessions/launch';
 import { EMPTY_LEDGER, readProposalLedger, writeProposalLedger } from '@/proposals/ledger';
 import { addProposals } from '@/proposals/rules';
-import { decideProposal } from '@/proposals/start';
+import { decideMessage } from '@/messages/decide';
+import { proposalMessages } from '@/proposals/kind';
 import type { CmuxCall } from './app';
 import { cmuxLauncher, cmuxLauncherWith } from './launcher';
 
@@ -104,7 +105,7 @@ test('a Start through the core passes the prompt only as a file the new shell re
   const id = added[0]?.id ?? '';
   const { adapter, calls } = recorder();
   const env = { CMUX_SURFACE_ID: 'surface-1', CMUX_WORKSPACE_ID: 'workspace-1' };
-  const said = decideProposal(id, 'start', { home: FOLDERS.HOME, adapters: [adapter], env, now: new Date() });
+  const said = decideMessage(proposalMessages, id, 'start', { home: FOLDERS.HOME, adapters: [adapter], env, now: new Date() });
   expect(said).toBe('Started: Reply to the review. Opened it in a new tab.');
   const args = calls.find((call) => call[0] === 'new-surface') ?? [];
   expect(valueOf(args, '--workspace')).toBe('workspace-1');

@@ -1,13 +1,12 @@
 import { LAUNCHERS, redrawHome } from '@/adapters';
 import { FOLDERS } from '@/config';
-import { notesProblem, readNotes } from '@/notes/ledger';
-import { decideOnNote } from '@/notes/start';
-import { ledgerProblem, readProposalLedger } from '@/proposals/ledger';
-import { decideProposal } from '@/proposals/start';
+import { noteMessages } from '@/notes/kind';
+import { proposalMessages } from '@/proposals/kind';
 import type { StartContext } from '@/sessions/launch';
-import { MESSAGE_CHOICES } from '@/shared/message';
 import { CLI_COMMAND } from '@/shared/naming';
 import { flagOf } from '@/shared/utils';
+import { MESSAGE_CHOICES } from './choices';
+import { decideMessage } from './decide';
 
 const USAGE = [
   `Usage: ${CLI_COMMAND} messages <command>`,
@@ -26,7 +25,7 @@ export const runMessagesCommand = (command: string | undefined, args: readonly s
     return 1;
   }
   // The lookup reads a broken ledger as empty, so it would answer "nothing waits" instead of naming the file.
-  const problem = ledgerProblem() || notesProblem();
+  const problem = proposalMessages.problem() || noteMessages.problem();
   if (problem) {
     console.error(problem);
     return 1;
@@ -39,10 +38,10 @@ export const runMessagesCommand = (command: string | undefined, args: readonly s
     now: new Date(),
     ...(workspace ? { workspace } : {})
   };
-  const said = readProposalLedger().proposals.some((proposal) => proposal.id === id)
-    ? decideProposal(id, choice, context)
-    : readNotes().notes.some((note) => note.id === id)
-      ? decideOnNote(id, choice, context)
+  const said = proposalMessages.has(proposalMessages.read(), id)
+    ? decideMessage(proposalMessages, id, choice, context)
+    : noteMessages.has(noteMessages.read(), id)
+      ? decideMessage(noteMessages, id, choice, context)
       : `Nothing waits with the id ${id}.`;
   console.log(said);
   redrawHome(FOLDERS.HOME);

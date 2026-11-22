@@ -1,7 +1,7 @@
 import { DAY_MS, isoMs, nextMorning, nowISO } from '@/shared/date';
 import { freshId, shortId } from '@/shared/utils';
 import type { Proposal, ProposalLedger } from './ledger';
-import { isShown, type MessageChoice } from '@/shared/message';
+import { isShown, type Decision, type MessageChoice } from '@/messages/choices';
 
 const randomId = shortId('p');
 
@@ -194,11 +194,6 @@ export const swapProposals = (
   };
 };
 
-type Decision =
-  | { outcome: 'decided'; ledger: ProposalLedger; proposal: Proposal }
-  | { outcome: 'unknown' }
-  | { outcome: 'already'; proposal: Proposal };
-
 // Later leaves a proposal waiting, with the time it shows again.
 const STATE_OF: Record<MessageChoice, Proposal['state']> = { start: 'started', later: 'waiting', dismiss: 'dismissed' };
 
@@ -206,13 +201,18 @@ const STATE_OF: Record<MessageChoice, Proposal['state']> = { start: 'started', l
  * Records the operator's choice. Start and Dismiss are final: a second Start changes nothing, so a double click can't
  * open two sessions. Later can be chosen again.
  */
-export const decide = (ledger: ProposalLedger, id: string, choice: MessageChoice, now: Date): Decision => {
+export const decide = (
+  ledger: ProposalLedger,
+  id: string,
+  choice: MessageChoice,
+  now: Date
+): Decision<ProposalLedger, Proposal> => {
   const found = ledger.proposals.find((proposal) => proposal.id === id);
   if (!found) {
     return { outcome: 'unknown' };
   }
   if (!isWaiting(found)) {
-    return { outcome: 'already', proposal: found };
+    return { outcome: 'already', item: found };
   }
   const proposal: Proposal = {
     ...found,
@@ -223,7 +223,7 @@ export const decide = (ledger: ProposalLedger, id: string, choice: MessageChoice
   return {
     outcome: 'decided',
     ledger: { ...ledger, proposals: ledger.proposals.map((item) => (item.id === id ? proposal : item)) },
-    proposal
+    item: proposal
   };
 };
 

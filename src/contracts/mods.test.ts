@@ -14,7 +14,7 @@ import { TASK_REF } from '@/tasks/prefix';
 import { MAY_HOLD_ID, linkTaskIds } from '../../mods/tasks/link';
 import { showsInRecent } from '../../mods/sidebar/paths';
 import { MESSAGE_CHOICES as MOD_CHOICES } from '../../mods/heartbeat/beat';
-import { MESSAGE_CHOICES } from '@/shared/message';
+import { MESSAGE_CHOICES } from '@/messages/choices';
 import { readRecentFiles } from '@/cmux/recent';
 
 describe('mods', () => {
