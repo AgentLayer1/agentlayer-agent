@@ -513,7 +513,11 @@ describe('notes', () => {
     const session = mock.session(on);
     on('tool.call', { tool: NOTE_ADD }, () => ({
       result: 'ok',
-      text: JSON.stringify({ added: [{ id: 'n-1', title: 'The snippet names the old plugin', delivered: ['report'] }], refused: [], roomToday: 2 })
+      text: JSON.stringify({
+        added: [{ id: 'n-1', source: 'site:snippet', title: 'The snippet names the old plugin', delivered: ['report'] }],
+        refused: [],
+        roomToday: 2
+      })
     }));
     const { host } = await bound($, on);
     await $.tool.call({
@@ -542,7 +546,7 @@ describe('notes', () => {
     await run($, 'note', 'useful n-1');
     await run($, 'note', 'start n-2');
     expect(host.argv.slice(-2).map((argv) => argv.slice(2).join(' '))).toEqual(['notes react useful n-1', 'notes start n-2']);
-    expect((await run($, 'note', 'later n-1')).text).toBe('Usage: /note <useful|dismiss|start> <id>');
+    expect((await run($, 'note', 'later n-1')).text).toBe('Usage: /note <useful|dismiss|start> <id> [--workspace=<id>]');
   });
 });
 

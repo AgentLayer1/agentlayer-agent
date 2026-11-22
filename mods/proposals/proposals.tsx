@@ -33,8 +33,8 @@ import {
 } from './beat';
 
 const USAGE = `Usage: /proposal <${CHOICES.join('|')}> <id> [--workspace=<id>]`;
-const NOTE_USAGE = 'Usage: /note <useful|dismiss|start> <id>';
-// The notes core's daily cap, which the band counts against.
+const NOTE_USAGE = 'Usage: /note <useful|dismiss|start> <id> [--workspace=<id>]';
+// Mirrors DAILY_CAP in src/notes/rules.ts; mods can't import plugin source.
 const NOTES_A_DAY = 3;
 // Inside the engine's short bound on every session.end hook.
 const RELEASE_TIMEOUT_MS = 1000;
@@ -384,11 +384,12 @@ export const registerProposals = (on: On): void => {
   on('command.run', { command: 'heartbeat' }, async ($, e) => ({ text: await heartbeat($, e.args) }));
 
   on('command.run', { command: 'note' }, async ($, e) => {
-    const [choice, id, workspace] = e.args.trim().split(/\s+/);
+    const words = e.args.trim().split(/\s+/);
+    const [choice, id] = words.filter((word) => !word.startsWith('--'));
     if (!id || (choice !== 'useful' && choice !== 'dismiss' && choice !== 'start')) {
       return { text: NOTE_USAGE };
     }
-    const where = choice === 'start' && workspace?.startsWith('--workspace=') ? [workspace] : [];
+    const where = choice === 'start' ? words.filter((word) => word.startsWith('--workspace=')) : [];
     return { text: await said($, choice === 'start' ? ['notes', 'start', id, ...where] : ['notes', 'react', choice, id]) };
   });
 

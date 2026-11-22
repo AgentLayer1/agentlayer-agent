@@ -14,7 +14,7 @@ export const noteContext = (now: Date): NoteContext => ({
 });
 
 interface Sent {
-  added: { id: string; title: string; delivered: string[] }[];
+  added: { id: string; source: string; title: string; delivered: string[] }[];
   refused: { source: string; title: string; reason: string }[];
   roomToday: number;
 }
@@ -32,13 +32,14 @@ export const sendNotes = async (inputs: readonly NoteInput[], adapters: readonly
   const context = noteContext(now);
   const chosen = chosenAdapters(adapters, context);
   const results = await Promise.all(added.map(async (note: Note) => ({ note, by: await deliverNote(note, chosen, context) })));
-  const final = results.reduce((current, { note, by }) => delivered(current, note.id, by), ledger);
+  // Read again: delivery can take seconds, and a reaction recorded meanwhile must not be written over.
+  const final = results.reduce((current, { note, by }) => delivered(current, note.id, by), readNotes());
   writeNotes(final);
   if (added.length) {
     publishNotes(chosen, context);
   }
   return {
-    added: results.map(({ note, by }) => ({ id: note.id, title: note.title, delivered: by })),
+    added: results.map(({ note, by }) => ({ id: note.id, source: note.source, title: note.title, delivered: by })),
     refused,
     roomToday: roomToday(final, now)
   };

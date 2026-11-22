@@ -2,7 +2,7 @@
 name: notes
 description: The heartbeat's scouting run, after a brain refresh - look at the home and the public world through one lens, check what you find against a live source, and send at most the day's room of notes, each a short finding with one next step. Never sends anything outside the home's own surfaces, edits nothing, and writes no code.
 disable-model-invocation: true
-allowed-tools: mcp__plugin_agentlayer_agent__note_add, mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_get, mcp__plugin_agentlayer_agent__github_sweep, mcp__plugin_agentlayer_agent__helpdesk_stats, mcp__plugin_agentlayer_agent__appstore_reviews, mcp__plugin_agentlayer_agent__gsc_query, mcp__plugin_agentlayer_agent__gsc_inspect, mcp__plugin_agentlayer_agent__web_search, WebSearch, WebFetch, Read, Bash
+allowed-tools: mcp__plugin_agentlayer_agent__note_add, mcp__plugin_agentlayer_agent__task_query, mcp__plugin_agentlayer_agent__task_get, mcp__plugin_agentlayer_agent__github_sweep, mcp__plugin_agentlayer_agent__helpdesk_stats, mcp__plugin_agentlayer_agent__appstore_reviews, mcp__plugin_agentlayer_agent__gsc_query, mcp__plugin_agentlayer_agent__gsc_inspect, mcp__plugin_agentlayer_agent__web_search, WebSearch, WebFetch, Read, Bash(bun:*)
 ---
 
 # Notes: tell the operator what you found
@@ -15,7 +15,7 @@ A note is what a sharp colleague sends unprompted: something changed or doesn't 
 bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes list --json
 ```
 
-`room` is how many notes may still go out today; at 0, say "No room for notes today" and stop. `recent` lists the last notes (their `source` keys are taken for two weeks), and `lenses` each lens's record: when it last produced a note and how its notes were received. If session start listed `extensions/skills/notes.md`, read it now: the operator's own lenses and rules, which win where they disagree with this file.
+`room` is how many notes may still go out today; at 0, say "No room for notes today" and stop. `recent` lists the notes of the last two weeks (their `source` keys are taken until then), and `lenses` each lens's record: when it last produced a note and how its notes were received. If session start listed `extensions/skills/notes.md`, read it now: the operator's own lenses and rules, which win where they disagree with this file.
 
 ## 2. Pick one lens
 
@@ -48,15 +48,15 @@ A finding becomes a note only when all of these hold:
 
 Write each note like this:
 
-- **title:** the finding as a headline, under 80 characters ("The install snippet in search still names the old plugin").
+- **title:** the finding as a headline, at most 80 characters ("The install snippet in search still names the old plugin").
 - **body:** two or three sentences: what you found, what you checked to be sure ("I checked the old link too: it redirects"), and why it matters now.
-- **sources:** the public pages that back it, full `https` URLs.
+- **sources:** what backs it: full URLs of pages anyone can open, or for a `brain` finding the home files it rests on (`knowledge/memory/index.md`, `projects/<slug>/tasks/<id>.md`). The tool checks only the shape; whether a URL is public is yours to check, so never cite a private repository's or a signed-in page.
 - **next:** the one smallest concrete step, with where to do it.
 - **prompt:** when the next step is work a session can do, its whole first message for a fresh session: what to do, the reach (drafts only: never send, post, pay, merge or delete), and where to stop. Leave it empty when the step is the operator's own.
 - **source:** a key naming the thing, `<kind>:<slug>` (`site:install-snippet`, `event:demo-day-2026`, `task:ab-012`).
 - **lens:** the lens's key from the table.
 
-Send them in one `note_add` call, best first. It refuses past the day's cap, a source noted in the last two weeks, or a note without a public URL; a refusal is expected, not an error.
+Send them in one `note_add` call, best first. It refuses past the day's cap, a source noted in the last two weeks, or a note with nothing to back it; a refusal is expected, not an error.
 
 ## 5. End
 

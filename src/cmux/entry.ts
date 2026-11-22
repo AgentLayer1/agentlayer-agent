@@ -60,7 +60,7 @@ const heartbeatPlace = ({ heartbeat }: ProposalLedger): HeartbeatPlace | null =>
 
 /**
  * What the sidebar shows of the home at `home`: its agent, pages, each project's counts and live tasks, its pins, its
- * newest reports, its goals, and the proposals waiting with the heartbeat that decides them.
+ * newest reports, its goals, the proposals waiting with the heartbeat that decides them, and today's and yesterday's notes.
  */
 export const homeEntry = (home: string, work: Work, ledger: ProposalLedger, notes: NoteLedger = EMPTY_NOTES): HomeEntry => {
   // An index line without a link names a report nothing can open.

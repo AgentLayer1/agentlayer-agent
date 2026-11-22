@@ -1,4 +1,4 @@
-import { nowISO, todayDate } from '@/shared/date';
+import { nowISO, shiftDate, todayDate } from '@/shared/date';
 import type { Note, NoteLedger, Reaction } from './ledger';
 
 /**
@@ -7,8 +7,7 @@ import type { Note, NoteLedger, Reaction } from './ledger';
 export const DAILY_CAP = 3;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-// A source isn't noted again for two weeks, and a note older than two months is dropped.
-const REPEAT_MS = 14 * DAY_MS;
+export const REPEAT_MS = 14 * DAY_MS;
 const KEEP_MS = 60 * DAY_MS;
 
 export type NoteInput = Pick<Note, 'source' | 'lens' | 'title' | 'body' | 'sources' | 'next'> & Partial<Pick<Note, 'prompt'>>;
@@ -27,7 +26,10 @@ interface Added {
 
 const ms = (iso: string): number => Date.parse(iso) || 0;
 
-const isPublicUrl = (text: string): boolean => /^https?:\/\/[^\s/]+\.[^\s]+$/.test(text);
+// A page anyone can open, or a file in the home, for a finding about the brain itself. Whether a URL is public is the
+// skill's to check; the shape is all this sees.
+const isSourceRef = (text: string): boolean =>
+  /^https?:\/\/[^\s/]+\.[^\s]+$/.test(text) || /^(knowledge|projects|reports)\/[^\s]+$/.test(text);
 
 /**
  * The notes sent on `now`'s day in the home's timezone.
@@ -52,7 +54,7 @@ const blockedBy = (ledger: NoteLedger, input: NoteInput, now: Date): string => {
   if (ledger.notes.some((note) => note.source === input.source && now.getTime() - ms(note.at) < REPEAT_MS)) {
     return 'noted in the last two weeks';
   }
-  return input.sources.some(isPublicUrl) ? '' : 'no public source to back it';
+  return input.sources.some(isSourceRef) ? '' : 'no source to back it: a URL, or a file in the home';
 };
 
 /**
@@ -88,7 +90,8 @@ export const addNotes = (
  * then newest first.
  */
 export const recentNotes = (ledger: NoteLedger, now: Date): Note[] => {
-  const days = new Set([todayDate(now), todayDate(new Date(now.getTime() - DAY_MS))]);
+  const today = todayDate(now);
+  const days = new Set([today, shiftDate(today, -1)]);
   return ledger.notes
     .filter((note) => note.reaction !== 'dismissed' && days.has(todayDate(new Date(ms(note.at)))))
     .toSorted((a, b) => Number(a.reaction !== '') - Number(b.reaction !== '') || ms(b.at) - ms(a.at));
@@ -101,7 +104,7 @@ export const delivered = (ledger: NoteLedger, id: string, adapters: readonly str
 });
 
 /**
- * Records how the operator took a note; unknown when no note has the id.
+ * Records how the operator took a note; null when no note has the id.
  */
 export const react = (ledger: NoteLedger, id: string, reaction: Exclude<Reaction, ''>): NoteLedger | null =>
   ledger.notes.some((note) => note.id === id)
@@ -122,7 +125,7 @@ export const lensRecord = (
         [note.lens]: {
           lastAt: ms(note.at) > ms(current.lastAt) ? note.at : current.lastAt,
           notes: current.notes + 1,
-          useful: current.useful + Number(note.reaction === 'useful'),
+          useful: current.useful + Number(note.reaction === 'useful' || note.reaction === 'started'),
           dismissed: current.dismissed + Number(note.reaction === 'dismissed')
         }
       };

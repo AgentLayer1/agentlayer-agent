@@ -3,7 +3,7 @@ import { isRecord } from '@/shared/json-block';
 import { writeJsonAtomic } from '@/shared/utils';
 import { existsSync, readFileSync } from 'node:fs';
 
-const REACTIONS = ['', 'useful', 'dismissed'] as const;
+const REACTIONS = ['', 'useful', 'dismissed', 'started'] as const;
 export type Reaction = (typeof REACTIONS)[number];
 
 /**
@@ -22,9 +22,6 @@ export interface Note {
   lens: string;
   title: string;
   body: string;
-  /**
-   * The public pages that back it.
-   */
   sources: string[];
   next: string;
   /**
@@ -32,9 +29,6 @@ export interface Note {
    */
   prompt: string;
   reaction: Reaction;
-  /**
-   * The adapters that delivered it.
-   */
   delivered: string[];
 }
 

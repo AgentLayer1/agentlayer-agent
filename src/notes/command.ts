@@ -1,9 +1,18 @@
-import { ADAPTERS } from '@/adapters';
+import { ADAPTERS, NOTE_ADAPTERS } from '@/adapters';
 import { FOLDERS } from '@/config';
 import { startPrompt } from '@/proposals/start';
 import { CLI_COMMAND } from '@/shared/naming';
-import { notesProblem, readNotes, writeNotes } from './ledger';
-import { DAILY_CAP, lensRecord, notesOn, react, roomToday } from './rules';
+import { chosenAdapters, publishNotes } from './adapter';
+import { notesProblem, readNotes, writeNotes, type NoteLedger } from './ledger';
+import { DAILY_CAP, lensRecord, notesOn, react, REPEAT_MS, roomToday } from './rules';
+import { noteContext } from './send';
+
+// A changed note shows wherever notes are listed, not at the next unrelated redraw.
+const saveAndPublish = (ledger: NoteLedger): void => {
+  writeNotes(ledger);
+  const context = noteContext(new Date());
+  publishNotes(chosenAdapters(NOTE_ADAPTERS, context), context);
+};
 
 const USAGE = [
   `Usage: ${CLI_COMMAND} notes <command>`,
@@ -25,7 +34,9 @@ const list = (args: readonly string[]): number => {
   const today = notesOn(ledger, now);
   const room = roomToday(ledger, now);
   if (args.includes('--json')) {
-    const recent = ledger.notes.slice(-20).map(({ id, at, source, lens, title, reaction }) => ({ id, at, source, lens, title, reaction }));
+    const recent = ledger.notes
+      .filter((note) => now.getTime() - (Date.parse(note.at) || 0) < REPEAT_MS)
+      .map(({ id, at, source, lens, title, reaction }) => ({ id, at, source, lens, title, reaction }));
     console.log(JSON.stringify({ cap: DAILY_CAP, room, today: today.length, recent, lenses: lensRecord(ledger) }));
     return 0;
   }
@@ -50,14 +61,20 @@ export const runNotesCommand = (command: string | undefined, args: readonly stri
       console.error(reaction && id ? `No note ${id}.` : USAGE);
       return 1;
     }
-    writeNotes(changed);
+    saveAndPublish(changed);
     console.log(reaction === 'useful' ? 'Noted: useful.' : 'Dismissed.');
     return 0;
   }
   if (command === 'start') {
-    const note = readNotes().notes.find(({ id }) => id === words[0]);
+    const [id] = words;
+    if (!id) {
+      console.error(USAGE);
+      return 1;
+    }
+    const ledger = readNotes();
+    const note = ledger.notes.find((item) => item.id === id);
     if (!note?.prompt) {
-      console.error(note ? `${note.title} has no session to start.` : `No note ${words[0] ?? ''}.`);
+      console.error(note ? `${note.title} has no session to start.` : `No note ${id}.`);
       return 1;
     }
     const workspace = args.find((arg) => arg.startsWith('--workspace='))?.slice('--workspace='.length);
@@ -68,8 +85,13 @@ export const runNotesCommand = (command: string | undefined, args: readonly stri
       now: new Date(),
       ...(workspace ? { workspace } : {})
     });
-    console.log('error' in opened ? `Couldn't start it: ${opened.error}` : `Started: ${note.title}. ${opened.where}`);
-    return 'error' in opened ? 1 : 0;
+    if ('error' in opened) {
+      console.log(`Couldn't start it: ${opened.error}`);
+      return 1;
+    }
+    saveAndPublish(react(ledger, id, 'started') ?? ledger);
+    console.log(`Started: ${note.title}. ${opened.where}`);
+    return 0;
   }
   console.error(USAGE);
   return 1;

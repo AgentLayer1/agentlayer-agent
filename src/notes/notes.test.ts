@@ -27,12 +27,11 @@ const counter = () => {
   return () => `n-${(next++).toString(36)}`;
 };
 
-test(`at most ${DAILY_CAP} notes go out a day in the home's timezone, and the next day has room again`, () => {
+test(`at most ${DAILY_CAP} notes go out a day in the home's timezone: 23:59 is still that day, 00:01 has room again`, () => {
   const sent = addNotes(EMPTY_NOTES, ['a', 'b', 'c', 'd'].map((source) => input(source)), NOW, counter());
   expect(sent.added.map(({ source }) => source)).toEqual(['a', 'b', 'c']);
   expect(sent.refused).toEqual([{ source: 'd', title: 'Found d', reason: `${DAILY_CAP} notes already went out today` }]);
   expect(roomToday(sent.ledger, NOW)).toBe(0);
-  // 23:59 in the home's timezone is still the same day; 00:01 is the next.
   const today = todayDate(NOW);
   expect(roomToday(sent.ledger, new Date(localISO(today, '23:59')))).toBe(0);
   expect(roomToday(sent.ledger, new Date(localISO(shiftDate(today, 1), '00:01')))).toBe(DAILY_CAP);
@@ -45,9 +44,10 @@ test('a source noted in the last two weeks is refused, and comes back after', ()
   expect(again(15).added).toHaveLength(1);
 });
 
-test('a note with no public source URL is refused', () => {
-  const { refused } = addNotes(EMPTY_NOTES, [input('x', { sources: ['the brain', 'reports/notes/x.md'] })], NOW);
-  expect(refused.map(({ reason }) => reason)).toEqual(['no public source to back it']);
+test('a note with nothing to back it is refused; a brain finding may cite a home file', () => {
+  const { refused } = addNotes(EMPTY_NOTES, [input('x', { sources: ['the brain', '~/notes.md'] })], NOW);
+  expect(refused.map(({ reason }) => reason)).toEqual(['no source to back it: a URL, or a file in the home']);
+  expect(addNotes(EMPTY_NOTES, [input('y', { sources: ['knowledge/memory/index.md'] })], NOW).added, 'a brain finding cites the home').toHaveLength(1);
 });
 
 test('reactions record how a note landed, per lens, and an unknown id changes nothing', () => {

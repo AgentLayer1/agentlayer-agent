@@ -28,7 +28,7 @@ const NOTE = z.object({
     .array(z.string().trim().max(500))
     .min(1)
     .max(5)
-    .describe('The public pages that back it, as full https URLs.'),
+    .describe('What backs it: full URLs of pages anyone can open, or for a finding about the brain, the home files (knowledge/…, projects/…).'),
   next: text(200).min(1).describe('The one next step, small and concrete: "Inspect the install URL in Search Console and request indexing."'),
   prompt: text(8000)
     .default('')
@@ -40,7 +40,7 @@ const NOTE = z.object({
 export const tools: ToolDef[] = [
   defineTool({
     name: 'note_add',
-    description: `Send notes: short findings checked against a live public source, each with one next step. At most ${DAILY_CAP} a day; a note on a source sent in the last two weeks, or with no public source URL, is refused. Each note is written to reports/notes/ and delivered through every adapter the home can reach (the heartbeat's tab, notifications, the cmux Manager). Returns what went out, through which adapters, what was refused and why, and the room left today.`,
+    description: `Send notes: short findings checked against a live public source, each with one next step. At most ${DAILY_CAP} a day; a note on a source sent in the last two weeks, or with nothing to back it, is refused. Each note is written to reports/notes/ and delivered through every adapter the home can reach (the heartbeat's tab, notifications, the cmux Manager). Returns what went out, through which adapters, what was refused and why, and the room left today.`,
     inputSchema: {
       notes: z.array(NOTE).min(1).max(DAILY_CAP).describe('The notes to send, best first.')
     },

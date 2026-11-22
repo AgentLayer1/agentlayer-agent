@@ -1107,7 +1107,7 @@ var body2 = ({ entry, item }, send) => {
     Text(`Next: ${item.next}`).font(11),
     ...item.sources.map((url) => Text(url).font(10).color("tertiary").lineLimit(1).truncation("middle")),
     when2(() => place() !== null, () => HStack({ spacing: 4 }, [
-      ...item.canStart ? [choiceButton("Start", () => act(start()), entry.colors?.primary ?? PURPLE)] : [],
+      ...item.canStart && item.reaction !== "started" ? [choiceButton("Start", () => act(start()), entry.colors?.primary ?? PURPLE)] : [],
       ...item.reaction ? [] : [choiceButton("Useful", () => act(`/note useful ${item.id}`))],
       choiceButton("Dismiss", () => act(`/note dismiss ${item.id}`)),
       Spacer({ minLength: 0 })
@@ -1126,7 +1126,7 @@ var notesSection = () => {
       span: hhmm(item.at),
       badges: [
         { text: `${entry.emoji} ${entry.name}`, color: entry.colors?.primary ?? PURPLE },
-        ...item.reaction === "useful" ? [{ text: "useful", color: GREEN, icon: "checkmark" }] : []
+        ...item.reaction ? [{ text: item.reaction, color: GREEN, icon: "checkmark" }] : []
       ],
       summary: item.next,
       searchText: `${item.body} ${item.next}`,

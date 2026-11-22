@@ -234,9 +234,6 @@ export const notesRoom = (stdout: string): number | null => {
   }
 };
 
-/**
- * A note as the heartbeat's tab shows it.
- */
 export interface SentNote {
   id: string;
   title: string;
@@ -249,8 +246,8 @@ export interface SentNote {
 const text = (value: unknown): string => (typeof value === 'string' ? value : '');
 
 /**
- * The notes a `note_add` call sent, joined with what it was asked to send, and the room left today; null when its
- * result isn't the tool's JSON.
+ * The notes a `note_add` call sent, joined by source key (unique within one call) with what it was asked to send, and
+ * the room left today; null when its result isn't the tool's JSON.
  */
 export const notesSent = (input: unknown, resultText: string): { notes: SentNote[]; roomToday: number } | null => {
   try {
@@ -262,8 +259,9 @@ export const notesSent = (input: unknown, resultText: string): { notes: SentNote
       typeof input === 'object' && input !== null && 'notes' in input && Array.isArray(input.notes) ? input.notes : [];
     const notes = result.added.flatMap((added: unknown): SentNote[] => {
       const id = typeof added === 'object' && added !== null && 'id' in added ? text(added.id) : '';
+      const source = typeof added === 'object' && added !== null && 'source' in added ? text(added.source) : '';
       const title = typeof added === 'object' && added !== null && 'title' in added ? text(added.title) : '';
-      const note = asked.find((item) => text(item.title) === title);
+      const note = asked.find((item) => text(item.source).trim() === source);
       if (!id || !note) {
         return [];
       }

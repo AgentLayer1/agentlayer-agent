@@ -128,9 +128,6 @@ export interface GoalsItem {
   blocks: GoalBlockItem[];
 }
 
-/**
- * A proposal as the sidebar shows it: never its prompt, which stays in the home.
- */
 export interface NoteItem {
   id: string;
   title: string;
@@ -147,11 +144,14 @@ export interface NoteItem {
    */
   canStart: boolean;
   /**
-   * 'useful' once the operator said so, '' while unread.
+   * 'useful' or 'started' once the operator acted on it, '' while unread; a dismissed note never reaches the sidebar.
    */
   reaction: string;
 }
 
+/**
+ * A proposal as the sidebar shows it: never its prompt, which stays in the home.
+ */
 export interface ProposalItem {
   id: string;
   title: string;

@@ -33,7 +33,7 @@ const body = ({ entry, item }: Shown, send: (text: string, place: HeartbeatPlace
       () => place() !== null,
       () =>
         HStack({ spacing: 4 }, [
-          ...(item.canStart ? [choiceButton('Start', () => act(start()), entry.colors?.primary ?? PURPLE)] : []),
+          ...(item.canStart && item.reaction !== 'started' ? [choiceButton('Start', () => act(start()), entry.colors?.primary ?? PURPLE)] : []),
           ...(item.reaction ? [] : [choiceButton('Useful', () => act(`/note useful ${item.id}`))]),
           choiceButton('Dismiss', () => act(`/note dismiss ${item.id}`)),
           Spacer({ minLength: 0 })
@@ -64,7 +64,7 @@ export const notesSection = (): HostSection => {
       span: hhmm(item.at),
       badges: [
         { text: `${entry.emoji} ${entry.name}`, color: entry.colors?.primary ?? PURPLE },
-        ...(item.reaction === 'useful' ? [{ text: 'useful', color: GREEN, icon: 'checkmark' }] : [])
+        ...(item.reaction ? [{ text: item.reaction, color: GREEN, icon: 'checkmark' }] : [])
       ],
       summary: item.next,
       searchText: `${item.body} ${item.next}`,
