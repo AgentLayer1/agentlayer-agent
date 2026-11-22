@@ -1,10 +1,11 @@
 import { FILES, TIMEZONE } from '@/config';
+import { todayDate } from '@/shared/date';
 import { existsSync, readFileSync } from 'node:fs';
 import { redactSecrets } from '@/knowledge/utils';
 import { countOf } from '@/shared/utils';
 import type { NoteLedger } from './ledger';
-import type { WebLens } from './lenses';
-import { roomToday } from './rules';
+import { webLensOf, type HomeLens, type WebLens } from './lenses';
+import { roomToday, sentLately } from './rules';
 
 const HEADINGS = ['names', 'sites', 'facts', 'topics', 'place'] as const;
 type Heading = (typeof HEADINGS)[number];
@@ -112,3 +113,35 @@ export const scoutBrief = (facts: PublicFacts, lens: WebLens, ledger: NoteLedger
     `Room: at most ${countOf(roomToday(ledger, now), 'note')} today.`
   ].join('\n');
 };
+
+/**
+ * The home lens agent's task: one lens, the day, the room, what was noted lately or dismissed (so not again), the open
+ * workspaces to place a note in, and the home's own rules when it has them. It reads the home and reaches no web.
+ */
+export const homeBrief = (
+  lens: HomeLens,
+  ledger: NoteLedger,
+  now: Date,
+  workspaces: readonly string[],
+  rulesFile: string
+): string => {
+  const recent = new Set(sentLately(ledger, now).map((note) => note.id));
+  const taken = ledger.notes
+    .filter((note) => recent.has(note.id) || note.state === 'dismissed')
+    .map((note) => `${note.source} (${note.title})`);
+  return [
+    `Lens: ${lens.key}. Look for ${lens.lookFor}. Where: ${lens.where}.`,
+    `Today: ${todayDate(now)}`,
+    `Room: at most ${countOf(roomToday(ledger, now), 'note')} today.`,
+    ...listed('Noted lately or dismissed, so not again', taken),
+    ...listed('Workspaces open now', workspaces),
+    ...(rulesFile
+      ? [`The operator's own rules for notes are in ${rulesFile}: read it first; it wins where it disagrees.`]
+      : [])
+  ].join('\n');
+};
+
+/**
+ * Whether a lens's notes come from the scout (the web) or the home lens agent.
+ */
+export const agentFor = (lens: string): 'scout' | 'home-lens' => (webLensOf(lens) ? 'scout' : 'home-lens');

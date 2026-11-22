@@ -42,6 +42,11 @@ export interface Note {
 
 export interface NoteLedger {
   notes: Note[];
+  /**
+   * When each lens was last handed out to a scouting run, an ISO time by lens key, so a lens that finds nothing still
+   * takes its turn.
+   */
+  ranAt?: Record<string, string>;
 }
 
 export const EMPTY_NOTES: NoteLedger = { notes: [] };
@@ -90,7 +95,12 @@ export const parseNotes = (data: unknown): NoteLedger => {
   if (!isRecord(data) || !Array.isArray(data.notes)) {
     return EMPTY_NOTES;
   }
-  return { notes: data.notes.map(parseNote).filter((note): note is Note => note !== null) };
+  const ranAt = isRecord(data.ranAt)
+    ? Object.fromEntries(
+        Object.entries(data.ranAt).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+      )
+    : {};
+  return { notes: data.notes.map(parseNote).filter((note): note is Note => note !== null), ranAt };
 };
 
 export const readNotes = (): NoteLedger => {

@@ -828,6 +828,7 @@ The code refuses a bullet with an email address, a long number or a link that is
 Public brief:  knowledge/public.md (N names, N sites, N facts, N topics)
 Scouting:      AGENT_NOTES_SCOUT=true in .claude/settings.local.json
 Runs:          after each brain refresh in the heartbeat (/heartbeat), at most 3 notes a day
+Try it now:    /heartbeat scout, in the heartbeat's tab
 ```
 
 ## Section B — Register an external remote MCP server

@@ -2,10 +2,10 @@ import { afterEach, expect, spyOn, test } from 'bun:test';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { FILES } from '@/config';
-import { parsePublic, scoutBrief } from './brief';
+import { homeBrief, parsePublic, scoutBrief } from './brief';
 import { runNotesCommand } from './command';
-import { EMPTY_NOTES, writeNotes, type Note, type NoteLedger } from './ledger';
-import { WEB_LENSES } from './lenses';
+import { EMPTY_NOTES, readNotes as readNotesForTest, writeNotes, type Note, type NoteLedger } from './ledger';
+import { HOME_LENSES, WEB_LENSES } from './lenses';
 import { pickLens } from './rules';
 
 const NOW = new Date('2026-11-22T10:00:00+08:00');
@@ -122,8 +122,29 @@ const briefJson = (): unknown => {
   }
 };
 
+test('each brief hands out the lens run least recently, so one that finds nothing still yields its turn', () => {
+  expect(briefJson()).toMatchObject({
+    lens: 'brain',
+    agent: 'home-lens',
+    prompt: expect.stringContaining('Lens: brain.')
+  });
+  expect(briefJson()).toMatchObject({ lens: 'waiting', agent: 'home-lens' });
+  expect(briefJson(), 'with no public file, only home lenses').toMatchObject({ lens: 'brain', agent: 'home-lens' });
+});
+
+test("a home brief carries the day, the room, what is taken, and the open workspaces, but never the scout's facts", () => {
+  writeNotes({ notes: [note({ lens: 'brain', source: 'task:aa-001', title: 'Ada owes a reply' })] });
+  const [brain] = HOME_LENSES;
+  const text = homeBrief(brain, readNotesForTest(), NOW, ['Acme work'], '');
+  expect(text).toContain('Lens: brain.');
+  expect(text).toContain('Today: 2026-11-22');
+  expect(text).toContain('- task:aa-001 (Ada owes a reply)');
+  expect(text).toContain('- Acme work');
+  expect(text).not.toContain("operator's own rules");
+});
+
 test('with no public file only a home lens runs, and with one a web lens gets its brief', () => {
-  expect(briefJson()).toEqual({ lens: 'brain', prompt: '' });
+  expect(briefJson()).toMatchObject({ lens: 'brain', agent: 'home-lens' });
   writeNotes({
     notes: [note({ lens: 'brain', source: 'task:aa-001' }), note({ id: 'n-2', lens: 'waiting', source: 'pr:1' })]
   });
@@ -131,6 +152,7 @@ test('with no public file only a home lens runs, and with one a web lens gets it
   writeFileSync(FILES.PUBLIC, PUBLIC);
   expect(briefJson()).toMatchObject({
     lens: 'public-drift',
+    agent: 'scout',
     prompt: expect.stringContaining('Acme Widgets')
   });
 });
