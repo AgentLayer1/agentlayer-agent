@@ -1,0 +1,584 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`session start, per host and home state Claude Code, initialized home 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=claude
+fatal: not a git repository (or any of the parent directories): .git
+<TIMESTAMP> WARN  [🪝 session] [start] hook fired (post-init)
+  🦊 Agent:     Nova · v<VERSION>
+  ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
+  ⟳  Sync:      Brain never synced · run /agentlayer:sync
+  🧠 Knowledge: <HOME>/knowledge
+  📁 Projects:  <HOME>/projects
+  📚 Context  · 0.0KB
+    ✗ session tail     0.0KB
+    ✗ today's reports  0.0KB
+    ○ pinned reports   0.0KB  (none pinned)
+    ○ history          0.0KB  (off · run /agentlayer:history)
+"
+,
+  "stdout": 
+"{"systemMessage":"
+  🦊 Agent:     Nova · v<VERSION>
+  ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
+  ⟳  Sync:      Brain never synced · run /agentlayer:sync
+  🧠 Knowledge: <HOME>/knowledge
+  📁 Projects:  <HOME>/projects
+  📚 Context  · 0.0KB
+    ✗ session tail     0.0KB
+    ✗ today's reports  0.0KB
+    ○ pinned reports   0.0KB  (none pinned)
+    ○ history          0.0KB  (off · run /agentlayer:history)","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"## Today
+<WEEKDAY>, <MONTH> <DAY>, <YEAR> (UTC)"}}"
+,
+}
+`;
+
+exports[`session start, per host and home state Claude Code, pre-init home 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=claude
+<TIMESTAMP> INFO  [🪝 session] [start] hook fired (pre-init)
+"
+,
+  "stdout": 
+"{"systemMessage":"
+\\u001b[1m\\u001b[38;2;180;86;168m ╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗\\u001b[0m
+\\u001b[1m\\u001b[38;2;180;86;168m ╠═╣ ║ ╦ ║╣  ║║║  ║ \\u001b[0m
+\\u001b[1m\\u001b[38;2;180;86;168m ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ \\u001b[0m
+\\u001b[1m\\u001b[38;2;59;170;112m===OPPI=== 🐙\\u001b[0m
+
+→ Not set up yet, run /agentlayer:init to get started.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"The agentlayer plugin is loaded, but \`/agentlayer:init\` hasn't been run yet — the Agent home directory and identity files don't exist.
+
+If the user asks you to do anything that requires the agent's data (compile, briefing, task ops, knowledge lookup), suggest they run \`/agentlayer:init\` first.
+
+If they ask general questions or want help with something unrelated to the agent, answer normally — you don't need the agent's context to be helpful."}}"
+,
+}
+`;
+
+exports[`session start, per host and home state Claude Code, stranded home 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=claude
+<TIMESTAMP> WARN  [🪝 session] [start] hook fired (home marker missing at <HOME>)
+"
+,
+  "stdout": 
+"{"systemMessage":"
+\\u001b[1m\\u001b[38;2;180;86;168m ╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗\\u001b[0m
+\\u001b[1m\\u001b[38;2;180;86;168m ╠═╣ ║ ╦ ║╣  ║║║  ║ \\u001b[0m
+\\u001b[1m\\u001b[38;2;180;86;168m ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ \\u001b[0m
+\\u001b[1m\\u001b[38;2;59;170;112m===OPPI=== 🐙\\u001b[0m
+
+→ <HOME> has a SOUL.md but no .state/version.json recording this agent — see the note below. Do NOT run init.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"The agentlayer plugin is loaded and \`<HOME>\` looks like an agent home (it has a SOUL.md), but no \`.state/version.json\` records \`agentlayer\`, which is how this agent recognises its own home. Until that's resolved the agent's data is unreachable: sessions won't be captured and its tools will refuse to run.
+
+Help the user work out which cause applies:
+
+1. **This is another agent's home.** Every agent's home has a SOUL.md, only this one's \`.state/version.json\` records \`agentlayer\`. Launch that agent from here instead, and launch this one from its own home.
+2. **This home's \`.state/\` state didn't survive a restore, clone, or sync.** Restore \`.state/version.json\` (upgrade baseline, the file that marks the home) and \`.state/knowledge.json\` (compile cursor) from the backup or the brain repo; both are git-tracked. Without the compile cursor the next compile re-ingests everything.
+
+**Do not suggest \`init\` to fix this.** Its re-run path offers to overwrite SOUL.md, IDENTITY.md, USER.md and the operating manual, which is the operator losing their agent, not repairing it."}}"
+,
+}
+`;
+
+exports[`session start, per host and home state Claude Code in its terminal, initialized home 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=claude
+fatal: not a git repository (or any of the parent directories): .git
+<TIMESTAMP> WARN  [🪝 session] [start] hook fired (post-init)
+  🦊 Agent:     Nova · v<VERSION>
+  ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
+  ⟳  Sync:      Brain never synced · run /agentlayer:sync
+  🧠 Knowledge: <HOME>/knowledge
+  📁 Projects:  <HOME>/projects
+  📚 Context  · 0.0KB
+    ✗ session tail     0.0KB
+    ✗ today's reports  0.0KB
+    ○ pinned reports   0.0KB  (none pinned)
+    ○ history          0.0KB  (off · run /agentlayer:history)
+"
+,
+  "stdout": 
+"{"systemMessage":"
+  🦊 Agent:     \\u001b[1m\\u001b[38;2;180;86;168mNova\\u001b[0m · v<VERSION>
+  \\u001b[1m\\u001b[33m↑\\u001b[0m  Upgrade:   \\u001b[1mTurn on update tracking\\u001b[0m · \\u001b[2mrun /agentlayer:upgrade\\u001b[0m
+  \\u001b[1m\\u001b[31m⟳\\u001b[0m  Sync:      \\u001b[1mBrain never synced\\u001b[0m · \\u001b[2mrun /agentlayer:sync\\u001b[0m
+  🧠 Knowledge: <HOME>/knowledge
+  📁 Projects:  <HOME>/projects
+  📚 Context  · 0.0KB
+    ✗ session tail     0.0KB
+    ✗ today's reports  0.0KB
+    ○ pinned reports   0.0KB  (none pinned)
+    ○ history          0.0KB  (off · run /agentlayer:history)","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"## Today
+<WEEKDAY>, <MONTH> <DAY>, <YEAR> (UTC)"}}"
+,
+}
+`;
+
+exports[`session start, per host and home state Codex, initialized home 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=codex --home=<HOME>
+fatal: not a git repository (or any of the parent directories): .git
+<TIMESTAMP> WARN  [🪝 session] [start] hook fired (codex)
+  🦊 Agent:     Nova · v<VERSION>
+  ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
+  ⟳  Sync:      Brain never synced · run /agentlayer:sync
+  🧠 Knowledge: <HOME>/knowledge
+  📁 Projects:  <HOME>/projects
+  📚 Context  · 0.0KB
+    ✗ session tail     0.0KB
+    ✗ today's reports  0.0KB
+    ○ pinned reports   0.0KB  (none pinned)
+    ○ history          0.0KB  (off · run /agentlayer:history)
+"
+,
+  "stdout": 
+"{"systemMessage":"  🦊 Agent:     Nova · v<VERSION>
+  ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
+  ⟳  Sync:      Brain never synced · run /agentlayer:sync
+  🧠 Knowledge: <HOME>/knowledge
+  📁 Projects:  <HOME>/projects
+  📚 Context  · 0.0KB
+    ✗ session tail     0.0KB
+    ✗ today's reports  0.0KB
+    ○ pinned reports   0.0KB  (none pinned)
+    ○ history          0.0KB  (off · run /agentlayer:history)","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<!-- agent static context · harness: codex · plugin root: <ROOT> (a skill that writes \${CLAUDE_PLUGIN_ROOT} means this path) · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs $upgrade · delivered by the plugin's SessionStart hook because Codex has no @-import -->
+
+<!-- file: SOUL.md -->
+# Soul
+
+Sharp and kind.
+
+<!-- file: IDENTITY.md -->
+# Identity
+
+- **Name:** Nova
+- **Emoji:** 🦊
+
+<!-- file: USER.md -->
+# About Ada
+
+<!-- file: knowledge/index.md -->
+# Knowledge Index
+
+<!-- file: knowledge/memory/index.md -->
+# Memory
+
+## Active Threads
+
+- none
+
+<!-- file: projects/TASKS.md -->
+# Tasks
+
+<!-- session context (dynamic lane) -->
+## Today
+<WEEKDAY>, <MONTH> <DAY>, <YEAR> (UTC)
+"}}"
+,
+}
+`;
+
+exports[`session start, per host and home state Codex, pre-init home 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=codex --home=<HOME>
+"
+,
+  "stdout": 
+"{"systemMessage":"
+ ╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗
+ ╠═╣ ║ ╦ ║╣  ║║║  ║ 
+ ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ 
+===OPPI=== 🐙
+
+→ Not set up yet, run /agentlayer:init to get started.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"The agentlayer plugin is loaded, but \`/agentlayer:init\` hasn't been run yet — the Agent home directory and identity files don't exist.
+
+If the user asks you to do anything that requires the agent's data (compile, briefing, task ops, knowledge lookup), suggest they run \`/agentlayer:init\` first.
+
+If they ask general questions or want help with something unrelated to the agent, answer normally — you don't need the agent's context to be helpful."}}"
+,
+}
+`;
+
+exports[`session start, per host and home state Codex, stranded home 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=codex --home=<HOME>
+"
+,
+  "stdout": 
+"{"systemMessage":"
+ ╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗
+ ╠═╣ ║ ╦ ║╣  ║║║  ║ 
+ ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ 
+===OPPI=== 🐙
+
+→ <HOME> has a SOUL.md but no .state/version.json recording this agent — see the note below. Do NOT run init.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"The agentlayer plugin is loaded and \`<HOME>\` looks like an agent home (it has a SOUL.md), but no \`.state/version.json\` records \`agentlayer\`, which is how this agent recognises its own home. Until that's resolved the agent's data is unreachable: sessions won't be captured and its tools will refuse to run.
+
+Help the user work out which cause applies:
+
+1. **This is another agent's home.** Every agent's home has a SOUL.md, only this one's \`.state/version.json\` records \`agentlayer\`. Launch that agent from here instead, and launch this one from its own home.
+2. **This home's \`.state/\` state didn't survive a restore, clone, or sync.** Restore \`.state/version.json\` (upgrade baseline, the file that marks the home) and \`.state/knowledge.json\` (compile cursor) from the backup or the brain repo; both are git-tracked. Without the compile cursor the next compile re-ingests everything.
+
+**Do not suggest \`init\` to fix this.** Its re-run path offers to overwrite SOUL.md, IDENTITY.md, USER.md and the operating manual, which is the operator losing their agent, not repairing it."}}"
+,
+}
+`;
+
+exports[`session start, per host and home state no protocol, initialized home 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start
+fatal: not a git repository (or any of the parent directories): .git
+<TIMESTAMP> WARN  [🪝 session] [start] hook fired (post-init)
+  🦊 Agent:     Nova · v<VERSION>
+  ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
+  ⟳  Sync:      Brain never synced · run /agentlayer:sync
+  🧠 Knowledge: <HOME>/knowledge
+  📁 Projects:  <HOME>/projects
+  📚 Context  · 0.0KB
+    ✗ session tail     0.0KB
+    ✗ today's reports  0.0KB
+    ○ pinned reports   0.0KB  (none pinned)
+    ○ history          0.0KB  (off · run /agentlayer:history)
+"
+,
+  "stdout": 
+"{
+  "systemMessage": "
+  🦊 Agent:     Nova · v<VERSION>
+  ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
+  ⟳  Sync:      Brain never synced · run /agentlayer:sync
+  🧠 Knowledge: <HOME>/knowledge
+  📁 Projects:  <HOME>/projects
+  📚 Context  · 0.0KB
+    ✗ session tail     0.0KB
+    ✗ today's reports  0.0KB
+    ○ pinned reports   0.0KB  (none pinned)
+    ○ history          0.0KB  (off · run /agentlayer:history)",
+  "additionalContext": "## Today
+<WEEKDAY>, <MONTH> <DAY>, <YEAR> (UTC)",
+  "hasIssues": true
+}
+"
+,
+}
+`;
+
+exports[`session start, per host and home state an unknown protocol is refused 1`] = `""`;
+
+exports[`the shell guard, per host Claude Code: an ordinary command 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host Claude Code: a home-tree write from outside the home 1`] = `
+{
+  "exit": 2,
+  "stderr": 
+"Blocked: this shell command would write "projects/x.md" outside the agent home <HOME> (the command's cwd is <SCRATCH>). Home trees (knowledge/, projects/, reports/) take the absolute path under <HOME>, or cd back to the home first.
+"
+,
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host Claude Code: a cd that carries over 1`] = `
+{
+  "exit": 2,
+  "stderr": 
+"Blocked: this command would leave the session's working directory at <SCRATCH>, outside the agent home <HOME>, and a cd carries over to every later command. Name the repo instead (git -C <repo>, absolute paths), or keep the cd in a subshell: ( cd <repo> && … ).
+"
+,
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host Claude Code: a history rewrite 1`] = `
+{
+  "exit": 2,
+  "stderr": 
+"Blocked: git commit --amend rewrites or hides history, and git here is forward-only (AGENTS.md, Workflow): fix a commit with a new commit on top, and merge without discarding the other side. The one exception, scrubbing a confidentiality leak from an unpushed commit, is the operator's to run with !.
+"
+,
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host Codex: an ordinary command 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host Codex: a home-tree write from outside the home 1`] = `
+{
+  "exit": 2,
+  "stderr": 
+"Blocked: this shell command would write "projects/x.md" outside the agent home <HOME> (the command's cwd is <SCRATCH>). Home trees (knowledge/, projects/, reports/) take the absolute path under <HOME>, or cd back to the home first.
+"
+,
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host Codex: a cd that carries over 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host Codex: a history rewrite 1`] = `
+{
+  "exit": 2,
+  "stderr": 
+"Blocked: git commit --amend rewrites or hides history, and git here is forward-only (AGENTS.md, Workflow): fix a commit with a new commit on top, and merge without discarding the other side. The one exception, scrubbing a confidentiality leak from an unpushed commit, is the operator's to run with !.
+"
+,
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host outside a home there is nothing to guard 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`session capture, per host Claude Code, session-end 1`] = `
+{
+  "days": 
+"--- <DATE>.md
+# Session Log: <DATE>
+
+### Session (<TIME>) [0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6] · <DATE> · <HOME> · turns 1–6 · claude
+
+**User:** claude turn 1
+
+**Assistant:** claude turn 2
+
+**User:** claude turn 3
+
+**Assistant:** claude turn 4
+
+**User:** claude turn 5
+
+**Assistant:** claude turn 6
+
+
+---
+
+"
+,
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-capture --mode=session-end --hook-protocol=claude
+<TIMESTAMP> INFO  [🪝 session] [capture] saved turns 1–6 → <DATE>.md (session-end)
+"
+,
+  "stdout": "",
+}
+`;
+
+exports[`session capture, per host Claude Code, pre-compact 1`] = `
+{
+  "days": 
+"--- <DATE>.md
+# Session Log: <DATE>
+
+### Pre-Compact (<TIME>) [0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6] · <DATE> · <HOME> · turns 1–6 · claude
+
+**User:** claude turn 1
+
+**Assistant:** claude turn 2
+
+**User:** claude turn 3
+
+**Assistant:** claude turn 4
+
+**User:** claude turn 5
+
+**Assistant:** claude turn 6
+
+
+---
+
+"
+,
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-capture --mode=pre-compact --hook-protocol=claude
+<TIMESTAMP> INFO  [🪝 session] [capture] saved turns 1–6 → <DATE>.md (pre-compact)
+"
+,
+  "stdout": "{"systemMessage":"💾 Saved 6 turns to <DATE>.md","hookSpecificOutput":{"hookEventName":"PreCompact"}}",
+}
+`;
+
+exports[`session capture, per host Codex, session-end 1`] = `
+{
+  "days": 
+"--- <DATE>.md
+# Session Log: <DATE>
+
+### Session (<TIME>) [0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6] · <DATE> · <HOME> · turns 1–6 · codex: gpt-test
+
+**User:** codex turn 1
+
+**Assistant:** codex turn 2
+
+**User:** codex turn 3
+
+**Assistant:** codex turn 4
+
+**User:** codex turn 5
+
+**Assistant:** codex turn 6
+
+
+---
+
+"
+,
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-capture --mode=session-end --hook-protocol=codex --home=<HOME>
+<TIMESTAMP> INFO  [🪝 session] [capture] saved turns 1–6 → <DATE>.md (session-end)
+"
+,
+  "stdout": 
+"{
+  "saved": true,
+  "turns": 6,
+  "path": "<HOME>/knowledge/raw/sessions/<DATE>.md",
+  "filename": "<DATE>.md"
+}
+"
+,
+}
+`;
+
+exports[`session capture, per host Codex, pre-compact 1`] = `
+{
+  "days": 
+"--- <DATE>.md
+# Session Log: <DATE>
+
+### Pre-Compact (<TIME>) [0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6] · <DATE> · <HOME> · turns 1–6 · codex: gpt-test
+
+**User:** codex turn 1
+
+**Assistant:** codex turn 2
+
+**User:** codex turn 3
+
+**Assistant:** codex turn 4
+
+**User:** codex turn 5
+
+**Assistant:** codex turn 6
+
+
+---
+
+"
+,
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-capture --mode=pre-compact --hook-protocol=codex --home=<HOME>
+<TIMESTAMP> INFO  [🪝 session] [capture] saved turns 1–6 → <DATE>.md (pre-compact)
+"
+,
+  "stdout": 
+"{
+  "saved": true,
+  "turns": 6,
+  "path": "<HOME>/knowledge/raw/sessions/<DATE>.md",
+  "filename": "<DATE>.md"
+}
+"
+,
+}
+`;
+
+exports[`session capture, per host by hand, with --format overriding the default extractor 1`] = `
+{
+  "days": 
+"--- <DATE>.md
+# Session Log: <DATE>
+
+### Session (<TIME>) [0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6] · <DATE> · <HOME> · turns 1–4 · codex: gpt-test
+
+**User:** codex turn 1
+
+**Assistant:** codex turn 2
+
+**User:** codex turn 3
+
+**Assistant:** codex turn 4
+
+
+---
+
+"
+,
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-capture --mode=session-end --transcript=<HOME>/rollout-<DATE>T01-43-38-01a077d1-91e1-7cc1-a3a8-ced457819b33.jsonl --cwd=<HOME> --session-id=0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6 --format=codex
+<TIMESTAMP> INFO  [🪝 session] [capture] saved turns 1–4 → <DATE>.md (session-end)
+"
+,
+  "stdout": 
+"{
+  "saved": true,
+  "turns": 4,
+  "path": "<HOME>/knowledge/raw/sessions/<DATE>.md",
+  "filename": "<DATE>.md"
+}
+"
+,
+}
+`;
+
+exports[`session capture, per host a queued Codex capture keeps its format through the queue and is drained at Codex's session start 1`] = `
+"--- <DATE>.md
+# Session Log: <DATE>
+
+### Session (<TIME>) [0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6] · <DATE> · <HOME> · turns 1–4 · codex: gpt-test
+
+**User:** codex turn 1
+
+**Assistant:** codex turn 2
+
+**User:** codex turn 3
+
+**Assistant:** codex turn 4
+
+
+---
+
+"
+`;
