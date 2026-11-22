@@ -13,6 +13,8 @@ export const scoutAgent = (plugin: string) => ({
     "The heartbeat's web scout. Started only by the heartbeat with a brief its code writes; never offered to a model.",
   prompt: PROMPT,
   tools: scoutTools(plugin),
+  // Reading pages and checking them against a short brief needs no frontier model.
+  model: 'sonnet',
   omitClaudeMd: true as const
 });
 

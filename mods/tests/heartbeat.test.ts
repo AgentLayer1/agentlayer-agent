@@ -704,8 +704,8 @@ describe('notes', () => {
     const { host } = heartbeatHost(on);
     await start($, host);
     expect(host.registered).toEqual([
-      { name: 'scout', omitClaudeMd: true, tools: ['WebSearch', 'WebFetch', NOTE_ADD] },
-      { name: 'home-lens', omitClaudeMd: undefined, tools: homeLensTools(PLUGIN) }
+      { name: 'scout', model: 'sonnet', omitClaudeMd: true, tools: ['WebSearch', 'WebFetch', NOTE_ADD] },
+      { name: 'home-lens', model: undefined, omitClaudeMd: undefined, tools: homeLensTools(PLUGIN) }
     ]);
   });
 
