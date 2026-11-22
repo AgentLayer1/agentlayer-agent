@@ -93,7 +93,7 @@ test('the status a tick reads holds the heartbeat, the brain, and the room for p
     expect(Object.keys(status.notes).toSorted()).toEqual(['cap', 'room', 'scout', 'today']);
     expect(status.notes.scout, 'off until the home turns it on').toBe(false);
     const before = process.env.AGENT_NOTES_SCOUT;
-    process.env.AGENT_NOTES_SCOUT = 'on';
+    process.env.AGENT_NOTES_SCOUT = 'true';
     try {
       const turnedOn = JSON.parse(quietly(() => runHeartbeatCommand('status', ['--json'])).lines[0] ?? '');
       expect(turnedOn.notes.scout).toBe(true);

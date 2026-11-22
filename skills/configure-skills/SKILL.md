@@ -818,7 +818,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes brief
 
 The code refuses a bullet with an email address, a long number or a link that isn't plain https, and names each one on a "Left out of the public brief" line. Relay any, and fix them with the operator before going on.
 
-**(5) Turn scouting on.** Set `AGENT_NOTES_SCOUT` to `on` in `$SETTINGS_FILE`'s `env` (§D.2). The heartbeat reads it at its next tick; no restart. Turned on with no `public.md`, scouting runs the home lenses only.
+**(5) Turn scouting on.** Set `AGENT_NOTES_SCOUT` to `true` in `$SETTINGS_FILE`'s `env` (§D.2). The heartbeat reads it at its next tick; no restart. Turned on with no `public.md`, scouting runs the home lenses only.
 
 **(6) Summary:**
 
@@ -826,7 +826,7 @@ The code refuses a bullet with an email address, a long number or a link that is
 ✅ Notes activated.
 
 Public brief:  knowledge/public.md (N names, N sites, N facts, N topics)
-Scouting:      AGENT_NOTES_SCOUT=on in .claude/settings.local.json
+Scouting:      AGENT_NOTES_SCOUT=true in .claude/settings.local.json
 Runs:          after each brain refresh in the heartbeat (/heartbeat), at most 3 notes a day
 ```
 
@@ -1021,7 +1021,7 @@ Run C.2 for each ticked pack; nothing ticked returns to Step 1.
 - `AGENT_SLACK_CLIENT_ID` and `knowledge/concepts/slack-channels.md` stay: the first is public and shared by the workspace, the second is the operator's.
 
 **Notes deconfigure:**
-- Remove `AGENT_NOTES_SCOUT` from `$SETTINGS_FILE`'s `env` (§D.2); scouting stops at the heartbeat's next tick. Notes already sent stay in the list.
+- Set `AGENT_NOTES_SCOUT` to `false` in `$SETTINGS_FILE`'s `env` (§D.2); scouting stops at the heartbeat's next tick. Notes already sent stay in the list.
 - `AskUserQuestion`: "Also delete `knowledge/public.md`?" (Yes/No). Default to keeping it: it holds nothing private, and turning scouting on again reuses it.
 
 **cmux deconfigure:**
