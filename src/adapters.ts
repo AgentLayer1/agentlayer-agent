@@ -5,7 +5,7 @@
 import { cmuxLauncher } from '@/cmux/launcher';
 import { redrawSidebar } from '@/cmux/lifecycle';
 import { cmuxNotesAdapter } from '@/cmux/notes';
-import { macNotesAdapter } from '@/home/notify';
+import { macNotesAdapter } from '@/desktop/notify';
 import type { NoteAdapter } from '@/notes/adapter';
 import { reportAdapter } from '@/reports/notes';
 import type { SessionLauncher } from '@/sessions/launch';

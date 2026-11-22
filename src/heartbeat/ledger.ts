@@ -1,6 +1,6 @@
 import { FILES } from '@/config';
 import { readProposalLedger, writeProposalLedger } from '@/proposals/ledger';
-import type { SessionPlace } from '@/sessions/launch';
+import { parsePlace, type SessionPlace } from '@/sessions/launch';
 import { isRecord } from '@/shared/json-block';
 import { jsonProblem, writeJsonChecked } from '@/shared/utils';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
@@ -13,14 +13,6 @@ export interface Heartbeat {
   places: SessionPlace[];
   everyMinutes: number;
 }
-
-const parsePlace = (data: unknown): SessionPlace | null =>
-  isRecord(data) &&
-  data.adapter === 'cmux' &&
-  typeof data.surfaceId === 'string' &&
-  typeof data.workspaceId === 'string'
-    ? { adapter: 'cmux', surfaceId: data.surfaceId, workspaceId: data.workspaceId }
-    : null;
 
 export const parseHeartbeat = (data: unknown): Heartbeat | null => {
   if (!isRecord(data) || typeof data.owner !== 'string' || typeof data.everyMinutes !== 'number') {

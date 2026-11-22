@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 import { HOME_MARKER_FILES, PLUGIN_SOURCE_ROOT, RUNTIME_DIR, agentSlug, pluginName } from '@/shared/naming';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -13,7 +13,9 @@ import { DEFAULT_AGENT_NAME } from '@/shared/persona';
 import { TASK_REF } from '@/tasks/prefix';
 import { MAY_HOLD_ID, linkTaskIds } from '../../mods/tasks/link';
 import { showsInRecent } from '../../mods/sidebar/paths';
-import { MESSAGE_CHOICES as MOD_CHOICES } from '../../mods/heartbeat/beat';
+import { MESSAGE_CHOICES as MOD_CHOICES, parseStatus } from '../../mods/heartbeat/beat';
+import { runHeartbeatCommand } from '@/heartbeat/command';
+import { writeHeartbeat } from '@/heartbeat/ledger';
 import { MESSAGE_CHOICES } from '@/messages/choices';
 import { readRecentFiles } from '@/cmux/recent';
 
@@ -126,4 +128,26 @@ describe('mods', () => {
 
 test("/message takes exactly the choices messages decide does, so the sidebar's buttons never type one the CLI refuses", () => {
   expect([...MOD_CHOICES]).toEqual([...MESSAGE_CHOICES]);
+});
+
+test("the heartbeat mod reads the CLI's own `heartbeat status --json`, so a field renamed on either side fails here", () => {
+  writeHeartbeat({ owner: 's-contract', places: [], everyMinutes: 30 });
+  const said = spyOn(console, 'log').mockImplementation(() => {});
+  try {
+    expect(runHeartbeatCommand('status', ['--json'])).toBe(0);
+    const [line = ''] = said.mock.calls.map(([text]) => String(text));
+    const read = parseStatus(line);
+    const cli: unknown = JSON.parse(line);
+    expect(read?.heartbeat).toEqual({ owner: 's-contract', everyMinutes: 30 });
+    expect(cli).toMatchObject({
+      timezone: read?.timezone,
+      refreshedAt: read?.refreshedAt,
+      refreshDue: read?.refreshDue,
+      proposals: read?.proposals,
+      notes: read?.notes
+    });
+  } finally {
+    said.mockRestore();
+    writeHeartbeat(null);
+  }
 });

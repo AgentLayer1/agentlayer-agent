@@ -1,5 +1,6 @@
 import { FOLDERS, homeLauncher } from '@/config';
 import { DAY_MS } from '@/shared/date';
+import { isRecord } from '@/shared/json-block';
 import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -8,6 +9,17 @@ import { resolve } from 'node:path';
  * launcher, so each one's fields stay typed.
  */
 export type SessionPlace = { adapter: 'cmux'; surfaceId: string; workspaceId: string };
+
+/**
+ * A stored place read back, or null when it isn't one a launcher knows.
+ */
+export const parsePlace = (data: unknown): SessionPlace | null =>
+  isRecord(data) &&
+  data.adapter === 'cmux' &&
+  typeof data.surfaceId === 'string' &&
+  typeof data.workspaceId === 'string'
+    ? { adapter: 'cmux', surfaceId: data.surfaceId, workspaceId: data.workspaceId }
+    : null;
 
 export type Launcher = ReturnType<typeof homeLauncher>;
 
