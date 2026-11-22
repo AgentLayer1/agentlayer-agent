@@ -23,7 +23,7 @@ import {
 } from '@/config';
 import { contextManifest, type ManifestEntry } from '@/hooks/context';
 import { type HistoryState, historyStatus, type LastCommit } from '@/home/history';
-import { HOST_FLOORS } from '@/upgrade/hosts';
+import { claudeHost } from '@/hosts/claude';
 import { listInboxFiles } from '@/knowledge/utils';
 import { readLedger } from '@/notices/ledger';
 import { type ChangelogEntry, getUpgradeStatus, parseChangelog, type UpgradeState } from '@/upgrade/version';
@@ -628,7 +628,7 @@ const collectHooks = (): StatusSnapshot['hooks'] => {
 
 const collectMods = (): ModsInfo => ({
   features: MOD_FEATURES,
-  floor: HOST_FLOORS.find((floor) => floor.name === 'claude')?.version ?? '',
+  floor: claudeHost.floor.version,
   lastSeen: readLedger().row ?? null
 });
 

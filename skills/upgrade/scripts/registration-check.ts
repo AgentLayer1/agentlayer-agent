@@ -10,6 +10,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
+import type { HostName } from '../../../src/hosts/contract';
 import { PLUGIN_SOURCE_ROOT } from '../../../src/shared/naming';
 
 /** Where consumers install from, and the marketplace repos that name replaced. */
@@ -20,7 +21,7 @@ const PUBLISHED = {
 };
 
 interface Finding {
-  host: 'claude' | 'codex';
+  host: HostName;
   kind: 'renamed-catalog' | 'retired-marketplace' | 'not-installed';
   detail: string;
   commands: string[];

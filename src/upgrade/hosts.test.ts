@@ -61,7 +61,7 @@ describe('hosts', () => {
   test('codex is required for a wired home or when the caller says so', () => {
     const home = mkdtempSync(join(tmpdir(), 'hosts-'));
     expect([...requiredHosts(home)]).toEqual(['claude', 'bun']);
-    expect([...requiredHosts(home, true)]).toEqual(['claude', 'codex', 'bun']);
+    expect([...requiredHosts(home, ['codex'])]).toEqual(['claude', 'codex', 'bun']);
     mkdirSync(join(home, '.codex'));
     writeFileSync(join(home, '.codex', 'hooks.json'), '{}');
     expect([...requiredHosts(home)]).toEqual(['claude', 'codex', 'bun']);

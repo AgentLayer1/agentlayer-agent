@@ -2,6 +2,9 @@ import { describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { claudeHost } from '@/hosts/claude';
+import { codexHost } from '@/hosts/codex';
+import type { GuardPolicy } from '@/hosts/contract';
 import { homeRelativeLeak, shellGuard } from './guard';
 
 const root = mkdtempSync(join(tmpdir(), 'bash-guard-'));
@@ -97,7 +100,7 @@ describe('homeRelativeLeak', () => {
   });
 });
 
-const claude = (command: string, cwd = home): string | undefined => shellGuard(command, cwd, home, 'claude');
+const claude = (command: string, cwd = home): string | undefined => shellGuard(command, cwd, home, claudeHost.guard);
 
 describe('shellGuard: directory drift', () => {
   test('refuses a top-level cd that leaves the session outside the home', () => {
@@ -156,18 +159,18 @@ describe('shellGuard: directory drift', () => {
   test('reads a symlinked spelling of the home as the home', () => {
     const linked = join(root, 'linked-home');
     symlinkSync(home, linked);
-    expect(shellGuard('git status', join(linked, 'projects'), home, 'claude')).toBeUndefined();
-    expect(shellGuard('git status', home, linked, 'claude')).toBeUndefined();
+    expect(shellGuard('git status', join(linked, 'projects'), home, claudeHost.guard)).toBeUndefined();
+    expect(shellGuard('git status', home, linked, claudeHost.guard)).toBeUndefined();
   });
 
   test('is skipped for a session launched outside the home, which a pinned home still reaches', () => {
-    expect(shellGuard('git status', repo, home, 'claude', { launch: repo })).toBeUndefined();
-    expect(shellGuard(`cd ${root}`, repo, home, 'claude', { launch: repo })).toBeUndefined();
-    expect(shellGuard('git status', repo, home, 'claude', { launch: home })).toContain('earlier cd');
+    expect(shellGuard('git status', repo, home, claudeHost.guard, { launch: repo })).toBeUndefined();
+    expect(shellGuard(`cd ${root}`, repo, home, claudeHost.guard, { launch: repo })).toBeUndefined();
+    expect(shellGuard('git status', repo, home, claudeHost.guard, { launch: home })).toContain('earlier cd');
   });
 
   test('is skipped under Codex, which starts every command in the workspace', () => {
-    expect(shellGuard(`cd ${repo} && git status`, home, home, 'codex')).toBeUndefined();
+    expect(shellGuard(`cd ${repo} && git status`, home, home, codexHost.guard)).toBeUndefined();
   });
 });
 
@@ -216,7 +219,7 @@ describe('shellGuard: shared temp dir', () => {
   });
 
   test('applies under Codex too', () => {
-    expect(shellGuard('ls -d /tmp/x-* | head -1', home, home, 'codex')).toContain('by pattern');
+    expect(shellGuard('ls -d /tmp/x-* | head -1', home, home, codexHost.guard)).toContain('by pattern');
   });
 });
 
@@ -250,7 +253,7 @@ describe('shellGuard: forward-only git', () => {
   });
 
   test('applies under Codex too', () => {
-    expect(shellGuard('git commit --amend', home, home, 'codex')).toContain('Blocked');
+    expect(shellGuard('git commit --amend', home, home, codexHost.guard)).toContain('Blocked');
   });
 });
 
@@ -281,14 +284,14 @@ describe('shellGuard: gates', () => {
   });
 
   test('applies under Codex too', () => {
-    expect(shellGuard('bun test; git commit -F m', home, home, 'codex')).toContain('Blocked');
+    expect(shellGuard('bun test; git commit -F m', home, home, codexHost.guard)).toContain('Blocked');
   });
 });
 
 describe('shellGuard on native Windows', () => {
   const winHome = 'C:\\Users\\acme\\Documents\\Agents\\Scout';
   const winRepo = 'C:\\Users\\acme\\Developer\\shop';
-  const onWindows = (command: string, cwd = winHome, host: 'claude' | 'codex' = 'claude'): string | undefined =>
+  const onWindows = (command: string, cwd = winHome, host: GuardPolicy = claudeHost.guard): string | undefined =>
     shellGuard(command, cwd, winHome, host, { platform: 'win32' });
 
   test('reads Git Bash and Cygwin drive paths as the drive they name', () => {
@@ -314,8 +317,10 @@ describe('shellGuard on native Windows', () => {
   });
 
   test("leaves Codex's PowerShell commands alone", () => {
-    expect(onWindows('Set-Location C:\\Users\\acme\\Developer\\shop; git status', winHome, 'codex')).toBeUndefined();
-    expect(onWindows('Get-ChildItem /tmp/mmd-* | Select-Object -First 1', winHome, 'codex')).toBeUndefined();
-    expect(onWindows('Write-Output "line`nnext"', winHome, 'codex')).toBeUndefined();
+    expect(
+      onWindows('Set-Location C:\\Users\\acme\\Developer\\shop; git status', winHome, codexHost.guard)
+    ).toBeUndefined();
+    expect(onWindows('Get-ChildItem /tmp/mmd-* | Select-Object -First 1', winHome, codexHost.guard)).toBeUndefined();
+    expect(onWindows('Write-Output "line`nnext"', winHome, codexHost.guard)).toBeUndefined();
   });
 });

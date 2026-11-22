@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { posix, win32 } from 'node:path';
+import type { GuardPolicy } from '@/hosts/contract';
 import { existingTarget } from '@/shared/paths';
 import { commandWords, scanShell, type ShellCommand, type ShellJoiner } from './shell-scan';
 
@@ -354,18 +355,13 @@ interface GuardOptions {
 }
 
 /**
- * The first reason to refuse a shell command, or undefined to let it run. History-rewriting git
- * and an unjoined gate are refused on both hosts. Codex starts every command in the workspace,
- * so a cd never carries over there and drift is checked on Claude only,
- * and only for a session launched in the home (a pinned home also reaches sessions started in a
- * repo). On native Windows Codex runs PowerShell, so only the home-tree check, whose redirects
- * read the same there, applies; the temp-dir and drift checks judge Claude Code's Git Bash.
+ * The first reason to refuse a shell command, or undefined to let it run.
  */
 export function shellGuard(
   command: string,
   cwd: string,
   home: string,
-  host: 'claude' | 'codex',
+  guard: GuardPolicy,
   { platform = process.platform, launch }: GuardOptions = {}
 ): string | undefined {
   const paths = pathsFor(cwd, home, platform);
@@ -378,7 +374,7 @@ export function shellGuard(
       `Home trees (${HOME_TREES.join('/, ')}/) take the absolute path under ${home}, or cd back to the home first.`
     );
   }
-  if (host === 'codex' && platform === 'win32') {
+  if (guard.powershellOn(platform)) {
     return undefined;
   }
   const launchedHome = launch === undefined || insideHome(paths.api.resolve(paths.native(launch)), paths);
@@ -387,6 +383,6 @@ export function shellGuard(
     rewriteMessage(commands) ??
     stashMessage(commands) ??
     gateMessage(commands) ??
-    (host === 'claude' && launchedHome ? (driftMessage(end, paths) ?? moveMessage(command, end, paths)) : undefined)
+    (guard.cdCarries && launchedHome ? (driftMessage(end, paths) ?? moveMessage(command, end, paths)) : undefined)
   );
 }

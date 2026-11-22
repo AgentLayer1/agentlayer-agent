@@ -310,7 +310,7 @@ async function run(): Promise<void> {
   // Runs before a home exists: init gates on it before scaffolding anything.
   if (group === 'hosts') {
     const { checkHosts, requiredHosts } = await import('@/upgrade/hosts');
-    const report = checkHosts(requiredHosts(FOLDERS.HOME, bool('codex')));
+    const report = checkHosts(requiredHosts(FOLDERS.HOME, bool('codex') ? ['codex'] : []));
     console.log(JSON.stringify(report, null, 2));
     process.exit(report.ok ? 0 : 1);
   }

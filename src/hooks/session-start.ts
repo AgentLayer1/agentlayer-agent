@@ -7,7 +7,7 @@
  *    first turn rather than at launch, and has no `@-import`, so the static stack
  *    (identity files, indexes, task board) is sent ahead of the same dynamic lane. The hook is registered with `additionalContextLimit: 0`, since
  *    Codex otherwise truncates the context at about 2,500 tokens. See
- *    `sessionStartCodex`.
+ *    `sessionStartInject`.
  *
  * Three disjoint paths:
  *  - **Pre-init**: nothing scaffolded here — emit the banner + setup hint. NO
@@ -26,6 +26,8 @@
  */
 import { AGENT_SLUG, FILES, FOLDERS, isInitialized, PLUGIN_NAME, staticContextFiles } from '@/config';
 import { assembleContext } from '@/hooks/context';
+import type { HostAdapter } from '@/hosts/contract';
+import { DEFAULT_HOST } from '@/hosts/registry';
 import { drainDeferredCaptures } from '@/knowledge/session-capture';
 import { BANNER, BANNER_LINES, BANNER_TAG } from '@/hooks/banner';
 import { stripAnsi } from '@/shared/ansi';
@@ -88,12 +90,12 @@ const strandedHomeResult = (): SessionStartResult => {
 const PLAIN_BANNER = [...BANNER_LINES, BANNER_TAG].join('\n');
 
 /**
- * The Codex session-start payload: the files Claude Code gets through the
+ * The payload for a host that has the hook send the static stack (Codex): the files Claude Code gets through the
  * `.claude/CLAUDE.md` bridge, each introduced by its home-relative path, then the
  * same dynamic lane Claude gets, with the same banner as `systemMessage`. Pre-init
  * and stranded homes get Claude's guidance.
  */
-export async function sessionStartCodex(): Promise<SessionStartResult> {
+export async function sessionStartInject(host: HostAdapter): Promise<SessionStartResult> {
   if (!isInitialized()) {
     const result = existsSync(FILES.SOUL) ? strandedHomeResult() : PRE_INIT_RESULT;
     return { ...result, systemMessage: result.systemMessage.replace(BANNER, PLAIN_BANNER) };
@@ -106,15 +108,15 @@ export async function sessionStartCodex(): Promise<SessionStartResult> {
       try {
         return `<!-- file: ${name} -->\n${readText(path).trimEnd()}`;
       } catch (err) {
-        log.error(`hook failed (codex): ${name} unreadable`, err);
+        log.error(`hook failed (${host.name}): ${name} unreadable`, err);
         return `<!-- ${AGENT_SLUG}: ${name} unreadable: ${err instanceof Error ? err.message : String(err)} -->`;
       }
     });
   // The static files never depend on git or reports, so a dynamic-lane failure costs
   // only the lane, the same containment Claude's path has.
-  const lane = await assembleContext({ host: 'codex' })
+  const lane = await assembleContext({ host })
     .then(({ context, banner, hasIssues }) => {
-      (hasIssues ? log.warn.bind(log) : log.info.bind(log))('hook fired (codex)\n' + stripAnsi(banner));
+      (hasIssues ? log.warn.bind(log) : log.info.bind(log))(`hook fired (${host.name})\n` + stripAnsi(banner));
       return {
         banner: stripAnsi(banner),
         hasIssues,
@@ -122,7 +124,7 @@ export async function sessionStartCodex(): Promise<SessionStartResult> {
       };
     })
     .catch((err: unknown) => {
-      log.error('hook failed (codex): dynamic lane skipped', err);
+      log.error(`hook failed (${host.name}): dynamic lane skipped`, err);
       const message = err instanceof Error ? err.message : String(err);
       return {
         banner: `⚠ dynamic session context unavailable: ${message}`,
@@ -132,7 +134,7 @@ export async function sessionStartCodex(): Promise<SessionStartResult> {
     });
   const additionalContext =
     [
-      `<!-- ${AGENT_SLUG} static context · harness: codex · plugin root: ${FOLDERS.ROOT} (a skill that writes ${'$'}{CLAUDE_PLUGIN_ROOT} means this path) · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs $upgrade · delivered by the plugin's SessionStart hook because Codex has no @-import -->`,
+      `<!-- ${AGENT_SLUG} static context · harness: ${host.name} · plugin root: ${FOLDERS.ROOT} (a skill that writes ${'$'}{CLAUDE_PLUGIN_ROOT} means this path) · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs $upgrade · delivered by the plugin's SessionStart hook because Codex has no @-import -->`,
       ...files,
       ...lane.parts
     ].join('\n\n') + '\n';
@@ -144,8 +146,9 @@ export async function sessionStartCodex(): Promise<SessionStartResult> {
  */
 export async function sessionStart({
   promptRow = false,
-  color = false
-}: { promptRow?: boolean; color?: boolean } = {}): Promise<SessionStartResult> {
+  color = false,
+  host = DEFAULT_HOST
+}: { promptRow?: boolean; color?: boolean; host?: HostAdapter } = {}): Promise<SessionStartResult> {
   try {
     if (!isInitialized()) {
       // A SOUL.md with no data dir isn't a fresh directory — it's a scaffolded
@@ -159,7 +162,7 @@ export async function sessionStart({
       log.info('hook fired (pre-init)');
       return PRE_INIT_RESULT;
     }
-    const { context, banner, hasIssues } = await assembleContext({ promptRow, host: 'claude' });
+    const { context, banner, hasIssues } = await assembleContext({ promptRow, host });
     // Mirror what the operator sees into the log file so context-assembly
     // issues (missing knowledge dir, git unavailable, oversized payload) are
     // diagnosable after the fact.

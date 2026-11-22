@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { AGENT_SLUG, FILES, FOLDERS, PLUGIN_VERSION, staticContextFiles } from '@/config';
 import { CLI_FILE, HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
-import { sessionStart, sessionStartCodex } from '@/hooks/session-start';
+import { sessionStart, sessionStartInject } from '@/hooks/session-start';
+import { codexHost } from '@/hosts/codex';
 import { recordOutcome } from '@/notices/ledger';
 import { ANSI, stripAnsi } from '@/shared/ansi';
 import { stampSync } from '@/shared/cadence';
@@ -135,7 +136,7 @@ describe('sessionStart', () => {
           'IDENTITY.md': '# Identity\n\n## Who\n\n- **Name:** Scout\n',
           'USER.md': '# About Ada\n'
         }),
-      () => sessionStartCodex()
+      () => sessionStartInject(codexHost)
     );
     expect(first.additionalContext).toContain(`${AGENT_SLUG} static context · harness: codex`);
     expect(first.additionalContext).toContain('<!-- file: SOUL.md -->');
@@ -149,7 +150,7 @@ describe('sessionStart', () => {
   test('codex protocol: the banner rides systemMessage, free of ANSI escapes', async () => {
     const result = await withHome(
       (home) => markedHome(home, { 'SOUL.md': '# Soul\n' }),
-      () => sessionStartCodex()
+      () => sessionStartInject(codexHost)
     );
     expect(result.systemMessage).toContain('Agent:');
     expect(result.systemMessage).toContain('Context');
@@ -161,7 +162,7 @@ describe('sessionStart', () => {
     const banner = (identity: Record<string, string>) =>
       withHome(
         (home) => markedHome(home, { 'SOUL.md': '# Soul\n', ...identity }),
-        () => sessionStartCodex()
+        () => sessionStartInject(codexHost)
       ).then((result) => result.systemMessage);
     expect(await banner({ 'IDENTITY.md': '# Identity\n\n- **Name:** Scout\n- **Emoji:** 🦉\n' })).toContain('  🦉 Agent:     Scout');
     expect(await banner({})).toContain('  🤖 Agent:');
@@ -186,7 +187,7 @@ describe('sessionStart', () => {
   test('codex protocol: a pre-init directory gets the setup hint', async () => {
     const hint = await withHome(
       () => {},
-      () => sessionStartCodex()
+      () => sessionStartInject(codexHost)
     );
     expect(hint.systemMessage).toContain('init');
     expect(hint.systemMessage).not.toMatch(/\x1b\[/);
@@ -292,7 +293,7 @@ describe('sessionStart', () => {
   test('welcome: Codex gets the same welcome through the shared assembler', async () => {
     const result = await withHome(
       (home) => markedHome(home, { [cadence]: '{ "welcome": "pending" }' }),
-      () => sessionStartCodex()
+      () => sessionStartInject(codexHost)
     );
     expect(result.additionalContext).toContain('## First Session Since Init');
   });
@@ -339,7 +340,7 @@ describe('sessionStart', () => {
     );
     const codex = await withHome(
       (home) => markedHome(home, files),
-      () => sessionStartCodex()
+      () => sessionStartInject(codexHost)
     );
     expect(colored.systemMessage).toContain(`${ANSI.bold}${ANSI.red}⟳`);
     expect(plain.systemMessage).toContain('⟳  Sync:      Brain 9 days behind');

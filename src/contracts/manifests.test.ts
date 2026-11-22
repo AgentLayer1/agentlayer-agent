@@ -2,8 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AGENT_SLUG } from '@/config';
+import { claudeHost } from '@/hosts/claude';
 import { CLI_FILE, PLUGIN_SOURCE_ROOT } from '@/shared/naming';
-import { HOST_FLOORS } from '@/upgrade/hosts';
 
 const ROOT = PLUGIN_SOURCE_ROOT;
 const read = (rel: string) => JSON.parse(readFileSync(resolve(ROOT, rel), 'utf-8'));
@@ -29,7 +29,7 @@ describe('plugin manifests', () => {
   });
 
   test('the Claude Code range the host enforces is the floor upgrade checks', () => {
-    const floor = HOST_FLOORS.find((host) => host.name === 'claude')?.version;
+    const floor = claudeHost.floor.version;
     expect(claude.engines).toEqual({ 'claude-code': `>=${floor}` });
   });
 

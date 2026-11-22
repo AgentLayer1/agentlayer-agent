@@ -24,7 +24,9 @@ import {
   TIMEZONE_ISSUE
 } from '@/config';
 import { followMove, historyStatus, restorePointer } from '@/home/history';
-import { checkHosts, hostIssues, requiredHosts, type HostName } from '@/upgrade/hosts';
+import type { HostAdapter } from '@/hosts/contract';
+import { HOSTS } from '@/hosts/registry';
+import { checkHosts, hostIssues, requiredHosts } from '@/upgrade/hosts';
 import type { Notice, NoticeFact, NoticeLevel } from '@/notices/notices';
 import { collectNotices } from '@/notices/notices';
 import { agentColors, agentDisplayName, agentEmoji } from '@/shared/agent-name';
@@ -509,7 +511,7 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
     ]);
   }
 
-  const layout = manualLayoutIssues();
+  const layout = HOSTS.filter((host) => host.usedBy(FOLDERS.HOME)).flatMap((host) => host.homeIssues(FOLDERS.HOME));
   if (layout.length > 0) {
     warn('manual layout', 'needs upgrade', [
       '## ⚠️ Operating manual layout',
@@ -618,17 +620,6 @@ const unresolvedPlaceholders = (): string[] => {
 };
 
 /**
- * A missing Claude Code bridge means Claude Code loads neither the manual nor the identity
- * stack, so it is worth a line in the banner every session until fixed.
- */
-const manualLayoutIssues = (): string[] =>
-  existsSync(FILES.AGENTS) && !existsSync(FILES.CLAUDE)
-    ? [
-        `\`.claude/CLAUDE.md\` is missing, so Claude Code loads neither the manual nor the identity stack — run \`/${PLUGIN_NAME}:upgrade\` to write the bridge`
-      ]
-    : [];
-
-/**
  * `promptRow: true` when a prompt row draws nudges and alerts, so the banner keeps only hints.
  */
 export async function assembleContext({
@@ -636,7 +627,7 @@ export async function assembleContext({
   host
 }: {
   promptRow?: boolean;
-  host: HostName;
+  host: HostAdapter;
 }): Promise<AssembledContext> {
   // Started first so its file reads overlap the git calls gathering does.
   const pendingNotices = collectNotices().catch((err: unknown) => {
@@ -645,7 +636,7 @@ export async function assembleContext({
   });
   const gathered = await gatherContext(healHistoryLink());
   const subscription =
-    host === 'claude'
+    host.billsSubscription
       ? subscriptionIssue(existsSync(FILES.CLAUDE_SUBSCRIPTION), env(SUBSCRIPTION_MARKER))
       : null;
   const { entries } = gathered;

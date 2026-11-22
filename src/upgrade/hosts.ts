@@ -1,39 +1,23 @@
+import type { HostFloor, HostName } from '@/hosts/contract';
+import { HOSTS } from '@/hosts/registry';
 import { compareSemver } from '@/upgrade/version';
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 
-export type HostName = 'claude' | 'codex';
 export type ToolName = HostName | 'bun';
 export type HostState = 'ok' | 'outdated' | 'absent';
 
-interface HostFloor {
+interface ToolFloor extends HostFloor {
   name: ToolName;
-  version: string;
-  why: string;
-  update: string;
 }
 
-export const HOST_FLOORS: readonly HostFloor[] = [
-  {
-    name: 'claude',
-    version: '2.1.314',
-    why: 'the shell guard also checks the Monitor tool\'s commands and the sandbox holds in a worktree resumed by `claude -p`, on top of a per-agent subscription token read from `--settings` (2.1.312 ignores it in a home\'s own settings), mods with `/done` autocomplete, Sonnet 5.5 behind the Haiku-tier remap, `bashEditDiffEnabled` and `claude plugin eval`',
-    update: 'claude update'
-  },
-  {
-    name: 'codex',
-    version: '0.154.0',
-    why: 'a running session refreshes plugin tools, skills, and hooks after an upgrade',
-    update: 'npm install -g @openai/codex@latest'
-  },
-  {
-    name: 'bun',
-    version: '1.4.4',
-    why: "YAML 1.2 parsing and Playwright's pipe transport on Windows (oven-sh/bun#11044, #27977)",
-    update: 'bun upgrade'
-  }
-];
+const BUN_FLOOR: ToolFloor = {
+  name: 'bun',
+  version: '1.4.4',
+  why: "YAML 1.2 parsing and Playwright's pipe transport on Windows (oven-sh/bun#11044, #27977)",
+  update: 'bun upgrade'
+};
+
+export const HOST_FLOORS: readonly ToolFloor[] = [...HOSTS.map((host) => ({ name: host.name, ...host.floor })), BUN_FLOOR];
 
 export interface HostStatus {
   name: ToolName;
@@ -72,12 +56,13 @@ const runVersion: VersionRunner = (name) => {
 };
 
 /**
- * Claude Code and bun always; Codex when `codex` is true or the home has `.codex/hooks.json`.
+ * Every host the home is wired for or `also` names, then bun.
  */
-export const requiredHosts = (home: string, codex = false): ReadonlySet<ToolName> =>
-  new Set<ToolName>(
-    codex || existsSync(resolve(home, '.codex', 'hooks.json')) ? ['claude', 'codex', 'bun'] : ['claude', 'bun']
-  );
+export const requiredHosts = (home: string, also: readonly HostName[] = []): ReadonlySet<ToolName> =>
+  new Set<ToolName>([
+    ...HOSTS.filter((host) => host.usedBy(home) || also.includes(host.name)).map((host) => host.name),
+    'bun'
+  ]);
 
 export const checkHosts = (required: ReadonlySet<ToolName>, run: VersionRunner = runVersion): HostReport => {
   const hosts = HOST_FLOORS.map((floor): HostStatus => {

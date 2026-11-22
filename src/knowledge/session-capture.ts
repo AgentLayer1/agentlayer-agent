@@ -12,6 +12,7 @@
  * session log.
  */
 import { FOLDERS, KNOWLEDGE, PLUGIN_NAME, isInitialized } from '@/config';
+import type { HostName } from '@/hosts/contract';
 import { ENTRY_SEPARATOR, formatEntryHeader } from '@/knowledge/session-format';
 import {
   adoptLegacyKey,
@@ -33,7 +34,6 @@ import { relative, resolve } from 'node:path';
 const log = baseLog.session.with('capture');
 
 export type CaptureMode = 'session-end' | 'pre-compact';
-export type CaptureFormat = 'claude' | 'codex';
 
 interface ModeConfig {
   heading: string;
@@ -153,7 +153,7 @@ const codexExtractor: Extractor = (transcriptPath) => {
   return turns;
 };
 
-const EXTRACTORS: Record<CaptureFormat, Extractor> = {
+const EXTRACTORS: Record<HostName, Extractor> = {
   claude: claudeExtractor,
   codex: codexExtractor
 };
@@ -267,7 +267,7 @@ export interface CaptureSessionOpts {
   cwd: string;
   sessionId: string;
   mode: CaptureMode;
-  format?: CaptureFormat;
+  format?: HostName;
 }
 
 export type CaptureSessionReason =

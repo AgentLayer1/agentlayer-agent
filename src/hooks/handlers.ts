@@ -4,11 +4,11 @@
  * returns the process exit code.
  */
 import { FOLDERS, isInitialized } from '@/config';
-import { env } from '@/shared/env';
+import { HOST_NAMES, isHostName, type HostAdapter } from '@/hosts/contract';
+import { DEFAULT_HOST, hostNamed } from '@/hosts/registry';
 import { CLI_COMMAND } from '@/shared/naming';
 
 type Flag = (name: string) => string | undefined;
-type HookProtocol = 'claude' | 'codex';
 
 interface HookInput {
   session_id?: string;
@@ -30,17 +30,21 @@ const parseHookInput = (raw: string): HookInput => {
   }
 };
 
-const protocolOf = (flag: Flag): HookProtocol | undefined => {
+const hostOf = (flag: Flag): HostAdapter | undefined => {
   const value = flag('hook-protocol');
-  if (value === undefined || value === 'claude' || value === 'codex') {
-    return value;
+  if (value === undefined) {
+    return undefined;
   }
-  throw new Error(`Unknown --hook-protocol: ${value} (supported: claude, codex)`);
+  const host = hostNamed(value);
+  if (!host) {
+    throw new Error(`Unknown --hook-protocol: ${value} (supported: ${HOST_NAMES.join(', ')})`);
+  }
+  return host;
 };
 
 export const runGuard = async (flag: Flag): Promise<number> => {
   // A hook process runs in the session's cwd, which a Bash `cd` moves; the home still
-  // resolves through the host's project dir (Claude) or --home (Codex). Outside a home
+  // resolves through the host's launch dir or --home. Outside a home
   // there is nothing to protect.
   if (!isInitialized()) {
     return 0;
@@ -52,8 +56,8 @@ export const runGuard = async (flag: Flag): Promise<number> => {
     return 0;
   }
   const { shellGuard } = await import('@/hooks/guard');
-  const host = flag('hook-protocol') === 'codex' ? 'codex' : 'claude';
-  const refusal = shellGuard(command, input.cwd, FOLDERS.HOME, host, { launch: env('CLAUDE_PROJECT_DIR') });
+  const host = hostNamed(flag('hook-protocol') ?? '') ?? DEFAULT_HOST;
+  const refusal = shellGuard(command, input.cwd, FOLDERS.HOME, host.guard, { launch: host.launchDir() });
   if (refusal) {
     console.error(refusal);
     return 2;
@@ -62,15 +66,15 @@ export const runGuard = async (flag: Flag): Promise<number> => {
 };
 
 export const runSessionStart = async (flag: Flag): Promise<number> => {
-  const protocol = protocolOf(flag);
-  const { sessionStart, sessionStartCodex } = await import('@/hooks/session-start');
-  // Only Claude Code's terminal is known to render the banner's color and to draw the mods' prompt row;
-  // the banner leaves nudges and alerts to the row once the row has shown it fetches them.
-  const isTerminal = protocol === 'claude' && env('CLAUDE_CODE_ENTRYPOINT') === 'cli';
+  const host = hostOf(flag);
+  const { sessionStart, sessionStartInject } = await import('@/hooks/session-start');
+  const isTerminal = host?.terminal() ?? false;
   const { rowDraws } = await import('@/notices/notices');
   const result =
-    protocol === 'codex' ? await sessionStartCodex() : await sessionStart({ promptRow: isTerminal && rowDraws(), color: isTerminal });
-  if (!protocol) {
+    host?.delivery.kind === 'inject'
+      ? await sessionStartInject(host)
+      : await sessionStart({ promptRow: isTerminal && rowDraws(), color: isTerminal, host });
+  if (!host) {
     console.log(JSON.stringify(result, null, 2));
     return 0;
   }
@@ -84,13 +88,11 @@ export const runSessionStart = async (flag: Flag): Promise<number> => {
 };
 
 // Codex's hook payload uses Claude's field names (session_id, transcript_path, cwd).
-const sessionFromPayload = async (protocol: HookProtocol) => {
+const sessionFromPayload = async (host: HostAdapter) => {
   const parsed = parseHookInput(await Bun.stdin.text());
   return {
     transcriptPath: parsed.transcript_path ?? '',
-    // Claude reports the shell's cwd, which a Bash `cd` moves; the session lives where
-    // it was launched, which the host exports separately. Codex's cwd is stable.
-    cwd: (protocol === 'claude' ? env('CLAUDE_PROJECT_DIR') : undefined) ?? parsed.cwd ?? '',
+    cwd: host.launchDir() ?? parsed.cwd ?? '',
     sessionId: parsed.session_id ?? 'unknown'
   };
 };
@@ -102,17 +104,17 @@ export const runSessionCapture = async (flag: Flag): Promise<number> => {
       `Usage: ${CLI_COMMAND} session-capture --mode=session-end|pre-compact [--hook-protocol=claude|codex] [--transcript=PATH --cwd=PATH --session-id=X] [--format=claude|codex]`
     );
   }
-  const protocol = protocolOf(flag);
-  const session = protocol
-    ? await sessionFromPayload(protocol)
+  const host = hostOf(flag);
+  const session = host
+    ? await sessionFromPayload(host)
     : { transcriptPath: flag('transcript') ?? '', cwd: flag('cwd') ?? process.cwd(), sessionId: flag('session-id') ?? 'cli' };
-  const format = flag('format') ?? (protocol === 'codex' ? 'codex' : undefined);
-  if (format !== undefined && format !== 'claude' && format !== 'codex') {
-    throw new Error(`Unknown --format: ${format} (supported: claude, codex)`);
+  const format = flag('format') ?? host?.name;
+  if (format !== undefined && !isHostName(format)) {
+    throw new Error(`Unknown --format: ${format} (supported: ${HOST_NAMES.join(', ')})`);
   }
   const { captureSession } = await import('@/knowledge/session-capture');
   const result = await captureSession({ ...session, mode, format });
-  if (protocol !== 'claude') {
+  if (host?.captureReply !== 'envelope') {
     console.log(JSON.stringify(result, null, 2));
     return 0;
   }
