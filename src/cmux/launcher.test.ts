@@ -1,14 +1,14 @@
 import { expect, test } from 'bun:test';
 import { readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { ADAPTERS } from '@/adapters';
+import { LAUNCHERS } from '@/adapters';
 import { FILES, FOLDERS } from '@/config';
 import type { SessionPlace, StartInput } from '@/sessions/launch';
 import { EMPTY_LEDGER, readProposalLedger, writeProposalLedger } from '@/proposals/ledger';
 import { addProposals } from '@/proposals/rules';
 import { decideProposal } from '@/proposals/start';
 import type { CmuxCall } from './app';
-import { cmuxAdapter, cmuxAdapterWith } from './proposals';
+import { cmuxLauncher, cmuxLauncherWith } from './launcher';
 
 const HOME = join('/Users', 'ada', 'My Agents', 'Nova');
 const PROMPT_FILE = join(HOME, '.state', 'proposals', 'p-a1.prompt');
@@ -19,26 +19,25 @@ const recorder = (result: CmuxCall = { ok: true, output: 'OK workspace:7' }) => 
     calls.push(args);
     return result;
   };
-  // Publishing redraws the installed sidebar, which these tests leave alone.
-  const adapter = { ...cmuxAdapterWith(run), publish: () => {} };
+  const adapter = cmuxLauncherWith(run);
   return { adapter, calls };
 };
 
 const valueOf = (args: readonly string[], flag: string): string => args[args.indexOf(flag) + 1] ?? '';
 
-test('the cmux adapter is registered', () => {
-  expect(ADAPTERS).toContain(cmuxAdapter);
+test('the cmux launcher is registered', () => {
+  expect(LAUNCHERS).toContain(cmuxLauncher);
 });
 
 test('a process inside cmux is located by its surface and workspace; one outside, or half inside, is not', () => {
-  expect(cmuxAdapter.locate({ CMUX_SURFACE_ID: 'surface-1', CMUX_WORKSPACE_ID: 'workspace-1' })).toEqual({
+  expect(cmuxLauncher.locate({ CMUX_SURFACE_ID: 'surface-1', CMUX_WORKSPACE_ID: 'workspace-1' })).toEqual({
     adapter: 'cmux',
     surfaceId: 'surface-1',
     workspaceId: 'workspace-1'
   });
-  expect(cmuxAdapter.locate({ CMUX_SURFACE_ID: 'surface-1' })).toBeNull();
-  expect(cmuxAdapter.locate({ CMUX_SURFACE_ID: '', CMUX_WORKSPACE_ID: 'workspace-1' })).toBeNull();
-  expect(cmuxAdapter.locate({})).toBeNull();
+  expect(cmuxLauncher.locate({ CMUX_SURFACE_ID: 'surface-1' })).toBeNull();
+  expect(cmuxLauncher.locate({ CMUX_SURFACE_ID: '', CMUX_WORKSPACE_ID: 'workspace-1' })).toBeNull();
+  expect(cmuxLauncher.locate({})).toBeNull();
 });
 
 const PLACE: SessionPlace = { adapter: 'cmux', surfaceId: 'surface-1', workspaceId: 'workspace-1' };

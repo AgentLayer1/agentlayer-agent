@@ -2,10 +2,9 @@ import { log } from '@/shared/log';
 import type { Note } from './ledger';
 
 /**
- * What an adapter may need to deliver a note: the home and the agent's name.
+ * What an adapter may need to deliver a note: the agent's name, for the notification's title.
  */
 export interface NoteContext {
-  home: string;
   agentName: string;
 }
 
@@ -26,15 +25,11 @@ export interface NoteAdapter {
   /**
    * Whether this adapter can reach the operator from here (an app is installed, the session it notifies is open).
    */
-  available: (context: NoteContext) => boolean;
+  available: () => boolean;
   /**
    * Hands one new note over; throws when it couldn't.
    */
   deliver?: (note: Note, context: NoteContext) => void | Promise<void>;
-  /**
-   * Redraws wherever this adapter lists notes, after a change.
-   */
-  publish?: (context: NoteContext) => void;
 }
 
 /**
@@ -43,7 +38,6 @@ export interface NoteAdapter {
  */
 export const chosenAdapters = (
   adapters: readonly NoteAdapter[],
-  context: NoteContext,
   env: Readonly<Record<string, string | undefined>>
 ): NoteAdapter[] => {
   const named = (env.AGENT_NOTES_DELIVER ?? '')
@@ -51,7 +45,7 @@ export const chosenAdapters = (
     .map((name) => name.trim())
     .filter(Boolean);
   const usable = adapters.filter(
-    (adapter) => (adapter.always || named.length === 0 || named.includes(adapter.name)) && adapter.available(context)
+    (adapter) => (adapter.always || named.length === 0 || named.includes(adapter.name)) && adapter.available()
   );
   return usable.filter(
     (adapter, index) => !adapter.group || usable.findIndex(({ group }) => group === adapter.group) === index
@@ -84,17 +78,3 @@ export const deliverNote = async (
   );
   return results.filter((name): name is string => name !== null);
 };
-
-/**
- * Redraws every adapter's list of notes; one that fails is logged and the rest still draw.
- */
-export const publishNotes = (adapters: readonly NoteAdapter[], context: NoteContext): void =>
-  adapters.forEach((adapter) => {
-    try {
-      adapter.publish?.(context);
-    } catch (error) {
-      log
-        .with('notes')
-        .warn(`${adapter.name} didn't redraw: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  });

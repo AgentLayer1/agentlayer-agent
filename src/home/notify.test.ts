@@ -16,7 +16,7 @@ const NOTE: Note = {
   reaction: ''
 };
 
-const CONTEXT: NoteContext = { home: '/h', agentName: 'Oppi' };
+const CONTEXT: NoteContext = { agentName: 'Oppi' };
 
 test('a title becomes an AppleScript string that quotes and backslashes cannot break out of', () => {
   expect(appleScriptString('A "quoted" \\ title')).toBe('"A \\"quoted\\" \\\\ title"');
@@ -25,8 +25,8 @@ test('a title becomes an AppleScript string that quotes and backslashes cannot b
 test('a Mac gets a plain notification naming where the note is; another OS gets none', async () => {
   const calls: string[][] = [];
   const adapter = macNotesAdapterWith(async (argv) => (calls.push(argv), true), 'darwin');
-  expect(adapter.available(CONTEXT)).toBe(true);
-  expect(macNotesAdapterWith(async () => true, 'win32').available(CONTEXT)).toBe(false);
+  expect(adapter.available()).toBe(true);
+  expect(macNotesAdapterWith(async () => true, 'win32').available()).toBe(false);
   await adapter.deliver?.(NOTE, CONTEXT);
   expect(calls).toEqual([
     [

@@ -190,7 +190,7 @@ export const LATER_UNTIL = new Date((NOW + 60 * 60) * 1000).toISOString();
  * Nova's proposals: two waiting, one put off until after the clock, one already started; its heartbeat is the Morning
  * brief tab in its own workspace.
  */
-export const NOVA_LEDGER: ProposalLedger = {
+const NOVA_LEDGER: ProposalLedger = {
   proposals: [
     proposal('p-a1', 'Reply to the supplier', {
       trigger: 'The supplier wrote two hours ago',
@@ -217,7 +217,7 @@ export const NOVA_LEDGER: ProposalLedger = {
   ]
 };
 
-export const NOVA_HEARTBEAT: Heartbeat = {
+const NOVA_HEARTBEAT: Heartbeat = {
   owner: 'nova-heartbeat',
   everyMinutes: 55,
   places: [{ adapter: 'cmux', surfaceId: 'w-nova-s2-surface', workspaceId: 'w-nova' }]
@@ -228,7 +228,7 @@ export const NOVA_STATE: Partial<HomeState> = { proposals: NOVA_LEDGER, heartbea
 /**
  * Scout's one proposal, with no heartbeat to start it from.
  */
-export const SCOUT_LEDGER: ProposalLedger = {
+const SCOUT_LEDGER: ProposalLedger = {
   proposals: [
     proposal('p-b1', 'Audit the dark mode colours', {
       trigger: 'Two screens failed the contrast check',

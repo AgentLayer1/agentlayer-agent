@@ -16,7 +16,7 @@ const NOTE: Note = {
   reaction: ''
 };
 
-const CONTEXT: NoteContext = { home: '/h', agentName: 'Oppi' };
+const CONTEXT: NoteContext = { agentName: 'Oppi' };
 
 const PLACE = { adapter: 'cmux', surfaceId: 's-1', workspaceId: 'w-1' } as const;
 
@@ -31,8 +31,8 @@ test("the notification goes to the heartbeat's tab, as a desktop notification", 
 
 test('it is available only with cmux installed and a heartbeat in a cmux tab, and a refusal throws', () => {
   const ok = cmuxNotesAdapterWith(() => ({ ok: false, output: 'not running' }), () => true, () => PLACE);
-  expect(ok.available(CONTEXT)).toBe(true);
-  expect(cmuxNotesAdapterWith(() => ({ ok: true, output: '' }), () => true, () => null).available(CONTEXT)).toBe(false);
-  expect(cmuxNotesAdapterWith(() => ({ ok: true, output: '' }), () => false, () => PLACE).available(CONTEXT)).toBe(false);
+  expect(ok.available()).toBe(true);
+  expect(cmuxNotesAdapterWith(() => ({ ok: true, output: '' }), () => true, () => null).available()).toBe(false);
+  expect(cmuxNotesAdapterWith(() => ({ ok: true, output: '' }), () => false, () => PLACE).available()).toBe(false);
   expect(() => ok.deliver?.(NOTE, CONTEXT)).toThrow('not running');
 });

@@ -60,7 +60,7 @@ test('reactions record how a note landed, per lens, and an unknown id changes no
   });
 });
 
-const CONTEXT: NoteContext = { home: '/h', agentName: 'Oppi' };
+const CONTEXT: NoteContext = { agentName: 'Oppi' };
 
 const fake = (name: string, available = true, fails = false, fields: Partial<NoteAdapter> = {}) => {
   const got: string[] = [];
@@ -80,7 +80,7 @@ const fake = (name: string, available = true, fails = false, fields: Partial<Not
 
 test('every available adapter delivers, unless AGENT_NOTES_DELIVER names a subset; an always-on one runs regardless', () => {
   const adapters = [fake('report', true, false, { always: true }).adapter, fake('cmux').adapter, fake('mac', false).adapter, fake('slack').adapter];
-  const names = (env: Record<string, string>) => chosenAdapters(adapters, CONTEXT, env).map(({ name }) => name);
+  const names = (env: Record<string, string>) => chosenAdapters(adapters, env).map(({ name }) => name);
   expect(names({})).toEqual(['report', 'cmux', 'slack']);
   expect(names({ AGENT_NOTES_DELIVER: 'slack' })).toEqual(['report', 'slack']);
   expect(names({ AGENT_NOTES_DELIVER: 'mac' }), 'a named adapter still has to be available').toEqual(['report']);
@@ -88,7 +88,7 @@ test('every available adapter delivers, unless AGENT_NOTES_DELIVER names a subse
 
 test('of a group, the first available adapter stands in for the rest, unless the setting leaves it out', () => {
   const notifiers = (first: boolean) => [fake('cmux', first, false, { group: 'notify' }).adapter, fake('mac', true, false, { group: 'notify' }).adapter];
-  const names = (first: boolean, env: Record<string, string> = {}) => chosenAdapters(notifiers(first), CONTEXT, env).map(({ name }) => name);
+  const names = (first: boolean, env: Record<string, string> = {}) => chosenAdapters(notifiers(first), env).map(({ name }) => name);
   expect(names(true)).toEqual(['cmux']);
   expect(names(false), 'cmux out of reach').toEqual(['mac']);
   expect(names(true, { AGENT_NOTES_DELIVER: 'mac' })).toEqual(['mac']);

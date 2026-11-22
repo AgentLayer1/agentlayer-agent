@@ -10,7 +10,7 @@ const MINUTE = 60_000;
 const WAKE = `${PLUGIN}:proposals`;
 
 const heartbeatHost = (on: On, heartbeat: FakeHost['status']['heartbeat'] = null) => {
-  const host = fakeHost(on, machine({ status: { target: 5, showing: [], heartbeat } }));
+  const host = fakeHost(on, machine({ status: { target: 5, showing: 0, heartbeat } }));
   const submitted: string[] = [];
   const filled: string[] = [];
   on('prompt.submit', (_$, e) => {
@@ -54,7 +54,7 @@ const drawnBand = async ($: Engine) =>
     .map((element) => element.text)
     .join('|');
 
-describe('proposals', () => {
+describe('the heartbeat', () => {
   test('/proposal runs the decision through the CLI with no model turn', async ($, on) => {
     const { host } = heartbeatHost(on);
     const { text } = await run($, 'proposal', 'start p-1');
@@ -145,7 +145,7 @@ describe('proposals', () => {
 
   test('/heartbeat with proposals already full still looks, since a better one can replace a card', async ($, on) => {
     const { host } = heartbeatHost(on);
-    host.status.room = 0;
+    host.status.showing = 5;
     await start($, host);
     expect((await run($, 'heartbeat')).text).toEndWith(' Looking for proposals now.');
     await host.clock.settle();
@@ -205,7 +205,7 @@ describe('proposals', () => {
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([]);
     await $.turn.complete({ answer: '', durationMs: 0, isAborted: false, turnId: 't1', reason: 'answer' });
-    host.status.showing = Array.from({ length: 5 }, (_, index) => ({ id: `p-${index}`, title: 'x' }));
+    host.status.showing = 5;
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE]);
   });
@@ -350,7 +350,7 @@ describe('proposals', () => {
     expect(host.status.heartbeat?.owner).toBe('session-9@other');
   });
 
-  test('a failed read of the proposals skips the tick and keeps the clock', async ($, on) => {
+  test("a failed read of the heartbeat's status skips the tick and keeps the clock", async ($, on) => {
     const { host } = await bound($, on);
     host.failing.push('heartbeat status --json');
     await host.clock.advance(55 * MINUTE);
@@ -428,6 +428,21 @@ describe('heartbeat band', () => {
     expect(rebuilds(), 'an ordinary turn rebuilds nothing').toBe(1);
   });
 
+  test('a refresh wake rebuilds the dashboard once, after its last turn', async ($, on) => {
+    const { host } = await bound($, on);
+    const rebuilds = () => host.argv.filter((argv) => argv.slice(2).join(' ') === 'dashboard').length;
+    host.notesRoom = 2;
+    host.status.refreshDue = true;
+    await host.clock.advance(55 * MINUTE);
+    await ended($, 'Brain refreshed.');
+    await ended($, 'No note worth sending.', 't2');
+    await host.clock.settle();
+    expect(rebuilds(), 'the refresh and the scouting rebuild nothing').toBe(0);
+    await ended($, 'Nothing new worth proposing.', 't3');
+    await host.clock.settle();
+    expect(rebuilds()).toBe(1);
+  });
+
   test("an ordinary turn in the heartbeat's tab is not read as a look", async ($, on) => {
     await bound($, on);
     await ended($, 'Proposed 1: x.');
@@ -447,7 +462,7 @@ describe('heartbeat band', () => {
   test('a look that never came is noticed by the redraw within minutes: it restarts the clock and the band says so', async ($, on) => {
     const { host } = await bound($, on);
     await ended($, 'Nothing new worth proposing.');
-    // A tick that can't read the proposals returns before it moves the next look on, as a period the engine refused does.
+    // A tick that can't read the status returns before it moves the next look on, as a period the engine refused does.
     host.failing.push('heartbeat status --json');
     await host.clock.advance(55 * MINUTE);
     host.failing.length = 0;

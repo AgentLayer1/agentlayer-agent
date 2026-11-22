@@ -62,7 +62,7 @@ export const NOTE_DECISION = decisionGrammar('note', NOTE_CHOICES);
 
 type HeartbeatAsk = { kind: 'bind'; every: string } | { kind: 'off' } | { kind: 'now' } | { kind: 'status' };
 
-export const parseHeartbeat = (args: string): HeartbeatAsk => {
+export const parseAsk = (args: string): HeartbeatAsk => {
   const text = args.trim();
   if (text === 'off' || text === 'now' || text === 'status') {
     return { kind: text };
@@ -99,8 +99,8 @@ export interface HeartbeatStatus {
   /** When a sync or brain refresh last ran, an ISO time or ''; and whether the heartbeat should refresh now. */
   refreshedAt: string;
   refreshDue: boolean;
-  /** How many proposals show, the most that do, and how many can be added now. */
-  proposals: { target: number; room: number; showing: number };
+  /** How many proposals show, and the most that do. */
+  proposals: { target: number; showing: number };
   /** How many notes may still go out today. */
   notes: { room: number };
 }
@@ -108,10 +108,10 @@ export interface HeartbeatStatus {
 export const parseStatus = (stdout: string): HeartbeatStatus | null => {
   try {
     const data = record(JSON.parse(stdout));
-    const { target, room, showing } = record(data.proposals);
+    const { target, showing } = record(data.proposals);
     const beat = record(data.heartbeat);
     const notesRoom = record(data.notes).room;
-    if (typeof data.timezone !== 'string' || typeof target !== 'number' || typeof room !== 'number' || typeof showing !== 'number') {
+    if (typeof data.timezone !== 'string' || typeof target !== 'number' || typeof showing !== 'number') {
       return null;
     }
     return {
@@ -122,7 +122,7 @@ export const parseStatus = (stdout: string): HeartbeatStatus | null => {
       timezone: data.timezone,
       refreshedAt: text(data.refreshedAt),
       refreshDue: data.refreshDue === true,
-      proposals: { target, room, showing },
+      proposals: { target, showing },
       notes: { room: typeof notesRoom === 'number' ? notesRoom : 0 }
     };
   } catch {

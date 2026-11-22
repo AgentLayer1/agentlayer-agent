@@ -1,6 +1,6 @@
 import { FILES } from '@/config';
 import { isRecord } from '@/shared/json-block';
-import { isUnreadable, writeJsonAtomic } from '@/shared/utils';
+import { jsonProblem, writeJsonChecked } from '@/shared/utils';
 import { readFileSync } from 'node:fs';
 
 // Retired: the agent withdrew it, outranked, taken up by a session already, or no longer true.
@@ -127,18 +127,8 @@ export const readProposalLedger = (): ProposalLedger => {
 
 /**
  * What's wrong with the ledger file, or '' when it is missing or reads. A display can still draw the empty ledger
- * `readProposalLedger` gives for it; anything that writes, or acts on the heartbeat it names, stops.
+ * `readProposalLedger` gives for it; anything that writes stops.
  */
-export const ledgerProblem = (): string =>
-  isUnreadable(FILES.PROPOSALS) ? `${FILES.PROPOSALS} is not valid JSON; fix or remove it, then try again.` : '';
+export const ledgerProblem = (): string => jsonProblem(FILES.PROPOSALS);
 
-/**
- * Replaces the ledger, unless the file won't parse: that one is left for the operator rather than written over.
- */
-export const writeProposalLedger = (ledger: ProposalLedger): void => {
-  const problem = ledgerProblem();
-  if (problem) {
-    throw new Error(problem);
-  }
-  writeJsonAtomic(FILES.PROPOSALS, ledger);
-};
+export const writeProposalLedger = (ledger: ProposalLedger): void => writeJsonChecked(FILES.PROPOSALS, ledger);

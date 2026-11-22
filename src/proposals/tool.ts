@@ -1,10 +1,9 @@
-import { ADAPTERS } from '@/adapters';
+import { redrawHome } from '@/adapters';
 import { FOLDERS } from '@/config';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { z } from 'zod';
 import { readProposalLedger, writeProposalLedger } from './ledger';
 import { BACKLOG, showingNow, swapProposals, TARGET } from './rules';
-import { publishTo } from './start';
 
 const text = (max: number) => z.string().trim().max(max);
 
@@ -72,7 +71,7 @@ export const tools: ToolDef[] = [
       const { ledger, added, refused, retired, kept } = swapProposals(readProposalLedger(), proposals, retire, now);
       if (added.length || retired.length) {
         writeProposalLedger(ledger);
-        publishTo(ADAPTERS, FOLDERS.HOME);
+        redrawHome(FOLDERS.HOME);
       }
       return {
         added: added.map(({ id, title }) => ({ id, title })),

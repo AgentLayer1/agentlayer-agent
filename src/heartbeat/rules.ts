@@ -8,7 +8,7 @@ export const DEFAULT_EVERY_MINUTES = 55;
 /**
  * How long the brain may go without a sync or a refresh before the heartbeat refreshes it.
  */
-export const REFRESH_EVERY_HOURS = 6;
+const REFRESH_EVERY_HOURS = 6;
 const EVERY_RANGE = { min: 5, max: 24 * 60 } as const;
 
 const DURATION = /^(\d+)\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours)$/i;

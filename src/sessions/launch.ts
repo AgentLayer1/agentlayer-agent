@@ -1,4 +1,5 @@
 import { FOLDERS, homeLauncher } from '@/config';
+import { DAY_MS } from '@/shared/date';
 import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -54,7 +55,7 @@ export interface StartContext {
 }
 
 // A started session reads its prompt as it opens; a day later the file has done its job.
-const PROMPT_KEEP_MS = 24 * 60 * 60 * 1000;
+const PROMPT_KEEP_MS = DAY_MS;
 
 const writePromptFile = ({ id, prompt }: { id: string; prompt: string }, now: Date): string => {
   const dir = FOLDERS.PROMPTS;

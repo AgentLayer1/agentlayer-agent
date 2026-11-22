@@ -1,4 +1,4 @@
-import { ADAPTERS } from '@/adapters';
+import { LAUNCHERS, redrawHome } from '@/adapters';
 import { FOLDERS } from '@/config';
 import { CLI_COMMAND } from '@/shared/naming';
 import { flagOf } from '@/shared/utils';
@@ -43,8 +43,9 @@ export const runProposalsCommand = (command: string | undefined, args: readonly 
   const id = words[1];
   if (command === 'decide' && choice && id) {
     const workspace = flagOf(args, 'workspace');
-    const context = { home: FOLDERS.HOME, adapters: ADAPTERS, env: process.env, now: new Date(), ...(workspace ? { workspace } : {}) };
+    const context = { home: FOLDERS.HOME, adapters: LAUNCHERS, env: process.env, now: new Date(), ...(workspace ? { workspace } : {}) };
     console.log(decideProposal(id, choice, context));
+    redrawHome(FOLDERS.HOME);
     return 0;
   }
   console.error(USAGE);

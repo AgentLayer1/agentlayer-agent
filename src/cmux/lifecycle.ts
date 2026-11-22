@@ -4,6 +4,7 @@ import { pluginVersion } from '@/shared/naming';
 import { writeFileAtomic } from '@/shared/utils';
 import { cmuxTooOld, MIN_CMUX } from './app';
 import { DIST } from './build';
+import { buildWork } from '@/work/build';
 import type { Work } from '@/work/model';
 import { homeEntry, readHomeState } from './entry';
 import {
@@ -218,4 +219,12 @@ export const removeSidebar = (home: string, target: SidebarTarget): RemoveResult
   }
   writeFileAtomic(path, renderSidebar({ ...current, homes }));
   return 'removed';
+};
+
+/**
+ * Redraws this home in the installed sidebar after a proposal, a note or the heartbeat changed.
+ */
+export const redrawSidebar = (home: string): void => {
+  // A fresh scan, not the saved model: a summary or task changed since the last dashboard rebuild would be undone.
+  refreshSidebarQuietly(home, buildWork());
 };

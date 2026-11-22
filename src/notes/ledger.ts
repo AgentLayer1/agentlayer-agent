@@ -1,6 +1,6 @@
 import { FILES } from '@/config';
 import { isRecord } from '@/shared/json-block';
-import { isUnreadable, writeJsonAtomic } from '@/shared/utils';
+import { jsonProblem, writeJsonChecked } from '@/shared/utils';
 import { readFileSync } from 'node:fs';
 
 const REACTIONS = ['', 'useful', 'dismissed', 'started'] as const;
@@ -82,16 +82,6 @@ export const readNotes = (): NoteLedger => {
 /**
  * What's wrong with the ledger file, or '' when it is missing or reads.
  */
-export const notesProblem = (): string =>
-  isUnreadable(FILES.NOTES) ? `${FILES.NOTES} is not valid JSON; fix or remove it, then try again.` : '';
+export const notesProblem = (): string => jsonProblem(FILES.NOTES);
 
-/**
- * Replaces the ledger, unless the file won't parse: that one is left for the operator rather than written over.
- */
-export const writeNotes = (ledger: NoteLedger): void => {
-  const problem = notesProblem();
-  if (problem) {
-    throw new Error(problem);
-  }
-  writeJsonAtomic(FILES.NOTES, ledger);
-};
+export const writeNotes = (ledger: NoteLedger): void => writeJsonChecked(FILES.NOTES, ledger);

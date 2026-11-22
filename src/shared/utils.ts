@@ -59,10 +59,7 @@ export function writeJsonAtomic(path: string, value: unknown, mode?: number): vo
   writeFileAtomic(path, JSON.stringify(value, null, 2), mode);
 }
 
-/**
- * Whether a JSON file is there but doesn't read as an object; a missing one reads as empty.
- */
-export const isUnreadable = (path: string): boolean => {
+const isUnreadable = (path: string): boolean => {
   if (!existsSync(path)) {
     return false;
   }
@@ -71,6 +68,23 @@ export const isUnreadable = (path: string): boolean => {
   } catch {
     return true;
   }
+};
+
+/**
+ * What's wrong with a JSON file that should hold an object, or '' when it reads or is missing (which reads as empty).
+ */
+export const jsonProblem = (path: string): string =>
+  isUnreadable(path) ? `${path} is not valid JSON; fix or remove it, then try again.` : '';
+
+/**
+ * Replaces a JSON file, unless it won't parse: that one is left for the operator rather than written over.
+ */
+export const writeJsonChecked = (path: string, value: unknown): void => {
+  const problem = jsonProblem(path);
+  if (problem) {
+    throw new Error(problem);
+  }
+  writeJsonAtomic(path, value);
 };
 
 /**

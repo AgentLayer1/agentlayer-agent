@@ -54,11 +54,10 @@ export interface FakeMachine {
   toolText: Record<string, string>;
   fsCalls: string[];
   notices: Notice[];
-  /** What `heartbeat status --json` is made from: the heartbeat, what's showing, and the brain; room is what's left of five unless set. */
+  /** What `heartbeat status --json` is made from: the heartbeat, how many proposals show, and the brain. */
   status: {
     target: number;
-    room?: number;
-    showing: { id: string; title: string }[];
+    showing: number;
     heartbeat: HeartbeatStatus['heartbeat'];
     refreshedAt?: string;
     refreshDue?: boolean;
@@ -110,7 +109,7 @@ export const machine = (overrides: Partial<FakeMachine> = {}): FakeMachine => ({
   toolText: {},
   fsCalls: [],
   notices: [],
-  status: { target: 5, showing: [], heartbeat: null },
+  status: { target: 5, showing: 0, heartbeat: null },
   toasts: [],
   copied: [],
   suggestions: [],
@@ -197,7 +196,6 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
   }
   if (args === 'heartbeat status --json') {
     const { target, showing, heartbeat, refreshedAt = '', refreshDue = false } = host.status;
-    const room = host.status.room ?? Math.max(0, target - showing.length);
     const notes = { cap: 3, room: host.notesRoom ?? 0, today: 3 - (host.notesRoom ?? 0) };
     return ran(
       0,
@@ -206,7 +204,7 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
         timezone: 'Asia/Kuala_Lumpur',
         refreshedAt,
         refreshDue,
-        proposals: { target, room, showing: showing.length },
+        proposals: { target, room: Math.max(0, target - showing), showing },
         notes
       })
     );
@@ -224,10 +222,7 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
   if (release && host.status.heartbeat?.owner === release[1]) {
     host.status.heartbeat = null;
   }
-  if (args.startsWith('heartbeat ')) {
-    return ran(0, `ran ${args}`);
-  }
-  if (args.startsWith('proposals ')) {
+  if (/^(heartbeat|proposals) /.test(args)) {
     return ran(0, `ran ${args}`);
   }
   if (args.startsWith('notices')) {

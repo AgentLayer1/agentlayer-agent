@@ -1,6 +1,6 @@
 import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { readHeartbeat, type Heartbeat } from '@/heartbeat/ledger';
+import { placeOf, readHeartbeat, type Heartbeat } from '@/heartbeat/ledger';
 import { EMPTY_NOTES, readNotes, type NoteLedger } from '@/notes/ledger';
 import { recentNotes } from '@/notes/rules';
 import { EMPTY_LEDGER, readProposalLedger, type ProposalLedger } from '@/proposals/ledger';
@@ -70,7 +70,7 @@ export const readHomeState = (): HomeState => ({
 
 // The heartbeat's cmux tab, where the sidebar's buttons type; null when it isn't a cmux session.
 const heartbeatPlace = (heartbeat: Heartbeat | null): HeartbeatPlace | null => {
-  const place = heartbeat?.places.find((item) => item.adapter === 'cmux');
+  const place = placeOf(heartbeat, 'cmux');
   return place ? { surfaceId: place.surfaceId, workspaceId: place.workspaceId } : null;
 };
 

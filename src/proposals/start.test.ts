@@ -2,12 +2,11 @@ import { expect, test } from 'bun:test';
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { FILES, FOLDERS } from '@/config';
-import type { SessionPlace, StartInput } from '@/sessions/launch';
-import type { ProposalAdapter } from './adapter';
+import type { SessionLauncher, SessionPlace, StartContext, StartInput } from '@/sessions/launch';
 import { EMPTY_LEDGER, readProposalLedger, writeProposalLedger } from './ledger';
 import { addProposals, type ProposalInput } from './rules';
 import { runProposalsCommand } from './command';
-import { decideProposal, type DecideContext } from './start';
+import { decideProposal } from './start';
 
 const NOW = new Date('2026-11-20T10:00:00+08:00');
 
@@ -35,8 +34,7 @@ const PLACE: SessionPlace = { adapter: 'cmux', surfaceId: 's', workspaceId: 'w' 
 const fakeAdapter = (reachable: boolean, fail = false) => {
   const started: StartInput[] = [];
   const places: SessionPlace[] = [];
-  const published: string[] = [];
-  const adapter: ProposalAdapter = {
+  const adapter: SessionLauncher = {
     name: 'cmux',
     locate: () => (reachable ? PLACE : null),
     start: (input, place) => {
@@ -46,27 +44,25 @@ const fakeAdapter = (reachable: boolean, fail = false) => {
       started.push(input);
       places.push(place);
       return 'Opened a workspace.';
-    },
-    publish: (home) => published.push(home)
+    }
   };
-  return { adapter, started, places, published };
+  return { adapter, started, places };
 };
 
-const context = (adapters: readonly ProposalAdapter[]): DecideContext => ({
+const context = (adapters: readonly SessionLauncher[]): StartContext => ({
   home: FOLDERS.HOME,
   adapters,
   env: {},
   now: NOW
 });
 
-test('Start hands the prompt as a file to the adapter that can reach this session, with its place, then publishes', () => {
+test('Start hands the prompt as a file to the launcher that can reach this session, with its place', () => {
   const id = seed();
-  const { adapter, started, places, published } = fakeAdapter(true);
+  const { adapter, started, places } = fakeAdapter(true);
   expect(decideProposal(id, 'start', context([adapter]))).toBe('Started: Reply to the review. Opened a workspace.');
   expect(started).toHaveLength(1);
   expect(places).toEqual([PLACE]);
   expect(readFileSync(started[0]?.promptFile ?? '', 'utf-8')).toBe(input.prompt);
-  expect(published).toEqual([FOLDERS.HOME]);
   expect(readProposalLedger().proposals[0]?.state).toBe('started');
 });
 
@@ -103,12 +99,12 @@ test('a Start whose session cannot open puts the proposal back', () => {
   expect(readProposalLedger().proposals[0]?.state).toBe('waiting');
 });
 
-test('Later and Skip record the choice and publish', () => {
+test('Later and Skip record the choice', () => {
   const later = fakeAdapter(true);
   expect(decideProposal(seed(), 'later', context([later.adapter]))).toBe(
     'Later: Reply to the review comes back in the morning.'
   );
-  expect(later.published).toHaveLength(1);
+  expect(readProposalLedger().proposals.at(-1)?.laterUntil).not.toBe('');
   expect(decideProposal(seed(), 'skip', context([]))).toBe('Skipped: Reply to the review.');
   expect(decideProposal('p-none', 'skip', context([]))).toBe('No proposal p-none.');
 });
@@ -132,6 +128,6 @@ test('the core never imports an adapter', () => {
   const sources = readdirSync(dir).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'));
   const logic = sources.filter((name) => !['tool.ts', 'command.ts'].includes(name));
   const offenders = logic.filter((name) => /from '@\/(cmux|adapters)/.test(readFileSync(resolve(dir, name), 'utf-8')));
-  expect(logic.length).toBeGreaterThan(4);
+  expect(logic.length).toBeGreaterThan(3);
   expect(offenders).toEqual([]);
 });

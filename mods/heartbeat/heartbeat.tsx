@@ -21,7 +21,7 @@ import {
   nextLook,
   noticeText,
   notesSent,
-  parseHeartbeat,
+  parseAsk,
   parseStatus,
   workspaceTitles,
   NOTE_CHOICES,
@@ -164,8 +164,8 @@ async function look($: EngineInterface): Promise<void> {
 
 // A brain refresh and the day's first wake clear the conversation first, so the heartbeat's context stays small. A
 // refresh runs sync's maintenance steps, then the look reads the brain it left.
-async function wake($: EngineInterface, now: number, zone: string, refresh = false): Promise<void> {
-  const today = dayIn(now, zone);
+async function wake($: EngineInterface, now: number, status: HeartbeatStatus, refresh = false): Promise<void> {
+  const today = dayIn(now, status.timezone);
   const { wokeOn } = await read($, beat);
   const clears = refresh || (wokeOn !== '' && wokeOn !== today);
   if (clears) {
@@ -179,16 +179,15 @@ async function wake($: EngineInterface, now: number, zone: string, refresh = fal
     if (refresh) {
       await expectTurn($, 'refresh');
       await $.command.run({ command: `${$.plugin.name}:sync`, args: 'brain' });
-      await scout($);
+      await scout($, status);
     }
     await look($);
   });
 }
 
 // Scouting for notes rides on the refresh, reading the brain it just compiled, while the day has room.
-async function scout($: EngineInterface): Promise<void> {
-  const room = (await readStatus($))?.notes.room;
-  if (!room) {
+async function scout($: EngineInterface, status: HeartbeatStatus): Promise<void> {
+  if (!status.notes.room) {
     return;
   }
   await update($, beat, (current) => ({ ...current, notesThisWake: 0 }));
@@ -208,10 +207,10 @@ const facts = (status: HeartbeatStatus) => ({
   refreshedAt: refreshedMs(status)
 });
 
-const seen = (list: Bound, now: number) => ({ nextAt: now + list.heartbeat.everyMinutes * MINUTE_MS, ...facts(list) });
+const seen = (status: Bound, now: number) => ({ nextAt: now + status.heartbeat.everyMinutes * MINUTE_MS, ...facts(status) });
 
-async function ticked($: EngineInterface, list: Bound, now: number, skipped = ''): Promise<void> {
-  await update($, beat, (current) => ({ ...current, ...seen(list, now) }));
+async function ticked($: EngineInterface, status: Bound, now: number, skipped = ''): Promise<void> {
+  await update($, beat, (current) => ({ ...current, ...seen(status, now) }));
   if (skipped) {
     await note($, { at: now, kind: 'skip', text: skipped });
   }
@@ -232,8 +231,8 @@ async function ownerOf($: EngineInterface): Promise<string> {
 
 type Bound = HeartbeatStatus & { heartbeat: NonNullable<HeartbeatStatus['heartbeat']> };
 
-const isOwner = (list: HeartbeatStatus | null, owner: string): list is Bound =>
-  owner !== '' && list?.heartbeat?.owner === owner;
+const isOwner = (status: HeartbeatStatus | null, owner: string): status is Bound =>
+  owner !== '' && status?.heartbeat?.owner === owner;
 
 // The newest write to any other session's transcript in this home's folder, the heartbeat's own and the one its last
 // /clear left behind skipped; null when the engine keeps no transcript to find the folder by.
@@ -245,15 +244,15 @@ async function lastUse($: EngineInterface): Promise<number | null> {
 }
 
 async function tick($: EngineInterface): Promise<void> {
-  const [list, { isBusy }, { owner }] = await Promise.all([readStatus($), read($, queue), read($, beat)]);
-  if (!list) {
+  const [status, { isBusy }, { owner }] = await Promise.all([readStatus($), read($, queue), read($, beat)]);
+  if (!status) {
     return;
   }
-  if (!isOwner(list, owner)) {
+  if (!isOwner(status, owner)) {
     // The clock only runs in the session that was the heartbeat, so this session just lost the job.
     if (ticker) {
       void $.ui.toast(
-        list.heartbeat
+        status.heartbeat
           ? 'Another session took over the heartbeat; this one stopped looking for proposals.'
           : 'The heartbeat was turned off; this session stopped looking for proposals.'
       );
@@ -265,40 +264,40 @@ async function tick($: EngineInterface): Promise<void> {
   startRedraw($);
   const now = await $.clock.now();
   if (isBusy) {
-    await ticked($, list, now, 'a turn was running');
+    await ticked($, status, now, 'a turn was running');
     return;
   }
   const used = await lastUse($);
   const { refreshTriedAt = 0 } = await read($, beat);
   // A refresh waits for something to absorb: a session written since the last sync or refresh.
-  const absorbs = used === null || used > refreshedMs(list);
-  if (list.refreshDue && absorbs && now - refreshTriedAt >= REFRESH_RETRY_MS) {
-    await ticked($, list, now);
-    await wake($, now, list.timezone, true);
+  const absorbs = used === null || used > refreshedMs(status);
+  if (status.refreshDue && absorbs && now - refreshTriedAt >= REFRESH_RETRY_MS) {
+    await ticked($, status, now);
+    await wake($, now, status, true);
     return;
   }
   // A home it can't see is treated as in use, since skipping would stop the heartbeat for good.
-  if (used !== null && now - used >= list.heartbeat.everyMinutes * MINUTE_MS) {
-    await ticked($, list, now, 'home idle');
+  if (used !== null && now - used >= status.heartbeat.everyMinutes * MINUTE_MS) {
+    await ticked($, status, now, 'home idle');
     return;
   }
-  await ticked($, list, now);
-  await wake($, now, list.timezone);
+  await ticked($, status, now);
+  await wake($, now, status);
 }
 
-// Only a process that ran /heartbeat holds a token, so every other session starts without reading the ledger.
+// Only a process that ran /heartbeat holds a token, so every other session starts without reading its status.
 async function arm($: EngineInterface): Promise<Bound | null> {
   const { owner } = await read($, beat);
   stopClocks();
   if (!owner) {
     return null;
   }
-  const list = await readStatus($);
-  if (!isOwner(list, owner)) {
+  const status = await readStatus($);
+  if (!isOwner(status, owner)) {
     await update($, beat, (current) => ({ ...current, isHeartbeat: false }));
     return null;
   }
-  const { everyMinutes } = list.heartbeat;
+  const { everyMinutes } = status.heartbeat;
   const now = await $.clock.now();
   startLooks($, everyMinutes);
   startRedraw($);
@@ -306,44 +305,44 @@ async function arm($: EngineInterface): Promise<Bound | null> {
     ...current,
     isHeartbeat: true,
     everyMinutes,
-    zone: list.timezone,
-    ...seen(list, now)
+    zone: status.timezone,
+    ...seen(status, now)
   }));
-  return list;
+  return status;
 }
 
-async function status($: EngineInterface): Promise<string> {
-  const [list, now, { owner, nextAt }, used] = await Promise.all([readStatus($), $.clock.now(), read($, beat), lastUse($)]);
-  if (!list) {
+async function describe($: EngineInterface): Promise<string> {
+  const [status, now, { owner, nextAt }, used] = await Promise.all([readStatus($), $.clock.now(), read($, beat), lastUse($)]);
+  if (!status) {
     return "Couldn't read the heartbeat's status.";
   }
-  const showing = `${list.proposals.showing} of ${list.proposals.target} proposals showing`;
-  if (!list.heartbeat) {
+  const showing = `${status.proposals.showing} of ${status.proposals.target} proposals showing`;
+  if (!status.heartbeat) {
     return `No heartbeat. ${showing}. /heartbeat makes this session the one.`;
   }
-  const mine = isOwner(list, owner);
+  const mine = isOwner(status, owner);
   const who = mine ? 'This session' : 'Another session';
   const activity = used === null ? "its sessions can't be seen" : used === 0 ? 'no other session yet' : `last activity ${Math.round((now - used) / MINUTE_MS)}m ago`;
-  const next = mine && nextAt ? ` Its ${nextLook(nextAt, now, list.timezone)}.` : '';
-  return `${who} is the heartbeat, every ${list.heartbeat.everyMinutes}m, skipping a wake when no other session in the home was active in that time (${activity}). ${showing}.${next}`;
+  const next = mine && nextAt ? ` Its ${nextLook(nextAt, now, status.timezone)}.` : '';
+  return `${who} is the heartbeat, every ${status.heartbeat.everyMinutes}m, skipping a wake when no other session in the home was active in that time (${activity}). ${showing}.${next}`;
 }
 
 async function heartbeat($: EngineInterface, args: string): Promise<string> {
-  const ask = parseHeartbeat(args);
+  const ask = parseAsk(args);
   // A look the operator asks for, or a status check, also finds a look clock that stopped.
   if (ask.kind === 'status' || ask.kind === 'now') {
     await revive($);
   }
   if (ask.kind === 'status') {
-    return status($);
+    return describe($);
   }
   if (ask.kind === 'now') {
     // The heartbeat's own tab refreshes the brain first when one is due; anywhere else it is a refill only, since a
     // clear belongs to the heartbeat, never to a session that asked for a look.
-    const [list, { owner }] = await Promise.all([readStatus($), read($, beat)]);
-    if (isOwner(list, owner) && list.refreshDue) {
+    const [status, { owner }] = await Promise.all([readStatus($), read($, beat)]);
+    if (isOwner(status, owner) && status.refreshDue) {
       const now = await $.clock.now();
-      $.clock.after(0, () => void wake($, now, list.timezone, true));
+      $.clock.after(0, () => void wake($, now, status, true));
       return 'Refreshing the brain, then looking for proposals.';
     }
     $.clock.after(0, () => void look($));
@@ -359,12 +358,12 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
   return `${text}${await firstLook($, await arm($))}`;
 }
 
-async function firstLook($: EngineInterface, list: Bound | null): Promise<string> {
-  if (!list) {
+async function firstLook($: EngineInterface, status: Bound | null): Promise<string> {
+  if (!status) {
     return '';
   }
   const now = await $.clock.now();
-  $.clock.after(0, () => void wake($, now, list.timezone));
+  $.clock.after(0, () => void wake($, now, status));
   return ' Looking for proposals now.';
 }
 
@@ -430,18 +429,24 @@ export const registerHeartbeat = (on: On): void => {
       const [now, { notesThisWake = 0 }] = await Promise.all([$.clock.now(), read($, beat)]);
       const done = kind === 'refresh' || kind === 'notes' ? kind : 'look';
       await update($, beat, (current) => ({ ...current, awaiting: (current.awaiting ?? []).slice(1), workingSince: now }));
+      const last = awaiting.length === 1;
       await note(
         $,
         e.reason === 'answer'
           ? { at: now, kind: done, text: closingLine(e.answer) || 'done', ...(done === 'notes' ? { sent: notesThisWake } : {}) }
           : { at: now, kind: 'stopped', text: `the ${done} stopped (${e.reason})` }
       );
-      // What the turn changed (proposals, the tasks summary, the brain) shows now, here and on the dashboard and sidebar.
-      const list = await readStatus($);
-      if (list) {
-        await update($, beat, (current) => ({ ...current, ...facts(list) }));
+      // What the wake changed (proposals, the tasks summary, the brain) shows once its last turn ends, here and on the
+      // dashboard and sidebar.
+      if (last) {
+        $.clock.after(0, async () => {
+          const status = await readStatus($);
+          if (status) {
+            await update($, beat, (current) => ({ ...current, ...facts(status) }));
+          }
+          await runCli($, ['dashboard']).catch(() => undefined);
+        });
       }
-      $.clock.after(0, () => void runCli($, ['dashboard']).catch(() => undefined));
     }
     return next(e);
   });

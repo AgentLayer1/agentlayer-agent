@@ -100,15 +100,15 @@ Proposals are sessions the agent prepared and waits on a yes for: Start opens a 
 | Piece | Lives in |
 | --- | --- |
 | The core: ledger (`.state/proposals.json`), the rules (dedupe by `source`, a backlog of 20, Later, decide once per id), `proposal_add`, the `proposals` CLI | `src/proposals/` |
-| The adapter contract (`ProposalAdapter`, a `SessionLauncher` with `publish`) and the list of adapters | `src/proposals/adapter.ts`, `src/sessions/launch.ts`, `src/adapters.ts` |
+| The launcher contract (`SessionLauncher`: `locate`, `start`), the launchers, and the one home redraw (`redrawHome`) | `src/sessions/launch.ts`, `src/adapters.ts` |
 | The heartbeat's record (`.state/heartbeat.json`), its interval and refresh rules, and the `heartbeat` CLI (`status`, `bind`, `release`, `off`) | `src/heartbeat/` |
 | `/proposal <start\|later\|skip> <id>`, `/note`, `/heartbeat [15m\|2h\|off\|now\|status]`, the wake clock and the band | `mods/heartbeat/` |
 | What a wake looks at (the `proposals` skill, slash-only), and the proposal-source contract | `skills/proposals/` |
 | The cmux adapter: Start as a new tab beside the heartbeat, the Manager's PROPOSED section | `src/cmux/proposals.ts`, `src/cmux/sidebar/proposals.ts` |
 
-The core never imports an adapter (a test fails if it does); `proposal_add` and the CLI take `ADAPTERS` from `src/adapters.ts`. With no adapter that can reach the session, Start prints the command to run by hand.
+The core never imports an adapter (a test fails if it does); `proposal_add` and the CLI take `LAUNCHERS` from `src/adapters.ts` and call `redrawHome` after a change. With no launcher that can reach the session, Start prints the command to run by hand.
 
-**Adding an adapter** (a terminal multiplexer, an editor, a hosted page): add its place to the `SessionPlace` union (`src/sessions/launch.ts`) and its parser in `src/heartbeat/ledger.ts`, write a `ProposalAdapter` in its own pack (`locate` from the environment the CLI inherits, `start` beside the place `locate` returned, from the prompt file without putting the prompt or the home's path in a shell string, `publish` to redraw), and add one line to `ADAPTERS`.
+**Adding a launcher** (a terminal multiplexer, an editor): add its place to the `SessionPlace` union (`src/sessions/launch.ts`) and its parser in `src/heartbeat/ledger.ts`, write a `SessionLauncher` in its own pack (`locate` from the environment the CLI inherits, `start` beside the place `locate` returned, from the prompt file without putting the prompt or the home's path in a shell string), and add one line to `LAUNCHERS`. A surface that shows the home (a hosted page) adds its redraw to `SURFACES` in the same file.
 
 **The wake** costs nothing until it runs: `/heartbeat` (with an interval or without) looks once at bind whenever there's room and its reply says whether it looked; then each tick on the clock, a full interval later, reads `heartbeat status --json` and wakes only when this session is the heartbeat (by a token its process picks at `/heartbeat` and keeps across `/clear` and `/resume`), no main-loop turn runs (the queue feature's `isBusy`), and another session in the home was active within the last interval (the newest write in the heartbeat's own transcript folder, `$.session.info().transcriptPath`'s, leaving out its own conversation and the one its last daily `/clear` left; a session that keeps no transcript can't tell, so it wakes). A wake looks even when five are showing, and swaps out weaker ones. The day's first wake runs `/clear` first. The interval is 55 minutes unless `/heartbeat <duration>` sets another, so a wake reads the prompt cache instead of rewriting it.
 

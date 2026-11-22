@@ -1,10 +1,9 @@
-import { ADAPTERS } from '@/adapters';
+import { LAUNCHERS, redrawHome } from '@/adapters';
 import { FOLDERS, TIMEZONE } from '@/config';
-import { readNotes } from '@/notes/ledger';
+import { notesProblem, readNotes } from '@/notes/ledger';
 import { DAILY_CAP, notesOn, roomToday } from '@/notes/rules';
 import { ledgerProblem, readProposalLedger } from '@/proposals/ledger';
 import { roomFor, showingNow, TARGET } from '@/proposals/rules';
-import { publishTo } from '@/proposals/start';
 import { readCadence } from '@/shared/cadence';
 import { CLI_COMMAND } from '@/shared/naming';
 import { flagOf } from '@/shared/utils';
@@ -19,11 +18,11 @@ const USAGE = [
   `  off                                        No heartbeat`
 ].join('\n');
 
-const publish = (): void => publishTo(ADAPTERS, FOLDERS.HOME);
+const publish = (): void => redrawHome(FOLDERS.HOME);
 
 // An unreadable record fails the status, so the heartbeat's tick skips and keeps its clock instead of seeing none.
 const status = (args: readonly string[]): number => {
-  const problem = heartbeatProblem() || ledgerProblem();
+  const problem = heartbeatProblem() || ledgerProblem() || notesProblem();
   if (problem) {
     console.error(problem);
     return 1;
@@ -48,8 +47,8 @@ const status = (args: readonly string[]): number => {
   }
   const facts = [
     beat ? `Heartbeat every ${beat.everyMinutes}m` : 'No heartbeat',
-    `${view.proposals.showing} of ${TARGET} proposals showing`,
-    `${view.notes.today} of ${DAILY_CAP} notes today`,
+    `${view.proposals.showing} of ${view.proposals.target} proposals showing`,
+    `${view.notes.today} of ${view.notes.cap} notes today`,
     refreshedAt ? `brain refreshed ${refreshedAt}` : 'brain never refreshed'
   ];
   console.log(facts.join(' · '));
@@ -65,7 +64,7 @@ const bind = (args: readonly string[]): number => {
     return 1;
   }
   const before = readHeartbeat();
-  const places = ADAPTERS.map((adapter) => adapter.locate(process.env)).filter((place) => place !== null);
+  const places = LAUNCHERS.map((launcher) => launcher.locate(process.env)).filter((place) => place !== null);
   writeHeartbeat({ owner, places, everyMinutes: minutes });
   publish();
   const from =

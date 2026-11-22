@@ -1,9 +1,8 @@
 import { existsSync } from 'node:fs';
-import { readHeartbeat } from '@/heartbeat/ledger';
+import { placeOf, readHeartbeat } from '@/heartbeat/ledger';
 import type { NoteAdapter } from '@/notes/adapter';
 import type { SessionPlace } from '@/sessions/launch';
 import { callCmux, CMUX_APP, type CmuxCall } from './app';
-import { cmuxAdapter } from './proposals';
 
 /**
  * Notes through cmux, over a given runner so a test can watch the calls: a desktop notification that cmux ties to
@@ -28,12 +27,11 @@ export const cmuxNotesAdapterWith = (
     if (!result.ok) {
       throw new Error(result.output || 'cmux didn’t take the notification.');
     }
-  },
-  publish: ({ home }) => cmuxAdapter.publish(home)
+  }
 });
 
 export const cmuxNotesAdapter = cmuxNotesAdapterWith(
   callCmux,
   () => existsSync(CMUX_APP),
-  () => readHeartbeat()?.places.find((place) => place.adapter === 'cmux') ?? null
+  () => placeOf(readHeartbeat(), 'cmux')
 );

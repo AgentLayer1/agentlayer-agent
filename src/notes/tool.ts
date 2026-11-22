@@ -1,4 +1,5 @@
-import { NOTE_ADAPTERS } from '@/adapters';
+import { NOTE_ADAPTERS, redrawHome } from '@/adapters';
+import { FOLDERS } from '@/config';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { z } from 'zod';
 import { DAILY_CAP } from './rules';
@@ -44,6 +45,12 @@ export const tools: ToolDef[] = [
     inputSchema: {
       notes: z.array(NOTE).min(1).max(DAILY_CAP).describe('The notes to send, best first.')
     },
-    handler: async ({ notes }) => sendNotes(notes, NOTE_ADAPTERS, new Date())
+    handler: async ({ notes }) => {
+      const sent = await sendNotes(notes, NOTE_ADAPTERS, new Date());
+      if (sent.added.length) {
+        redrawHome(FOLDERS.HOME);
+      }
+      return sent;
+    }
   })
 ];

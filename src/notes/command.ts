@@ -1,18 +1,15 @@
-import { ADAPTERS, NOTE_ADAPTERS } from '@/adapters';
+import { LAUNCHERS, redrawHome } from '@/adapters';
 import { FOLDERS } from '@/config';
 import { startPrompt } from '@/sessions/launch';
 import { CLI_COMMAND } from '@/shared/naming';
 import { flagOf } from '@/shared/utils';
-import { chosenAdapters, publishNotes } from './adapter';
 import { notesProblem, readNotes, writeNotes, type NoteLedger } from './ledger';
 import { DAILY_CAP, lensRecord, notesOn, react, roomToday, sentLately } from './rules';
-import { noteContext } from './send';
 
 // A changed note shows wherever notes are listed, not at the next unrelated redraw.
 const saveAndPublish = (ledger: NoteLedger): void => {
   writeNotes(ledger);
-  const context = noteContext();
-  publishNotes(chosenAdapters(NOTE_ADAPTERS, context, process.env), context);
+  redrawHome(FOLDERS.HOME);
 };
 
 const USAGE = [
@@ -78,7 +75,7 @@ export const runNotesCommand = (command: string | undefined, args: readonly stri
     const workspace = flagOf(args, 'workspace');
     const opened = startPrompt(note, {
       home: FOLDERS.HOME,
-      adapters: ADAPTERS,
+      adapters: LAUNCHERS,
       env: process.env,
       now: new Date(),
       ...(workspace ? { workspace } : {})

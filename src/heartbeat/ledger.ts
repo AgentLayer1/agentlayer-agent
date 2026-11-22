@@ -1,7 +1,7 @@
 import { FILES } from '@/config';
 import type { SessionPlace } from '@/sessions/launch';
 import { isRecord } from '@/shared/json-block';
-import { isUnreadable, writeJsonAtomic } from '@/shared/utils';
+import { jsonProblem, writeJsonChecked } from '@/shared/utils';
 import { readFileSync, rmSync } from 'node:fs';
 
 /**
@@ -47,20 +47,25 @@ export const readHeartbeat = (): Heartbeat | null => {
 /**
  * What's wrong with the heartbeat's file, or '' when it is missing or reads.
  */
-export const heartbeatProblem = (): string =>
-  isUnreadable(FILES.HEARTBEAT) ? `${FILES.HEARTBEAT} is not valid JSON; fix or remove it, then try again.` : '';
+export const heartbeatProblem = (): string => jsonProblem(FILES.HEARTBEAT);
 
 /**
  * Records the heartbeat, or that there is none, unless the file won't parse: that one is left for the operator.
  */
 export const writeHeartbeat = (beat: Heartbeat | null): void => {
+  if (beat) {
+    writeJsonChecked(FILES.HEARTBEAT, beat);
+    return;
+  }
   const problem = heartbeatProblem();
   if (problem) {
     throw new Error(problem);
   }
-  if (beat) {
-    writeJsonAtomic(FILES.HEARTBEAT, beat);
-  } else {
-    rmSync(FILES.HEARTBEAT, { force: true });
-  }
+  rmSync(FILES.HEARTBEAT, { force: true });
 };
+
+/**
+ * The heartbeat's place in one launcher's terms, or null when it has none there.
+ */
+export const placeOf = (beat: Heartbeat | null, adapter: SessionPlace['adapter']): SessionPlace | null =>
+  beat?.places.find((place) => place.adapter === adapter) ?? null;
