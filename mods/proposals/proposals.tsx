@@ -56,6 +56,38 @@ const stopClocks = (): void => {
   redraw = undefined;
 };
 
+// A look overdue by more than this means its clock stopped, not that it is running a little late.
+const STALL_MS = 2 * MINUTE_MS;
+
+// Claude Code ends an interval for good, and says nothing, when one period's dispatch is refused. So the two clocks
+// keep each other alive: every look starts the redraw afresh, and every redraw restarts a look clock it finds stopped.
+function startLooks($: EngineInterface, everyMinutes: number): void {
+  ticker?.cancel();
+  ticker = $.clock.every(everyMinutes * MINUTE_MS, () => void tick($));
+}
+
+function startRedraw($: EngineInterface): void {
+  redraw?.cancel();
+  redraw = $.clock.every(MINUTE_MS, () => void onRedraw($));
+}
+
+async function onRedraw($: EngineInterface): Promise<void> {
+  await update($, redrawn, (count) => count + 1);
+  await revive($);
+}
+
+async function revive($: EngineInterface): Promise<void> {
+  const { isHeartbeat, nextAt, everyMinutes, zone = 'UTC' } = await read($, beat);
+  const now = await $.clock.now();
+  if (!isHeartbeat || nextAt === undefined || everyMinutes === undefined || now - nextAt <= STALL_MS) {
+    return;
+  }
+  startLooks($, everyMinutes);
+  await update($, beat, (current) => ({ ...current, nextAt: now + everyMinutes * MINUTE_MS }));
+  await note($, { at: now, kind: 'stopped', text: `the look due ${clockIn(nextAt, zone)} never came; the clock restarted` });
+  await tick($);
+}
+
 // The session root, not its cwd: a shell `cd` in a turn moves the cwd out of the home.
 async function runCli($: EngineInterface, args: readonly string[]): Promise<string> {
   const { exitCode, stdout, stderr } = await $.process.run(cliArgv($.plugin.root, args), {
@@ -199,6 +231,7 @@ async function tick($: EngineInterface): Promise<void> {
     await update($, beat, (current) => ({ ...current, isHeartbeat: false }));
     return;
   }
+  startRedraw($);
   const now = await $.clock.now();
   if (isBusy) {
     await ticked($, list, now, 'a turn was running');
@@ -236,8 +269,8 @@ async function arm($: EngineInterface): Promise<Bound | null> {
   }
   const { everyMinutes } = list.heartbeat;
   const now = await $.clock.now();
-  ticker = $.clock.every(everyMinutes * MINUTE_MS, () => void tick($));
-  redraw = $.clock.every(MINUTE_MS, () => void update($, redrawn, (count) => count + 1));
+  startLooks($, everyMinutes);
+  startRedraw($);
   await update($, beat, (current) => ({
     ...current,
     isHeartbeat: true,
@@ -266,6 +299,10 @@ async function status($: EngineInterface): Promise<string> {
 
 async function heartbeat($: EngineInterface, args: string): Promise<string> {
   const ask = parseHeartbeat(args);
+  // A look the operator asks for, or a status check, also finds a look clock that stopped.
+  if (ask.kind === 'status' || ask.kind === 'now') {
+    await revive($);
+  }
   if (ask.kind === 'status') {
     return status($);
   }
@@ -365,6 +402,10 @@ export const registerProposals = (on: On): void => {
     const now = await $.clock.now();
     const working = state.awaiting?.[0];
     const late = state.nextAt !== undefined && isLate(state.nextAt, now);
+    // Drawing the band is the last place left to notice when both clocks have stopped.
+    if (state.nextAt !== undefined && now - state.nextAt > STALL_MS) {
+      $.clock.after(0, () => void revive($));
+    }
     const facts = [
       `every ${state.everyMinutes ?? 55}m`,
       state.target ? `${state.showing ?? 0} of ${state.target} proposals showing` : '',

@@ -439,6 +439,37 @@ describe('heartbeat band', () => {
     expect(await drawn($)).not.toContain('Heartbeat');
   });
 
+  test('a look that never came is noticed by the redraw within minutes: it restarts the clock and the band says so', async ($, on) => {
+    const { host } = await bound($, on);
+    await ended($, 'Nothing new worth proposing.');
+    // A tick that can't read the proposals returns before it moves the next look on, as a period the engine refused does.
+    host.failing.push('proposals list --json');
+    await host.clock.advance(55 * MINUTE);
+    host.failing.length = 0;
+    expect(host.commands).toEqual([]);
+    await host.clock.advance(3 * MINUTE);
+    expect(host.commands, 'the redraw found the look overdue and looked at once').toEqual([WAKE]);
+    expect(await drawn($)).toContain('the look due 09:55 never came; the clock restarted');
+    await ended($, 'Nothing new worth proposing.', 't2');
+    host.commands.length = 0;
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands, 'the restarted clock keeps its interval').toEqual([WAKE]);
+  });
+
+  test('/heartbeat status finds a look clock that stopped, and looks', async ($, on) => {
+    const { host } = await bound($, on);
+    await ended($, 'Nothing new worth proposing.');
+    host.failing.push('proposals list --json');
+    await host.clock.advance(55 * MINUTE);
+    host.failing.length = 0;
+    // Past the two minutes that count as stalled, before the redraw's next look at it.
+    await host.clock.advance(2.5 * MINUTE);
+    expect(host.commands).toEqual([]);
+    await run($, 'heartbeat', 'status');
+    await host.clock.settle();
+    expect(host.commands).toEqual([WAKE]);
+  });
+
   test('a look that found nothing reads quiet wherever it says so in its line', () => {
     const at = Date.parse('2026-03-11T10:00:00+08:00');
     const quiet = (text: string) => eventView({ at, kind: 'look', text }, 'Asia/Kuala_Lumpur').mark;
