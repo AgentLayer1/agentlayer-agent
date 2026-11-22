@@ -1,6 +1,6 @@
 /*
  * The angles a note comes from. A web lens runs in the scout, which reads only the public brief and the pages it
- * opens; a home lens runs in the heartbeat, which reads the home and reaches no web.
+ * opens; a home lens runs in the home lens agent, which reads the home and reaches no web.
  */
 
 export const WEB_LENSES = [
@@ -25,10 +25,29 @@ export const WEB_LENSES = [
 
 export type WebLens = (typeof WEB_LENSES)[number];
 
-export const HOME_LENSES = ['brain', 'waiting'] as const;
+export const HOME_LENSES = [
+  {
+    key: 'brain',
+    lookFor:
+      'the brain against itself: a fact gone stale, two facts that disagree, a task behind the code, a pending item past its date',
+    where: 'knowledge/memory/index.md (Open Questions, Pending), task_query, and the recent decisions'
+  },
+  {
+    key: 'waiting',
+    lookFor:
+      "something waiting on the operator that a session couldn't see: a review asked of them, a reply owed, new App Store reviews, a support queue growing",
+    where: 'github_sweep, helpdesk_stats and appstore_reviews, where those packs are set up'
+  }
+] as const;
 
-type LensKey = WebLens['key'] | (typeof HOME_LENSES)[number];
+export type HomeLens = (typeof HOME_LENSES)[number];
 
-export const LENS_KEYS: readonly [LensKey, ...LensKey[]] = [...HOME_LENSES, ...WEB_LENSES.map((lens) => lens.key)];
+type LensKey = WebLens['key'] | HomeLens['key'];
+
+export const HOME_LENS_KEYS: readonly [LensKey, ...LensKey[]] = ['brain', 'waiting'];
+
+export const LENS_KEYS: readonly [LensKey, ...LensKey[]] = [...HOME_LENS_KEYS, ...WEB_LENSES.map((lens) => lens.key)];
 
 export const webLensOf = (key: string): WebLens | undefined => WEB_LENSES.find((lens) => lens.key === key);
+
+export const homeLensOf = (key: string): HomeLens | undefined => HOME_LENSES.find((lens) => lens.key === key);

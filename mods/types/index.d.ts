@@ -177,8 +177,8 @@ export interface HeartbeatClock {
   awaiting?: string[];
   /** When the first of `awaiting` was queued, epoch ms. */
   workingSince?: number;
-  /** The web scout under way: the id its spawn answered, and when it started, epoch ms. */
-  scouting?: { id: string; since: number };
+  /** The scouting agent under way: the id its spawn answered, when it started (epoch ms), and which agent it is. */
+  scouting?: { id: string; since: number; agent: 'scout' | 'home-lens' };
 }
 
 export interface Queue {

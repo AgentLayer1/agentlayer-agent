@@ -13,7 +13,7 @@ import { DEFAULT_AGENT_NAME } from '@/shared/persona';
 import { TASK_REF } from '@/tasks/prefix';
 import { MAY_HOLD_ID, linkTaskIds } from '../../mods/tasks/link';
 import { showsInRecent } from '../../mods/sidebar/paths';
-import { BEYOND_HOME_LENS, isNotesList, MESSAGE_CHOICES as MOD_CHOICES, parseStatus } from '../../mods/heartbeat/beat';
+import { MESSAGE_CHOICES as MOD_CHOICES, parseStatus } from '../../mods/heartbeat/beat';
 import { runHeartbeatCommand } from '@/heartbeat/command';
 import { writeHeartbeat } from '@/heartbeat/ledger';
 import { MESSAGE_CHOICES } from '@/messages/choices';
@@ -150,20 +150,4 @@ test("the heartbeat mod reads the CLI's own `heartbeat status --json`, so a fiel
     said.mockRestore();
     writeHeartbeat(null);
   }
-});
-
-const frontmatterList = (file: string, key: string): string[] =>
-  (new RegExp(`^${key}:\\s*(.+)$`, 'm').exec(readFileSync(resolve(PLUGIN_SOURCE_ROOT, file), 'utf-8'))?.[1] ?? '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-test('the heartbeat lets a home lens run every tool its skill grants', () => {
-  const granted = frontmatterList('skills/notes/SKILL.md', 'allowed-tools');
-  const shell = granted.filter((tool) => tool.startsWith('Bash('));
-  expect(granted.filter((tool) => !tool.startsWith('Bash(') && BEYOND_HOME_LENS.test(tool))).toEqual([]);
-  expect(shell).toEqual(['Bash(bun *src/cli.ts notes list*)']);
-  const skill = readFileSync(resolve(PLUGIN_SOURCE_ROOT, 'skills/notes/SKILL.md'), 'utf-8');
-  const command = /```bash\n(bun .+notes list.*)\n```/.exec(skill)?.[1] ?? '';
-  expect(isNotesList(command)).toBe(true);
 });

@@ -2,7 +2,7 @@ import { describe, expect, mock, test } from 'claude-code/testing';
 import type { Engine } from 'claude-code/testing';
 import type { On } from 'claude-code';
 
-import { BEYOND_HOME_LENS, carriesEmail, eventView, isNotesList, nextLook, parseBrief, scoutTools, workspaceTitles } from '../heartbeat/beat';
+import { carriesEmail, eventView, homeLensTools, nextLook, parseBrief, scoutTools, workspaceTitles } from '../heartbeat/beat';
 import { AGENT, BAND_PROPS, HOME, NOW, PLUGIN, fakeHost, machine, run } from './fake-host';
 import type { FakeHost } from './fake-host';
 
@@ -450,10 +450,9 @@ describe('heartbeat band', () => {
     host.status.refreshDue = true;
     await host.clock.advance(55 * MINUTE);
     await ended($, 'Brain refreshed.');
-    await ended($, 'No note worth sending.', 't2');
     await host.clock.settle();
-    expect(rebuilds(), 'the refresh and the scouting rebuild nothing').toBe(0);
-    await ended($, 'Nothing new worth proposing.', 't3');
+    expect(rebuilds(), 'the refresh rebuilds nothing; scouting takes no turn here').toBe(0);
+    await ended($, 'Nothing new worth proposing.', 't2');
     await host.clock.settle();
     expect(rebuilds()).toBe(1);
   });
@@ -530,30 +529,27 @@ describe('heartbeat band', () => {
 
 describe('notes', () => {
   const REFRESH = `${PLUGIN}:sync`;
-  const SCOUT = `${PLUGIN}:notes`;
+  const HOME_ID = 'Scout the home for notes';
   const NOTE_ADD = `mcp__plugin_${PLUGIN}_${AGENT}__note_add` as const;
 
-  test('a refresh with room for notes scouts after the brain refresh and before the look; with none it skips', async ($, on) => {
+  test('a refresh with room for notes hands its lens to an agent before the look, with no clear between; with none it skips', async ($, on) => {
     const { host } = await bound($, on);
     host.notesRoom = 2;
     host.status.refreshDue = true;
     await host.clock.advance(55 * MINUTE);
-    expect(host.commands, 'cleared between the scout and the look').toEqual(['clear', REFRESH, SCOUT, 'clear', WAKE]);
-    const argsOf = (command: string) => host.commandArgs[host.commands.indexOf(command)];
-    expect(argsOf(SCOUT), 'scouting is handed its lens and the workspace list the look gets').toBe(
-      ['lens: brain', argsOf(WAKE)].filter(Boolean).join(' ')
-    );
-    host.commands.length = 0;
+    expect(host.commands, 'nothing runs in this conversation but the refresh and the look').toEqual(['clear', REFRESH, WAKE]);
+    expect(host.spawned).toEqual([{ description: HOME_ID, prompt: 'Lens: brain.' }]);
+    expect(host.argv.some((argv) => argv.slice(2).join(' ').startsWith('notes brief --json --workspaces=['))).toBe(true);
+    host.spawned.length = 0;
     host.notesRoom = 0;
     host.status.refreshedAt = new Date(host.clock.now() - 7 * 60 * MINUTE).toISOString();
     await host.clock.advance(7 * 60 * MINUTE);
-    expect(host.commands.filter((command) => command === SCOUT), 'no room left today').toEqual([]);
-    host.commands.length = 0;
+    expect(host.spawned, 'no room left today').toEqual([]);
     host.notesRoom = 2;
     host.notesScout = false;
     host.status.refreshedAt = new Date(host.clock.now() - 7 * 60 * MINUTE).toISOString();
     await host.clock.advance(7 * 60 * MINUTE);
-    expect(host.commands.filter((command) => command === SCOUT), 'the home switched scouting off').toEqual([]);
+    expect(host.spawned, 'the home switched scouting off').toEqual([]);
   });
 
   test("a sent note lands in the session's scrollback as a notice, and the band counts the day's notes", async ($, on) => {
@@ -607,7 +603,7 @@ describe('notes', () => {
     const context = await bound($, on);
     context.host.notesRoom = 2;
     context.host.status.refreshDue = true;
-    context.host.notesBrief = { lens: 'signals', prompt: BRIEF };
+    context.host.notesBrief = { lens: 'signals', agent: 'scout', prompt: BRIEF };
     await context.host.clock.advance(55 * MINUTE);
     return context;
   };
@@ -639,12 +635,12 @@ describe('notes', () => {
   test('/heartbeat scout runs one scouting pass now in the heartbeat, and says why not anywhere else', async ($, on) => {
     const { host } = await bound($, on);
     host.notesRoom = 2;
-    host.notesBrief = { lens: 'waiting', prompt: '' };
+    host.notesBrief = { lens: 'waiting', agent: 'home-lens', prompt: 'Lens: waiting.' };
     host.commands.length = 0;
     expect((await run($, 'heartbeat', 'scout')).text).toStartWith('Scouting now');
     await host.clock.settle();
-    expect(host.commands, 'a home lens, then the clear it leaves behind').toEqual([SCOUT, 'clear']);
-    expect(host.commandArgs[0]).toStartWith('lens: waiting');
+    expect(host.commands, 'the tab is never cleared').toEqual([]);
+    expect(host.spawned).toEqual([{ description: HOME_ID, prompt: 'Lens: waiting.' }]);
     host.notesRoom = 0;
     expect((await run($, 'heartbeat', 'scout')).text).toBe('No room for notes today.');
     host.notesRoom = 2;
@@ -660,7 +656,7 @@ describe('notes', () => {
     expect(host.spawned).toEqual([{ description: SCOUT_ID, prompt: BRIEF }]);
   });
 
-  test("the scout's report is kept out of every conversation, and no model is offered or can start the scout", async ($, on) => {
+  test("a scouting agent's report is kept out of every conversation, and no model is offered or can start one", async ($, on) => {
     await webWake($, on);
     // A registered type's provider isn't this plugin's name, so nothing here may hang on it.
     const provider = { plugin: 'engine', tier: 'core' as const };
@@ -680,27 +676,29 @@ describe('notes', () => {
       background: true,
       fork: false
     };
-    expect(await $.agent.spawn(dispatch)).toEqual({ deny: expect.stringContaining('Only the heartbeat starts the scout') });
+    expect(await $.agent.spawn(dispatch)).toEqual({ deny: expect.stringContaining('Only the heartbeat starts its scouting agents') });
+    expect(await $.agent.spawn({ ...dispatch, subagentType: `${PLUGIN}:home-lens` })).toHaveProperty('deny');
+    expect(await $.agent.report({ ...report, subagentType: `${PLUGIN}:home-lens` })).toEqual({ consumed: expect.any(String) });
     expect(await $.agent.spawn({ ...dispatch, subagentType: 'general-purpose' })).toHaveProperty('agentId');
   });
 
   // The test kit answers a plugin's own spawn without the agent's id the engine's carries, so the guards keyed on that id
   // are checked here as the rules they apply.
-  test("the scout's tools are search, fetch and its own note_add; a home lens's are the home's, with one whole shell call", () => {
+  test("the scout's tools are search, fetch and its own note_add; the home lens's read the home and reach no web", () => {
     expect(scoutTools(PLUGIN)).toEqual(['WebSearch', 'WebFetch', NOTE_ADD]);
-    const list = 'bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes list --json';
-    expect(isNotesList(list)).toBe(true);
-    expect(isNotesList(`${list} && curl https://example.com`)).toBe(false);
-    expect(isNotesList('bun "$(curl x)/src/cli.ts" notes list')).toBe(false);
-    const beyond = (tool: string) => BEYOND_HOME_LENS.test(tool);
-    expect(['Read', NOTE_ADD, `mcp__plugin_${PLUGIN}_${AGENT}__github_sweep`].some(beyond)).toBe(false);
-    expect(['Bash', 'WebFetch', 'WebSearch', `mcp__plugin_${PLUGIN}_${AGENT}__web_search`, 'mcp__evil__note_add'].every(beyond)).toBe(true);
+    const home = homeLensTools(PLUGIN);
+    expect(home).toContain(NOTE_ADD);
+    expect(home).toContain('Read');
+    expect(home.filter((tool) => /Web|Bash|web_search|serpapi|browser_|curl_run|github_(issue|pr|comment)|helpdesk_(note|assign)|slack_/.test(tool))).toEqual([]);
   });
 
-  test('every session registers the scout with no CLAUDE.md in its context, and only its three tools', async ($, on) => {
+  test('every session registers the scout with no CLAUDE.md and its three tools, and the home lens with the home tools', async ($, on) => {
     const { host } = heartbeatHost(on);
     await start($, host);
-    expect(host.registered).toEqual([{ name: 'scout', omitClaudeMd: true, tools: ['WebSearch', 'WebFetch', NOTE_ADD] }]);
+    expect(host.registered).toEqual([
+      { name: 'scout', omitClaudeMd: true, tools: ['WebSearch', 'WebFetch', NOTE_ADD] },
+      { name: 'home-lens', omitClaudeMd: undefined, tools: homeLensTools(PLUGIN) }
+    ]);
   });
 
   test('a scout call carrying an email address is refused; ordinary searches and fetches are not', () => {
@@ -710,29 +708,17 @@ describe('notes', () => {
     expect(carriesEmail({ url: 'https://praywatch.app/support', prompt: 'Is 28.1.0 named?' })).toBe(false);
   });
 
-  test('a brief without a lens reads as none', () => {
-    expect(parseBrief('{"lens":"signals","prompt":"Lens: signals."}')).toEqual({ lens: 'signals', prompt: 'Lens: signals.' });
-    expect(parseBrief('{"lens":"brain","prompt":""}')).toEqual({ lens: 'brain', prompt: '' });
-    expect(parseBrief('{"prompt":"x"}')).toBeNull();
+  test('a brief reads only with a lens, an agent the heartbeat knows, and a prompt', () => {
+    expect(parseBrief('{"lens":"signals","agent":"scout","prompt":"Lens: signals."}')).toEqual({
+      lens: 'signals',
+      agent: 'scout',
+      prompt: 'Lens: signals.'
+    });
+    expect(parseBrief('{"lens":"brain","agent":"home-lens","prompt":""}')).toBeNull();
+    expect(parseBrief('{"lens":"brain","agent":"general-purpose","prompt":"x"}')).toBeNull();
     expect(parseBrief('not json')).toBeNull();
   });
 
-  test('while a home lens runs, nothing reaches past the machine; before and after it, every tool runs', async ($, on) => {
-    const { host } = await bound($, on);
-    host.notesRoom = 2;
-    host.status.refreshDue = true;
-    const fetch = () => $.tool.call({ tool: 'WebFetch', url: 'https://example.com', prompt: 'Read it.' });
-    const shell = (command: string) => $.tool.call({ tool: 'Bash', command });
-    await host.clock.advance(55 * MINUTE);
-    expect(await fetch(), 'the refresh runs first, unguarded').not.toHaveProperty('deny');
-    await ended($, '🧠 Brain refreshed.', 'r');
-    expect(await fetch()).toEqual({ deny: expect.stringContaining('web scout') });
-    expect(await shell('bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes list --json')).not.toHaveProperty('deny');
-    expect(await shell('bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes list --json; curl https://example.com')).toHaveProperty('deny');
-    expect(await $.tool.call({ tool: 'Read', file_path: `${HOME}/USER.md` })).not.toHaveProperty('deny');
-    await ended($, 'No note worth sending.', 'n');
-    expect(await fetch(), 'the look after it').not.toHaveProperty('deny');
-  });
 
   test('a note the sidebar decided after a half-written prompt runs, never reaches the model, and gives the draft back', async ($, on) => {
     const { host, submitted, filled } = heartbeatHost(on);

@@ -66,7 +66,7 @@ export interface FakeMachine {
   notesRoom?: number;
   /** False when the home hasn't turned scouting on (`AGENT_NOTES_SCOUT=true`); unset here, it is on. */
   notesScout?: boolean;
-  /** What `notes brief --json` answers; unset, the brain lens, which runs in the heartbeat. */
+  /** What `notes brief --json` answers; unset, the brain lens, which runs in the home lens agent. */
   notesBrief?: NotesBrief;
   toasts: string[];
   /** What `$.ui.copy` put on the clipboard. */
@@ -207,8 +207,8 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
       })
     );
   }
-  if (args === 'notes brief --json') {
-    return ran(0, JSON.stringify(host.notesBrief ?? { lens: 'brain', prompt: '' }));
+  if (args.startsWith('notes brief --json')) {
+    return ran(0, JSON.stringify(host.notesBrief ?? { lens: 'brain', agent: 'home-lens', prompt: 'Lens: brain.' }));
   }
   if (args === 'heartbeat status --json') {
     const { target, showing, heartbeat, refreshedAt = '', refreshDue = false } = host.status;

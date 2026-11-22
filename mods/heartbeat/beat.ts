@@ -236,13 +236,16 @@ const text = (value: unknown): string => (typeof value === 'string' ? value : ''
  */
 export interface NotesBrief {
   lens: string;
+  agent: 'scout' | 'home-lens';
   prompt: string;
 }
 
 export const parseBrief = (stdout: string): NotesBrief | null => {
   try {
     const data = record(JSON.parse(stdout));
-    return typeof data.lens === 'string' && data.lens ? { lens: data.lens, prompt: text(data.prompt) } : null;
+    const agent = data.agent === 'scout' || data.agent === 'home-lens' ? data.agent : null;
+    const prompt = text(data.prompt);
+    return typeof data.lens === 'string' && data.lens && agent && prompt ? { lens: data.lens, agent, prompt } : null;
   } catch {
     return null;
   }
@@ -262,18 +265,17 @@ const EMAIL = /[^\s@"]+@[^\s@"]+\.[a-z]{2,}/i;
 export const carriesEmail = (input: unknown): boolean => EMAIL.test(JSON.stringify(input) ?? '');
 
 /**
- * Every tool but those a home-lens notes run reads the home with, the plugin's own MCP tools among them; Bash is
- * beyond it, since only one shell call is allowed.
+ * The tools the home lens may run: it reads the home and the queues waiting on the operator, and sends notes; nothing it
+ * runs reaches past the machine.
  */
-export const BEYOND_HOME_LENS =
-  /^(?!(?:Read|Grep|Glob|ToolSearch)$)(?!mcp__plugin_[^_]+_agent__(?:note_add|task_query|task_get|github_sweep|helpdesk_stats|appstore_reviews)$)/;
-// The notes skill's one shell call, whole: anything chained to it would run too.
-const NOTES_LIST = /^bun\s+"(?:\$\{CLAUDE_PLUGIN_ROOT\}|[^"$`\\]+)\/src\/cli\.ts"\s+notes\s+list(?:\s+--json)?$/;
-
-/**
- * Whether a shell command is the home lens's one allowed call, whole.
- */
-export const isNotesList = (command: string): boolean => NOTES_LIST.test(command.trim());
+export const homeLensTools = (plugin: string): string[] => [
+  'Read',
+  'Grep',
+  'Glob',
+  ...['note_add', 'task_query', 'task_get', 'github_sweep', 'helpdesk_stats', 'appstore_reviews'].map(
+    (tool) => `mcp__plugin_${plugin}_agent__${tool}`
+  )
+];
 
 const record = (value: unknown): Record<string, unknown> =>
   typeof value === 'object' && value !== null ? Object.fromEntries(Object.entries(value)) : {};

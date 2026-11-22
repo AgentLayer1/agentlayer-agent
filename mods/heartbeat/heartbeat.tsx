@@ -6,7 +6,7 @@ import { cliArgv, cliError, errorText } from '../shared/cli';
 import { TURN_REASONS } from '../shared/turns';
 import { clip } from '../tasks/task';
 import type { HeartbeatEvent, Queue } from '../types';
-import { scoutAgent } from './scout';
+import { SCOUTING_AGENTS, homeLensAgent, scoutAgent } from './agents';
 import {
   MINUTE_MS,
   REFRESH_RETRY_MS,
@@ -27,14 +27,14 @@ import {
   MESSAGE_CHOICES,
   MESSAGE_AT_END,
   decisionInDraft,
-  BEYOND_HOME_LENS,
-  isNotesList,
+  homeLensTools,
   scoutTools,
   carriesEmail,
   parseBrief,
   parseDecision,
   type Decision,
-  type HeartbeatStatus
+  type HeartbeatStatus,
+  type NotesBrief
 } from './beat';
 
 const USAGE = `Usage: /message <${MESSAGE_CHOICES.join('|')}> <id> [--workspace=<id>]`;
@@ -45,13 +45,10 @@ const CMUX_BIN = '/Applications/cmux.app/Contents/Resources/bin/cmux';
 const CMUX_TIMEOUT_MS = 5000;
 // A scout still running this long after it started is given up on; any report it sends later is still kept out.
 const SCOUT_TIMEOUT_MS = 20 * MINUTE_MS;
-const HOME_LENS_ONLY =
-  "The heartbeat's notes run reads the home, so nothing it runs reaches past the machine; the web scout searches the web.";
-const SCOUT_ONLY = 'The scout runs WebSearch, WebFetch and note_add only.';
+const OWN_TOOLS_ONLY = 'A scouting agent runs its own tools only.';
 const NO_EMAIL = "The scout's searches and fetches never carry an email address.";
-const SCOUT_REFUSED = "Only the heartbeat starts the scout, on a brief its code writes; a prompt a model wrote could carry the home's private facts to the web.";
-const SCOUT_REPORT_KEPT = "The scout's notes are in the notes list; its report stays out of this conversation.";
-const SCOUT_DESCRIPTION = 'Scout the web for notes';
+const SCOUT_REFUSED = "Only the heartbeat starts its scouting agents, on a brief its code writes; a prompt a model wrote could carry the home's private facts to the web.";
+const SCOUT_REPORT_KEPT = "A scouting agent's notes are in the notes list; its report stays out of this conversation.";
 
 // Kept in session state, which outlives a /clear and a reload of this module, unlike its own variables.
 const beat = atom({ plugin: 'agentlayer', key: 'heartbeat' } as const, { wokeOn: '', owner: '' });
@@ -213,55 +210,47 @@ async function wake($: EngineInterface, now: number, status: HeartbeatStatus, re
     if (refresh) {
       await expectTurn($, 'refresh');
       await $.command.run({ command: `${$.plugin.name}:sync`, args: 'brain' });
-      // Ticket and review text a home lens read stays out of the look, which runs with wider grants. A web lens runs in
-      // the scout, outside this conversation.
-      if ((await scout($, status)) === 'home') {
-        await $.command.run({ command: 'clear' });
-      }
+      await scout($, status);
     }
     await look($);
   });
 }
 
-const scoutType = ($: EngineInterface): string => `${$.plugin.name}:scout`;
+const isScoutingType = ($: EngineInterface, type: string): boolean =>
+  Object.keys(SCOUTING_AGENTS).some((name) => type === `${$.plugin.name}:${name}`);
 
-// Scouting for notes rides on the refresh while the day has room, through the lens the code picks: a home lens runs here,
-// a web lens in the scout. Says which ran.
-async function scout($: EngineInterface, status: HeartbeatStatus): Promise<'none' | 'home' | 'web'> {
-  // One scout at a time: a second would take the first's place in every guard below.
+// Scouting for notes rides on the refresh while the day has room, through the lens the code picks, in the agent the
+// brief names: the scout for a web lens, the home lens otherwise. Neither runs in this conversation, so nothing it reads
+// needs a /clear before the look.
+async function scout($: EngineInterface, status: HeartbeatStatus): Promise<void> {
+  // One at a time: a second would take the first's place in every guard below.
   if (!status.notes.scout || !status.notes.room || (await read($, beat)).scouting) {
-    return 'none';
-  }
-  const brief = await runCli($, ['notes', 'brief', '--json']).then(parseBrief, () => null);
-  if (!brief) {
-    await note($, { at: await $.clock.now(), kind: 'skip', text: "the notes brief didn't read" });
-    return 'none';
-  }
-  await update($, beat, (current) => ({ ...current, notesThisWake: 0 }));
-  if (brief.prompt) {
-    await sendScout($, brief.prompt);
-    return 'web';
+    return;
   }
   const titles = await workspacesNow($);
-  await expectTurn($, 'notes');
-  await $.command.run({
-    command: `${$.plugin.name}:notes`,
-    args: [`lens: ${brief.lens}`, ...(titles.length ? [`workspaces: ${JSON.stringify(titles)}`] : [])].join(' ')
-  });
-  return 'home';
+  const brief = await runCli($, ['notes', 'brief', '--json', `--workspaces=${JSON.stringify(titles)}`]).then(
+    parseBrief,
+    () => null
+  );
+  if (!brief) {
+    await note($, { at: await $.clock.now(), kind: 'skip', text: "the notes brief didn't read" });
+    return;
+  }
+  await update($, beat, (current) => ({ ...current, notesThisWake: 0 }));
+  await sendScout($, brief);
 }
 
-// The scout's prompt is the brief the code wrote, whole: no model chose a word of it. Its id is how every guard below
+// The agent's prompt is the brief the code wrote, whole: no model chose a word of it. Its id is how every guard below
 // knows its loop.
-async function sendScout($: EngineInterface, prompt: string): Promise<void> {
+async function sendScout($: EngineInterface, { agent, prompt }: NotesBrief): Promise<void> {
   const since = await $.clock.now();
   const started = await $.agent
-    .spawn({ prompt, subagentType: scoutType($), description: SCOUT_DESCRIPTION })
+    .spawn({ prompt, subagentType: `${$.plugin.name}:${agent}`, description: SCOUTING_AGENTS[agent] })
     .catch((error: unknown) => ({ deny: errorText(error) }));
   if (started.deny === undefined && started.agentId) {
     const id = started.agentId;
-    // Recorded before anything else awaits, so the scout's first tool check finds it.
-    await update($, beat, (current) => ({ ...current, scouting: { id, since } }));
+    // Recorded before anything else awaits, so the agent's first tool check finds it.
+    await update($, beat, (current) => ({ ...current, scouting: { id, since, agent } }));
     return;
   }
   const why = started.deny ? `: ${started.deny}` : '';
@@ -470,11 +459,7 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
     if (scouting) {
       return 'A scout is already out; the band says when it ends.';
     }
-    $.clock.after(0, async () => {
-      if ((await scout($, status)) === 'home') {
-        await $.command.run({ command: 'clear' });
-      }
-    });
+    $.clock.after(0, () => void scout($, status));
     return "Scouting now, through the lens whose turn it is; the band says how it went.";
   }
   if (ask.kind === 'off') {
@@ -499,8 +484,10 @@ async function firstLook($: EngineInterface, status: Bound | null): Promise<stri
 export const registerHeartbeat = (on: On): void => {
   on('session.start', { isInteractive: true }, async ($, e, next) => {
     await Promise.all(HEARTBEAT_FEATURE.commands.map((command) => $.command.register(command)));
-    // A scout that couldn't be registered fails to spawn, and the band says so; nothing else depends on it.
-    await $.agent.register(scoutAgent($.plugin.name)).catch(() => undefined);
+    // An agent that couldn't be registered fails to spawn, and the band says so; nothing else depends on it.
+    await Promise.all(
+      [scoutAgent($.plugin.name), homeLensAgent($.plugin.name)].map((agent) => $.agent.register(agent).catch(() => undefined))
+    );
     $.clock.after(0, () => void arm($));
     return next(e);
   });
@@ -547,46 +534,37 @@ export const registerHeartbeat = (on: On): void => {
     return result;
   });
 
-  // No model starts the scout. The heartbeat's own spawn never runs this plugin's hooks, so it alone gets past the refusal;
-  // hiding the type from the listing only saves a model the try.
-  on('agent.spawn', { subagentType: /:scout$/ }, async ($, e, next) =>
-    e.subagentType === scoutType($) ? { deny: SCOUT_REFUSED } : next(e)
+  // No model starts a scouting agent. The heartbeat's own spawn never runs this plugin's hooks, so it alone gets past the
+  // refusal; hiding the types from the listing only saves a model the try.
+  on('agent.spawn', { subagentType: /:(scout|home-lens)$/ }, async ($, e, next) =>
+    isScoutingType($, e.subagentType) ? { deny: SCOUT_REFUSED } : next(e)
   ).catch(($, e, next) => (next.called ? next(e) : { deny: SCOUT_REFUSED }));
 
-  on('agent.offer', { agent: /:scout$/ }, async ($, e, next) =>
-    e.agent === scoutType($) ? { isOffered: false } : next(e)
+  on('agent.offer', { agent: /:(scout|home-lens)$/ }, async ($, e, next) =>
+    isScoutingType($, e.agent) ? { isOffered: false } : next(e)
   ).catch(($, e, next) => (next.called ? next(e) : { isOffered: false }));
 
-  // What the scout read on the web never reaches a conversation; its notes are in the list, and its line is the band's.
+  // What a scouting agent read never reaches a conversation; its notes are in the list, and its line is the band's.
   on('agent.report', async ($, e, next) =>
-    e.subagentType === scoutType($) ? { consumed: SCOUT_REPORT_KEPT } : next(e)
+    isScoutingType($, e.subagentType) ? { consumed: SCOUT_REPORT_KEPT } : next(e)
   ).catch(($, e, next) =>
-    next.called || e.subagentType !== scoutType($) ? next(e) : { consumed: SCOUT_REPORT_KEPT }
+    next.called || !isScoutingType($, e.subagentType) ? next(e) : { consumed: SCOUT_REPORT_KEPT }
   );
 
-  // The scout runs unattended, so its own three tools need no one's yes, and anything else is refused behind its
-  // `tools:` list. A failure here leaves the call to the engine's own check.
+  // A scouting agent runs unattended, so its own tools need no one's yes, and anything else is refused behind its tool
+  // list. A failure here leaves the call to the engine's own check.
   on('tool.check', async ($, e, next) => {
-    if (e.agentId === undefined || !isScoutLoop(await read($, beat), e.agentId)) {
+    const state = e.agentId === undefined ? null : await read($, beat);
+    const scouting = state && isScoutLoop(state, e.agentId) ? state.scouting : undefined;
+    if (!scouting) {
       return next(e);
     }
-    if (!scoutTools($.plugin.name).includes(String(e.tool))) {
-      return { decision: 'deny', reason: SCOUT_ONLY };
+    const tools = scouting.agent === 'scout' ? scoutTools($.plugin.name) : homeLensTools($.plugin.name);
+    if (!tools.includes(String(e.tool))) {
+      return { decision: 'deny', reason: OWN_TOOLS_ONLY };
     }
-    return carriesEmail(e.input) ? { decision: 'deny', reason: NO_EMAIL } : { decision: 'allow' };
+    return scouting.agent === 'scout' && carriesEmail(e.input) ? { decision: 'deny', reason: NO_EMAIL } : { decision: 'allow' };
   }).catch(($, e, next) => next(e));
-
-  // While a home lens runs, this conversation holds the home's files and text from tickets and reviews together.
-  on('tool.call', { tool: BEYOND_HOME_LENS }, async ($, e, next) => {
-    if (e.agentId !== undefined) {
-      return next(e);
-    }
-    const { isHeartbeat, awaiting = [] } = await read($, beat);
-    if (!isHeartbeat || awaiting[0] !== 'notes' || (e.tool === 'Bash' && isNotesList(e.command))) {
-      return next(e);
-    }
-    return { deny: HOME_LENS_ONLY };
-  }).catch(($, e, next) => (next.called ? next(e) : { deny: HOME_LENS_ONLY }));
 
   // A wake's turn ends on the skill's one-line ending, which is what the band says it did; the scout's ends its run.
   on('turn.complete', { reason: TURN_REASONS }, async ($, e, next) => {
@@ -606,13 +584,13 @@ export const registerHeartbeat = (on: On): void => {
     const kind = awaiting[0];
     if (e.agentId === undefined && kind) {
       const now = await $.clock.now();
-      const done = kind === 'refresh' || kind === 'notes' ? kind : 'look';
+      const done = kind === 'refresh' ? kind : 'look';
       await update($, beat, (current) => ({ ...current, awaiting: (current.awaiting ?? []).slice(1), workingSince: now }));
       const last = awaiting.length === 1;
       await note(
         $,
         e.reason === 'answer'
-          ? { at: now, kind: done, text: closingLine(e.answer) || 'done', ...(done === 'notes' ? { sent: notesThisWake } : {}) }
+          ? { at: now, kind: done, text: closingLine(e.answer) || 'done' }
           : { at: now, kind: 'stopped', text: `the ${done} stopped (${e.reason})` }
       );
       // What the wake changed (proposals, the tasks summary, the brain) shows once its last turn ends, here and on the
@@ -661,12 +639,12 @@ export const registerHeartbeat = (on: On): void => {
           <Text weight="semibold">Heartbeat</Text>
           {working ? (
             <Text color="magenta">
-              {`◉ ${working === 'refresh' ? 'refreshing the brain' : working === 'notes' ? 'scouting for notes' : 'looking for proposals'}…${
+              {`◉ ${working === 'refresh' ? 'refreshing the brain' : 'looking for proposals'}…${
                 state.workingSince ? ` since ${clockIn(state.workingSince, zone)}` : ''
               }`}
             </Text>
           ) : state.scouting ? (
-            <Text color="magenta">{`◉ scouting the web… since ${clockIn(state.scouting.since, zone)}`}</Text>
+            <Text color="magenta">{`◉ scouting ${state.scouting.agent === 'scout' ? 'the web' : 'the home'}… since ${clockIn(state.scouting.since, zone)}`}</Text>
           ) : state.nextAt ? (
             <Text color={late ? 'yellow' : undefined} dimColor={!late}>{`○ ${nextLook(state.nextAt, now, zone)}`}</Text>
           ) : null}
