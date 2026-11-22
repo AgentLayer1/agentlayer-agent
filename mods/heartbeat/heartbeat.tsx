@@ -428,6 +428,28 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
     $.clock.after(0, () => void look($));
     return 'Looking for proposals now.';
   }
+  if (ask.kind === 'scout') {
+    // The same run a brain refresh ends with, asked for now: in the heartbeat's tab, where a home lens's clear belongs.
+    const [status, { owner, scouting }] = await Promise.all([readStatus($), read($, beat)]);
+    if (!isOwner(status, owner)) {
+      return "Scouting runs in the heartbeat's own tab: run /heartbeat scout there.";
+    }
+    if (!status.notes.scout) {
+      return 'Scouting is off: configure-skills → Notes approves the public facts and turns it on.';
+    }
+    if (!status.notes.room) {
+      return 'No room for notes today.';
+    }
+    if (scouting) {
+      return 'A scout is already out; the band says when it ends.';
+    }
+    $.clock.after(0, async () => {
+      if ((await scout($, status)) === 'home') {
+        await $.command.run({ command: 'clear' });
+      }
+    });
+    return "Scouting now, through the lens whose turn it is; the band says how it went.";
+  }
   if (ask.kind === 'off') {
     const text = await said($, ['heartbeat', 'off']);
     await arm($);

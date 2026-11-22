@@ -612,6 +612,24 @@ describe('notes', () => {
     return context;
   };
 
+  test('/heartbeat scout runs one scouting pass now in the heartbeat, and says why not anywhere else', async ($, on) => {
+    const { host } = await bound($, on);
+    host.notesRoom = 2;
+    host.notesBrief = { lens: 'waiting', prompt: '' };
+    host.commands.length = 0;
+    expect((await run($, 'heartbeat', 'scout')).text).toStartWith('Scouting now');
+    await host.clock.settle();
+    expect(host.commands, 'a home lens, then the clear it leaves behind').toEqual([SCOUT, 'clear']);
+    expect(host.commandArgs[0]).toStartWith('lens: waiting');
+    host.notesRoom = 0;
+    expect((await run($, 'heartbeat', 'scout')).text).toBe('No room for notes today.');
+    host.notesRoom = 2;
+    host.notesScout = false;
+    expect((await run($, 'heartbeat', 'scout')).text).toStartWith('Scouting is off');
+    host.status.heartbeat = { owner: 'session-7@newer', everyMinutes: 55 };
+    expect((await run($, 'heartbeat', 'scout')).text).toStartWith("Scouting runs in the heartbeat's own tab");
+  });
+
   test('a web lens runs in the scout on the brief the CLI wrote, never in this conversation, and needs no clear', async ($, on) => {
     const { host } = await webWake($, on);
     expect(host.commands, 'no notes skill, and no clear before the look').toEqual(['clear', REFRESH, WAKE]);

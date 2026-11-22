@@ -51,11 +51,16 @@ export const decisionInDraft = (text: string): (Decision & { draft: string }) | 
   return match && found ? { ...found, draft: text.slice(0, match.index).trimEnd() } : null;
 };
 
-type HeartbeatAsk = { kind: 'bind'; every: string } | { kind: 'off' } | { kind: 'now' } | { kind: 'status' };
+type HeartbeatAsk =
+  | { kind: 'bind'; every: string }
+  | { kind: 'off' }
+  | { kind: 'now' }
+  | { kind: 'scout' }
+  | { kind: 'status' };
 
 export const parseAsk = (args: string): HeartbeatAsk => {
   const text = args.trim();
-  if (text === 'off' || text === 'now' || text === 'status') {
+  if (text === 'off' || text === 'now' || text === 'scout' || text === 'status') {
     return { kind: text };
   }
   return { kind: 'bind', every: text };

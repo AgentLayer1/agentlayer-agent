@@ -147,8 +147,9 @@ export const HEARTBEAT_FEATURE = {
     },
     {
       name: 'heartbeat',
-      description: 'Make this session the heartbeat: it looks for proposals now, then every 55m unless set; or off, now, status',
-      argumentHint: '[15m | 2h | off | now | status]',
+      description:
+        'Make this session the heartbeat: it looks for proposals now, then every 55m unless set; or off, now, scout (one scouting run for notes), status',
+      argumentHint: '[15m | 2h | off | now | scout | status]',
       immediate: true
     }
   ],
