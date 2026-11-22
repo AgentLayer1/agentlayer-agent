@@ -52,7 +52,7 @@ Write each note like this:
 - **body:** two or three sentences: what you found, what you checked to be sure ("I checked the old link too: it redirects"), and why it matters now.
 - **sources:** what backs it: full URLs of pages anyone can open, or for a `brain` finding the home files it rests on (`knowledge/memory/index.md`, `projects/<slug>/tasks/<id>.md`). The tool checks only the shape; whether a URL is public is yours to check, so never cite a private repository's or a signed-in page.
 - **next:** the one smallest concrete step, with where to do it.
-- **prompt:** when the next step is work a session can do, its whole first message for a fresh session: what to do, the reach (drafts only: never send, post, pay, merge or delete), and where to stop. Leave it empty when the step is the operator's own.
+- **prompt:** when the next step is work a session can do, its whole first message for a fresh session: what to do, the reach (drafts only: never send, post, pay, merge or delete), and where to stop. Leave it empty when the step is the operator's own; Start still opens a session on the note, built from its finding and next step.
 - **source:** a key naming the thing, `<kind>:<slug>` (`site:install-snippet`, `event:demo-day-2026`, `task:ab-012`).
 - **lens:** the lens's key from the table.
 

@@ -161,13 +161,9 @@ export interface NoteItem {
    */
   at: string;
   /**
-   * Whether it carries a session to start; the prompt itself never reaches the sidebar.
+   * When a note put off with Later shows again, an ISO time with an offset; '' when it shows now.
    */
-  canStart: boolean;
-  /**
-   * 'useful' or 'started' once the operator acted on it, '' while unread; a dismissed note never reaches the sidebar.
-   */
-  reaction: string;
+  laterUntil: string;
 }
 
 /**
@@ -206,6 +202,10 @@ export interface ProposalItem {
    * When a proposal put off with Later shows again, an ISO time with an offset; '' when it shows now.
    */
   laterUntil: string;
+  /**
+   * When it was proposed, an ISO time with an offset.
+   */
+  at: string;
 }
 
 /**
@@ -276,9 +276,13 @@ export interface HomeEntry {
    */
   proposals: ProposalItem[];
   /**
-   * Today's and yesterday's notes, unread first; absent in an entry an older plugin wrote.
+   * The notes still waiting on the operator, newest first; absent in an entry an older plugin wrote.
    */
   notes?: NoteItem[];
+  /**
+   * `file://` URL of the folder each Agents tab section shows, for its Finder button; absent in an older entry.
+   */
+  folders?: Partial<Record<'projects' | 'reports' | 'recent', string>>;
   heartbeat: HeartbeatPlace | null;
   /**
    * What starts Claude in this home: `agent` when it bills its own subscription, else `claude`.

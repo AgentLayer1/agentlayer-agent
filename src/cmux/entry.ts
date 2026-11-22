@@ -154,16 +154,20 @@ export const homeEntry = (
     goals: goalsView(work),
     tasksSummary: work.tasksSummary,
     proposals: proposalCards(proposals),
-    notes: openNotes(notes, new Date()).map(({ id, title, body, next, sources, at, prompt, reaction }) => ({
+    notes: openNotes(notes, new Date()).map(({ id, title, body, next, sources, at, laterUntil }) => ({
       id,
       title,
       body,
       next,
       sources,
       at,
-      canStart: prompt !== '',
-      reaction
+      laterUntil
     })),
+    folders: {
+      projects: fileUrl(join(home, 'projects')),
+      reports: fileUrl(join(home, 'reports')),
+      recent: fileUrl(home)
+    },
     heartbeat: heartbeatPlace(heartbeat),
     launcher: homeLauncher(home),
     codeFolders: configuredRepoPaths(),

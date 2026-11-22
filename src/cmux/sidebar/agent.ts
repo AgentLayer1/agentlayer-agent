@@ -5,6 +5,7 @@ import { goalsBody } from './goals';
 import { projectsBody } from './projects';
 import { recentBody } from './recent';
 import { reportsBody } from './reports';
+import { toolIcon } from './style';
 import { scopedPage } from './view';
 
 interface Section {
@@ -40,7 +41,19 @@ export const agentPage = (options: AgentOptions) => {
               () => setSection(item)
             )
           ),
-          Spacer({ minLength: 0 })
+          Spacer({ minLength: 0 }),
+          // Keyed by section and agent, so the button follows both.
+          ForEach(
+            {
+              items: () => {
+                const id = section().id;
+                const url = id === 'goals' ? undefined : entry.folders?.[id];
+                return url ? [url] : [];
+              },
+              key: (url) => url
+            },
+            (url) => toolIcon('folder', 'Open in Finder', () => openURL(url()))
+          )
         ]),
         // Keyed by section, so leaving one disposes it and coming back builds it fresh.
         ForEach({ items: () => [section()], key: (item) => item.label }, (item) => item().body(entry))

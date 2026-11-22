@@ -13,7 +13,6 @@ interface Sent {
     body: string;
     next: string;
     sources: string[];
-    canStart: boolean;
     delivered: string[];
   }[];
   refused: { source: string; title: string; reason: string }[];
@@ -37,14 +36,13 @@ export const sendNotes = async (
     added.map(async (note) => ({ note, delivered: await deliverNote(note, chosen, context) }))
   );
   return {
-    added: results.map(({ note: { id, source, title, body, next, sources, prompt }, delivered }) => ({
+    added: results.map(({ note: { id, source, title, body, next, sources }, delivered }) => ({
       id,
       source,
       title,
       body,
       next,
       sources,
-      canStart: prompt !== '',
       delivered
     })),
     refused,

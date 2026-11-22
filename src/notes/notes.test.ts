@@ -129,7 +129,7 @@ test('an adapter that fails is skipped and the rest still deliver', async () => 
 test('a sent note lands in reports/notes, and the result says who delivered it and how many went out today', async () => {
   rmSync(FILES.NOTES, { force: true });
   const sent = await sendNotes([input('site:snippet', { prompt: 'Fix it, then stop.' })], [reportAdapter], NOW);
-  expect(sent.added.map(({ delivered, canStart }) => ({ delivered, canStart }))).toEqual([{ delivered: ['report'], canStart: true }]);
+  expect(sent.added.map(({ delivered }) => delivered)).toEqual([['report']]);
   expect([sent.today, sent.cap]).toEqual([1, DAILY_CAP]);
   const folder = resolve(FOLDERS.REPORTS, 'notes');
   const [file] = existsSync(folder) ? readdirSync(folder) : [];

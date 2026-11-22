@@ -158,11 +158,21 @@ test('the proposals still to decide, put-off ones included, carry what a card sh
     due: 'due Fri',
     laterUntil: '',
     folder: '',
-    workspace: ''
+    workspace: '',
+    at: '2026-11-09T08:00:00Z'
   });
   expect(proposals[2]?.laterUntil).toBe(LATER_UNTIL);
   expect(JSON.stringify(proposals)).not.toContain('Touch nothing outside the home');
   expect(heartbeat).toEqual({ surfaceId: 'w-nova-s2-surface', workspaceId: 'w-nova' });
+});
+
+test("each Agents tab section that shows a folder carries its file URL for the Finder button; Recent's is the home", () => {
+  const { folders } = homeEntry(NOVA_HOME, NOVA, NOVA_STATE);
+  expect(folders).toEqual({
+    projects: pathToFileURL(join(NOVA_HOME, 'projects')).href,
+    reports: pathToFileURL(join(NOVA_HOME, 'reports')).href,
+    recent: pathToFileURL(NOVA_HOME).href
+  });
 });
 
 test('a home with no heartbeat, or none in cmux, has no place for the buttons', () => {

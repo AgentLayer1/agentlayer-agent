@@ -30,6 +30,10 @@ export interface HostAction {
   kind: string;
   method?: string;
   params?: Record<string, string>;
+  /**
+   * What an `openURL` call opened.
+   */
+  url?: string;
 }
 
 interface SceneNode {

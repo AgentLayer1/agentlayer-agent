@@ -35,7 +35,7 @@ interface Refusal {
 /**
  * What a surface shows of a proposal: never its prompt.
  */
-export type ProposalCard = Omit<Proposal, 'prompt' | 'state' | 'createdAt' | 'decidedAt' | 'source'>;
+export type ProposalCard = Omit<Proposal, 'prompt' | 'state' | 'createdAt' | 'decidedAt' | 'source'> & { at: string };
 
 const isWaiting = (proposal: Proposal): boolean => proposal.state === 'waiting';
 
@@ -244,7 +244,7 @@ export const reopen = (ledger: ProposalLedger, id: string): ProposalLedger => ({
 export const proposalCards = (ledger: ProposalLedger): ProposalCard[] =>
   ledger.proposals
     .filter(isWaiting)
-    .map(({ id, title, trigger, quote, detail, reach, estimate, due, laterUntil, folder, workspace }) => ({
+    .map(({ id, title, trigger, quote, detail, reach, estimate, due, laterUntil, folder, workspace, createdAt }) => ({
       id,
       title,
       trigger,
@@ -255,7 +255,8 @@ export const proposalCards = (ledger: ProposalLedger): ProposalCard[] =>
       due,
       laterUntil,
       folder,
-      workspace
+      workspace,
+      at: createdAt
     }));
 
 export const showingNow = (ledger: ProposalLedger, now: Date): ProposalCard[] =>

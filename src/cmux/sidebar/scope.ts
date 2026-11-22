@@ -52,3 +52,11 @@ export const scopedHome = (
     homes[0]
   );
 };
+
+/**
+ * The agent the selected workspace belongs to: its folder's, else its newest session's; undefined when neither says.
+ */
+export const workspaceHome = (homes: readonly string[], workspaces: readonly ScopeWorkspace[]): string | undefined => {
+  const selected = workspaces.find((workspace) => workspace.selected);
+  return homeOf(homes, selected?.directory) ?? newestHome(homes, selected?.agents);
+};

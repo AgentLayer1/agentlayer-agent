@@ -102,9 +102,9 @@ Proposals are sessions the agent prepared and waits on a yes for: Start opens a 
 | The core: ledger (`.state/proposals.json`), the rules (dedupe by `source`, a backlog of 20, Later, decide once per id), `proposal_add`, the `proposals` CLI | `src/proposals/` |
 | The launcher contract (`SessionLauncher`: `locate`, `start`), the launchers, and the one home redraw (`redrawHome`) | `src/sessions/launch.ts`, `src/adapters.ts` |
 | The heartbeat's record (`.state/heartbeat.json`), its interval and refresh rules, and the `heartbeat` CLI (`status`, `bind`, `release`, `off`) | `src/heartbeat/` |
-| `/proposal <start\|later\|skip> <id>`, `/note`, `/heartbeat [15m\|2h\|off\|now\|status]`, the wake clock and the band | `mods/heartbeat/` |
+| `/message <start\|later\|dismiss> <id>` (a proposal `p-…` or a note `n-…`), `/heartbeat [15m\|2h\|off\|now\|status]`, the wake clock and the band | `mods/heartbeat/` |
 | What a wake looks at (the `proposals` skill, slash-only), and the proposal-source contract | `skills/proposals/` |
-| The cmux adapter: Start as a new tab beside the heartbeat, the Manager's PROPOSED section | `src/cmux/proposals.ts`, `src/cmux/sidebar/proposals.ts` |
+| The cmux launcher (Start as a new tab beside the heartbeat) and the Manager's MESSAGES section, proposals and notes in one list scoped to the selected workspace's agent | `src/cmux/launcher.ts`, `src/cmux/sidebar/messages.ts`, `src/cmux/sidebar/heartbeat.ts` |
 
 The core never imports an adapter (a test fails if it does); `proposal_add` and the CLI take `LAUNCHERS` from `src/adapters.ts` and call `redrawHome` after a change. With no launcher that can reach the session, Start prints the command to run by hand.
 
