@@ -1,12 +1,14 @@
 import { claudeHost } from '@/hosts/claude';
 import { codexHost } from '@/hosts/codex';
-import type { HostAdapter } from '@/hosts/contract';
+import { isHostName, type HostAdapter, type HostName } from '@/hosts/contract';
 
-export const HOSTS: readonly HostAdapter[] = [claudeHost, codexHost];
+const BY_NAME: Record<HostName, HostAdapter> = { claude: claudeHost, codex: codexHost };
+
+export const HOSTS: readonly HostAdapter[] = Object.values(BY_NAME);
 
 /**
  * The host a hook verb serves when none is named.
  */
 export const DEFAULT_HOST: HostAdapter = claudeHost;
 
-export const hostNamed = (name: string): HostAdapter | undefined => HOSTS.find((host) => host.name === name);
+export const hostNamed = (name: string): HostAdapter | undefined => (isHostName(name) ? BY_NAME[name] : undefined);

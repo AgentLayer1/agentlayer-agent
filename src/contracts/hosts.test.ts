@@ -4,7 +4,7 @@ import { join, relative } from 'node:path';
 import { MCP_PREFIX } from '@/config';
 import { HOST_NAMES } from '@/hosts/contract';
 import { DIALECT } from '@/hosts/dialect';
-import { HOSTS } from '@/hosts/registry';
+import { hostNamed } from '@/hosts/registry';
 import { PLUGIN_SOURCE_ROOT } from '@/shared/naming';
 import { TOOLS } from '@/tools';
 import { MOD_FEATURES } from '../../mods/shared/catalog';
@@ -76,8 +76,8 @@ describe('host contract', () => {
     expect(offenders).toEqual([]);
   });
 
-  test('every adapter is registered under a name of its own', () => {
-    expect(HOSTS.map((host) => host.name)).toEqual([...HOST_NAMES]);
+  test('every host name finds the adapter that carries it', () => {
+    expect(HOST_NAMES.filter((name) => hostNamed(name)?.name !== name)).toEqual([]);
   });
 
   test("every Claude Code tool a skill names is spelled in every other host's glossary", () => {

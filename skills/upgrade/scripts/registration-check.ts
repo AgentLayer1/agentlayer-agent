@@ -10,6 +10,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
+import { codexHost } from '../../../src/hosts/codex';
 import type { HostName } from '../../../src/hosts/contract';
 import { PLUGIN_SOURCE_ROOT } from '../../../src/shared/naming';
 
@@ -178,7 +179,7 @@ if (existsSync(codexConfigPath)) {
   }
 }
 const codexHasPlugin = Object.keys(config.plugins ?? {}).some((id) => id.startsWith(`${plugin}@`));
-if (existsSync(resolve(homeDir, '.codex', 'hooks.json')) && !codexHasPlugin) {
+if (codexHost.usedBy(homeDir) && !codexHasPlugin) {
   const [source, catalog] =
     devName && existsSync(resolve(pluginRoot, '.git')) ? [pluginRoot, devName] : [PUBLISHED.repo, PUBLISHED.name];
   findings.push({
