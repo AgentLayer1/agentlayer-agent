@@ -3,7 +3,7 @@ import { readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { ADAPTERS } from '@/adapters';
 import { FILES, FOLDERS } from '@/config';
-import type { SessionPlace, StartInput } from '@/proposals/adapter';
+import type { SessionPlace, StartInput } from '@/sessions/launch';
 import { EMPTY_LEDGER, readProposalLedger, writeProposalLedger } from '@/proposals/ledger';
 import { addProposals } from '@/proposals/rules';
 import { decideProposal } from '@/proposals/start';

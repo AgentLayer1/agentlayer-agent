@@ -2,7 +2,8 @@ import { expect, spyOn, test } from 'bun:test';
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { FILES, FOLDERS } from '@/config';
-import type { ProposalAdapter, SessionPlace, StartInput } from './adapter';
+import type { SessionPlace, StartInput } from '@/sessions/launch';
+import type { ProposalAdapter } from './adapter';
 import { EMPTY_LEDGER, readProposalLedger, writeProposalLedger } from './ledger';
 import { addProposals, type ProposalInput } from './rules';
 import { runProposalsCommand } from './command';
@@ -91,7 +92,7 @@ test('with no adapter that can reach this session, Start says what to run, and t
   expect(started).toHaveLength(0);
   expect(message).toStartWith(`Started: Reply to the review. To start it, run from ${FOLDERS.HOME}: `);
   expect(message).not.toContain('PR 12');
-  expect(readdirSync(FOLDERS.PROPOSAL_PROMPTS)).toContain(`${id}.prompt`);
+  expect(readdirSync(FOLDERS.PROMPTS)).toContain(`${id}.prompt`);
   expect(decideProposal(seed(), 'start', context([]))).toContain('To start it, run from');
 });
 

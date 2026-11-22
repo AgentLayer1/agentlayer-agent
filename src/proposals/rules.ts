@@ -1,7 +1,10 @@
-import { localISO, nowISO, nowTime, shiftDate, todayDate } from '@/shared/date';
-import type { SessionPlace } from './adapter';
+import type { SessionPlace } from '@/sessions/launch';
+import { DAY_MS, isoMs, localISO, nowISO, nowTime, shiftDate, todayDate } from '@/shared/date';
+import { freshId, shortId } from '@/shared/utils';
 import type { Proposal, ProposalLedger } from './ledger';
 import { isShown, type Choice } from './shown';
+
+const randomId = shortId('p');
 
 /**
  * How many proposals the heartbeat keeps showing.
@@ -22,7 +25,6 @@ export const REFRESH_EVERY_HOURS = 6;
 const EVERY_RANGE = { min: 5, max: 24 * 60 } as const;
 const LATER_HOUR = '08:00';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 // A source started within a day, or skipped within a week, isn't proposed again.
 const STARTED_QUIET_MS = DAY_MS;
 const SKIPPED_QUIET_MS = 7 * DAY_MS;
@@ -46,16 +48,7 @@ interface Refusal {
  */
 export type ProposalCard = Omit<Proposal, 'prompt' | 'state' | 'createdAt' | 'decidedAt' | 'source'>;
 
-const ms = (iso: string): number => Date.parse(iso) || 0;
-
 const isWaiting = (proposal: Proposal): boolean => proposal.state === 'waiting';
-
-const randomId = (): string => `p-${Math.random().toString(36).slice(2, 6)}`;
-
-const freshId = (taken: ReadonlySet<string>, makeId: () => string): string => {
-  const id = makeId();
-  return taken.has(id) ? freshId(taken, makeId) : id;
-};
 
 // Why a source can't be proposed now, or '' when it can.
 const blockedBy = (proposals: readonly Proposal[], source: string, nowMs: number): string => {
@@ -63,17 +56,17 @@ const blockedBy = (proposals: readonly Proposal[], source: string, nowMs: number
   if (same.some(isWaiting)) {
     return 'already proposed';
   }
-  if (same.some((proposal) => proposal.state === 'started' && nowMs - ms(proposal.decidedAt) < STARTED_QUIET_MS)) {
+  if (same.some((proposal) => proposal.state === 'started' && nowMs - isoMs(proposal.decidedAt) < STARTED_QUIET_MS)) {
     return 'started in the last day';
   }
-  if (same.some((proposal) => proposal.state === 'skipped' && nowMs - ms(proposal.decidedAt) < SKIPPED_QUIET_MS)) {
+  if (same.some((proposal) => proposal.state === 'skipped' && nowMs - isoMs(proposal.decidedAt) < SKIPPED_QUIET_MS)) {
     return 'skipped in the last week';
   }
   return '';
 };
 
 const prune = (proposals: readonly Proposal[], nowMs: number): Proposal[] =>
-  proposals.filter((proposal) => isWaiting(proposal) || nowMs - ms(proposal.decidedAt) < KEEP_DECIDED_MS);
+  proposals.filter((proposal) => isWaiting(proposal) || nowMs - isoMs(proposal.decidedAt) < KEEP_DECIDED_MS);
 
 interface Added {
   ledger: ProposalLedger;
@@ -314,13 +307,13 @@ export const parseEvery = (text: string): number | Error => {
  * The later of the last full sync and the last brain refresh, as an ISO time; '' when neither ever ran.
  */
 export const lastRefreshed = (syncedAt = '', refreshedAt = ''): string =>
-  ms(syncedAt) >= ms(refreshedAt) ? syncedAt : refreshedAt;
+  isoMs(syncedAt) >= isoMs(refreshedAt) ? syncedAt : refreshedAt;
 
 /**
  * Whether the heartbeat should refresh the brain: nothing has synced or refreshed it in the last `REFRESH_EVERY_HOURS`.
  */
 export const refreshDue = (lastAt: string, now: Date): boolean =>
-  !lastAt || now.getTime() - ms(lastAt) >= REFRESH_EVERY_HOURS * 60 * 60 * 1000;
+  !lastAt || now.getTime() - isoMs(lastAt) >= REFRESH_EVERY_HOURS * 60 * 60 * 1000;
 
 export const setHeartbeat = (
   ledger: ProposalLedger,

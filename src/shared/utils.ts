@@ -1,7 +1,8 @@
 import { FOLDERS } from '@/config';
+import { isRecord } from '@/shared/json-block';
 import { existingTarget } from '@/shared/paths';
 import { randomUUID } from 'node:crypto';
-import { chmodSync, mkdirSync, renameSync, rmSync, statSync, writeFileSync } from 'fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'fs';
 import { dirname, relative } from 'path';
 
 // ── Async helpers ─────────────────────────────────────────────────────
@@ -57,3 +58,30 @@ export const countOf = (count: number, unit: string): string => `${count} ${unit
 export function writeJsonAtomic(path: string, value: unknown, mode?: number): void {
   writeFileAtomic(path, JSON.stringify(value, null, 2), mode);
 }
+
+/**
+ * Whether a JSON file is there but doesn't read as an object; a missing one reads as empty.
+ */
+export const isUnreadable = (path: string): boolean => {
+  if (!existsSync(path)) {
+    return false;
+  }
+  try {
+    return !isRecord(JSON.parse(readFileSync(path, 'utf-8')));
+  } catch {
+    return true;
+  }
+};
+
+/**
+ * A maker of short random ids, `<prefix>-xxxx`.
+ */
+export const shortId = (prefix: string) => (): string => `${prefix}-${Math.random().toString(36).slice(2, 6)}`;
+
+/**
+ * An id from `makeId` that `taken` doesn't hold yet.
+ */
+export const freshId = (taken: ReadonlySet<string>, makeId: () => string): string => {
+  const id = makeId();
+  return taken.has(id) ? freshId(taken, makeId) : id;
+};

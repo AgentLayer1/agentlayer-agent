@@ -1,6 +1,6 @@
 import { ADAPTERS, NOTE_ADAPTERS } from '@/adapters';
 import { FOLDERS } from '@/config';
-import { startPrompt } from '@/proposals/start';
+import { startPrompt } from '@/sessions/launch';
 import { CLI_COMMAND } from '@/shared/naming';
 import { chosenAdapters, publishNotes } from './adapter';
 import { notesProblem, readNotes, writeNotes, type NoteLedger } from './ledger';

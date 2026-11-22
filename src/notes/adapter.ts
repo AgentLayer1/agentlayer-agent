@@ -1,5 +1,5 @@
+import type { SessionPlace } from '@/sessions/launch';
 import { log } from '@/shared/log';
-import type { SessionPlace } from '@/proposals/adapter';
 import type { Note } from './ledger';
 
 /**

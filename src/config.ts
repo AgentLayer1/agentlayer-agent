@@ -133,8 +133,8 @@ export const FOLDERS = {
   get ATTENTION_QUEUES() {
     return resolve(dataRoot(), 'attention');
   },
-  /** Each started proposal's prompt, `<id>.prompt`, read by the session that runs it. */
-  get PROPOSAL_PROMPTS() {
+  /** Each started session's prompt, a proposal's or a note's, `<id>.prompt`; the folder keeps its first name. */
+  get PROMPTS() {
     return resolve(dataRoot(), 'proposals');
   },
   /** What App Store review reads have learned about each app's storefronts: <appId>.json. */

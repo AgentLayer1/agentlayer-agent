@@ -48,6 +48,13 @@ export function todayDate(date: Date = new Date()): string {
 }
 
 /** Days from `fromIso` to `toIso`; both YYYY-MM-DD. NaN-safe → 0. */
+export const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * An ISO time as epoch milliseconds, 0 when it doesn't parse.
+ */
+export const isoMs = (iso: string): number => Date.parse(iso) || 0;
+
 export const daysBetween = (fromIso: string, toIso: string): number => {
   const from = Date.parse(`${fromIso}T00:00:00Z`);
   const to = Date.parse(`${toIso}T00:00:00Z`);

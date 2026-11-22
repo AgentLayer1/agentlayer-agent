@@ -1,7 +1,7 @@
 import { FILES } from '@/config';
 import { isRecord } from '@/shared/json-block';
-import { writeJsonAtomic } from '@/shared/utils';
-import { existsSync, readFileSync } from 'node:fs';
+import { isUnreadable, writeJsonAtomic } from '@/shared/utils';
+import { readFileSync } from 'node:fs';
 
 const REACTIONS = ['', 'useful', 'dismissed', 'started'] as const;
 export type Reaction = (typeof REACTIONS)[number];
@@ -82,16 +82,8 @@ export const readNotes = (): NoteLedger => {
 /**
  * What's wrong with the ledger file, or '' when it is missing or reads.
  */
-export const notesProblem = (): string => {
-  if (!existsSync(FILES.NOTES)) {
-    return '';
-  }
-  try {
-    return isRecord(JSON.parse(readFileSync(FILES.NOTES, 'utf-8'))) ? '' : `${FILES.NOTES} is not a JSON object.`;
-  } catch {
-    return `${FILES.NOTES} is not valid JSON; fix or remove it, then try again.`;
-  }
-};
+export const notesProblem = (): string =>
+  isUnreadable(FILES.NOTES) ? `${FILES.NOTES} is not valid JSON; fix or remove it, then try again.` : '';
 
 /**
  * Replaces the ledger, unless the file won't parse: that one is left for the operator rather than written over.

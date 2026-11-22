@@ -1,8 +1,8 @@
 import { FILES } from '@/config';
 import { isRecord } from '@/shared/json-block';
-import { writeJsonAtomic } from '@/shared/utils';
-import { existsSync, readFileSync } from 'node:fs';
-import type { SessionPlace } from './adapter';
+import { isUnreadable, writeJsonAtomic } from '@/shared/utils';
+import { readFileSync } from 'node:fs';
+import type { SessionPlace } from '@/sessions/launch';
 
 // Retired: the agent withdrew it, outranked, taken up by a session already, or no longer true.
 const STATES = ['waiting', 'started', 'skipped', 'retired'] as const;
@@ -156,17 +156,6 @@ export const readProposalLedger = (): ProposalLedger => {
     return parseLedger(JSON.parse(readFileSync(FILES.PROPOSALS, 'utf-8')));
   } catch {
     return EMPTY_LEDGER;
-  }
-};
-
-const isUnreadable = (path: string): boolean => {
-  if (!existsSync(path)) {
-    return false;
-  }
-  try {
-    return !isRecord(JSON.parse(readFileSync(path, 'utf-8')));
-  } catch {
-    return true;
   }
 };
 

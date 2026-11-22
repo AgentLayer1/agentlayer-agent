@@ -1,5 +1,6 @@
 import { relative } from 'node:path';
-import { promptLaunch, type ProposalAdapter, type SessionPlace, type StartInput } from '@/proposals/adapter';
+import type { ProposalAdapter } from '@/proposals/adapter';
+import { promptLaunch, type SessionPlace, type StartInput } from '@/sessions/launch';
 import { buildWork } from '@/work/build';
 import { callCmux, type CmuxCall } from './app';
 import { refreshSidebarQuietly } from './lifecycle';

@@ -1,12 +1,14 @@
-import { nowISO, shiftDate, todayDate } from '@/shared/date';
+import { DAY_MS, isoMs, nowISO, shiftDate, todayDate } from '@/shared/date';
+import { freshId, shortId } from '@/shared/utils';
 import type { Note, NoteLedger, Reaction } from './ledger';
+
+const randomId = shortId('n');
 
 /**
  * The most notes in one day, in the home's timezone.
  */
 export const DAILY_CAP = 3;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const REPEAT_MS = 14 * DAY_MS;
 const KEEP_MS = 60 * DAY_MS;
 
@@ -24,8 +26,6 @@ interface Added {
   refused: Refusal[];
 }
 
-const ms = (iso: string): number => Date.parse(iso) || 0;
-
 // A page anyone can open, or a file in the home, for a finding about the brain itself. Whether a URL is public is the
 // skill's to check; the shape is all this sees.
 const isSourceRef = (text: string): boolean =>
@@ -36,23 +36,16 @@ const isSourceRef = (text: string): boolean =>
  */
 export const notesOn = (ledger: NoteLedger, now: Date): Note[] => {
   const day = todayDate(now);
-  return ledger.notes.filter((note) => todayDate(new Date(ms(note.at))) === day);
+  return ledger.notes.filter((note) => todayDate(new Date(isoMs(note.at))) === day);
 };
 
 /**
  * The notes of the last two weeks, whose sources can't be noted again yet.
  */
 export const sentLately = (ledger: NoteLedger, now: Date): Note[] =>
-  ledger.notes.filter((note) => now.getTime() - ms(note.at) < REPEAT_MS);
+  ledger.notes.filter((note) => now.getTime() - isoMs(note.at) < REPEAT_MS);
 
 export const roomToday = (ledger: NoteLedger, now: Date): number => Math.max(0, DAILY_CAP - notesOn(ledger, now).length);
-
-const randomId = (): string => `n-${Math.random().toString(36).slice(2, 6)}`;
-
-const freshId = (taken: ReadonlySet<string>, makeId: () => string): string => {
-  const id = makeId();
-  return taken.has(id) ? freshId(taken, makeId) : id;
-};
 
 // Why a note can't go out now, or '' when it can.
 const blockedBy = (ledger: NoteLedger, input: NoteInput, now: Date): string => {
@@ -89,7 +82,7 @@ export const addNotes = (
       };
       return { ...result, ledger: { notes: [...result.ledger.notes, note] }, added: [...result.added, note] };
     },
-    { ledger: { notes: ledger.notes.filter((note) => now.getTime() - ms(note.at) < KEEP_MS) }, added: [], refused: [] }
+    { ledger: { notes: ledger.notes.filter((note) => now.getTime() - isoMs(note.at) < KEEP_MS) }, added: [], refused: [] }
   );
 
 /**
@@ -100,8 +93,8 @@ export const recentNotes = (ledger: NoteLedger, now: Date): Note[] => {
   const today = todayDate(now);
   const days = new Set([today, shiftDate(today, -1)]);
   return ledger.notes
-    .filter((note) => note.reaction !== 'dismissed' && days.has(todayDate(new Date(ms(note.at)))))
-    .toSorted((a, b) => Number(a.reaction !== '') - Number(b.reaction !== '') || ms(b.at) - ms(a.at));
+    .filter((note) => note.reaction !== 'dismissed' && days.has(todayDate(new Date(isoMs(note.at)))))
+    .toSorted((a, b) => Number(a.reaction !== '') - Number(b.reaction !== '') || isoMs(b.at) - isoMs(a.at));
 };
 
 /**
@@ -129,7 +122,7 @@ export const lensRecord = (ledger: NoteLedger): Record<string, LensStats> =>
       return {
         ...record,
         [note.lens]: {
-          lastAt: ms(note.at) > ms(current.lastAt) ? note.at : current.lastAt,
+          lastAt: isoMs(note.at) > isoMs(current.lastAt) ? note.at : current.lastAt,
           notes: current.notes + 1,
           useful: current.useful + Number(note.reaction === 'useful' || note.reaction === 'started'),
           dismissed: current.dismissed + Number(note.reaction === 'dismissed')
