@@ -57,14 +57,10 @@ const WEEKDAY = /\b(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day\b/g;
 const MONTH =
   /\b(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b/g;
 
-// The sandbox's xcrun shim names a random cache file when git runs; it says nothing about the plugin.
-const XCRUN_NOISE = /^git: error: couldn't create cache file .*\n/gm;
-
 // A JSON reply escapes its line breaks, which would hide the words after them from the `\b` patterns below.
 const normalize = (text: string, home: string): string =>
   text
     .replaceAll('\\n', '\n')
-    .replace(XCRUN_NOISE, '')
     .replaceAll(home, '<HOME>')
     .replaceAll(USER_HOME, '<USER>')
     .replaceAll(SCRATCH, '<SCRATCH>')

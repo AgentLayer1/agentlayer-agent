@@ -5,7 +5,6 @@ exports[`session start, per host and home state Claude Code, initialized home 1`
   "exit": 0,
   "stderr": 
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=claude
-fatal: not a git repository (or any of the parent directories): .git
 <TIMESTAMP> WARN  [🪝 session] [start] hook fired (claude)
   🦊 Agent:     Nova · v<VERSION>
   ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
@@ -92,7 +91,6 @@ exports[`session start, per host and home state Claude Code in its terminal, ini
   "exit": 0,
   "stderr": 
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=claude
-fatal: not a git repository (or any of the parent directories): .git
 <TIMESTAMP> WARN  [🪝 session] [start] hook fired (claude)
   🦊 Agent:     Nova · v<VERSION>
   ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
@@ -128,7 +126,6 @@ exports[`session start, per host and home state Codex, initialized home 1`] = `
   "exit": 0,
   "stderr": 
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=codex --home=<HOME>
-fatal: not a git repository (or any of the parent directories): .git
 <TIMESTAMP> WARN  [🪝 session] [start] hook fired (codex)
   🦊 Agent:     Nova · v<VERSION>
   ↑  Upgrade:   Turn on update tracking · run $upgrade
@@ -275,7 +272,6 @@ exports[`session start, per host and home state no protocol, initialized home 1`
   "exit": 0,
   "stderr": 
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start
-fatal: not a git repository (or any of the parent directories): .git
 <TIMESTAMP> WARN  [🪝 session] [start] hook fired (claude)
   🦊 Agent:     Nova · v<VERSION>
   ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade

@@ -58,7 +58,8 @@ function recentGitLog(cwd: string): string | null {
     const output = execSync(`git log --oneline --format="%h %s (%ar)" -${CONTEXT.MAX_GIT_LOG_COMMITS}`, {
       cwd,
       encoding: 'utf-8',
-      timeout: 5_000
+      timeout: 5_000,
+      stdio: ['ignore', 'pipe', 'ignore']
     }).trim();
     return output || null;
   } catch {
