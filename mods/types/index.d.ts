@@ -177,9 +177,8 @@ export interface HeartbeatClock {
   awaiting?: string[];
   /** When the first of `awaiting` was queued, epoch ms. */
   workingSince?: number;
-  /** The web scout under way, by the id its spawn answered, and when it started, epoch ms. */
-  scoutId?: string;
-  scoutSince?: number;
+  /** The web scout under way: the id its spawn answered, and when it started, epoch ms. */
+  scouting?: { id: string; since: number };
 }
 
 export interface Queue {

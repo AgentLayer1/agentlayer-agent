@@ -38,11 +38,10 @@ export const runMessagesCommand = (command: string | undefined, args: readonly s
     now: new Date(),
     ...(workspace ? { workspace } : {})
   };
-  const said = proposalMessages.has(proposalMessages.read(), id)
-    ? decideMessage(proposalMessages, id, choice, context)
-    : noteMessages.has(noteMessages.read(), id)
-      ? decideMessage(noteMessages, id, choice, context)
-      : `Nothing waits with the id ${id}.`;
+  const said =
+    decideMessage(proposalMessages, id, choice, context) ??
+    decideMessage(noteMessages, id, choice, context) ??
+    `Nothing waits with the id ${id}.`;
   console.log(said);
   redrawHome(FOLDERS.HOME);
   return 0;

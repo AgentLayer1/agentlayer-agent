@@ -1,32 +1,22 @@
 import { FILES, TIMEZONE } from '@/config';
 import { existsSync, readFileSync } from 'node:fs';
+import { countOf } from '@/shared/utils';
 import type { NoteLedger } from './ledger';
-import { webLensOf, type WebLens } from './lenses';
-import { roomToday, sentLately } from './rules';
+import type { WebLens } from './lenses';
+import { roomToday } from './rules';
+
+const HEADINGS = ['names', 'sites', 'facts', 'topics', 'place'] as const;
+type Heading = (typeof HEADINGS)[number];
 
 /**
  * What the operator lets a web search carry, from `knowledge/public.md`: one bullet per fact under its heading.
  */
-export interface PublicFacts {
-  names: string[];
-  sites: string[];
-  facts: string[];
-  topics: string[];
-  place: string[];
-}
+export type PublicFacts = Record<Heading, string[]>;
 
-interface Refused {
-  line: string;
-  reason: string;
+interface PublicRead {
+  facts: PublicFacts;
+  refused: { line: string; reason: string }[];
 }
-
-const HEADINGS: Record<string, keyof PublicFacts> = {
-  names: 'names',
-  sites: 'sites',
-  facts: 'facts',
-  topics: 'topics',
-  place: 'place'
-};
 
 const EMPTY: PublicFacts = { names: [], sites: [], facts: [], topics: [], place: [] };
 
@@ -45,7 +35,7 @@ const siteRefusal = (text: string): string => {
 };
 
 // Names can't be told by their shape; what can be is refused here, and the rest is the operator's review of the file.
-const refusal = (text: string, heading: keyof PublicFacts): string => {
+const refusal = (text: string, heading: Heading): string => {
   if (text.length > MAX_LENGTH) {
     return 'longer than one fact';
   }
@@ -61,13 +51,13 @@ const refusal = (text: string, heading: keyof PublicFacts): string => {
 /**
  * The public facts in a `public.md`, and each bullet left out with why.
  */
-export const parsePublic = (markdown: string): { facts: PublicFacts; refused: Refused[] } =>
-  markdown.split('\n').reduce<{ facts: PublicFacts; refused: Refused[]; heading?: keyof PublicFacts }>(
+export const parsePublic = (markdown: string): PublicRead => {
+  const { facts, refused } = markdown.split('\n').reduce<PublicRead & { heading?: Heading }>(
     (read, raw) => {
       const line = raw.trim();
       const heading = /^##\s+(.+)$/.exec(line)?.[1];
       if (heading !== undefined) {
-        return { ...read, heading: HEADINGS[heading.trim().toLowerCase()] };
+        return { ...read, heading: HEADINGS.find((known) => known === heading.trim().toLowerCase()) };
       }
       const bullet = /^[-*]\s+(.+)$/.exec(line)?.[1]?.trim();
       if (!read.heading || !bullet) {
@@ -80,11 +70,13 @@ export const parsePublic = (markdown: string): { facts: PublicFacts; refused: Re
     },
     { facts: EMPTY, refused: [] }
   );
+  return { facts, refused };
+};
 
 /**
  * The home's public facts, or null when the operator hasn't written them: then no web lens runs.
  */
-export const readPublic = (): { facts: PublicFacts; refused: Refused[] } | null => {
+export const readPublic = (): PublicRead | null => {
   if (!existsSync(FILES.PUBLIC)) {
     return null;
   }
@@ -97,29 +89,14 @@ export const readPublic = (): { facts: PublicFacts; refused: Refused[] } | null 
 export const canScout = (facts: PublicFacts): boolean =>
   facts.names.length + facts.sites.length + facts.topics.length > 0;
 
-// Sources a scout already noted lately, or that the operator dismissed. Only web lenses' keys: a home lens's key can
-// name a person or a private task.
-const takenByScouts = (ledger: NoteLedger, now: Date): string[] => {
-  const recent = new Set(sentLately(ledger, now).map((note) => note.id));
-  return [
-    ...new Set(
-      ledger.notes
-        .filter((note) => webLensOf(note.lens) && (recent.has(note.id) || note.state === 'dismissed'))
-        .map((note) => note.source)
-    )
-  ];
-};
-
 const listed = (label: string, items: readonly string[]): string[] =>
   items.length ? [`${label}:`, ...items.map((item) => `- ${item}`)] : [];
 
 /**
  * The scout's whole task: one lens, the month, the operator's public facts and the day's room. Nothing else from the
- * home goes in, so a page that steers the scout finds nothing private to send.
+ * home goes in, so a page that steers the scout finds nothing private to send; `note_add` refuses a source noted lately.
  */
 export const scoutBrief = (facts: PublicFacts, lens: WebLens, ledger: NoteLedger, now: Date): string => {
-  const taken = takenByScouts(ledger, now);
-  const room = roomToday(ledger, now);
   return [
     `Lens: ${lens.key}. Look for ${lens.lookFor}. Where: ${lens.where}.`,
     `Month: ${now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: TIMEZONE })}`,
@@ -128,7 +105,6 @@ export const scoutBrief = (facts: PublicFacts, lens: WebLens, ledger: NoteLedger
     ...listed('Sites', facts.sites),
     ...listed('Facts that are true now', facts.facts),
     ...listed('Topics', facts.topics),
-    `Room: at most ${room} note${room === 1 ? '' : 's'} today.`,
-    ...(taken.length ? [`Already noted, so not again: ${taken.join(', ')}`] : [])
+    `Room: at most ${countOf(roomToday(ledger, now), 'note')} today.`
   ].join('\n');
 };

@@ -2,7 +2,7 @@ import { mock } from 'claude-code/testing';
 import type { Engine, MockClock } from 'claude-code/testing';
 import type { AgentInfo, FsStat, On, ProcessRunResult } from 'claude-code';
 
-import type { HeartbeatStatus } from '../heartbeat/beat';
+import type { HeartbeatStatus, NotesBrief } from '../heartbeat/beat';
 import type { Notice } from '../types';
 
 /**
@@ -67,7 +67,7 @@ export interface FakeMachine {
   /** False when the home hasn't turned scouting on (`AGENT_NOTES_SCOUT=true`); unset here, it is on. */
   notesScout?: boolean;
   /** What `notes brief --json` answers; unset, the brain lens, which runs in the heartbeat. */
-  notesBrief?: { lens: string; web: boolean; prompt: string };
+  notesBrief?: NotesBrief;
   toasts: string[];
   /** What `$.ui.copy` put on the clipboard. */
   copied: string[];
@@ -205,7 +205,7 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
     );
   }
   if (args === 'notes brief --json') {
-    return ran(0, JSON.stringify(host.notesBrief ?? { lens: 'brain', web: false, prompt: '' }));
+    return ran(0, JSON.stringify(host.notesBrief ?? { lens: 'brain', prompt: '' }));
   }
   if (args === 'heartbeat status --json') {
     const { target, showing, heartbeat, refreshedAt = '', refreshDue = false } = host.status;

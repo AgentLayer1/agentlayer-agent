@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code';
 import type { EngineInterface, On } from 'claude-code';
 
 import { HEARTBEAT_FEATURE } from '../shared/catalog';
-import { cliArgv, cliError } from '../shared/cli';
+import { cliArgv, cliError, errorText } from '../shared/cli';
 import { TURN_REASONS } from '../shared/turns';
 import { clip } from '../tasks/task';
 import type { HeartbeatEvent, Queue } from '../types';
@@ -27,8 +27,8 @@ import {
   MESSAGE_AT_END,
   decisionInDraft,
   BEYOND_HOME_LENS,
-  homeLensMay,
-  isScoutTool,
+  isNotesList,
+  scoutTools,
   parseBrief,
   parseDecision,
   type Decision,
@@ -92,11 +92,11 @@ async function onRedraw($: EngineInterface): Promise<void> {
 
 // A scout that outlives its time is no longer waited on; a report it sends later is still kept out.
 async function giveUpOnScout($: EngineInterface): Promise<void> {
-  const [{ scoutId, scoutSince = 0 }, now] = await Promise.all([read($, beat), $.clock.now()]);
-  if (scoutId === undefined || now - scoutSince < SCOUT_TIMEOUT_MS) {
+  const [{ scouting }, now] = await Promise.all([read($, beat), $.clock.now()]);
+  if (!scouting || now - scouting.since < SCOUT_TIMEOUT_MS) {
     return;
   }
-  await update($, beat, (current) => ({ ...current, scoutId: undefined, scoutSince: undefined }));
+  await update($, beat, (current) => ({ ...current, scouting: undefined }));
   await note($, { at: now, kind: 'stopped', text: `the scout didn't finish in ${SCOUT_TIMEOUT_MS / MINUTE_MS}m` });
 }
 
@@ -135,14 +135,19 @@ async function runCli($: EngineInterface, args: readonly string[]): Promise<stri
 }
 
 async function said($: EngineInterface, args: readonly string[]): Promise<string> {
-  return runCli($, args).then(
-    (stdout) => stdout.trim(),
-    (error: unknown) => (error instanceof Error ? error.message : String(error))
+  return runCli($, args).then((stdout) => stdout.trim(), errorText);
+}
+
+async function statusOrWhy($: EngineInterface): Promise<HeartbeatStatus | string> {
+  return runCli($, ['heartbeat', 'status', '--json']).then(
+    (stdout) => parseStatus(stdout) ?? "the heartbeat's status didn't read",
+    errorText
   );
 }
 
 async function readStatus($: EngineInterface): Promise<HeartbeatStatus | null> {
-  return runCli($, ['heartbeat', 'status', '--json']).then(parseStatus, () => null);
+  const status = await statusOrWhy($);
+  return typeof status === 'string' ? null : status;
 }
 
 // A message is a proposal or a note; the CLI finds which by its id.
@@ -219,7 +224,8 @@ const scoutType = ($: EngineInterface): string => `${$.plugin.name}:scout`;
 // Scouting for notes rides on the refresh while the day has room, through the lens the code picks: a home lens runs here,
 // a web lens in the scout. Says which ran.
 async function scout($: EngineInterface, status: HeartbeatStatus): Promise<'none' | 'home' | 'web'> {
-  if (!status.notes.scout || !status.notes.room) {
+  // One scout at a time: a second would take the first's place in every guard below.
+  if (!status.notes.scout || !status.notes.room || (await read($, beat)).scouting) {
     return 'none';
   }
   const brief = await runCli($, ['notes', 'brief', '--json']).then(parseBrief, () => null);
@@ -228,7 +234,7 @@ async function scout($: EngineInterface, status: HeartbeatStatus): Promise<'none
     return 'none';
   }
   await update($, beat, (current) => ({ ...current, notesThisWake: 0 }));
-  if (brief.web) {
+  if (brief.prompt) {
     await sendScout($, brief.prompt);
     return 'web';
   }
@@ -244,23 +250,22 @@ async function scout($: EngineInterface, status: HeartbeatStatus): Promise<'none
 // The scout's prompt is the brief the code wrote, whole: no model chose a word of it. Its id is how every guard below
 // knows its loop.
 async function sendScout($: EngineInterface, prompt: string): Promise<void> {
+  const since = await $.clock.now();
   const started = await $.agent
     .spawn({ prompt, subagentType: scoutType($), description: SCOUT_DESCRIPTION })
-    .catch((error: unknown) => ({ deny: error instanceof Error ? error.message : String(error) }));
-  const now = await $.clock.now();
-  if (started.deny !== undefined || !started.agentId) {
-    const why = started.deny ? `: ${started.deny}` : '';
-    await note($, { at: now, kind: 'stopped', text: `the scout didn't start${why}` });
+    .catch((error: unknown) => ({ deny: errorText(error) }));
+  if (started.deny === undefined && started.agentId) {
+    const id = started.agentId;
+    // Recorded before anything else awaits, so the scout's first tool check finds it.
+    await update($, beat, (current) => ({ ...current, scouting: { id, since } }));
     return;
   }
-  const id = started.agentId;
-  await update($, beat, (current) => ({ ...current, scoutId: id, scoutSince: now }));
+  const why = started.deny ? `: ${started.deny}` : '';
+  await note($, { at: await $.clock.now(), kind: 'stopped', text: `the scout didn't start${why}` });
 }
 
-async function isScout($: EngineInterface, agentId: string | undefined): Promise<boolean> {
-  const { scoutId } = await read($, beat);
-  return agentId !== undefined && agentId === scoutId;
-}
+const isScoutLoop = (state: { scouting?: { id: string } }, agentId: string | undefined): boolean =>
+  agentId !== undefined && state.scouting?.id === agentId;
 
 async function note($: EngineInterface, event: HeartbeatEvent): Promise<void> {
   await update($, beat, (current) => ({ ...current, log: logged(current.log ?? [], event) }));
@@ -311,22 +316,14 @@ async function lastUse($: EngineInterface): Promise<number | null> {
 }
 
 async function tick($: EngineInterface): Promise<void> {
-  const [statusRead, { isBusy }, { owner }] = await Promise.all([
-    runCli($, ['heartbeat', 'status', '--json']).then(
-      (stdout) => parseStatus(stdout) ?? "the heartbeat's status didn't read",
-      (error: unknown) => (error instanceof Error ? error.message : String(error))
-    ),
-    read($, queue),
-    read($, beat)
-  ]);
-  if (typeof statusRead === 'string') {
+  const [status, { isBusy }, { owner, everyMinutes = 55 }] = await Promise.all([statusOrWhy($), read($, queue), read($, beat)]);
+  if (typeof status === 'string') {
     // A status that won't read is a skip with its reason, and the next look keeps its interval.
-    const [now, { everyMinutes = 55 }] = await Promise.all([$.clock.now(), read($, beat)]);
+    const now = await $.clock.now();
     await update($, beat, (current) => ({ ...current, nextAt: now + everyMinutes * MINUTE_MS }));
-    await note($, { at: now, kind: 'skip', text: statusRead });
+    await note($, { at: now, kind: 'skip', text: status });
     return;
   }
-  const status = statusRead;
   if (!isOwner(status, owner)) {
     // The clock only runs in the session that was the heartbeat, so this session just lost the job.
     if (ticker) {
@@ -510,10 +507,10 @@ export const registerHeartbeat = (on: On): void => {
   // The scout runs unattended, so its own three tools need no one's yes, and anything else is refused behind its
   // `tools:` list. A failure here leaves the call to the engine's own check.
   on('tool.check', async ($, e, next) => {
-    if (!(await isScout($, e.agentId))) {
+    if (e.agentId === undefined || !isScoutLoop(await read($, beat), e.agentId)) {
       return next(e);
     }
-    return isScoutTool(String(e.tool)) ? { decision: 'allow' } : { decision: 'deny', reason: SCOUT_ONLY };
+    return scoutTools($.plugin.name).includes(String(e.tool)) ? { decision: 'allow' } : { decision: 'deny', reason: SCOUT_ONLY };
   }).catch(($, e, next) => next(e));
 
   // While a home lens runs, this conversation holds the home's files and text from tickets and reviews together.
@@ -522,8 +519,7 @@ export const registerHeartbeat = (on: On): void => {
       return next(e);
     }
     const { isHeartbeat, awaiting = [] } = await read($, beat);
-    const tool = String(e.tool);
-    if (!isHeartbeat || awaiting[0] !== 'notes' || homeLensMay(tool, e.tool === 'Bash' ? e.command : '')) {
+    if (!isHeartbeat || awaiting[0] !== 'notes' || (e.tool === 'Bash' && isNotesList(e.command))) {
       return next(e);
     }
     return { deny: HOME_LENS_ONLY };
@@ -531,9 +527,11 @@ export const registerHeartbeat = (on: On): void => {
 
   // A wake's turn ends on the skill's one-line ending, which is what the band says it did; the scout's ends its run.
   on('turn.complete', { reason: TURN_REASONS }, async ($, e, next) => {
-    if (await isScout($, e.agentId)) {
-      const [now, { notesThisWake = 0 }] = await Promise.all([$.clock.now(), read($, beat)]);
-      await update($, beat, (current) => ({ ...current, scoutId: undefined, scoutSince: undefined }));
+    const state = await read($, beat);
+    const { awaiting = [], notesThisWake = 0 } = state;
+    if (isScoutLoop(state, e.agentId)) {
+      const now = await $.clock.now();
+      await update($, beat, (current) => ({ ...current, scouting: undefined }));
       await note(
         $,
         e.reason === 'answer'
@@ -542,10 +540,9 @@ export const registerHeartbeat = (on: On): void => {
       );
       return next(e);
     }
-    const { awaiting = [] } = await read($, beat);
     const kind = awaiting[0];
     if (e.agentId === undefined && kind) {
-      const [now, { notesThisWake = 0 }] = await Promise.all([$.clock.now(), read($, beat)]);
+      const now = await $.clock.now();
       const done = kind === 'refresh' || kind === 'notes' ? kind : 'look';
       await update($, beat, (current) => ({ ...current, awaiting: (current.awaiting ?? []).slice(1), workingSince: now }));
       const last = awaiting.length === 1;
@@ -605,8 +602,8 @@ export const registerHeartbeat = (on: On): void => {
                 state.workingSince ? ` since ${clockIn(state.workingSince, zone)}` : ''
               }`}
             </Text>
-          ) : state.scoutId ? (
-            <Text color="magenta">{`◉ scouting the web…${state.scoutSince ? ` since ${clockIn(state.scoutSince, zone)}` : ''}`}</Text>
+          ) : state.scouting ? (
+            <Text color="magenta">{`◉ scouting the web… since ${clockIn(state.scouting.since, zone)}`}</Text>
           ) : state.nextAt ? (
             <Text color={late ? 'yellow' : undefined} dimColor={!late}>{`○ ${nextLook(state.nextAt, now, zone)}`}</Text>
           ) : null}

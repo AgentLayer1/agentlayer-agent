@@ -3,6 +3,8 @@
 
 const LOG_LINE = /^\d{4}-\d{2}-\d{2}T/;
 
+export const errorText = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
 /** The plugin's CLI is `src/cli.ts`, the file its hooks run. */
 export const cliArgv = (pluginRoot: string, args: readonly string[]): string[] => ['bun', `${pluginRoot}/src/cli.ts`, ...args];
 

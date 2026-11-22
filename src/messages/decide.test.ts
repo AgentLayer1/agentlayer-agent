@@ -107,7 +107,7 @@ test('Later and Dismiss record the choice', () => {
   );
   expect(readProposalLedger().proposals.at(-1)?.laterUntil).not.toBe('');
   expect(decideMessage(proposalMessages, seed(), 'dismiss', context([]))).toBe('Dismissed: Reply to the review.');
-  expect(decideMessage(proposalMessages, 'p-none', 'dismiss', context([]))).toBe('No proposal p-none.');
+  expect(decideMessage(proposalMessages, 'p-none', 'dismiss', context([]))).toBeNull();
 });
 
 test('a ledger that won’t parse is never written over, a Start on it opens nothing, and the list fails rather than show none', () => {
@@ -123,7 +123,6 @@ test('a ledger that won’t parse is never written over, a Start on it opens not
   expect(readFileSync(FILES.PROPOSALS, 'utf-8')).toBe(broken);
   rmSync(FILES.PROPOSALS, { force: true });
 });
-
 
 test("a prompt file that can't be written leaves the proposal waiting, with the error, instead of started", () => {
   const id = seed();

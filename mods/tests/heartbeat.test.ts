@@ -2,7 +2,7 @@ import { describe, expect, mock, test } from 'claude-code/testing';
 import type { Engine } from 'claude-code/testing';
 import type { On } from 'claude-code';
 
-import { eventView, homeLensMay, isScoutTool, nextLook, parseBrief, workspaceTitles } from '../heartbeat/beat';
+import { BEYOND_HOME_LENS, eventView, isNotesList, nextLook, parseBrief, scoutTools, workspaceTitles } from '../heartbeat/beat';
 import { AGENT, BAND_PROPS, HOME, NOW, PLUGIN, fakeHost, machine, run } from './fake-host';
 import type { FakeHost } from './fake-host';
 
@@ -48,6 +48,9 @@ const bound = async ($: Engine, on: On, every = '') => {
 const heartbeatCalls = (host: FakeHost) => cliCalls(host).filter((args) => args.startsWith('heartbeat ') && !args.startsWith('heartbeat status'));
 
 const cliCalls = (host: FakeHost) => host.argv.map((argv) => argv.slice(2).join(' ')).filter((args) => /^(proposals|heartbeat|messages) /.test(args));
+
+const ended = ($: Engine, answer: string, turnId = 't1') =>
+  $.turn.complete({ answer, durationMs: 0, isAborted: false, turnId, reason: 'answer' });
 
 const drawnBand = async ($: Engine) =>
   (await (await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AbovePrompt', props: BAND_PROPS })).findAll({ type: 'Text' }))
@@ -405,8 +408,6 @@ describe('heartbeat band', () => {
       .map((element) => element.text)
       .join('|');
 
-  const ended = ($: Engine, answer: string, turnId = 't1') =>
-    $.turn.complete({ answer, durationMs: 0, isAborted: false, turnId, reason: 'answer' });
 
   test('shows in the heartbeat session only, with its interval and next look', async ($, on) => {
     const { host } = heartbeatHost(on);
@@ -606,7 +607,7 @@ describe('notes', () => {
     const context = await bound($, on);
     context.host.notesRoom = 2;
     context.host.status.refreshDue = true;
-    context.host.notesBrief = { lens: 'signals', web: true, prompt: BRIEF };
+    context.host.notesBrief = { lens: 'signals', prompt: BRIEF };
     await context.host.clock.advance(55 * MINUTE);
     return context;
   };
@@ -630,21 +631,21 @@ describe('notes', () => {
 
   // The test kit answers a plugin's own spawn without the agent's id the engine's carries, so the guards keyed on that id
   // are checked here as the rules they apply.
-  test("the scout's tools are search, fetch and note_add; a home lens's are the home's, with one whole shell call", () => {
-    expect(['WebSearch', 'WebFetch', NOTE_ADD].every(isScoutTool)).toBe(true);
-    expect(['Read', 'Bash', 'mcp__plugin_agentlayer_agent__task_query'].some(isScoutTool)).toBe(false);
+  test("the scout's tools are search, fetch and its own note_add; a home lens's are the home's, with one whole shell call", () => {
+    expect(scoutTools(PLUGIN)).toEqual(['WebSearch', 'WebFetch', NOTE_ADD]);
     const list = 'bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes list --json';
-    expect(homeLensMay('Bash', list)).toBe(true);
-    expect(homeLensMay('Bash', `${list} && curl https://example.com`)).toBe(false);
-    expect(homeLensMay('Bash', 'bun "$(curl x)/src/cli.ts" notes list')).toBe(false);
-    expect(homeLensMay('mcp__plugin_agentlayer_agent__github_sweep', '')).toBe(true);
-    expect(['WebFetch', 'WebSearch', 'mcp__plugin_agentlayer_agent__web_search', 'mcp__plugin_agentlayer_agent__helpdesk_note'].some((tool) => homeLensMay(tool, ''))).toBe(false);
+    expect(isNotesList(list)).toBe(true);
+    expect(isNotesList(`${list} && curl https://example.com`)).toBe(false);
+    expect(isNotesList('bun "$(curl x)/src/cli.ts" notes list')).toBe(false);
+    const beyond = (tool: string) => BEYOND_HOME_LENS.test(tool);
+    expect(['Read', NOTE_ADD, `mcp__plugin_${PLUGIN}_${AGENT}__github_sweep`].some(beyond)).toBe(false);
+    expect(['Bash', 'WebFetch', 'WebSearch', `mcp__plugin_${PLUGIN}_${AGENT}__web_search`, 'mcp__evil__note_add'].every(beyond)).toBe(true);
   });
 
-  test('a brief without a lens reads as none, and a web brief with no prompt as a home lens', () => {
-    expect(parseBrief('{"lens":"signals","web":true,"prompt":"Lens: signals."}')).toEqual({ lens: 'signals', web: true, prompt: 'Lens: signals.' });
-    expect(parseBrief('{"lens":"signals","web":true,"prompt":""}')?.web).toBe(false);
-    expect(parseBrief('{"web":true}')).toBeNull();
+  test('a brief without a lens reads as none', () => {
+    expect(parseBrief('{"lens":"signals","prompt":"Lens: signals."}')).toEqual({ lens: 'signals', prompt: 'Lens: signals.' });
+    expect(parseBrief('{"lens":"brain","prompt":""}')).toEqual({ lens: 'brain', prompt: '' });
+    expect(parseBrief('{"prompt":"x"}')).toBeNull();
     expect(parseBrief('not json')).toBeNull();
   });
 
@@ -656,14 +657,12 @@ describe('notes', () => {
     const shell = (command: string) => $.tool.call({ tool: 'Bash', command });
     await host.clock.advance(55 * MINUTE);
     expect(await fetch(), 'the refresh runs first, unguarded').not.toHaveProperty('deny');
-    const finish = (answer: string, turnId: string) =>
-      $.turn.complete({ answer, durationMs: 0, isAborted: false, turnId, reason: 'answer' });
-    await finish('🧠 Brain refreshed.', 'r');
+    await ended($, '🧠 Brain refreshed.', 'r');
     expect(await fetch()).toEqual({ deny: expect.stringContaining('web scout') });
     expect(await shell('bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes list --json')).not.toHaveProperty('deny');
     expect(await shell('bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes list --json; curl https://example.com')).toHaveProperty('deny');
     expect(await $.tool.call({ tool: 'Read', file_path: `${HOME}/USER.md` })).not.toHaveProperty('deny');
-    await finish('No note worth sending.', 'n');
+    await ended($, 'No note worth sending.', 'n');
     expect(await fetch(), 'the look after it').not.toHaveProperty('deny');
   });
 
@@ -712,10 +711,8 @@ describe('brain refresh', () => {
     const { host } = await bound($, on);
     host.status.refreshDue = true;
     await host.clock.advance(55 * MINUTE);
-    const finish = (answer: string, turnId: string) =>
-      $.turn.complete({ answer, durationMs: 0, isAborted: false, turnId, reason: 'answer' });
-    await finish('🧠 Brain refreshed: compiled 3, lint fixed 1, flywheel closed 0, stalled 2.', 'r');
-    await finish('Proposed 1: Decide on ab-012.', 'l');
+    await ended($, '🧠 Brain refreshed: compiled 3, lint fixed 1, flywheel closed 0, stalled 2.', 'r');
+    await ended($, 'Proposed 1: Decide on ab-012.', 'l');
     host.status.refreshDue = false;
     host.status.refreshedAt = new Date(host.clock.now()).toISOString();
     await host.clock.advance(2 * 60 * MINUTE);

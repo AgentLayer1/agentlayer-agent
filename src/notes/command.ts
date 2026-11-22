@@ -6,7 +6,7 @@ import { DAILY_CAP, lensRecord, notesOn, pickLens, roomToday, sentLately } from 
 
 const USAGE = [
   `Usage: ${CLI_COMMAND} notes <command>`,
-  `  list [--json]    Today's notes, the room left, and each lens's record`,
+  `  list [--json]    Today's notes, the room left, and the notes of the last two weeks`,
   `  brief [--json]   The lens the next scouting runs, and for a web lens the scout's whole task`
 ].join('\n');
 
@@ -22,7 +22,7 @@ const list = (args: readonly string[]): number => {
   const room = roomToday(ledger, now);
   if (args.includes('--json')) {
     const recent = sentLately(ledger, now).map(({ id, at, source, lens, title, state }) => ({ id, at, source, lens, title, state }));
-    console.log(JSON.stringify({ cap: DAILY_CAP, room, today: today.length, recent, lenses: lensRecord(ledger) }));
+    console.log(JSON.stringify({ cap: DAILY_CAP, room, today: today.length, recent }));
     return 0;
   }
   const lines = today.map(({ id, title, state }) => `${id}  ${title}${state === 'waiting' ? '' : ` (${state})`}`);
@@ -45,7 +45,7 @@ const brief = (args: readonly string[]): number => {
   const web = webLensOf(lens);
   const prompt = web && known ? scoutBrief(known.facts, web, ledger, now) : '';
   if (args.includes('--json')) {
-    console.log(JSON.stringify({ lens, web: prompt !== '', prompt }));
+    console.log(JSON.stringify({ lens, prompt }));
     return 0;
   }
   console.log(prompt || `Lens: ${lens}, run in the heartbeat with no web.`);

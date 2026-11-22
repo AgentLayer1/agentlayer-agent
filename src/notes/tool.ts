@@ -2,6 +2,7 @@ import { NOTE_ADAPTERS, redrawHome } from '@/adapters';
 import { FOLDERS } from '@/config';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
 import { z } from 'zod';
+import { LENS_KEYS } from './lenses';
 import { DAILY_CAP } from './rules';
 import { sendNotes } from './send';
 
@@ -20,7 +21,7 @@ const NOTE = z.object({
     .trim()
     .min(1)
     .max(40)
-    .describe('The lens it came from: public-drift, opportunities, signals, brain, or waiting, or one the home added.'),
+    .describe(`The lens it came from: ${LENS_KEYS.join(', ')}, or one the home added.`),
   title: text(80).min(1).describe('The finding in one line, as a headline: "The install snippet in search still names the old plugin".'),
   body: text(600)
     .min(1)

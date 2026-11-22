@@ -88,7 +88,7 @@ test('the lens is the one quietest longest, past one whose notes were mostly dis
   expect(pickLens({ brain: tie, signals: { ...tie, started: 2 } }, ['brain', 'signals'])).toBe('signals');
 });
 
-test("the scout's brief carries the public facts and a scout's own taken sources, never a home lens's key", () => {
+test("the scout's brief carries the public facts and nothing from the ledger but the day's room", () => {
   const [lens] = WEB_LENSES;
   const ledger: NoteLedger = {
     notes: [
@@ -101,7 +101,8 @@ test("the scout's brief carries the public facts and a scout's own taken sources
   expect(text).toContain('Lens: public-drift.');
   expect(text).toContain('Month: November 2026');
   expect(text).toContain('- https://acme.example');
-  expect(text).toContain('Already noted, so not again: site:acme, event:old');
+  expect(text).toContain('Room: at most 3 notes today.');
+  expect(text).not.toContain('site:acme');
   expect(text).not.toContain('task:aa-001');
   expect(text).not.toContain('Ada');
   expect(text).not.toContain(FILES.PUBLIC);
@@ -120,7 +121,7 @@ const briefJson = (): unknown => {
 };
 
 test('with no public file only a home lens runs, and with one a web lens gets its brief', () => {
-  expect(briefJson()).toEqual({ lens: 'brain', web: false, prompt: '' });
+  expect(briefJson()).toEqual({ lens: 'brain', prompt: '' });
   writeNotes({
     notes: [note({ lens: 'brain', source: 'task:aa-001' }), note({ id: 'n-2', lens: 'waiting', source: 'pr:1' })]
   });
@@ -128,7 +129,6 @@ test('with no public file only a home lens runs, and with one a web lens gets it
   writeFileSync(FILES.PUBLIC, PUBLIC);
   expect(briefJson()).toMatchObject({
     lens: 'public-drift',
-    web: true,
     prompt: expect.stringContaining('Acme Widgets')
   });
 });

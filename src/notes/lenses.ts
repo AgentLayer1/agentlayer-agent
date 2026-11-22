@@ -27,7 +27,7 @@ export type WebLens = (typeof WEB_LENSES)[number];
 
 export const HOME_LENSES = ['brain', 'waiting'] as const;
 
-export type LensKey = WebLens['key'] | (typeof HOME_LENSES)[number];
+type LensKey = WebLens['key'] | (typeof HOME_LENSES)[number];
 
 export const LENS_KEYS: readonly [LensKey, ...LensKey[]] = [...HOME_LENSES, ...WEB_LENSES.map((lens) => lens.key)];
 

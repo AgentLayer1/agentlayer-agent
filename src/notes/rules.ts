@@ -151,7 +151,7 @@ export const notePrompt = (note: Note): string =>
     'Work on this next step with me. Drafts only: never send, post, pay, merge or delete anything. Start by saying what you would do first, then stop for my go.'
   ].join('\n');
 
-export interface LensStats {
+interface LensStats {
   lastAt: string;
   notes: number;
   started: number;
@@ -181,7 +181,7 @@ export const pickLens = <Key extends string>(record: Record<string, LensStats>, 
 export const lensRecord = (ledger: NoteLedger): Record<string, LensStats> =>
   Object.fromEntries(
     ledger.notes.reduce((record, note) => {
-      const current = record.get(note.lens) ?? { lastAt: '', notes: 0, started: 0, dismissed: 0 };
+      const current = record.get(note.lens) ?? NO_STATS;
       return new Map(record).set(note.lens, {
         lastAt: isoMs(note.at) > isoMs(current.lastAt) ? note.at : current.lastAt,
         notes: current.notes + 1,
