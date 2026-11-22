@@ -11,7 +11,7 @@ export const reportAdapter: NoteAdapter = {
   available: () => true,
   deliver: async (note) => {
     const sources = note.sources.map((url) => `- ${url}`).join('\n');
-    const start = note.prompt ? `\n\nStart it with \`/note start ${note.id}\`.` : '';
+    const start = `\n\nStart it from the Manager's MESSAGES, or with \`/message start ${note.id}\` in the heartbeat's tab.`;
     await writeReport({
       category: 'notes',
       slug: slugify(note.title) || 'note',

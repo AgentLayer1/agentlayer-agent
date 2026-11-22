@@ -1,6 +1,6 @@
-import { DAY_MS, isoMs, nowISO, shiftDate, todayDate } from '@/shared/date';
+import { DAY_MS, isoMs, nextMorning, nowISO, todayDate } from '@/shared/date';
 import { freshId, shortId } from '@/shared/utils';
-import type { Note, NoteLedger, Reaction } from './ledger';
+import type { Note, NoteLedger } from './ledger';
 
 const randomId = shortId('n');
 
@@ -11,6 +11,8 @@ export const DAILY_CAP = 3;
 
 const REPEAT_MS = 14 * DAY_MS;
 const KEEP_MS = 60 * DAY_MS;
+// A note nobody acted on leaves the list after a week, so it can't pile up.
+const OPEN_MS = 7 * DAY_MS;
 
 export type NoteInput = Pick<Note, 'source' | 'lens' | 'title' | 'body' | 'sources' | 'next'> & Partial<Pick<Note, 'prompt'>>;
 
@@ -78,7 +80,8 @@ export const addNotes = (
         prompt: input.prompt ?? '',
         id: freshId(new Set(result.ledger.notes.map(({ id }) => id)), makeId),
         at: nowISO(now),
-        reaction: ''
+        reaction: '',
+        laterUntil: ''
       };
       return { ...result, ledger: { notes: [...result.ledger.notes, note] }, added: [...result.added, note] };
     },
@@ -86,24 +89,47 @@ export const addNotes = (
   );
 
 /**
- * The notes a surface shows: today's and yesterday's in the home's timezone, never a dismissed one, unread first,
- * then newest first.
+ * The notes still waiting on the operator, newest first: none acted on, from the last week, those put off with Later
+ * included (a surface hides them until their time).
  */
-export const recentNotes = (ledger: NoteLedger, now: Date): Note[] => {
-  const today = todayDate(now);
-  const days = new Set([today, shiftDate(today, -1)]);
-  return ledger.notes
-    .filter((note) => note.reaction !== 'dismissed' && days.has(todayDate(new Date(isoMs(note.at)))))
-    .toSorted((a, b) => Number(a.reaction !== '') - Number(b.reaction !== '') || isoMs(b.at) - isoMs(a.at));
-};
+export const openNotes = (ledger: NoteLedger, now: Date): Note[] =>
+  ledger.notes
+    .filter((note) => note.reaction === '' && now.getTime() - isoMs(note.at) < OPEN_MS)
+    .toSorted((a, b) => isoMs(b.at) - isoMs(a.at));
+
+export const NOTE_CHOICES = ['start', 'later', 'dismiss'] as const;
+export type NoteChoice = (typeof NOTE_CHOICES)[number];
 
 /**
- * Records how the operator took a note; null when no note has the id.
+ * Records the operator's choice: Start and Dismiss are final, Later puts the note off until the next morning.
  */
-export const react = (ledger: NoteLedger, id: string, reaction: Exclude<Reaction, ''>): NoteLedger | null =>
-  ledger.notes.some((note) => note.id === id)
-    ? { notes: ledger.notes.map((note) => (note.id === id ? { ...note, reaction } : note)) }
-    : null;
+export const decideNote = (ledger: NoteLedger, id: string, choice: NoteChoice, now: Date): NoteLedger => ({
+  notes: ledger.notes.map((note) => {
+    if (note.id !== id) {
+      return note;
+    }
+    return choice === 'later'
+      ? { ...note, laterUntil: nextMorning(now) }
+      : { ...note, reaction: choice === 'start' ? 'started' : 'dismissed', laterUntil: '' };
+  })
+});
+
+/**
+ * The first message of the session Start opens: the note's own prompt, else one built from the finding, so every note
+ * can be started.
+ */
+export const notePrompt = (note: Note): string =>
+  note.prompt ||
+  [
+    `A note you sent on your own: ${note.title}`,
+    '',
+    note.body,
+    '',
+    `Next step: ${note.next}`,
+    `Sources: ${note.sources.join(', ')}`,
+    '',
+    'Work on this next step with me. Drafts only: never send, post, pay, merge or delete anything. Start by saying what you would do first, then stop for my go.'
+  ].join('\n');
 
 interface LensStats {
   lastAt: string;

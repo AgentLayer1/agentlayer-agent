@@ -5,7 +5,7 @@ import { FILES, FOLDERS } from '@/config';
 import { localISO, nowISO, shiftDate, todayDate } from '@/shared/date';
 import { chosenAdapters, deliverNote, type NoteAdapter, type NoteContext } from './adapter';
 import { EMPTY_NOTES, type Note } from './ledger';
-import { addNotes, DAILY_CAP, lensRecord, react, roomToday, type NoteInput } from './rules';
+import { addNotes, DAILY_CAP, decideNote, lensRecord, notePrompt, openNotes, roomToday, type NoteInput } from './rules';
 import { sendNotes } from './send';
 import { reportAdapter } from '@/reports/notes';
 
@@ -50,11 +50,35 @@ test('a note with nothing to back it is refused; a brain finding may cite a home
   expect(addNotes(EMPTY_NOTES, [input('y', { sources: ['knowledge/memory/index.md'] })], NOW).added, 'a brain finding cites the home').toHaveLength(1);
 });
 
-test('reactions record how a note landed, per lens, and an unknown id changes nothing', () => {
+test('a note waits until it is started or dismissed; Later only puts it off until morning; a week untouched, it leaves', () => {
+  const { ledger } = addNotes(EMPTY_NOTES, [input('a'), input('b'), input('c')], NOW, counter());
+  const ids = (now: Date, from = ledger) => openNotes(from, now).map(({ id }) => id);
+  expect(ids(NOW)).toHaveLength(3);
+  const later = decideNote(ledger, 'n-0', 'later', NOW);
+  expect(later.notes[0]?.laterUntil, 'put off until the next 08:00').not.toBe('');
+  expect(ids(NOW, later), 'still open, the surface hides it until then').toContain('n-0');
+  const acted = decideNote(decideNote(later, 'n-1', 'start', NOW), 'n-2', 'dismiss', NOW);
+  expect(ids(NOW, acted)).toEqual(['n-0']);
+  expect(acted.notes.map(({ reaction }) => reaction)).toEqual(['', 'started', 'dismissed']);
+  expect(ids(new Date(NOW.getTime() + 8 * 24 * HOUR), later), 'a week untouched').toEqual([]);
+  expect(decideNote(ledger, 'n-9', 'dismiss', NOW), 'an unknown id changes nothing').toEqual(ledger);
+});
+
+test('every note can be started: one without a prompt gets one built from its finding, drafts only', () => {
+  const [note] = addNotes(EMPTY_NOTES, [input('a')], NOW, counter()).added;
+  if (!note) {
+    throw new Error('expected the note to be added');
+  }
+  const built = notePrompt(note);
+  expect(built).toContain('Next step: Do the one small thing.');
+  expect(built).toContain('https://example.com/page');
+  expect(built).toContain('Drafts only');
+  expect(notePrompt({ ...note, prompt: 'Fix it, then stop.' })).toBe('Fix it, then stop.');
+});
+
+test('a lens record counts a started note as useful', () => {
   const { ledger } = addNotes(EMPTY_NOTES, [input('a'), input('b', { lens: 'signals' })], NOW, counter());
-  const reacted = react(ledger, 'n-0', 'useful');
-  expect(react(ledger, 'n-9', 'useful')).toBeNull();
-  expect(reacted && lensRecord(reacted)).toEqual({
+  expect(lensRecord(decideNote(ledger, 'n-0', 'start', NOW))).toEqual({
     'public-drift': { lastAt: nowISO(NOW), notes: 1, useful: 1, dismissed: 0 },
     signals: { lastAt: nowISO(NOW), notes: 1, useful: 0, dismissed: 0 }
   });
@@ -97,7 +121,7 @@ test('of a group, the first available adapter stands in for the rest, unless the
 test('an adapter that fails is skipped and the rest still deliver', async () => {
   const good = fake('report');
   const bad = fake('cmux', true, true);
-  const note: Note = { ...input('a'), id: 'n-0', at: '', prompt: '', reaction: '' };
+  const note: Note = { ...input('a'), id: 'n-0', at: '', prompt: '', reaction: '', laterUntil: '' };
   expect(await deliverNote(note, [bad.adapter, good.adapter], CONTEXT)).toEqual(['report']);
   expect(good.got).toEqual(['n-0']);
 });
@@ -111,7 +135,7 @@ test('a sent note lands in reports/notes, and the result says who delivered it a
   const [file] = existsSync(folder) ? readdirSync(folder) : [];
   const text = readFileSync(resolve(folder, file ?? ''), 'utf-8');
   expect(text).toContain('**Next:** Do the one small thing.');
-  expect(text).toContain('/note start');
+  expect(text).toContain('/message start');
   expect(text).toContain('https://example.com/page');
   rmSync(FILES.NOTES, { force: true });
   rmSync(folder, { recursive: true, force: true });

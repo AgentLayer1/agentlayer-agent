@@ -761,7 +761,8 @@ run('NOTES opens while a note is unread, and its buttons type the choice into th
         sources: ['https://example.com/pricing'],
         next: 'Update the pricing table.',
         prompt: 'Update it, then stop.',
-        reaction: ''
+        reaction: '',
+        laterUntil: ''
       }
     ]
   };

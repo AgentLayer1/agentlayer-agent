@@ -1,4 +1,4 @@
-import { DAY_MS, isoMs, localISO, nowISO, nowTime, shiftDate, todayDate } from '@/shared/date';
+import { DAY_MS, isoMs, nextMorning, nowISO } from '@/shared/date';
 import { freshId, shortId } from '@/shared/utils';
 import type { Proposal, ProposalLedger } from './ledger';
 import { isShown, type Choice } from './shown';
@@ -13,7 +13,6 @@ export const TARGET = 5;
  * The most proposals waiting at once, those put off included; more are refused.
  */
 export const BACKLOG = 20;
-const LATER_HOUR = '08:00';
 
 // A source started within a day, or skipped within a week, isn't proposed again.
 const STARTED_QUIET_MS = DAY_MS;
@@ -193,14 +192,6 @@ export const swapProposals = (
     retired: withdrawn.retired.filter(({ id }) => !putBack.has(id)),
     kept: [...withdrawn.refused, ...[...putBack].map((id) => ({ id, reason: 'its replacement was refused' }))]
   };
-};
-
-/**
- * The next 08:00 in the home's timezone, as an ISO time with that day's offset.
- */
-export const nextMorning = (now: Date): string => {
-  const today = todayDate(now);
-  return localISO(nowTime(now) < LATER_HOUR ? today : shiftDate(today, 1), LATER_HOUR);
 };
 
 type Decision =

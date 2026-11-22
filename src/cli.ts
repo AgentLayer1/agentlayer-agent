@@ -90,7 +90,7 @@ Groups:
   knowledge                         Wiki maintenance (lint)
   notices                           What to nudge the operator about (upgrade, sync) as JSON; \`notices record <id> --outcome=acted|snoozed\` logs what they did
   heartbeat                         The session that keeps the home's work coming: status, bind, release, off
-  notes                             What the agent found and sent on its own, at most three a day: list, react, start
+  notes                             What the agent found and sent on its own, at most three a day: list, decide
   proposals                         Sessions the agent proposes: list, decide
   prune                             Delete memory/YYYY-MM-DD*.md older than 14 days
   links                             Rewrite bare task IDs + shorthand into [[wikilinks]]
@@ -192,9 +192,8 @@ Sidebar commands for cmux (this CLI's, not the cmux app's own; run them from a t
 
 Notes commands:
   notes list [--json]               Today's notes, the room left, and each lens's record
-  notes react <useful|dismiss> <id> Say how a note landed; the next scouting reads it
-  notes start <id> [--workspace=<id>]
-                                    Open a session on the note's next step, in that cmux workspace when named
+  notes decide <start|later|dismiss> <id> [--workspace=<id>]
+                                    Open a session on it (in that cmux workspace when named), put it off until morning, or drop it
 
 Proposals commands:
   proposals list [--json]           What's showing and the room for more

@@ -13,7 +13,8 @@ const NOTE: Note = {
   sources: [],
   next: '',
   prompt: '',
-  reaction: ''
+  reaction: '',
+  laterUntil: ''
 };
 
 const CONTEXT: NoteContext = { agentName: 'Oppi' };

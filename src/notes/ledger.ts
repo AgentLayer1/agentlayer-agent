@@ -29,6 +29,10 @@ export interface Note {
    */
   prompt: string;
   reaction: Reaction;
+  /**
+   * When a note put off with Later shows again, an ISO time with an offset; '' when it shows now.
+   */
+  laterUntil: string;
 }
 
 export interface NoteLedger {
@@ -60,7 +64,8 @@ const parseNote = (data: unknown): Note | null => {
     sources: strings(data.sources),
     next: text('next'),
     prompt: text('prompt'),
-    reaction: isReaction(data.reaction) ? data.reaction : ''
+    reaction: isReaction(data.reaction) ? data.reaction : '',
+    laterUntil: typeof data.laterUntil === 'string' ? data.laterUntil : ''
   };
 };
 

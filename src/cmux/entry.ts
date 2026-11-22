@@ -2,7 +2,7 @@ import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { placeOf, readHeartbeat, type Heartbeat } from '@/heartbeat/ledger';
 import { EMPTY_NOTES, readNotes, type NoteLedger } from '@/notes/ledger';
-import { recentNotes } from '@/notes/rules';
+import { openNotes } from '@/notes/rules';
 import { EMPTY_LEDGER, readProposalLedger, type ProposalLedger } from '@/proposals/ledger';
 import { proposalCards } from '@/proposals/rules';
 import { reportKind } from '@/reports/kinds';
@@ -154,7 +154,7 @@ export const homeEntry = (
     goals: goalsView(work),
     tasksSummary: work.tasksSummary,
     proposals: proposalCards(proposals),
-    notes: recentNotes(notes, new Date()).map(({ id, title, body, next, sources, at, prompt, reaction }) => ({
+    notes: openNotes(notes, new Date()).map(({ id, title, body, next, sources, at, prompt, reaction }) => ({
       id,
       title,
       body,

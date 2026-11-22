@@ -1,11 +1,11 @@
 import { expect, test } from 'bun:test';
 import { TIMEZONE } from '@/config';
+import { nextMorning } from '@/shared/date';
 import { EMPTY_LEDGER, parseLedger, type ProposalLedger } from './ledger';
 import {
   addProposals,
   BACKLOG,
   decide,
-  nextMorning,
   proposalCards,
   type ProposalInput,
   retireProposals,

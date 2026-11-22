@@ -95,3 +95,13 @@ export const sinceToStartTime = (since: string, now: Date = new Date()): string 
   const hours = Number(match[1]) * hoursPerUnit[match[2] as keyof typeof hoursPerUnit];
   return new Date(now.getTime() - hours * 3_600_000).toISOString();
 };
+
+const LATER_HOUR = '08:00';
+
+/**
+ * The next 08:00 in the home's timezone, as an ISO time with that day's offset.
+ */
+export const nextMorning = (now: Date): string => {
+  const today = todayDate(now);
+  return localISO(nowTime(now) < LATER_HOUR ? today : shiftDate(today, 1), LATER_HOUR);
+};
