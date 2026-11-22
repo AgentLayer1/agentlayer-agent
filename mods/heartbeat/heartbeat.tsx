@@ -7,7 +7,6 @@ import { TURN_REASONS } from '../shared/turns';
 import { clip } from '../tasks/task';
 import type { HeartbeatEvent, Queue } from '../types';
 import {
-  CHOICES,
   MINUTE_MS,
   REFRESH_RETRY_MS,
   ago,
@@ -24,16 +23,13 @@ import {
   parseAsk,
   parseStatus,
   workspaceTitles,
-  NOTE_CHOICES,
-  NOTE_DECISION,
-  PROPOSAL_DECISION,
+  MESSAGE_CHOICES,
+  MESSAGE_DECISION,
   type Decision,
-  type NoteChoice,
   type HeartbeatStatus
 } from './beat';
 
-const USAGE = `Usage: /proposal <${CHOICES.join('|')}> <id> [--workspace=<id>]`;
-const NOTE_USAGE = `Usage: /note <${NOTE_CHOICES.join('|')}> <id> [--workspace=<id>]`;
+const USAGE = `Usage: /message <${MESSAGE_CHOICES.join('|')}> <id> [--workspace=<id>]`;
 // Inside the engine's short bound on every session.end hook.
 const RELEASE_TIMEOUT_MS = 1000;
 // TODO(windows): cmux is a macOS app, found only in /Applications.
@@ -114,15 +110,16 @@ async function readStatus($: EngineInterface): Promise<HeartbeatStatus | null> {
   return runCli($, ['heartbeat', 'status', '--json']).then(parseStatus, () => null);
 }
 
+// A message is a proposal (`p-…`) or a note (`n-…`); its id says which CLI decides it. A proposal's Dismiss is its Skip.
 async function decide($: EngineInterface, { choice, id, workspace }: Decision): Promise<string> {
-  return said($, ['proposals', 'decide', choice, id, ...(workspace ? [`--workspace=${workspace}`] : [])]);
-}
-
-async function noteSaid($: EngineInterface, { choice, id, workspace }: Decision<NoteChoice>): Promise<string> {
-  if (choice !== 'start') {
-    return said($, ['notes', 'react', choice, id]);
+  const where = workspace ? [`--workspace=${workspace}`] : [];
+  if (id.startsWith('p-')) {
+    return said($, ['proposals', 'decide', choice === 'dismiss' ? 'skip' : choice, id, ...where]);
   }
-  return said($, ['notes', 'start', id, ...(workspace ? [`--workspace=${workspace}`] : [])]);
+  if (id.startsWith('n-')) {
+    return said($, ['notes', 'decide', choice, id, ...where]);
+  }
+  return USAGE;
 }
 
 // A decision's answer in place of the prompt it ended, with the draft typed before it put back in the box.
@@ -389,17 +386,12 @@ export const registerHeartbeat = (on: On): void => {
     return next(e);
   });
 
-  on('command.run', { command: 'proposal' }, async ($, e) => {
-    const decision = PROPOSAL_DECISION.parse(e.args);
+  on('command.run', { command: 'message' }, async ($, e) => {
+    const decision = MESSAGE_DECISION.parse(e.args);
     return { text: decision ? await decide($, decision) : USAGE };
   });
 
   on('command.run', { command: 'heartbeat' }, async ($, e) => ({ text: await heartbeat($, e.args) }));
-
-  on('command.run', { command: 'note' }, async ($, e) => {
-    const decision = NOTE_DECISION.parse(e.args);
-    return { text: decision ? await noteSaid($, decision) : NOTE_USAGE };
-  });
 
   // A note the session sends lands in its scrollback as a notice the model never reads; the heartbeat's band counts it.
   on('tool.call', { tool: /__note_add$/ }, async ($, e, next) => {
@@ -510,12 +502,8 @@ export const registerHeartbeat = (on: On): void => {
 
   // A sidebar click can land after a half-written prompt; the decision runs, the prompt never reaches the model, and
   // the draft goes back in the box.
-  on('prompt.submit', { text: PROPOSAL_DECISION.atEnd }, async ($, e, next) => {
-    const found = e.command ? null : PROPOSAL_DECISION.inDraft(e.text);
+  on('prompt.submit', { text: MESSAGE_DECISION.atEnd }, async ($, e, next) => {
+    const found = e.command ? null : MESSAGE_DECISION.inDraft(e.text);
     return found ? dropped($, await decide($, found), found.draft) : next(e);
-  });
-  on('prompt.submit', { text: NOTE_DECISION.atEnd }, async ($, e, next) => {
-    const found = e.command ? null : NOTE_DECISION.inDraft(e.text);
-    return found ? dropped($, await noteSaid($, found), found.draft) : next(e);
   });
 };

@@ -55,23 +55,37 @@ const drawnBand = async ($: Engine) =>
     .join('|');
 
 describe('the heartbeat', () => {
-  test('/proposal runs the decision through the CLI with no model turn', async ($, on) => {
+  test('/message decides a proposal through the CLI with no model turn', async ($, on) => {
     const { host } = heartbeatHost(on);
-    const { text } = await run($, 'proposal', 'start p-1');
+    const { text } = await run($, 'message', 'start p-1');
     expect(text).toBe('ran proposals decide start p-1');
     expect(host.argv.at(-1)?.slice(2)).toEqual(['proposals', 'decide', 'start', 'p-1']);
     expect(host.cwd.at(-1)).toBe(HOME);
   });
 
-  test('/proposal without a choice and an id prints usage and decides nothing', async ($, on) => {
+  test('/message without a choice and an id, or with an id of no kind, prints usage and decides nothing', async ($, on) => {
     const { host } = heartbeatHost(on);
-    expect((await run($, 'proposal', 'maybe p-1')).text).toBe('Usage: /proposal <start|later|skip> <id> [--workspace=<id>]');
+    const usage = 'Usage: /message <start|later|dismiss> <id> [--workspace=<id>]';
+    expect((await run($, 'message', 'maybe p-1')).text).toBe(usage);
+    expect((await run($, 'message', 'start x-1')).text).toBe(usage);
     expect(cliCalls(host)).toEqual([]);
+  });
+
+  test("a proposal's Dismiss is its Skip, and a note's choice goes to the notes CLI as it is", async ($, on) => {
+    const { host } = heartbeatHost(on);
+    await run($, 'message', 'dismiss p-1');
+    await run($, 'message', 'later n-1');
+    await run($, 'message', 'start n-2 --workspace=W-4');
+    expect(host.argv.slice(-3).map((argv) => argv.slice(2).join(' '))).toEqual([
+      'proposals decide skip p-1',
+      'notes decide later n-1',
+      'notes decide start n-2 --workspace=W-4'
+    ]);
   });
 
   test('a decision typed after a half-written prompt runs, never reaches the model, and gives the draft back', async ($, on) => {
     const { host, submitted, filled } = heartbeatHost(on);
-    const result = await $.prompt.submit({ text: 'hello there/proposal skip p-2' });
+    const result = await $.prompt.submit({ text: 'hello there/message dismiss p-2' });
     await host.clock.settle();
     expect(result).toEqual({ drop: 'ran proposals decide skip p-2' });
     expect(submitted).toEqual([]);
@@ -80,9 +94,9 @@ describe('the heartbeat', () => {
 
   test('a Start the sidebar placed carries its workspace to the CLI, typed or after a draft', async ($, on) => {
     const { host, filled } = heartbeatHost(on);
-    await run($, 'proposal', 'start p-1 --workspace=W-9');
+    await run($, 'message', 'start p-1 --workspace=W-9');
     expect(host.argv.at(-1)?.slice(2)).toEqual(['proposals', 'decide', 'start', 'p-1', '--workspace=W-9']);
-    await $.prompt.submit({ text: 'half a thought/proposal start p-2 --workspace=W-3' });
+    await $.prompt.submit({ text: 'half a thought/message start p-2 --workspace=W-3' });
     await host.clock.settle();
     expect(host.argv.at(-1)?.slice(2)).toEqual(['proposals', 'decide', 'start', 'p-2', '--workspace=W-3']);
     expect(filled).toEqual(['half a thought']);
@@ -102,10 +116,10 @@ describe('the heartbeat', () => {
 
   test('a word typed after a decision is not taken for a workspace, so the prompt reaches the model', async ($, on) => {
     const { host, submitted } = heartbeatHost(on);
-    await $.prompt.submit({ text: 'why did /proposal start p-1 now' });
-    expect(submitted).toEqual(['why did /proposal start p-1 now']);
+    await $.prompt.submit({ text: 'why did /message start p-1 now' });
+    expect(submitted).toEqual(['why did /message start p-1 now']);
     expect(cliCalls(host)).toEqual([]);
-    expect((await run($, 'proposal', 'start p-1 now')).text).toStartWith('Usage:');
+    expect((await run($, 'message', 'start p-1 now')).text).toStartWith('Usage:');
   });
 
   test('an ordinary prompt passes through untouched', async ($, on) => {
@@ -544,7 +558,6 @@ describe('notes', () => {
             body: 'Search still shows the old install line.',
             next: 'Request indexing for the install page.',
             sources: ['https://example.com/install'],
-            canStart: true,
             delivered: ['report']
           }
         ],
@@ -570,25 +583,18 @@ describe('notes', () => {
     });
     const notices = session.appended().map((row) => JSON.stringify(row));
     expect(notices.join('\n')).toContain('📝 The snippet names the old plugin');
-    expect(notices.join('\n')).toContain('/note start n-1 · /note useful n-1 · /note dismiss n-1');
+    expect(notices.join('\n')).toContain('/message start n-1 · /message later n-1 · /message dismiss n-1');
     await host.clock.advance(MINUTE);
     expect(await drawnBand($)).toContain('1 of 3 notes today');
   });
 
-  test('/note reacts or starts through the CLI, and anything else gets the usage', async ($, on) => {
-    const { host } = heartbeatHost(on);
-    await run($, 'note', 'useful n-1');
-    await run($, 'note', 'start n-2');
-    expect(host.argv.slice(-2).map((argv) => argv.slice(2).join(' '))).toEqual(['notes react useful n-1', 'notes start n-2']);
-    expect((await run($, 'note', 'later n-1')).text).toBe('Usage: /note <useful|dismiss|start> <id> [--workspace=<id>]');
-  });
 
-  test('a /note the sidebar typed after a half-written prompt runs, never reaches the model, and gives the draft back', async ($, on) => {
+  test('a note the sidebar decided after a half-written prompt runs, never reaches the model, and gives the draft back', async ($, on) => {
     const { host, submitted, filled } = heartbeatHost(on);
-    const result = await $.prompt.submit({ text: 'half a thought/note start n-3 --workspace=W-2' });
+    const result = await $.prompt.submit({ text: 'half a thought/message start n-3 --workspace=W-2' });
     await host.clock.settle();
     expect(result && 'drop' in result, 'answered here, not sent on').toBe(true);
-    expect(host.argv.at(-1)?.slice(2)).toEqual(['notes', 'start', 'n-3', '--workspace=W-2']);
+    expect(host.argv.at(-1)?.slice(2)).toEqual(['notes', 'decide', 'start', 'n-3', '--workspace=W-2']);
     expect(submitted).toEqual([]);
     expect(filled).toEqual(['half a thought']);
   });

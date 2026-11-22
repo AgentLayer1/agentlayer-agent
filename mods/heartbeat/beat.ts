@@ -2,8 +2,8 @@
 
 import type { HeartbeatEvent } from '../types';
 
-export const CHOICES = ['start', 'later', 'skip'] as const;
-type Choice = (typeof CHOICES)[number];
+export const MESSAGE_CHOICES = ['start', 'later', 'dismiss'] as const;
+type MessageChoice = (typeof MESSAGE_CHOICES)[number];
 
 export const MINUTE_MS = 60_000;
 
@@ -15,7 +15,7 @@ export const REFRESH_RETRY_MS = 6 * 60 * MINUTE_MS;
 // Named, so a word typed after a decision is never taken for a workspace.
 const WORKSPACE_FLAG = '--workspace=';
 
-export interface Decision<C extends string = Choice> {
+export interface Decision<C extends string = MessageChoice> {
   choice: C;
   id: string;
   /** The cmux workspace a Start opens its session in, when the sidebar picked one. */
@@ -54,11 +54,10 @@ const decisionGrammar = <C extends string>(command: string, choices: readonly C[
   };
 };
 
-export const PROPOSAL_DECISION = decisionGrammar('proposal', CHOICES);
-
-export const NOTE_CHOICES = ['useful', 'dismiss', 'start'] as const;
-export type NoteChoice = (typeof NOTE_CHOICES)[number];
-export const NOTE_DECISION = decisionGrammar('note', NOTE_CHOICES);
+/**
+ * `/message <start|later|dismiss> <id>`: a decision on anything the agent surfaced, a proposal or a note.
+ */
+export const MESSAGE_DECISION = decisionGrammar('message', MESSAGE_CHOICES);
 
 type HeartbeatAsk = { kind: 'bind'; every: string } | { kind: 'off' } | { kind: 'now' } | { kind: 'status' };
 
@@ -230,7 +229,6 @@ export interface SentNote {
   body: string;
   next: string;
   sources: string[];
-  canStart: boolean;
 }
 
 const text = (value: unknown): string => (typeof value === 'string' ? value : '');
@@ -252,7 +250,7 @@ export const notesSent = (resultText: string): { notes: SentNote[]; today: numbe
       const id = text(added.id);
       const sources = Array.isArray(added.sources) ? added.sources.map(text).filter(Boolean) : [];
       const note = { id, title: text(added.title), body: text(added.body), next: text(added.next), sources };
-      return id ? [{ ...note, canStart: added.canStart === true }] : [];
+      return id ? [note] : [];
     });
     const count = (value: unknown): number => (typeof value === 'number' ? value : 0);
     return { notes, today: count(result.today), cap: count(result.cap) };
@@ -270,5 +268,5 @@ export const noticeText = (note: SentNote): string =>
     note.body,
     `Next: ${note.next}`,
     ...note.sources.map((url) => `· ${url}`),
-    `${note.canStart ? `/note start ${note.id} · ` : ''}/note useful ${note.id} · /note dismiss ${note.id}`
+    `/message start ${note.id} · /message later ${note.id} · /message dismiss ${note.id}`
   ].join('\n');

@@ -136,19 +136,13 @@ export const HEARTBEAT_FEATURE = {
   id: 'heartbeat',
   title: 'Proposals and the heartbeat',
   summary:
-    'Start, put off or skip the sessions the agent proposes, and make one long session the heartbeat that keeps proposals coming, with no model turn for either.',
+    'Start, put off or dismiss what the agent surfaced (its proposals and notes), and make one long session the heartbeat that keeps them coming, with no model turn for either.',
   where: 'slash commands · the heartbeat wakes on its own clock',
   commands: [
     {
-      name: 'proposal',
-      description: 'Start a proposed session, put it off until morning, or skip it (no Claude turn)',
-      argumentHint: '<start|later|skip> <id>',
-      immediate: true
-    },
-    {
-      name: 'note',
-      description: 'Say a note was useful, dismiss it, or start the session it suggests (no Claude turn)',
-      argumentHint: '<useful|dismiss|start> <id>',
+      name: 'message',
+      description: "Start a message's session, put it off until morning, or dismiss it: a proposal or a note (no Claude turn)",
+      argumentHint: '<start|later|dismiss> <id>',
       immediate: true
     },
     {
