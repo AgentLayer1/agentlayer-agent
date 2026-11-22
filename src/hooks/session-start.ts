@@ -1,5 +1,5 @@
 /**
- * The SessionStart payload for every host. Three disjoint paths:
+ * Three disjoint paths:
  *  - **Pre-init**: nothing scaffolded here — emit the banner + setup hint. NO
  *    filesystem writes (anything that CREATES under FOLDERS.* must stay out of
  *    this path, or an empty home tree appears before the user picks a home;
@@ -7,8 +7,7 @@
  *  - **Stranded**: a `SOUL.md` but no data dir — another agent's home, or this
  *    one's marker lost in a restore. Explain, and steer away from init.
  *  - **Post-init**: assemble the dynamic lane (today, last session tail, today's
- *    and pinned reports, git activity), plus the static identity for a host that
- *    can't load it itself (`HostAdapter.delivery`).
+ *    and pinned reports, git activity).
  *
  * Always returns a result — internal errors are caught and emitted as an
  * empty payload + `error` field so the host never chokes on hook output.
