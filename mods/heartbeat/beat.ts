@@ -265,6 +265,32 @@ const EMAIL = /[^\s@"]+@[^\s@"]+\.[a-z]{2,}/i;
 export const carriesEmail = (input: unknown): boolean => EMAIL.test(JSON.stringify(input) ?? '');
 
 /**
+ * Tools the engine itself gives an agent: loading a deferred tool's schema, and handing the report back.
+ */
+export const ENGINE_TOOLS = ['ToolSearch', 'SubagentHandback'];
+
+// Folder names that say nothing about the operator's work.
+const GENERIC = new Set(['users', 'developer', 'documents', 'agents', 'library', 'private', 'local', 'state', 'personal', 'projects', 'desktop', 'downloads', 'code', 'work', 'repos', 'home']);
+
+const squeezed = (text: string): string => text.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/**
+ * The private names the engine shows every agent in its working directories (a client's, an employer's folder),
+ * leaving out generic folder words and anything the operator made public. A scout's search or fetch never carries one.
+ */
+export const privateNames = (paths: readonly string[], publicText: string): string[] => {
+  const known = squeezed(publicText);
+  // Whole folder names: their hyphenated parts are mostly ordinary words ("marketplace") a search needs.
+  const words = paths.flatMap((path) => path.split('/'));
+  return [...new Set(words.map(squeezed))].filter((word) => word.length >= 4 && !GENERIC.has(word) && !known.includes(word));
+};
+
+export const carriesPrivateName = (input: unknown, names: readonly string[]): boolean => {
+  const text = squeezed(JSON.stringify(input) ?? '');
+  return names.some((name) => text.includes(name));
+};
+
+/**
  * The tools the home lens may run: it reads the home and the queues waiting on the operator, and sends notes; nothing it
  * runs reaches past the machine.
  */

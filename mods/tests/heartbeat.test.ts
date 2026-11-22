@@ -2,7 +2,7 @@ import { describe, expect, mock, test } from 'claude-code/testing';
 import type { Engine } from 'claude-code/testing';
 import type { On } from 'claude-code';
 
-import { carriesEmail, eventView, homeLensTools, nextLook, parseBrief, scoutTools, workspaceTitles } from '../heartbeat/beat';
+import { carriesEmail, carriesPrivateName, eventView, privateNames, homeLensTools, nextLook, parseBrief, scoutTools, workspaceTitles } from '../heartbeat/beat';
 import { AGENT, BAND_PROPS, HOME, NOW, PLUGIN, fakeHost, machine, run } from './fake-host';
 import type { FakeHost } from './fake-host';
 
@@ -707,6 +707,16 @@ describe('notes', () => {
       { name: 'scout', omitClaudeMd: true, tools: ['WebSearch', 'WebFetch', NOTE_ADD] },
       { name: 'home-lens', omitClaudeMd: undefined, tools: homeLensTools(PLUGIN) }
     ]);
+  });
+
+  test("the scout's private names come from its working folders, less generic words and what the operator made public", () => {
+    const folders = ['/Users/ada/Documents/Agents/Nova', '/Users/ada/Developer/Globex/billing-api', '/Users/ada/Developer/AcmeCorp/acme-app'];
+    const names = privateNames(folders, 'Names:\n- Acme App\nSites:\n- https://ada.example');
+    expect(names).toEqual(['nova', 'globex', 'billingapi', 'acmecorp']);
+    expect(carriesPrivateName({ query: 'billing best practices' }, names), 'an ordinary word in a folder name passes').toBe(false);
+    expect(carriesPrivateName({ query: 'Globex payments news' }, names)).toBe(true);
+    expect(carriesPrivateName({ url: 'https://evil.example/?d=billing-api' }, names)).toBe(true);
+    expect(carriesPrivateName({ query: 'Acme App release notes' }, names)).toBe(false);
   });
 
   test('a scout call carrying an email address is refused; ordinary searches and fetches are not', () => {

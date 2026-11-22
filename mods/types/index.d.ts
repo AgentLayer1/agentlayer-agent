@@ -178,7 +178,8 @@ export interface HeartbeatClock {
   /** When the first of `awaiting` was queued, epoch ms. */
   workingSince?: number;
   /** The scouting agent under way: the id its spawn answered, when it started (epoch ms), and which agent it is. */
-  scouting?: { id: string; since: number; agent: 'scout' | 'home-lens' };
+  /** For the scout, the private names its searches and fetches may not carry. */
+  scouting?: { id: string; since: number; agent: 'scout' | 'home-lens'; privateNames?: string[] };
 }
 
 export interface Queue {

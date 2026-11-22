@@ -3,6 +3,7 @@ import type { EngineInterface, On } from 'claude-code';
 
 import { HEARTBEAT_FEATURE } from '../shared/catalog';
 import { cliArgv, cliError, errorText } from '../shared/cli';
+import { expandHome } from '../manuals/repo';
 import { TURN_REASONS } from '../shared/turns';
 import { clip } from '../tasks/task';
 import type { HeartbeatEvent, Queue } from '../types';
@@ -30,6 +31,9 @@ import {
   homeLensTools,
   scoutTools,
   carriesEmail,
+  carriesPrivateName,
+  ENGINE_TOOLS,
+  privateNames,
   parseBrief,
   parseDecision,
   type Decision,
@@ -47,6 +51,7 @@ const CMUX_TIMEOUT_MS = 5000;
 const SCOUT_TIMEOUT_MS = 20 * MINUTE_MS;
 const OWN_TOOLS_ONLY = 'A scouting agent runs its own tools only.';
 const NO_EMAIL = "The scout's searches and fetches never carry an email address.";
+const NO_PRIVATE_NAME = "The scout's searches and fetches never carry a name from the operator's private folders.";
 const SCOUT_REFUSED = "Only the heartbeat starts its scouting agents, on a brief its code writes; a prompt a model wrote could carry the home's private facts to the web.";
 const SCOUT_REPORT_KEPT = "A scouting agent's notes are in the notes list; its report stays out of this conversation.";
 
@@ -242,15 +247,29 @@ async function scout($: EngineInterface, status: HeartbeatStatus): Promise<void>
 
 // The agent's prompt is the brief the code wrote, whole: no model chose a word of it. Its id is how every guard below
 // knows its loop.
+// The folders the engine lists in every agent's context: the session's root and the directories it was granted.
+async function workingFolders($: EngineInterface): Promise<string[]> {
+  const [root, home, settings] = await Promise.all([$.session.root(), $.env.get('HOME'), $.settings.read()]);
+  const permissions: unknown = settings.permissions;
+  const granted =
+    typeof permissions === 'object' && permissions !== null && 'additionalDirectories' in permissions
+      ? permissions.additionalDirectories
+      : [];
+  const listed = (Array.isArray(granted) ? granted : []).filter((entry): entry is string => typeof entry === 'string');
+  return [root, ...listed.map((entry) => expandHome(entry, home))];
+}
+
 async function sendScout($: EngineInterface, { agent, prompt }: NotesBrief): Promise<void> {
   const since = await $.clock.now();
+  // Worked out before the spawn, so the scout's first tool check already has them.
+  const names = agent === 'scout' ? privateNames(await workingFolders($).catch(() => []), prompt) : [];
   const started = await $.agent
     .spawn({ prompt, subagentType: `${$.plugin.name}:${agent}`, description: SCOUTING_AGENTS[agent] })
     .catch((error: unknown) => ({ deny: errorText(error) }));
   if (started.deny === undefined && started.agentId) {
     const id = started.agentId;
     // Recorded before anything else awaits, so the agent's first tool check finds it.
-    await update($, beat, (current) => ({ ...current, scouting: { id, since, agent } }));
+    await update($, beat, (current) => ({ ...current, scouting: { id, since, agent, privateNames: names } }));
     return;
   }
   const why = started.deny ? `: ${started.deny}` : '';
@@ -568,10 +587,16 @@ export const registerHeartbeat = (on: On): void => {
       return next(e);
     }
     const tools = scouting.agent === 'scout' ? scoutTools($.plugin.name) : homeLensTools($.plugin.name);
-    if (!tools.includes(String(e.tool))) {
+    if (![...tools, ...ENGINE_TOOLS].includes(String(e.tool))) {
       return { decision: 'deny', reason: OWN_TOOLS_ONLY };
     }
-    return scouting.agent === 'scout' && carriesEmail(e.input) ? { decision: 'deny', reason: NO_EMAIL } : { decision: 'allow' };
+    if (scouting.agent === 'scout' && carriesEmail(e.input)) {
+      return { decision: 'deny', reason: NO_EMAIL };
+    }
+    if (scouting.agent === 'scout' && carriesPrivateName(e.input, scouting.privateNames ?? [])) {
+      return { decision: 'deny', reason: NO_PRIVATE_NAME };
+    }
+    return { decision: 'allow' };
   }).catch(($, e, next) => next(e));
 
   // A wake's turn ends on the skill's one-line ending, which is what the band says it did; the scout's ends its run.
