@@ -27,7 +27,7 @@ import { nowTime, todayDate } from '@/shared/date';
 import { log as baseLog } from '@/shared/log';
 import type { TranscriptTurn } from '@/knowledge/types';
 import { existsSync, readFileSync } from 'node:fs';
-import { appendFile, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { relative, resolve } from 'node:path';
 
@@ -208,13 +208,14 @@ const LOCK_RETRY_MS = 50;
 // Codex kills a SessionEnd hook after 3 seconds, so the wait leaves room to defer instead.
 const LOCK_MAX_WAIT_MS = 1_500;
 const PENDING_FILE = 'capture-pending.jsonl';
+const CLAIMED_RE = /^capture-pending\.\d+-\d+\.jsonl$/;
 
 /**
  * Cross-process mutex via atomic `mkdir`. Serializes the read-modify-write of
  * the session index + day-file append so two hooks firing for the same session
  * at once can't both read an empty cursor and both write a first-capture block.
  * A stale lock (a hook that crashed mid-capture) is stolen after LOCK_STALE_MS;
- * if the lock can't be taken within LOCK_MAX_WAIT_MS the caller defers —
+ * if the lock can't be taken within `maxWaitMs` the caller defers —
  * dropping a capture is worse than a once-in-a-blue-moon duplicate.
  *
  * Each holder writes a unique token into the lock dir; release only removes the
@@ -222,10 +223,10 @@ const PENDING_FILE = 'capture-pending.jsonl';
  * LOCK_STALE_MS and got its lock stolen would, on its own release, delete the
  * *stealer's* lock — letting a third process run concurrently (ABA race).
  */
-async function acquireCaptureLock(): Promise<(() => Promise<void>) | null> {
+async function acquireCaptureLock(maxWaitMs = LOCK_MAX_WAIT_MS): Promise<(() => Promise<void>) | null> {
   const lockDir = resolve(FOLDERS.DATA, 'capture.lock');
   await mkdir(FOLDERS.DATA, { recursive: true }); // ensure lock's parent exists
-  const deadline = Date.now() + LOCK_MAX_WAIT_MS;
+  const deadline = Date.now() + maxWaitMs;
   const ownerFile = resolve(lockDir, 'owner');
   const token = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   // Unconditional removal — only used when stealing a stale lock we don't own.
@@ -316,30 +317,48 @@ export async function captureSession(opts: CaptureSessionOpts): Promise<CaptureS
   }
 }
 
-/** Run every capture queued while the lock was held, oldest first; the cursor makes a repeat harmless. */
-async function drainPending(): Promise<void> {
+const claimPendingQueue = async (): Promise<void> => {
   const pendingPath = resolve(FOLDERS.DATA, PENDING_FILE);
-  if (!existsSync(pendingPath)) return;
-  const lines = (await readFile(pendingPath, 'utf-8')).split('\n').filter((line) => line.trim());
-  await rm(pendingPath, { force: true });
-  for (const line of lines) {
-    try {
-      const queued = JSON.parse(line) as CaptureSessionOpts;
-      if (!existsSync(queued.transcriptPath)) continue;
-      const result = await captureUnderLock(queued);
-      log.info(
-        `drained (${queued.mode}) [${queued.sessionId}] — ${result.saved ? `saved ${result.turns} turns` : result.reason}`
-      );
-    } catch (err) {
-      log.warn(`dropped a queued capture that could not run: ${err instanceof Error ? err.message : String(err)}`);
+  if (existsSync(pendingPath)) {
+    await rename(pendingPath, resolve(FOLDERS.DATA, `capture-pending.${Date.now()}-${process.pid}.jsonl`));
+  }
+};
+
+const claimedQueues = async (): Promise<string[]> =>
+  (await readdir(FOLDERS.DATA).catch((): string[] => [])).filter((name) => CLAIMED_RE.test(name)).sort();
+
+async function drainPending(): Promise<void> {
+  await claimPendingQueue();
+  for (const name of await claimedQueues()) {
+    const claimedPath = resolve(FOLDERS.DATA, name);
+    const lines = (await readFile(claimedPath, 'utf-8')).split('\n').filter((line) => line.trim());
+    for (const line of lines) {
+      try {
+        const queued = JSON.parse(line) as CaptureSessionOpts;
+        if (!existsSync(queued.transcriptPath)) continue;
+        const result = await captureUnderLock(queued);
+        log.info(
+          `drained (${queued.mode}) [${queued.sessionId}] — ${result.saved ? `saved ${result.turns} turns` : result.reason}`
+        );
+      } catch (err) {
+        log.warn(`dropped a queued capture that could not run: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
+    await rm(claimedPath, { force: true });
   }
 }
 
-/** Drain whatever the last session's end could not write; a no-op when nothing is queued. */
+/**
+ * Drain whatever an earlier capture could not write; a no-op when nothing is queued. It never waits for the lock.
+ */
 export async function drainDeferredCaptures(): Promise<void> {
-  if (!isInitialized() || !existsSync(resolve(FOLDERS.DATA, PENDING_FILE))) return;
-  const release = await acquireCaptureLock();
+  if (!isInitialized()) {
+    return;
+  }
+  if (!existsSync(resolve(FOLDERS.DATA, PENDING_FILE)) && (await claimedQueues()).length === 0) {
+    return;
+  }
+  const release = await acquireCaptureLock(0);
   if (!release) return;
   try {
     await drainPending();

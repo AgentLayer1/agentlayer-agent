@@ -92,4 +92,38 @@ describe('deferred capture', () => {
     await drainDeferredCaptures();
     expect(dayFile().split('[third-session]').length).toBe(2);
   });
+
+  test('a session start never waits for a held lock, and leaves the queue to its holder', async () => {
+    const queued = {
+      transcriptPath: transcript('fourth', 2),
+      cwd: HOME,
+      sessionId: 'fourth-session',
+      mode: 'session-end'
+    };
+    writeFileSync(PENDING, `${JSON.stringify(queued)}\n`, 'utf-8');
+    mkdirSync(LOCK, { recursive: true });
+    writeFileSync(resolve(LOCK, 'owner'), 'someone-else', 'utf-8');
+    const started = Date.now();
+    await drainDeferredCaptures();
+    expect(Date.now() - started).toBeLessThan(500);
+    expect(existsSync(PENDING)).toBe(true);
+    rmSync(LOCK, { recursive: true, force: true });
+    await drainDeferredCaptures();
+    expect(existsSync(PENDING)).toBe(false);
+    expect(dayFile()).toContain('[fourth-session]');
+  });
+
+  test('a queue a killed drain had claimed is replayed by the next drain, then removed', async () => {
+    const claimed = resolve(DATA, 'capture-pending.1700000000000-1.jsonl');
+    const queued = {
+      transcriptPath: transcript('fifth', 2),
+      cwd: HOME,
+      sessionId: 'fifth-session',
+      mode: 'session-end'
+    };
+    writeFileSync(claimed, `${JSON.stringify(queued)}\n`, 'utf-8');
+    await drainDeferredCaptures();
+    expect(existsSync(claimed)).toBe(false);
+    expect(dayFile()).toContain('[fifth-session]');
+  });
 });
