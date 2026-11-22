@@ -122,6 +122,12 @@ const briefJson = (): unknown => {
   }
 };
 
+test('each brief hands out the lens run least recently, so one that finds nothing still yields its turn', () => {
+  expect(briefJson()).toEqual({ lens: 'brain', prompt: '' });
+  expect(briefJson()).toEqual({ lens: 'waiting', prompt: '' });
+  expect(briefJson(), 'with no public file, only home lenses').toEqual({ lens: 'brain', prompt: '' });
+});
+
 test('with no public file only a home lens runs, and with one a web lens gets its brief', () => {
   expect(briefJson()).toEqual({ lens: 'brain', prompt: '' });
   writeNotes({

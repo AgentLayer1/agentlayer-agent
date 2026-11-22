@@ -1,13 +1,14 @@
 import { CLI_COMMAND } from '@/shared/naming';
 import { canScout, readPublic, scoutBrief } from './brief';
-import { notesProblem, readNotes } from './ledger';
+import { nowISO } from '@/shared/date';
+import { notesProblem, readNotes, writeNotes } from './ledger';
 import { HOME_LENSES, LENS_KEYS, webLensOf } from './lenses';
 import { DAILY_CAP, lensRecord, notesOn, pickLens, roomToday, sentLately } from './rules';
 
 const USAGE = [
   `Usage: ${CLI_COMMAND} notes <command>`,
   `  list [--json]    Today's notes, the room left, and the notes of the last two weeks`,
-  `  brief [--json]   The lens the next scouting runs, and for a web lens the scout's whole task`
+  `  brief [--json]   Hand out the next scouting run's lens (recorded as run), and for a web lens the scout's whole task`
 ].join('\n');
 
 const list = (args: readonly string[]): number => {
@@ -42,6 +43,8 @@ const brief = (args: readonly string[]): number => {
   const known = readPublic();
   known?.refused.forEach(({ line, reason }) => console.error(`Left out of the public brief: "${line}" (${reason}).`));
   const lens = pickLens(lensRecord(ledger), known && canScout(known.facts) ? LENS_KEYS : HOME_LENSES);
+  // A brief is handed to a run, so its lens counts as run whether or not it finds anything.
+  writeNotes({ ...ledger, ranAt: { ...ledger.ranAt, [lens]: nowISO(now) } });
   const web = webLensOf(lens);
   const prompt = web && known ? scoutBrief(known.facts, web, ledger, now) : '';
   if (args.includes('--json')) {

@@ -90,9 +90,9 @@ export const addNotes = (
         decidedAt: '',
         laterUntil: ''
       };
-      return { ...result, ledger: { notes: [...result.ledger.notes, note] }, added: [...result.added, note] };
+      return { ...result, ledger: { ...result.ledger, notes: [...result.ledger.notes, note] }, added: [...result.added, note] };
     },
-    { ledger: { notes: ledger.notes.filter((note) => now.getTime() - isoMs(note.at) < KEEP_MS) }, added: [], refused: [] }
+    { ledger: { ...ledger, notes: ledger.notes.filter((note) => now.getTime() - isoMs(note.at) < KEEP_MS) }, added: [], refused: [] }
   );
 
 /**
@@ -125,13 +125,14 @@ export const decideNote = (
     choice === 'later'
       ? { ...found, laterUntil: nextMorning(now) }
       : { ...found, state: choice === 'start' ? 'started' : 'dismissed', laterUntil: '', decidedAt: nowISO(now) };
-  return { outcome: 'decided', ledger: { notes: ledger.notes.map((item) => (item.id === id ? note : item)) }, item: note };
+  return { outcome: 'decided', ledger: { ...ledger, notes: ledger.notes.map((item) => (item.id === id ? note : item)) }, item: note };
 };
 
 /**
  * Puts a started note back, when its session couldn't open.
  */
 export const reopenNote = (ledger: NoteLedger, id: string): NoteLedger => ({
+  ...ledger,
   notes: ledger.notes.map((note) => (note.id === id ? { ...note, state: 'waiting', decidedAt: '' } : note))
 });
 
@@ -175,18 +176,25 @@ export const pickLens = <Key extends string>(record: Record<string, LensStats>, 
   return first ?? keys[0];
 };
 
+const later = (a: string, b: string): string => (isoMs(b) > isoMs(a) ? b : a);
+
 /**
- * Each lens's record: when it last produced a note, and how its notes were received.
+ * Each lens's record: when it last ran or produced a note, and how its notes were received.
  */
 export const lensRecord = (ledger: NoteLedger): Record<string, LensStats> =>
   Object.fromEntries(
-    ledger.notes.reduce((record, note) => {
-      const current = record.get(note.lens) ?? NO_STATS;
-      return new Map(record).set(note.lens, {
-        lastAt: isoMs(note.at) > isoMs(current.lastAt) ? note.at : current.lastAt,
-        notes: current.notes + 1,
-        started: current.started + Number(note.state === 'started'),
-        dismissed: current.dismissed + Number(note.state === 'dismissed')
-      });
-    }, new Map<string, LensStats>())
+    ledger.notes.reduce(
+      (record, note) => {
+        const current = record.get(note.lens) ?? NO_STATS;
+        return new Map(record).set(note.lens, {
+          lastAt: later(current.lastAt, note.at),
+          notes: current.notes + 1,
+          started: current.started + Number(note.state === 'started'),
+          dismissed: current.dismissed + Number(note.state === 'dismissed')
+        });
+      },
+      new Map<string, LensStats>(
+        Object.entries(ledger.ranAt ?? {}).map(([lens, at]) => [lens, { ...NO_STATS, lastAt: at }])
+      )
+    )
   );
