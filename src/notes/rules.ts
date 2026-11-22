@@ -151,12 +151,29 @@ export const notePrompt = (note: Note): string =>
     'Work on this next step with me. Drafts only: never send, post, pay, merge or delete anything. Start by saying what you would do first, then stop for my go.'
   ].join('\n');
 
-interface LensStats {
+export interface LensStats {
   lastAt: string;
   notes: number;
   started: number;
   dismissed: number;
 }
+
+const NO_STATS: LensStats = { lastAt: '', notes: 0, started: 0, dismissed: 0 };
+
+const mostlyDismissed = (stats: LensStats): boolean => stats.dismissed >= 2 && stats.dismissed > stats.started;
+
+/**
+ * The lens to run: the one that produced a note least recently, past those whose notes were mostly dismissed (unless
+ * all were), the one whose notes were started more on a tie.
+ */
+export const pickLens = <Key extends string>(record: Record<string, LensStats>, keys: readonly [Key, ...Key[]]): Key => {
+  const stats = (key: Key): LensStats => record[key] ?? NO_STATS;
+  const kept = keys.filter((key) => !mostlyDismissed(stats(key)));
+  const [first] = (kept.length ? kept : keys).toSorted(
+    (a, b) => isoMs(stats(a).lastAt) - isoMs(stats(b).lastAt) || stats(b).started - stats(a).started
+  );
+  return first ?? keys[0];
+};
 
 /**
  * Each lens's record: when it last produced a note, and how its notes were received.

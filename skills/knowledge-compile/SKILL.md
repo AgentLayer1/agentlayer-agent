@@ -49,6 +49,7 @@ Do **not** invent gaps to hit a quota. Most runs surface 0–3. This is a judgme
 ## Boundaries
 
 - **Do not modify the raw source file.** The session log, feedback log, or inbox item under `raw/` is the input; never edit it. Compilation produces *new or updated wiki articles* and (for inbox items) archives the source via `compile_write`.
+- **Never write `knowledge/public.md`.** It is the operator's list of what may leave the machine in a web search, and only they add to it.
 - **One itemId at a time.** Sessions may chunk: `meta.totalChunks > 1` means multiple `compile_next` calls for the same file. The prompt already contains only the current chunk's content — synthesize only what's in this chunk.
 - **Idempotency is enforced by hash.** If the source hasn't changed since the last successful compile, `compile_next` won't return it again.
 

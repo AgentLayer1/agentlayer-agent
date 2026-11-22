@@ -324,6 +324,10 @@ export const FILES = {
   get FEEDBACK() {
     return resolve(FOLDERS.USER_RAW, 'feedback.md');
   },
+  /** What the operator lets leave the machine in a web search: the scout's only facts (notes/brief.ts). */
+  get PUBLIC() {
+    return resolve(FOLDERS.KNOWLEDGE, 'public.md');
+  },
   /** This agent's own Claude subscription, passed by the `agent` shell launcher as `--settings`. */
   get CLAUDE_SUBSCRIPTION() {
     return claudeSubscriptionOf(homeRoot());
