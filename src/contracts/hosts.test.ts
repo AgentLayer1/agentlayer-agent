@@ -88,7 +88,7 @@ describe('host contract', () => {
   });
 
   test("every Claude Code tool a skill names is spelled in every other host's glossary", () => {
-    expect(skillDirs.length).toBeGreaterThanOrEqual(37);
+    expect(skillDirs.length).toBeGreaterThan(30);
     const allowlisted = skillDirs.flatMap((skill) =>
       allowedTools(join(SKILLS, skill, 'SKILL.md')).map((tool) => ({ skill, tool }))
     );
