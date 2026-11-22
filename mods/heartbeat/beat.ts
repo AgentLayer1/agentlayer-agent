@@ -244,9 +244,17 @@ export const parseBrief = (stdout: string): NotesBrief | null => {
 };
 
 /**
- * The tools the web scout may run, `agents/scout.md`'s `tools:` exactly: it reads the web and sends notes.
+ * The tools the web scout may run: it reads the web and sends notes, nothing else.
  */
 export const scoutTools = (plugin: string): string[] => ['WebSearch', 'WebFetch', `mcp__plugin_${plugin}_agent__note_add`];
+
+const EMAIL = /[^\s@"]+@[^\s@"]+\.[a-z]{2,}/i;
+
+/**
+ * Whether a call's input carries an email address. The scout's searches and fetches never need one, and the account's
+ * email is the one private fact the engine may still put in an agent's context.
+ */
+export const carriesEmail = (input: unknown): boolean => EMAIL.test(JSON.stringify(input) ?? '');
 
 /**
  * Every tool but those a home-lens notes run reads the home with, the plugin's own MCP tools among them; Bash is

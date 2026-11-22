@@ -1,5 +1,6 @@
 import { FILES, TIMEZONE } from '@/config';
 import { existsSync, readFileSync } from 'node:fs';
+import { redactSecrets } from '@/knowledge/utils';
 import { countOf } from '@/shared/utils';
 import type { NoteLedger } from './ledger';
 import type { WebLens } from './lenses';
@@ -38,6 +39,9 @@ const siteRefusal = (text: string): string => {
 const refusal = (text: string, heading: Heading): string => {
   if (text.length > MAX_LENGTH) {
     return 'longer than one fact';
+  }
+  if (redactSecrets(text) !== text) {
+    return 'a secret or key, by the same check that keeps them out of session logs';
   }
   if (EMAIL.test(text)) {
     return 'an email address';

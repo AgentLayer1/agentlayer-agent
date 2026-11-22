@@ -6,6 +6,7 @@ import { cliArgv, cliError, errorText } from '../shared/cli';
 import { TURN_REASONS } from '../shared/turns';
 import { clip } from '../tasks/task';
 import type { HeartbeatEvent, Queue } from '../types';
+import { scoutAgent } from './scout';
 import {
   MINUTE_MS,
   REFRESH_RETRY_MS,
@@ -29,6 +30,7 @@ import {
   BEYOND_HOME_LENS,
   isNotesList,
   scoutTools,
+  carriesEmail,
   parseBrief,
   parseDecision,
   type Decision,
@@ -46,6 +48,7 @@ const SCOUT_TIMEOUT_MS = 20 * MINUTE_MS;
 const HOME_LENS_ONLY =
   "The heartbeat's notes run reads the home, so nothing it runs reaches past the machine; the web scout searches the web.";
 const SCOUT_ONLY = 'The scout runs WebSearch, WebFetch and note_add only.';
+const NO_EMAIL = "The scout's searches and fetches never carry an email address.";
 const SCOUT_REPORT_KEPT = "The scout's notes are in the notes list; its report stays out of this conversation.";
 const SCOUT_DESCRIPTION = 'Scout the web for notes';
 
@@ -446,6 +449,8 @@ async function firstLook($: EngineInterface, status: Bound | null): Promise<stri
 export const registerHeartbeat = (on: On): void => {
   on('session.start', { isInteractive: true }, async ($, e, next) => {
     await Promise.all(HEARTBEAT_FEATURE.commands.map((command) => $.command.register(command)));
+    // A scout that couldn't be registered fails to spawn, and the band says so; nothing else depends on it.
+    await $.agent.register(scoutAgent($.plugin.name)).catch(() => undefined);
     $.clock.after(0, () => void arm($));
     return next(e);
   });
@@ -510,7 +515,10 @@ export const registerHeartbeat = (on: On): void => {
     if (e.agentId === undefined || !isScoutLoop(await read($, beat), e.agentId)) {
       return next(e);
     }
-    return scoutTools($.plugin.name).includes(String(e.tool)) ? { decision: 'allow' } : { decision: 'deny', reason: SCOUT_ONLY };
+    if (!scoutTools($.plugin.name).includes(String(e.tool))) {
+      return { decision: 'deny', reason: SCOUT_ONLY };
+    }
+    return carriesEmail(e.input) ? { decision: 'deny', reason: NO_EMAIL } : { decision: 'allow' };
   }).catch(($, e, next) => next(e));
 
   // While a home lens runs, this conversation holds the home's files and text from tickets and reviews together.

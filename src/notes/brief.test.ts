@@ -26,6 +26,7 @@ const PUBLIC = [
   '- Acme Widgets 2.0 is the current release',
   '- Registration No. 202601021416',
   '- Write to ada@acme.example',
+  '- Our key is pplx-abcdefghijklmnopqrstuvwx',
   '## Place',
   '- Springfield 63000',
   '- Springfield, Freedonia',
@@ -71,6 +72,7 @@ test('the public file keeps only what may leave the machine: no email, long numb
     'https://user:pw@acme.example',
     'Registration No. 202601021416',
     'Write to ada@acme.example',
+    'Our key is pplx-abcdefghijklmnopqrstuvwx',
     'Springfield 63000'
   ]);
 });

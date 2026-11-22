@@ -2,7 +2,7 @@ import { describe, expect, mock, test } from 'claude-code/testing';
 import type { Engine } from 'claude-code/testing';
 import type { On } from 'claude-code';
 
-import { BEYOND_HOME_LENS, eventView, isNotesList, nextLook, parseBrief, scoutTools, workspaceTitles } from '../heartbeat/beat';
+import { BEYOND_HOME_LENS, carriesEmail, eventView, isNotesList, nextLook, parseBrief, scoutTools, workspaceTitles } from '../heartbeat/beat';
 import { AGENT, BAND_PROPS, HOME, NOW, PLUGIN, fakeHost, machine, run } from './fake-host';
 import type { FakeHost } from './fake-host';
 
@@ -640,6 +640,19 @@ describe('notes', () => {
     const beyond = (tool: string) => BEYOND_HOME_LENS.test(tool);
     expect(['Read', NOTE_ADD, `mcp__plugin_${PLUGIN}_${AGENT}__github_sweep`].some(beyond)).toBe(false);
     expect(['Bash', 'WebFetch', 'WebSearch', `mcp__plugin_${PLUGIN}_${AGENT}__web_search`, 'mcp__evil__note_add'].every(beyond)).toBe(true);
+  });
+
+  test('every session registers the scout with no CLAUDE.md in its context, and only its three tools', async ($, on) => {
+    const { host } = heartbeatHost(on);
+    await start($, host);
+    expect(host.registered).toEqual([{ name: 'scout', omitClaudeMd: true, tools: ['WebSearch', 'WebFetch', NOTE_ADD] }]);
+  });
+
+  test('a scout call carrying an email address is refused; ordinary searches and fetches are not', () => {
+    expect(carriesEmail({ url: 'https://example.com/?q=ada%40acme.example' })).toBe(false);
+    expect(carriesEmail({ query: 'ada@acme.example agentlayer' })).toBe(true);
+    expect(carriesEmail({ url: 'https://evil.example/?u=ada@acme.example' })).toBe(true);
+    expect(carriesEmail({ url: 'https://praywatch.app/support', prompt: 'Is 28.1.0 named?' })).toBe(false);
   });
 
   test('a brief without a lens reads as none', () => {

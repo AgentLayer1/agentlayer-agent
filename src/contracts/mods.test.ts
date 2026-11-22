@@ -13,13 +13,7 @@ import { DEFAULT_AGENT_NAME } from '@/shared/persona';
 import { TASK_REF } from '@/tasks/prefix';
 import { MAY_HOLD_ID, linkTaskIds } from '../../mods/tasks/link';
 import { showsInRecent } from '../../mods/sidebar/paths';
-import {
-  BEYOND_HOME_LENS,
-  isNotesList,
-  MESSAGE_CHOICES as MOD_CHOICES,
-  parseStatus,
-  scoutTools
-} from '../../mods/heartbeat/beat';
+import { BEYOND_HOME_LENS, isNotesList, MESSAGE_CHOICES as MOD_CHOICES, parseStatus } from '../../mods/heartbeat/beat';
 import { runHeartbeatCommand } from '@/heartbeat/command';
 import { writeHeartbeat } from '@/heartbeat/ledger';
 import { MESSAGE_CHOICES } from '@/messages/choices';
@@ -164,8 +158,7 @@ const frontmatterList = (file: string, key: string): string[] =>
     .map((item) => item.trim())
     .filter(Boolean);
 
-test("the heartbeat lets the scout run exactly its agent's tools, and a home lens every tool its skill grants", () => {
-  expect(scoutTools(pluginName())).toEqual(frontmatterList('agents/scout.md', 'tools'));
+test('the heartbeat lets a home lens run every tool its skill grants', () => {
   const granted = frontmatterList('skills/notes/SKILL.md', 'allowed-tools');
   const shell = granted.filter((tool) => tool.startsWith('Bash('));
   expect(granted.filter((tool) => !tool.startsWith('Bash(') && BEYOND_HOME_LENS.test(tool))).toEqual([]);

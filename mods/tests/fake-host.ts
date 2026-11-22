@@ -87,6 +87,8 @@ export interface FakeMachine {
   agents: AgentInfo[];
   /** What each spawn was given: its description and its prompt. */
   spawned: { description: string; prompt: string }[];
+  /** The agent types the plugin registered, by name, with whether each leaves CLAUDE.md out and its tools. */
+  registered: { name: string; omitClaudeMd?: true; tools?: readonly string[] }[];
   /** What `$.session.id()` answers; a test changes it to stand for another conversation. */
   sessionId: string;
   /** What `ping` says about the folder: false outside an agent home. */
@@ -129,6 +131,7 @@ export const machine = (overrides: Partial<FakeMachine> = {}): FakeMachine => ({
   root: HOME,
   agents: [],
   spawned: [],
+  registered: [],
   sessionId: 'session-1',
   isHome: true,
   shellWrites: {},
@@ -343,6 +346,10 @@ export const fakeHost = (on: On, host: FakeMachine = machine()): FakeHost => {
     return { model: 'fake', agentId: e.description };
   });
   on('agent.list', () => ({ value: host.agents }));
+  on('agent.register', (_$, e) => {
+    host.registered.push({ name: e.name, omitClaudeMd: e.omitClaudeMd, tools: e.tools });
+    return { value: { agent: `${PLUGIN}:${e.name}` } };
+  });
   on('agent.offer', () => ({ isOffered: true }));
   on('agent.report', (_$, e) => ({ text: e.text }));
   on('turn.complete', () => ({ text: '', reason: 'answer' as const }));
