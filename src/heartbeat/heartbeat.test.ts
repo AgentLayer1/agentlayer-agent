@@ -91,7 +91,19 @@ test('the status a tick reads holds the heartbeat, the brain, and the room for p
     ]);
     expect(Object.keys(status.proposals).toSorted()).toEqual(['room', 'showing', 'target']);
     expect(Object.keys(status.notes).toSorted()).toEqual(['cap', 'room', 'scout', 'today']);
-    expect(status.notes.scout, 'on unless the home switches it off').toBe(true);
+    expect(status.notes.scout, 'off until the home turns it on').toBe(false);
+    const before = process.env.AGENT_NOTES_SCOUT;
+    process.env.AGENT_NOTES_SCOUT = 'on';
+    try {
+      const turnedOn = JSON.parse(quietly(() => runHeartbeatCommand('status', ['--json'])).lines[0] ?? '');
+      expect(turnedOn.notes.scout).toBe(true);
+    } finally {
+      if (before === undefined) {
+        delete process.env.AGENT_NOTES_SCOUT;
+      } else {
+        process.env.AGENT_NOTES_SCOUT = before;
+      }
+    }
   } finally {
     rmSync(FILES.HEARTBEAT, { force: true });
   }

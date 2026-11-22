@@ -114,7 +114,7 @@ export const parseStatus = (stdout: string): HeartbeatStatus | null => {
       refreshedAt: text(data.refreshedAt),
       refreshDue: data.refreshDue === true,
       proposals: { target, showing },
-      notes: { room: typeof notes.room === 'number' ? notes.room : 0, scout: notes.scout !== false }
+      notes: { room: typeof notes.room === 'number' ? notes.room : 0, scout: notes.scout === true }
     };
   } catch {
     return null;

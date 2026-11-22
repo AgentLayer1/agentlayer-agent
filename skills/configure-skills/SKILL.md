@@ -1,7 +1,7 @@
 ---
 name: configure-skills
-description: Configure the agent's optional skill packs (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, Slack, cmux) or author a brand-new custom skill. The pack skills ship with the plugin and auto-load — this skill just wires up API keys, MCP server registrations, database connections, coding rules, and tool permissions. Custom-authored skills land in `<HOME>/.claude/skills/<name>/`. Invoked at the end of /agentlayer:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
-allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), Bash(cp *), Bash(ls *), Bash(rm *), Bash(rmdir *), Bash(bunx skills *), Bash(test *), Bash(head *), Bash(command -v *), Bash(bun -e *), Bash(sw_vers *), Bash(xcode-select -p), Bash(xcodebuild -version), Bash(xcrun -f *), Bash(xcrun mcp-server status)
+description: Configure the agent's optional skill packs (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, Slack, cmux, Notes) or author a brand-new custom skill. The pack skills ship with the plugin and auto-load — this skill just wires up API keys, MCP server registrations, database connections, coding rules, and tool permissions. Custom-authored skills land in `<HOME>/.claude/skills/<name>/`. Invoked at the end of /agentlayer:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
+allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), Bash(cp *), Bash(ls *), Bash(rm *), Bash(rmdir *), Bash(bunx skills *), Bash(test *), Bash(head *), Bash(command -v *), Bash(bun -e *), Bash(sw_vers *), Bash(xcode-select -p), Bash(xcodebuild -version), Bash(xcrun -f *), Bash(xcrun mcp-server status), Bash(bun *src/cli.ts notes brief*)
 ---
 
 # Configure Skills
@@ -54,7 +54,7 @@ The data dir is the marker; it is the same one the resolver and every runtime gu
 `AskUserQuestion`:
 
 > **What would you like to do?**
-> - Configure a skill pack (SEO / Browser / Database / GitHub / API / Xcode / Helpdesk / App Store / Slack / cmux — Xcode and cmux on macOS only)
+> - Configure a skill pack (SEO / Browser / Database / GitHub / API / Xcode / Helpdesk / App Store / Slack / cmux / Notes — Xcode and cmux on macOS only)
 > - Register an external remote MCP server (hardened wrapper → `<HOME>/.mcp.json`)
 > - Install third-party skill libraries (via skills.sh)
 > - Deconfigure a skill pack
@@ -74,6 +74,7 @@ Branch into the matching section below. For authoring brand-new custom skills (n
 > - ☐ Browser **(recommended)** — Playwright tool permissions + optional Perplexity search (briefings fall back to the built-in web search without it)
 > - ☐ SEO — the `seo` skill (audit, Search Console, PageSpeed, SERP, rank) and `wordpress-rest` (already loaded; this walks API key + permission setup)
 > - ☐ Third-party libraries — clone separately-authored skill libraries (e.g. SEO/GEO from `aaron-he-zhu`, marketing playbooks from `coreyhaines31`) into `<HOME>/.claude/skills/`. Apache-2.0 licensed.
+> - ☐ Notes — the heartbeat sends up to three checked findings a day, after you approve the public facts its web scout may search with. No key.
 >
 > **Code — which to configure?** (header `Code`)
 > - ☐ GitHub — PR, issue + GitHub Actions access (`github_pr_*` / `github_issue_*` / `github_run_*`), plus the writes your token allows (issues, a PR's title and description), so the agent can review PRs, walk their own, and brief a second model on them or on any branch (the `engineer` skill's PR playbooks and the `adversarial-review` skill) and diagnose failing CI builds
@@ -91,7 +92,7 @@ Option descriptions are shortened to fit the picker; keep the pack's name as the
 
 **Never offer the Xcode tick on Windows, WSL2 or Linux.** Render it only when `$AGENT_PLATFORM` = `macos` (or `[ "$(uname -s)" = "Darwin" ]`); on every other host drop the row entirely rather than showing a pack that can only fail. The A.2f preflight is a second wall, but a Windows operator should never see the option in the first place. **The cmux tick follows the same rule**, and also needs the app: render it only on macOS with `/Applications/cmux.app` present.
 
-If nothing is ticked across the three questions, cancel and return to Step 1. Otherwise run the matching sub-section(s) below in order: SEO (A.2a) → Browser (A.2b) → Database (A.2c) → GitHub (A.2d) → API (A.2e) → Xcode (A.2f) → Helpdesk (A.2g) → App Store (A.2h) → Slack (A.2i) → cmux (A.2j) → Third-party (Section F).
+If nothing is ticked across the three questions, cancel and return to Step 1. Otherwise run the matching sub-section(s) below in order: SEO (A.2a) → Browser (A.2b) → Database (A.2c) → GitHub (A.2d) → API (A.2e) → Xcode (A.2f) → Helpdesk (A.2g) → App Store (A.2h) → Slack (A.2i) → cmux (A.2j) → Notes (A.2k) → Third-party (Section F).
 
 ### A.2a — SEO pack walk
 
@@ -791,6 +792,44 @@ Refresh by hand:   bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar refresh -
 
 Agents show in the order they joined. When the operator wants another order, hand them `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar order <first> <second> …` (agent names, any case) to run in their own terminal; the agents it names go first, the rest keep their order, and the order holds through every home's refresh.
 
+### A.2k — Notes walk
+
+Turns on the heartbeat's scouting: after each brain refresh it sends at most three short notes a day, each a finding it checked with one next step. A home lens (the brain against itself, what waits on the operator) reads the home and reaches no web. A web lens runs in a separate scout that sees only `knowledge/public.md`: the operator's list of what may go into a web search. Scouting stays off until the operator approves that list, so this walk writes it first and turns scouting on last. No keys, no permissions.
+
+**(1) Read what's there.** If `<HOME>/knowledge/public.md` exists, show it as it is and ask whether to keep it or redraft it; keeping it goes to (4).
+
+**(2) Draft it from the home.** Read the project READMEs (`projects/*/README.md`), the user profile (`knowledge/user/profile.md`, its `## Signal Topics` and location) and the manual's confidentiality rules (`AGENTS.md`, `SOUL.md`). Write bullets under five headings, nothing else:
+
+- `## Names`: companies, products and apps that have a public website.
+- `## Sites`: those websites, each one plain `https://` link with no query (the READMEs' **Website:** and domain lines; the operator's public profile or portfolio site when they keep one).
+- `## Facts`: at most five short facts that are public and true now (a product's current release and where it ships). Never a plan, a date not yet reached, or a former name.
+- `## Topics`: the signal topics, each one short line.
+- `## Place`: the city and country.
+
+Leave out everything that isn't already public: people's names (family, colleagues, clients), customers, an employer or client the manual keeps confidential and any topic about one, emails, phone numbers, registration and ID numbers, addresses, amounts and prices, internal ids, private repositories, and anything not yet released. When unsure, leave it out and say so. Show the draft as a fenced block with a line per item left out and why.
+
+**(3) The operator approves it.** `AskUserQuestion`: **Write this list?** — Write it / Change it / Cancel. On Change, take their edits and show the result again. Nothing is written before a Write. Then write `<HOME>/knowledge/public.md` with `title`, `created` and `updated` frontmatter, a one-line note that every bullet may go into a web search and that the compile never writes the file, and the five headings. Add it to `knowledge/index.md` under `## User` if it isn't there.
+
+**(4) Check what the code keeps.**
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes brief
+```
+
+The code refuses a bullet with an email address, a long number or a link that isn't plain https, and names each one on a "Left out of the public brief" line. Relay any, and fix them with the operator before going on.
+
+**(5) Turn scouting on.** Set `AGENT_NOTES_SCOUT` to `on` in `$SETTINGS_FILE`'s `env` (§D.2). The heartbeat reads it at its next tick; no restart. Turned on with no `public.md`, scouting runs the home lenses only.
+
+**(6) Summary:**
+
+```
+✅ Notes activated.
+
+Public brief:  knowledge/public.md (N names, N sites, N facts, N topics)
+Scouting:      AGENT_NOTES_SCOUT=on in .claude/settings.local.json
+Runs:          after each brain refresh in the heartbeat (/heartbeat), at most 3 notes a day
+```
+
 ## Section B — Register an external remote MCP server
 
 For third-party **remote** MCP servers (an `https://…` endpoint authenticated by a bearer token) that aren't part of a first-party pack — e.g. a log platform's hosted MCP. The entry lands in `$MCP_FILE`, the token in `$SECRETS_ENV`, always via the hardened wrapper below. Never register a remote server bare or hand-roll a wrapper.
@@ -927,6 +966,7 @@ Print per library: install status + symlink path + upstream LICENSE first-line. 
 > **Search and web — which to remove?** (header `Web`)
 > - SEO (clears API keys + permissions; skill files stay loaded but tool calls will error)
 > - Browser (removes the Perplexity API key from `.state/secrets/.env`; the MCP server stays plugin-bundled; briefings fall back to the built-in web search. Playwright tools stay since they're built-in)
+> - Notes (turns the heartbeat's scouting off; `knowledge/public.md` stays unless you say)
 >
 > **Code — which to remove?** (header `Code`)
 > - GitHub (revokes the `github_*` tool permissions; optionally removes the `GITHUB_TOKEN*` lines)
@@ -979,6 +1019,10 @@ Run C.2 for each ticked pack; nothing ticked returns to Step 1.
 - Revoke the seven `slack_*` tool grants (`slack_whoami`, `slack_channels`, `slack_history`, `slack_batch_history`, `slack_thread`, `slack_search`, `slack_waiting`), `WebFetch(domain:slack.com)` and `Skill(agentlayer:slack)` from `permissions.allow` (§E remove helper).
 - `AskUserQuestion`: "Delete your local Slack token at `<HOME>/.state/secrets/slack/slack-tokens.json`?" (Yes/No). The file is deny-gated, so on yes hand the operator `rm -f <HOME_DIR>/.state/secrets/slack/slack-tokens.json` to run themselves. Tokens are per account, so teammates are unaffected. To revoke on Slack's side too: the workspace's **Authorized apps** settings → the app → **Revoke**.
 - `AGENT_SLACK_CLIENT_ID` and `knowledge/concepts/slack-channels.md` stay: the first is public and shared by the workspace, the second is the operator's.
+
+**Notes deconfigure:**
+- Remove `AGENT_NOTES_SCOUT` from `$SETTINGS_FILE`'s `env` (§D.2); scouting stops at the heartbeat's next tick. Notes already sent stay in the list.
+- `AskUserQuestion`: "Also delete `knowledge/public.md`?" (Yes/No). Default to keeping it: it holds nothing private, and turning scouting on again reuses it.
 
 **cmux deconfigure:**
 - Hand the operator `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar remove --home="<HOME_DIR>"` to run in their own terminal (the sandbox can't write `~/.config/cmux/`). Other homes stay in the sidebar; when this was the last one the file is deleted, and `cmux right-sidebar set files` picks another right sidebar.

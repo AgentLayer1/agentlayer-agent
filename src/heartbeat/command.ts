@@ -44,7 +44,8 @@ const status = (args: readonly string[]): number => {
       cap: DAILY_CAP,
       today: notesOn(notes, now).length,
       room: notesProblem() ? 0 : roomToday(notes, now),
-      scout: env('AGENT_NOTES_SCOUT') !== 'off'
+      // Off until the operator approves the public brief, which turns it on (configure-skills' notes walk).
+      scout: env('AGENT_NOTES_SCOUT') === 'on'
     }
   };
   if (args.includes('--json')) {

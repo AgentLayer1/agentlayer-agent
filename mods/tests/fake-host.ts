@@ -64,7 +64,7 @@ export interface FakeMachine {
   };
   /** The notes room the status reports; unset, there is none and no scouting runs. */
   notesRoom?: number;
-  /** False when the home switched scouting off (`AGENT_NOTES_SCOUT=off`). */
+  /** False when the home hasn't turned scouting on (`AGENT_NOTES_SCOUT=on`); unset here, it is on. */
   notesScout?: boolean;
   /** What `notes brief --json` answers; unset, the brain lens, which runs in the heartbeat. */
   notesBrief?: { lens: string; web: boolean; prompt: string };

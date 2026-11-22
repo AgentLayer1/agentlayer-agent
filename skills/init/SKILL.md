@@ -1684,7 +1684,7 @@ The scaffold is done. Before showing the final confirmation, offer to wire up AP
 > **Activate skill packs now?**
 > Each pack already ships loaded with the plugin. Activating a pack grants its MCP tool permissions in `settings.json` (so calls don't re-prompt), plants the non-secret `GSC_SITE_URL` placeholder in `settings.local.json`, and ensures `.state/secrets/.env` exists for the secret keys you'll add via your editor. Skip entirely if you want to come back later via `/agentlayer:configure-skills`.
 >
-> `AskUserQuestion` takes at most four options per question, so ask the packs as **three multi-select questions in one call**: **Search and web** (header `Web`: Browser, SEO, Third-party libraries), **Code** (header `Code`: GitHub, Database, Xcode) and **Support and workspace** (header `Support`: Helpdesk, App Store, Slack, cmux). **Every pack is its own option**: never merge two packs into one option to fit the limit.
+> `AskUserQuestion` takes at most four options per question, so ask the packs as **three multi-select questions in one call**: **Search and web** (header `Web`: Browser, SEO, Notes, Third-party libraries), **Code** (header `Code`: GitHub, Database, Xcode) and **Support and workspace** (header `Support`: Helpdesk, App Store, Slack, cmux). **Every pack is its own option**: never merge two packs into one option to fit the limit.
 >
 > - ☑ Browser pack **(recommended)** (browser screenshot/pdf/record + browser-flows + optional Perplexity search)
 > - ☐ SEO pack (the seo skill: audit · Search Console · PageSpeed · SERP · rank; plus wordpress-rest)
@@ -1695,6 +1695,7 @@ The scaffold is done. Before showing the final confirmation, offer to wire up AP
 > - ☐ App Store pack (read any app's App Store reviews; no key, read-only, never replies)
 > - ☐ Slack pack (read-only Slack through your own account: pulses, the replies you owe, external threads waiting; needs a Slack app in your workspace, which the walk helps create, and a one-time sign-in from your terminal)
 > - ☐ cmux pack (the AgentLayer sidebar in cmux's right panel: every agent session on the Mac sorted by what needs you, and this agent's tasks and projects with its dashboard and roadmap a tap away; cmux 0.65.2+, no key)
+> - ☐ Notes (the heartbeat sends up to three checked findings a day; the walk drafts the public facts its web scout may search with, and scouting stays off until you approve them; no key)
 > - ☐ Third-party libraries (aaron-he-zhu SEO/GEO skills, coreyhaines31 marketing playbooks, others)
 
 Default-select **Browser** (recommended — Playwright's capture tools work immediately with no key, and Perplexity is optional: briefings use the built-in web search until a key is added). Leave the others unticked; the user ticks any they want.
@@ -1706,7 +1707,7 @@ Default-select **Browser** (recommended — Playwright's capture tools work imme
 **Also default-tick GitHub when Step 4b captured a real code path.** `github_fast_forward` is what keeps those checkouts current during `/agentlayer:sync`, and it needs a GitHub token; without the pack it returns `NOT_CONFIGURED` and the operator's code silently never refreshes — the one failure mode that degrades *answers* rather than surfacing an error, since the agent keeps grounding confidently against a frozen checkout. An operator who just told init where their code lives has effectively asked for this. Leave it unticked when Step 4b returned `skip` (no checkout, nothing to fast-forward — the common case for an agent home). Either way it stays a tick the operator can clear.
 
 Behavior on the response:
-- **Each ticked option**: run the matching configure-skills section in order — SEO (A.2a) → Browser (A.2b) → Database (A.2c) → GitHub (A.2d) → Xcode (A.2f) → Helpdesk (A.2g) → App Store (A.2h) → Slack (A.2i) → cmux (A.2j) → Third-party (F). The walks **never prompt for API key values or connection strings in chat** — they add MCP grants to `settings.json`, plant the `GSC_SITE_URL` placeholder, and ensure `.state/secrets/.env` exists. The user adds the secret lines + values via their editor after relaunch.
+- **Each ticked option**: run the matching configure-skills section in order — SEO (A.2a) → Browser (A.2b) → Database (A.2c) → GitHub (A.2d) → Xcode (A.2f) → Helpdesk (A.2g) → App Store (A.2h) → Slack (A.2i) → cmux (A.2j) → Notes (A.2k) → Third-party (F). The walks **never prompt for API key values or connection strings in chat** — they add MCP grants to `settings.json`, plant the `GSC_SITE_URL` placeholder, and ensure `.state/secrets/.env` exists. The user adds the secret lines + values via their editor after relaunch.
 - **Nothing ticked**: skip — note "skill packs not activated — run `/agentlayer:configure-skills` after relaunch" for Step 9's status block. Don't touch settings files.
 
 For each picked option: **delegate to configure-skills** — open `${CLAUDE_PLUGIN_ROOT}/skills/configure-skills/SKILL.md` and follow the matching section. Honor every per-skill skip option inside that flow; don't force the user through items they don't want.
