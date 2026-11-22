@@ -48,7 +48,7 @@ const CLAUDE_ONLY_TOOLS = [
   'Workflow'
 ];
 const PORTABLE_TOOLS = ['Bash', 'Edit', 'Glob', 'Grep', 'Read', 'Write'];
-const EXAMPLE_TOOLS = ['foo'];
+const EXAMPLE_IDS = [{ file: join('skills', 'release', 'SKILL.md'), tool: 'foo' }];
 
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---/;
 
@@ -82,28 +82,32 @@ describe('host contract', () => {
 
   test("every Claude Code tool a skill names is spelled in every other host's glossary", () => {
     expect(skillDirs.length).toBeGreaterThanOrEqual(37);
-    const unclassified = skillDirs
-      .flatMap((skill) => allowedTools(join(SKILLS, skill, 'SKILL.md')).map((tool) => ({ skill, tool })))
-      .filter(
-        ({ tool }) => !tool.startsWith('mcp__') && !PORTABLE_TOOLS.includes(tool) && !CLAUDE_ONLY_TOOLS.includes(tool)
-      );
+    const allowlisted = skillDirs.flatMap((skill) =>
+      allowedTools(join(SKILLS, skill, 'SKILL.md')).map((tool) => ({ skill, tool }))
+    );
+    const unclassified = allowlisted.filter(
+      ({ tool }) => !tool.startsWith('mcp__') && !PORTABLE_TOOLS.includes(tool) && !CLAUDE_ONLY_TOOLS.includes(tool)
+    );
     expect(unclassified).toEqual([]);
 
     const named = CLAUDE_ONLY_TOOLS.filter((tool) => {
-      const mention = new RegExp(`\`${tool}[\`(]|allowed-tools:.*\\b${tool}\\b`);
-      return skillTexts.some(({ text }) => mention.test(text));
+      const mention = new RegExp(`\`${tool}[\`(]`);
+      return allowlisted.some((entry) => entry.tool === tool) || skillTexts.some(({ text }) => mention.test(text));
     });
     expect(named.length).toBeGreaterThanOrEqual(5);
     const spelled = Object.values(DIALECT).join('\n');
     expect(named.filter((tool) => !new RegExp(`\\b${tool}\\b`).test(spelled))).toEqual([]);
   });
 
+  test("every Claude Code variable a skill reads is spelled in every other host's glossary", () => {
+    const variables = [...new Set(skillTexts.flatMap(({ text }) => text.match(/\$\{CLAUDE_[A-Z_]+\}/g) ?? []))];
+    expect(variables.length).toBeGreaterThanOrEqual(2);
+    const spelled: readonly string[] = Object.values(DIALECT);
+    expect(variables.filter((variable) => !spelled.includes(variable))).toEqual([]);
+  });
+
   test('every agent tool a skill names by its Claude Code id is one the plugin registers', () => {
-    const known = new Set([
-      ...TOOLS.map((tool) => tool.name),
-      ...MOD_FEATURES.flatMap((feature) => feature.tools),
-      ...EXAMPLE_TOOLS
-    ]);
+    const known = new Set([...TOOLS.map((tool) => tool.name), ...MOD_FEATURES.flatMap((feature) => feature.tools)]);
     const ids = new RegExp(`${MCP_PREFIX}([A-Za-z0-9_*]+)`, 'g');
     const references = skillTexts.flatMap(({ file, text }) =>
       [...text.matchAll(ids)].map((match) => ({ file, tool: match[1] ?? '' }))
@@ -111,7 +115,9 @@ describe('host contract', () => {
     expect(references.length).toBeGreaterThan(100);
     const matches = (tool: string) =>
       tool.includes('*') ? [...known].some((name) => name.startsWith(tool.replace(/\*.*$/, ''))) : known.has(tool);
-    expect(references.filter(({ tool }) => !matches(tool))).toEqual([]);
+    const example = (ref: { file: string; tool: string }) =>
+      EXAMPLE_IDS.some(({ file, tool }) => file === ref.file && tool === ref.tool);
+    expect(references.filter((ref) => !matches(ref.tool) && !example(ref))).toEqual([]);
   });
 
   test('no skill calls a tool only a Claude Code mod provides', () => {
