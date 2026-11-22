@@ -81,6 +81,7 @@ describe('host contract', () => {
     const lists = [...help.matchAll(/\[--hook-protocol=([^\]]+)\]/g)].map((match) => match[1]);
     expect(lists.length).toBeGreaterThanOrEqual(2);
     expect(lists.filter((list) => list !== HOST_NAMES.join('|'))).toEqual([]);
+    expect(help.match(/Transcript-format adapter \(([^)]+)\)/)?.[1]).toBe(HOST_NAMES.join(', '));
   });
 
   test('every host name finds the adapter that carries it', () => {

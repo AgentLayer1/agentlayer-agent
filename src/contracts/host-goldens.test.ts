@@ -6,6 +6,13 @@ import { PLUGIN_VERSION } from '@/config';
 import { CLI_PATH, HOME_MARKER_FILES, PLUGIN_SOURCE_ROOT, RUNTIME_DIR, pluginName } from '@/shared/naming';
 import { listMarkdown } from '@/shared/text';
 
+// The fixtures are POSIX shell scripts, and the history line needs a system git it accepts (on macOS, with Command
+// Line Tools installed); elsewhere the goldens would pin the machine instead of the plugin.
+const POSIX_GIT =
+  process.platform !== 'win32' &&
+  Bun.which('git', { PATH: '/usr/bin:/bin' }) !== null &&
+  (process.platform !== 'darwin' || Bun.spawnSync(['xcode-select', '-p']).exitCode === 0);
+
 const SCRATCH = mkdtempSync(resolve(tmpdir(), 'host-goldens-'));
 const USER_HOME = resolve(SCRATCH, 'user');
 const FAKE_BIN = resolve(SCRATCH, 'bin');
@@ -20,6 +27,12 @@ mkdirSync(FAKE_BIN, { recursive: true });
   writeFileSync(path, `#!/bin/sh\necho "${version}"\n`);
   chmodSync(path, 0o755);
 });
+
+const LANE_FAILS = resolve(SCRATCH, 'lane-fails.ts');
+writeFileSync(
+  LANE_FAILS,
+  "Bun.plugin({ name: 'lane-fails', setup(build) { build.onLoad({ filter: /src\\/hooks\\/context\\.ts$/ }, () => ({ contents: 'export const assembleContext = async () => { throw new Error(\"lane down\"); };', loader: 'ts' })); } });\n"
+);
 
 afterAll(() => rmSync(SCRATCH, { recursive: true, force: true }));
 
@@ -84,9 +97,9 @@ interface Run {
 const cli = (
   home: string,
   args: string[],
-  { stdin = '', env = {} }: { stdin?: string; env?: Record<string, string> } = {}
+  { stdin = '', env = {}, preload = [] }: { stdin?: string; env?: Record<string, string>; preload?: string[] } = {}
 ): Run => {
-  const result = Bun.spawnSync(['bun', CLI_PATH, ...args], {
+  const result = Bun.spawnSync(['bun', ...preload.flatMap((file) => ['--preload', file]), CLI_PATH, ...args], {
     cwd: home,
     stdin: new TextEncoder().encode(stdin),
     env: {
@@ -149,7 +162,7 @@ const codexRollout = (home: string, turns: number): string => {
 
 const SESSION_ID = '0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6';
 
-describe('session start, per host and home state', () => {
+describe.skipIf(!POSIX_GIT)('session start, per host and home state', () => {
   const kinds: Kind[] = ['initialized', 'pre-init', 'stranded'];
 
   test.each(kinds)('Claude Code, %s home', (kind) => {
@@ -175,6 +188,20 @@ describe('session start, per host and home state', () => {
     expect(cli(home, ['session-start'])).toMatchSnapshot();
   });
 
+  test('a failed dynamic lane costs only the lane, on either host', () => {
+    const home = makeHome('initialized');
+    const preload = [LANE_FAILS];
+    const claude = cli(home, ['session-start', '--hook-protocol=claude'], {
+      env: { CLAUDE_PROJECT_DIR: home },
+      preload
+    });
+    const codex = cli(home, ['session-start', '--hook-protocol=codex', `--home=${home}`], { preload });
+    expect([claude.exit, codex.exit]).toEqual([0, 0]);
+    expect(claude.stdout).toContain('dynamic session context unavailable: lane down');
+    expect(codex.stdout).toContain('dynamic session context unavailable: lane down');
+    expect(codex.stdout).toContain('<!-- file: SOUL.md -->');
+  });
+
   test('an unknown protocol is refused', () => {
     const home = makeHome('initialized');
     const run = cli(home, ['session-start', '--hook-protocol=acme']);
@@ -183,7 +210,7 @@ describe('session start, per host and home state', () => {
   });
 });
 
-describe('the shell guard, per host', () => {
+describe.skipIf(!POSIX_GIT)('the shell guard, per host', () => {
   const payload = (command: string, cwd: string) => JSON.stringify({ tool_input: { command }, cwd });
   const cases = [
     ['an ordinary command', (home: string) => payload('ls -la', home)],
@@ -215,7 +242,7 @@ describe('the shell guard, per host', () => {
   });
 });
 
-describe('session capture, per host', () => {
+describe.skipIf(!POSIX_GIT)('session capture, per host', () => {
   const hookPayload = (transcript: string, cwd: string) =>
     JSON.stringify({ session_id: SESSION_ID, transcript_path: transcript, cwd });
 
@@ -253,6 +280,15 @@ describe('session capture, per host', () => {
     const home = makeHome('initialized');
     const run = cli(home, ['session-capture', '--mode=session-end', '--format=acme']);
     expect(run.exit).not.toBe(0);
+  });
+
+  test("a queued Claude Code capture is drained at Claude Code's session start", () => {
+    const home = makeHome('initialized');
+    const queued = { transcriptPath: claudeTranscript(home, 4), cwd: home, sessionId: SESSION_ID, mode: 'session-end' };
+    writeFileSync(resolve(home, RUNTIME_DIR, 'capture-pending.jsonl'), `${JSON.stringify(queued)}\n`);
+    const run = cli(home, ['session-start', '--hook-protocol=claude'], { env: { CLAUDE_PROJECT_DIR: home } });
+    expect(run.exit).toBe(0);
+    expect(dayFiles(home)).toMatchSnapshot();
   });
 
   test("a queued Codex capture keeps its format through the queue and is drained at Codex's session start", () => {

@@ -610,3 +610,23 @@ exports[`session capture, per host a queued Codex capture keeps its format throu
 
 "
 `;
+
+exports[`session capture, per host a queued Claude Code capture is drained at Claude Code's session start 1`] = `
+"--- <DATE>.md
+# Session Log: <DATE>
+
+### Session (<TIME>) [0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6] · <DATE> · <HOME> · turns 1–4 · claude
+
+**User:** claude turn 1
+
+**Assistant:** claude turn 2
+
+**User:** claude turn 3
+
+**Assistant:** claude turn 4
+
+
+---
+
+"
+`;

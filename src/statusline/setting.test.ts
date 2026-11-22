@@ -68,6 +68,7 @@ describe('statusLineDrift', () => {
     expect(drift).toContain(`/cache/${PLUGIN_NAME}/0.4.4/src/cli.ts`);
     expect(drift).toContain('/opt/plugin/src/cli.ts');
     expect(drift).toContain(`/${PLUGIN_NAME}:upgrade`);
+    expect(statusLineDrift(stale, CLI, (name) => `$${name}`)).toContain('run `$upgrade` to re-point it');
     expect(drift).toContain('.claude/settings.json');
   });
 

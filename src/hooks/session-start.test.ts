@@ -83,6 +83,15 @@ describe('sessionStart', () => {
     expect(result.additionalContext).toContain('is missing, so Claude Code loads neither');
   });
 
+  test("a missing bridge is reported in the session host's own skill syntax", async () => {
+    const result = await withHome(
+      (home) => markedHome(home, { 'AGENTS.md': '# AGENTS.md\n\n## Memory Routing\n' }),
+      () => sessionStart({ host: codexHost })
+    );
+    expect(result.additionalContext).toContain('run `$upgrade` to write the bridge');
+    expect(result.additionalContext).not.toContain(`${SKILL_PREFIX}upgrade`);
+  });
+
   test("a project's own root CLAUDE.md beside AGENTS.md is not a double load", async () => {
     const result = await withHome(
       (home) =>
