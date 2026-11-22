@@ -49,6 +49,7 @@ const HOME_LENS_ONLY =
   "The heartbeat's notes run reads the home, so nothing it runs reaches past the machine; the web scout searches the web.";
 const SCOUT_ONLY = 'The scout runs WebSearch, WebFetch and note_add only.';
 const NO_EMAIL = "The scout's searches and fetches never carry an email address.";
+const SCOUT_REFUSED = "Only the heartbeat starts the scout, on a brief its code writes; a prompt a model wrote could carry the home's private facts to the web.";
 const SCOUT_REPORT_KEPT = "The scout's notes are in the notes list; its report stays out of this conversation.";
 const SCOUT_DESCRIPTION = 'Scout the web for notes';
 
@@ -497,9 +498,14 @@ export const registerHeartbeat = (on: On): void => {
     return result;
   });
 
-  // No model can start the scout: a prompt a model wrote could carry what it read in the home out to the web.
+  // No model starts the scout. The heartbeat's own spawn never runs this plugin's hooks, so it alone gets past the refusal;
+  // hiding the type from the listing only saves a model the try.
+  on('agent.spawn', { subagentType: /:scout$/ }, async ($, e, next) =>
+    e.subagentType === scoutType($) ? { deny: SCOUT_REFUSED } : next(e)
+  ).catch(($, e, next) => (next.called ? next(e) : { deny: SCOUT_REFUSED }));
+
   on('agent.offer', { agent: /:scout$/ }, async ($, e, next) =>
-    e.provider.plugin === $.plugin.name ? { isOffered: false } : next(e)
+    e.agent === scoutType($) ? { isOffered: false } : next(e)
   ).catch(($, e, next) => (next.called ? next(e) : { isOffered: false }));
 
   // What the scout read on the web never reaches a conversation; its notes are in the list, and its line is the band's.

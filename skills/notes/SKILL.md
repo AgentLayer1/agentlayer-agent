@@ -17,7 +17,7 @@ The heartbeat picks the lens and hands it over as `lens: <key>`. Web lenses neve
 bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes list --json
 ```
 
-`room` is how many notes may still go out today; at 0, say "No room for notes today" and stop. `recent` lists the notes of the last two weeks (their `source` keys are taken until then). If session start listed `extensions/skills/notes.md`, read it now: the operator's own rules, which win where they disagree with this file.
+`room` is how many notes may still go out today; at 0, say "No room for notes today" and stop. `recent` lists the notes of the last two weeks (their `source` keys are taken until then). If session start listed `extensions/skills/notes.md`, read it now (with none listed the home has none: don't look for the folder): the operator's own rules, which win where they disagree with this file.
 
 ## 2. Look through the lens you were handed
 

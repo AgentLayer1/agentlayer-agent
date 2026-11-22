@@ -17,7 +17,7 @@ First, the tasks summary in `<HOME>/projects/TASKS.md`. When it holds only its p
 bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" proposals list
 ```
 
-It prints the five (or fewer) showing, with their ids, and the room left. A full list is not a reason to stop: every showing card is weighed again below. When this skill was run with `workspaces: ["A", "B", …]` (a JSON list), those are the titles of the cmux workspaces open now, across every agent on the machine; keep them for step 4. If session start listed `extensions/skills/proposals.md`, read it now: the operator's own rules for what to propose, and they win where they disagree with this file.
+It prints the five (or fewer) showing, with their ids, and the room left. A full list is not a reason to stop: every showing card is weighed again below. When this skill was run with `workspaces: ["A", "B", …]` (a JSON list), those are the titles of the cmux workspaces open now, across every agent on the machine; keep them for step 4. If session start listed `extensions/skills/proposals.md`, read it now (with none listed the home has none: don't look for the folder): the operator's own rules for what to propose, and they win where they disagree with this file.
 
 ## 2. Gather candidates
 

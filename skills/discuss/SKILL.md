@@ -18,7 +18,7 @@ The argument names one thing:
 
 If the argument is missing or names nothing, say what was asked for and what you found, and stop.
 
-If session start listed `extensions/skills/discuss.md`, read it now: the operator's own rules for these conversations.
+If session start listed `extensions/skills/discuss.md`, read it now (with none listed the home has none: don't look for the folder): the operator's own rules for these conversations.
 
 ## 2. Brief
 

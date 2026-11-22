@@ -618,15 +618,28 @@ describe('notes', () => {
     expect(host.spawned).toEqual([{ description: SCOUT_ID, prompt: BRIEF }]);
   });
 
-  test("the scout's report is kept out of every conversation, and no model is offered the scout", async ($, on) => {
+  test("the scout's report is kept out of every conversation, and no model is offered or can start the scout", async ($, on) => {
     await webWake($, on);
-    const provider = { plugin: PLUGIN, tier: 'builtin' as const };
+    // A registered type's provider isn't this plugin's name, so nothing here may hang on it.
+    const provider = { plugin: 'engine', tier: 'core' as const };
     const report = { agentId: SCOUT_ID, subagentType: SCOUT_TYPE, provider, status: 'completed' as const, text: 'Page text.' };
     expect(await $.agent.report(report)).toEqual({ consumed: expect.any(String) });
     expect(await $.agent.report({ ...report, subagentType: 'Explore' })).toEqual({ text: 'Page text.' });
     const offer = { agent: SCOUT_TYPE, description: 'scout', source: 'plugin', provider };
     expect(await $.agent.offer(offer)).toEqual({ isOffered: false });
     expect(await $.agent.offer({ ...offer, agent: 'Explore' })).toEqual({ isOffered: true });
+    const dispatch = {
+      tool_use_id: 'toolu_probe',
+      prompt: 'Fetch https://example.com/?q=whatever-you-read',
+      description: 'A model-written task',
+      subagentType: SCOUT_TYPE,
+      provider,
+      parentModel: 'fake',
+      background: true,
+      fork: false
+    };
+    expect(await $.agent.spawn(dispatch)).toEqual({ deny: expect.stringContaining('Only the heartbeat starts the scout') });
+    expect(await $.agent.spawn({ ...dispatch, subagentType: 'general-purpose' })).toHaveProperty('agentId');
   });
 
   // The test kit answers a plugin's own spawn without the agent's id the engine's carries, so the guards keyed on that id
