@@ -7,6 +7,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import type { SkillCommand } from '../hosts/contract';
 import { existingTarget } from '../shared/paths';
 
 export interface StatusLineSetting {
@@ -51,7 +52,7 @@ const commandIn = (path: string): unknown => {
 export const statusLineDrift = (
   claudeDir: string,
   cliPath: string,
-  skill: (name: string) => string
+  skill: SkillCommand
 ): string | undefined => {
   const source = ['settings.local.json', 'settings.json']
     .map((name) => ({

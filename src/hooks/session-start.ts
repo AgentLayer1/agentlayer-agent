@@ -1,14 +1,5 @@
 /**
- * Harness-agnostic SessionStart core. Used by:
- *  - Claude Code's SessionStart hook via the plugin CLI's `session-start --hook-protocol=claude`.
- *  - Codex CLI's SessionStart hook via the plugin CLI's `session-start --hook-protocol=codex`:
- *    Codex reads the same JSON envelope (`systemMessage` renders as a hook cell,
- *    `additionalContext` becomes developer context) but fires SessionStart on the
- *    first turn rather than at launch, and has no `@-import`, so the static stack
- *    (identity files, indexes, task board) is sent ahead of the same dynamic lane. The hook is registered with `additionalContextLimit: 0`, since
- *    Codex otherwise truncates the context at about 2,500 tokens.
- *
- * Three disjoint paths:
+ * The SessionStart payload for every host. Three disjoint paths:
  *  - **Pre-init**: nothing scaffolded here — emit the banner + setup hint. NO
  *    filesystem writes (anything that CREATES under FOLDERS.* must stay out of
  *    this path, or an empty home tree appears before the user picks a home;
@@ -16,9 +7,8 @@
  *  - **Stranded**: a `SOUL.md` but no data dir — another agent's home, or this
  *    one's marker lost in a restore. Explain, and steer away from init.
  *  - **Post-init**: assemble the dynamic lane (today, last session tail, today's
- *    and pinned reports, git activity). Static identity (SOUL/IDENTITY/USER + the
- *    AGENTS.md manual) is loaded natively by the harness — Claude Code via the
- *    `@-imports` in `.claude/CLAUDE.md`, AGENTS.md-aware hosts directly.
+ *    and pinned reports, git activity), plus the static identity for a host that
+ *    can't load it itself (`HostAdapter.delivery`).
  *
  * Always returns a result — internal errors are caught and emitted as an
  * empty payload + `error` field so the host never chokes on hook output.
