@@ -33,7 +33,7 @@ export const heartbeatRoute = (place: HeartbeatPlace | null): HeartbeatPlace | n
   return place && found ? { surfaceId: place.surfaceId, workspaceId: found.id } : null;
 };
 
-const choiceButton = (label: string, onTap: () => void, tint?: string) =>
+export const choiceButton = (label: string, onTap: () => void, tint?: string) =>
   Text(label)
     .font(11)
     .weight('semibold')

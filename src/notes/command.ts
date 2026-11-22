@@ -9,7 +9,7 @@ const USAGE = [
   `Usage: ${CLI_COMMAND} notes <command>`,
   `  list [--json]                   Today's notes, the room left, and each lens's record`,
   `  react <useful|dismiss> <id>     Say how a note landed; the next scouting reads it`,
-  `  start <id>                      Open a session on the note's next step`
+  `  start <id> [--workspace=<id>]   Open a session on the note's next step, in that cmux workspace when named`
 ].join('\n');
 
 const REACTIONS = { useful: 'useful', dismiss: 'dismissed' } as const;
@@ -60,7 +60,14 @@ export const runNotesCommand = (command: string | undefined, args: readonly stri
       console.error(note ? `${note.title} has no session to start.` : `No note ${words[0] ?? ''}.`);
       return 1;
     }
-    const opened = startPrompt(note, { home: FOLDERS.HOME, adapters: ADAPTERS, env: process.env, now: new Date() });
+    const workspace = args.find((arg) => arg.startsWith('--workspace='))?.slice('--workspace='.length);
+    const opened = startPrompt(note, {
+      home: FOLDERS.HOME,
+      adapters: ADAPTERS,
+      env: process.env,
+      now: new Date(),
+      ...(workspace ? { workspace } : {})
+    });
     console.log('error' in opened ? `Couldn't start it: ${opened.error}` : `Started: ${note.title}. ${opened.where}`);
     return 'error' in opened ? 1 : 0;
   }

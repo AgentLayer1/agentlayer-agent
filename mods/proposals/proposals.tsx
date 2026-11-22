@@ -384,11 +384,12 @@ export const registerProposals = (on: On): void => {
   on('command.run', { command: 'heartbeat' }, async ($, e) => ({ text: await heartbeat($, e.args) }));
 
   on('command.run', { command: 'note' }, async ($, e) => {
-    const [choice, id] = e.args.trim().split(/\s+/);
+    const [choice, id, workspace] = e.args.trim().split(/\s+/);
     if (!id || (choice !== 'useful' && choice !== 'dismiss' && choice !== 'start')) {
       return { text: NOTE_USAGE };
     }
-    return { text: await said($, choice === 'start' ? ['notes', 'start', id] : ['notes', 'react', choice, id]) };
+    const where = choice === 'start' && workspace?.startsWith('--workspace=') ? [workspace] : [];
+    return { text: await said($, choice === 'start' ? ['notes', 'start', id, ...where] : ['notes', 'react', choice, id]) };
   });
 
   // A note the session sends lands in its scrollback as a notice the model never reads; the heartbeat's band counts it.

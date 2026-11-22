@@ -1,4 +1,5 @@
 import { FOLDERS } from '@/config';
+import { readNotes } from '@/notes/ledger';
 import { readProposalLedger } from '@/proposals/ledger';
 import { CLI_COMMAND } from '@/shared/naming';
 import { buildWork } from '@/work/build';
@@ -55,7 +56,7 @@ export const runCmuxCommand = async (command: string | undefined, args: string[]
     return 1;
   }
   if (verb === 'install' || verb === 'refresh') {
-    const entry = homeEntry(FOLDERS.HOME, buildWork(), readProposalLedger());
+    const entry = homeEntry(FOLDERS.HOME, buildWork(), readProposalLedger(), readNotes());
     if (verb === 'refresh') {
       console.log(REFRESHED[refreshSidebar(FOLDERS.HOME, entry, target)]);
       return 0;

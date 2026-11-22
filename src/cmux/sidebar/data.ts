@@ -131,6 +131,27 @@ export interface GoalsItem {
 /**
  * A proposal as the sidebar shows it: never its prompt, which stays in the home.
  */
+export interface NoteItem {
+  id: string;
+  title: string;
+  body: string;
+  next: string;
+  sources: string[];
+  lens: string;
+  /**
+   * When it went out, an ISO time with an offset.
+   */
+  at: string;
+  /**
+   * Whether it carries a session to start; the prompt itself never reaches the sidebar.
+   */
+  canStart: boolean;
+  /**
+   * 'useful' once the operator said so, '' while unread.
+   */
+  reaction: string;
+}
+
 export interface ProposalItem {
   id: string;
   title: string;
@@ -229,6 +250,10 @@ export interface HomeEntry {
    * Every proposal still to decide, oldest first, those put off included; the sidebar hides those against its clock.
    */
   proposals: ProposalItem[];
+  /**
+   * Today's and yesterday's notes, unread first; absent in an entry an older plugin wrote.
+   */
+  notes?: NoteItem[];
   heartbeat: HeartbeatPlace | null;
   /**
    * What starts Claude in this home: `agent` when it bills its own subscription, else `claude`.

@@ -19,6 +19,7 @@ import { manager } from 'cmux-custom-manager/manager';
 import type { Card } from 'cmux-custom-manager/model';
 import { agentPage } from './agent';
 import { SCHEMA, type StartPage } from './data';
+import { notesSection } from './notes';
 import { heartbeatRoute, isRunningClaude, proposalsSection } from './proposals';
 import { scopedHome, type Pin } from './scope';
 import { tabIcon } from './style';
@@ -40,6 +41,7 @@ const app = () => {
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
   const proposed = proposalsSection();
+  const noted = notesSection();
   const heartbeats = computed(
     () =>
       new Set(
@@ -81,7 +83,7 @@ const app = () => {
       name() === 'manager'
         ? manager({
             header: HStack({ spacing: 8 }, [pill(), Text('Manager').font(13).weight('semibold')]).fixedSize(),
-            sections: [proposed],
+            sections: [noted, proposed],
             exclude: isQuietHeartbeat
           })
         : agentPage({

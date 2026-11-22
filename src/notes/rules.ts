@@ -83,6 +83,17 @@ export const addNotes = (
     { ledger: { notes: ledger.notes.filter((note) => now.getTime() - ms(note.at) < KEEP_MS) }, added: [], refused: [] }
   );
 
+/**
+ * The notes a surface shows: today's and yesterday's in the home's timezone, never a dismissed one, unread first,
+ * then newest first.
+ */
+export const recentNotes = (ledger: NoteLedger, now: Date): Note[] => {
+  const days = new Set([todayDate(now), todayDate(new Date(now.getTime() - DAY_MS))]);
+  return ledger.notes
+    .filter((note) => note.reaction !== 'dismissed' && days.has(todayDate(new Date(ms(note.at)))))
+    .toSorted((a, b) => Number(a.reaction !== '') - Number(b.reaction !== '') || ms(b.at) - ms(a.at));
+};
+
 export const delivered = (ledger: NoteLedger, id: string, adapters: readonly string[]): NoteLedger => ({
   notes: ledger.notes.map((note) =>
     note.id === id ? { ...note, delivered: [...new Set([...note.delivered, ...adapters])] } : note

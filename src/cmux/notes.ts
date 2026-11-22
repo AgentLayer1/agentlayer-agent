@@ -1,5 +1,7 @@
 import type { NoteAdapter } from '@/notes/adapter';
+import { buildWork } from '@/work/build';
 import { callCmux, cmuxVersion, type CmuxCall } from './app';
+import { refreshSidebarQuietly } from './lifecycle';
 
 /**
  * Notes through cmux, over a given runner so a test can watch the calls: a desktop notification that cmux ties to
@@ -18,6 +20,9 @@ export const cmuxNotesAdapterWith = (run: (args: string[]) => CmuxCall, installe
     if (!result.ok) {
       throw new Error(result.output || 'cmux didn’t take the notification.');
     }
+  },
+  publish: ({ home }) => {
+    refreshSidebarQuietly(home, buildWork());
   }
 });
 

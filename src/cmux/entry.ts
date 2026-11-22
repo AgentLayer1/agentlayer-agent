@@ -1,5 +1,7 @@
 import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { EMPTY_NOTES, type NoteLedger } from '@/notes/ledger';
+import { recentNotes } from '@/notes/rules';
 import type { ProposalLedger } from '@/proposals/ledger';
 import { proposalCards } from '@/proposals/rules';
 import { reportKind } from '@/reports/kinds';
@@ -60,7 +62,7 @@ const heartbeatPlace = ({ heartbeat }: ProposalLedger): HeartbeatPlace | null =>
  * What the sidebar shows of the home at `home`: its agent, pages, each project's counts and live tasks, its pins, its
  * newest reports, its goals, and the proposals waiting with the heartbeat that decides them.
  */
-export const homeEntry = (home: string, work: Work, ledger: ProposalLedger): HomeEntry => {
+export const homeEntry = (home: string, work: Work, ledger: ProposalLedger, notes: NoteLedger = EMPTY_NOTES): HomeEntry => {
   // An index line without a link names a report nothing can open.
   const openable = byLastUpdate(work.reports.filter((report) => report.path !== ''));
   const tasks = live(work)
@@ -105,6 +107,17 @@ export const homeEntry = (home: string, work: Work, ledger: ProposalLedger): Hom
     goals: goalsView(work),
     tasksSummary: work.tasksSummary,
     proposals: proposalCards(ledger),
+    notes: recentNotes(notes, new Date()).map(({ id, title, body, next, sources, lens, at, prompt, reaction }) => ({
+      id,
+      title,
+      body,
+      next,
+      sources,
+      lens,
+      at,
+      canStart: prompt !== '',
+      reaction
+    })),
     heartbeat: heartbeatPlace(ledger),
     launcher: homeLauncher(home),
     codeFolders: configuredRepoPaths(),

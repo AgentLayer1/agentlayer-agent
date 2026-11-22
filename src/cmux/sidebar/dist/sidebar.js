@@ -1088,6 +1088,62 @@ var proposalsSection = () => {
   };
 };
 
+// src/cmux/sidebar/notes.ts
+var hhmm = (iso) => iso.slice(11, 16);
+var body2 = ({ entry, item }, send) => {
+  const place = () => heartbeatRoute(entry.heartbeat);
+  const act = (text) => {
+    const target = place();
+    if (target) {
+      send(text, target);
+    }
+  };
+  const start = () => {
+    const target = placeSession(entry, { words: `${item.title} ${item.next}` });
+    return `/note start ${item.id}${target.kind === "workspace" ? ` --workspace=${target.id}` : ""}`;
+  };
+  return VStack({ spacing: 5, alignment: "leading" }, [
+    Text(item.body).font(11).color("secondary"),
+    Text(`Next: ${item.next}`).font(11),
+    ...item.sources.map((url) => Text(url).font(10).color("tertiary").lineLimit(1).truncation("middle")),
+    when2(() => place() !== null, () => HStack({ spacing: 4 }, [
+      ...item.canStart ? [choiceButton("Start", () => act(start()), entry.colors?.primary ?? PURPLE)] : [],
+      ...item.reaction ? [] : [choiceButton("Useful", () => act(`/note useful ${item.id}`))],
+      choiceButton("Dismiss", () => act(`/note dismiss ${item.id}`)),
+      Spacer({ minLength: 0 })
+    ]).paddingTop(3)),
+    when2(() => place() === null, () => Text(`Run /heartbeat in one of ${entry.name}’s sessions to act on these here.`).font(10).color("tertiary").paddingTop(3))
+  ]);
+};
+var notesSection = () => {
+  const homes = Object.entries(DATA.homes).filter(([, entry]) => entry.schema === SCHEMA);
+  const shown = homes.flatMap(([home, entry]) => (entry.notes ?? []).map((item) => ({ key: `${home}#${item.id}`, entry, item })));
+  const card = (note) => {
+    const { entry, item, key } = note;
+    return {
+      key,
+      title: item.title,
+      span: hhmm(item.at),
+      badges: [
+        { text: `${entry.emoji} ${entry.name}`, color: entry.colors?.primary ?? PURPLE },
+        ...item.reaction === "useful" ? [{ text: "useful", color: GREEN, icon: "checkmark" }] : []
+      ],
+      summary: item.next,
+      searchText: `${item.body} ${item.next}`,
+      body: () => body2(note, (text, place) => cmux("surface.send_text", { surface_id: place.surfaceId, workspace_id: place.workspaceId, text: `${text}
+` }))
+    };
+  };
+  return {
+    label: "NOTES",
+    icon: "note.text",
+    color: PURPLE,
+    folded: !shown.some(({ item }) => item.reaction === ""),
+    expandFirst: false,
+    cards: computed(() => shown.map(card))
+  };
+};
+
 // src/cmux/sidebar/scope.ts
 var homeOf = (homes, path) => path ? homes.filter((home) => path === home || path.startsWith(`${home}/`)).toSorted((a, b) => b.length - a.length)[0] : undefined;
 var newestHome = (homes, agents = []) => agents.toSorted((a, b) => b.lastActivityAt - a.lastActivityAt).map((agent) => homeOf(homes, agent.directory)).find((home) => home !== undefined);
@@ -1112,6 +1168,7 @@ var app = () => {
   });
   const current = computed(() => scopedHome(homes, workspaces(), pin()));
   const proposed = proposalsSection();
+  const noted = notesSection();
   const heartbeats = computed(() => new Set(Object.values(DATA.homes).flatMap((entry) => entry.schema === SCHEMA ? heartbeatRoute(entry.heartbeat)?.surfaceId ?? [] : [])));
   const isQuietHeartbeat = (card) => card.focusId !== undefined && heartbeats().has(card.focusId) && isRunningClaude(card.agent) && card.agent.status !== "needs_input";
   const pill = () => HStack({ spacing: 2 }, [
@@ -1121,7 +1178,7 @@ var app = () => {
   return VStack({ spacing: 8 }, [
     ForEach({ items: () => [tab()], key: (name) => name }, (name) => name() === "manager" ? manager({
       header: HStack({ spacing: 8 }, [pill(), Text("Manager").font(13).weight("semibold")]).fixedSize(),
-      sections: [proposed],
+      sections: [noted, proposed],
       exclude: isQuietHeartbeat
     }) : agentPage({
       pill: pill(),
