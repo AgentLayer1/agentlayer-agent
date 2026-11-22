@@ -193,7 +193,7 @@ async function wake($: EngineInterface, now: number, status: HeartbeatStatus, re
 
 // Scouting for notes rides on the refresh, reading the brain it just compiled, while the day has room. Says whether it ran.
 async function scout($: EngineInterface, status: HeartbeatStatus): Promise<boolean> {
-  if (!status.notes.room) {
+  if (!status.notes.scout || !status.notes.room) {
     return false;
   }
   const titles = await workspacesNow($);
@@ -255,10 +255,22 @@ async function lastUse($: EngineInterface): Promise<number | null> {
 }
 
 async function tick($: EngineInterface): Promise<void> {
-  const [status, { isBusy }, { owner }] = await Promise.all([readStatus($), read($, queue), read($, beat)]);
-  if (!status) {
+  const [statusRead, { isBusy }, { owner }] = await Promise.all([
+    runCli($, ['heartbeat', 'status', '--json']).then(
+      (stdout) => parseStatus(stdout) ?? "the heartbeat's status didn't read",
+      (error: unknown) => (error instanceof Error ? error.message : String(error))
+    ),
+    read($, queue),
+    read($, beat)
+  ]);
+  if (typeof statusRead === 'string') {
+    // A status that won't read is a skip with its reason, and the next look keeps its interval.
+    const [now, { everyMinutes = 55 }] = await Promise.all([$.clock.now(), read($, beat)]);
+    await update($, beat, (current) => ({ ...current, nextAt: now + everyMinutes * MINUTE_MS }));
+    await note($, { at: now, kind: 'skip', text: statusRead });
     return;
   }
+  const status = statusRead;
   if (!isOwner(status, owner)) {
     // The clock only runs in the session that was the heartbeat, so this session just lost the job.
     if (ticker) {

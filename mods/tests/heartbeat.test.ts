@@ -360,11 +360,15 @@ describe('the heartbeat', () => {
     expect(host.status.heartbeat?.owner).toBe('session-9@other');
   });
 
-  test("a failed read of the heartbeat's status skips the tick and keeps the clock", async ($, on) => {
+  test("a failed read of the heartbeat's status skips the tick with its reason, and keeps the clock", async ($, on) => {
     const { host } = await bound($, on);
     host.failing.push('heartbeat status --json');
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([]);
+    await host.clock.advance(3 * MINUTE);
+    const band = await drawnBand($);
+    expect(band, 'the reason, not a stopped clock').toContain('heartbeat status --json failed');
+    expect(band).not.toContain('never came');
     host.failing.length = 0;
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE]);
@@ -472,10 +476,10 @@ describe('heartbeat band', () => {
   test('a look that never came is noticed by the redraw within minutes: it restarts the clock and the band says so', async ($, on) => {
     const { host } = await bound($, on);
     await ended($, 'Nothing new worth proposing.');
-    // A tick that can't read the status returns before it moves the next look on, as a period the engine refused does.
-    host.failing.push('heartbeat status --json');
+    // A tick that never finishes leaves the next look where it was, as a period the engine refused does.
+    host.hanging.push('heartbeat status --json');
     await host.clock.advance(55 * MINUTE);
-    host.failing.length = 0;
+    host.hanging.length = 0;
     expect(host.commands).toEqual([]);
     await host.clock.advance(3 * MINUTE);
     expect(host.commands, 'the redraw found the look overdue and looked at once').toEqual([WAKE]);
@@ -489,9 +493,9 @@ describe('heartbeat band', () => {
   test('/heartbeat status finds a look clock that stopped, and looks', async ($, on) => {
     const { host } = await bound($, on);
     await ended($, 'Nothing new worth proposing.');
-    host.failing.push('heartbeat status --json');
+    host.hanging.push('heartbeat status --json');
     await host.clock.advance(55 * MINUTE);
-    host.failing.length = 0;
+    host.hanging.length = 0;
     // Past the two minutes that count as stalled, before the redraw's next look at it.
     await host.clock.advance(2.5 * MINUTE);
     expect(host.commands).toEqual([]);
@@ -541,6 +545,12 @@ describe('notes', () => {
     host.status.refreshedAt = new Date(host.clock.now() - 7 * 60 * MINUTE).toISOString();
     await host.clock.advance(7 * 60 * MINUTE);
     expect(host.commands.filter((command) => command === SCOUT), 'no room left today').toEqual([]);
+    host.commands.length = 0;
+    host.notesRoom = 2;
+    host.notesScout = false;
+    host.status.refreshedAt = new Date(host.clock.now() - 7 * 60 * MINUTE).toISOString();
+    await host.clock.advance(7 * 60 * MINUTE);
+    expect(host.commands.filter((command) => command === SCOUT), 'the home switched scouting off').toEqual([]);
   });
 
   test("a sent note lands in the session's scrollback as a notice, and the band counts the day's notes", async ($, on) => {

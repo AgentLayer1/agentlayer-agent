@@ -92,8 +92,8 @@ export interface HeartbeatStatus {
   refreshDue: boolean;
   /** How many proposals show, and the most that do. */
   proposals: { target: number; showing: number };
-  /** How many notes may still go out today. */
-  notes: { room: number };
+  /** How many notes may still go out today, and whether the home lets the heartbeat scout for them. */
+  notes: { room: number; scout: boolean };
 }
 
 export const parseStatus = (stdout: string): HeartbeatStatus | null => {
@@ -101,7 +101,7 @@ export const parseStatus = (stdout: string): HeartbeatStatus | null => {
     const data = record(JSON.parse(stdout));
     const { target, showing } = record(data.proposals);
     const beat = record(data.heartbeat);
-    const notesRoom = record(data.notes).room;
+    const notes = record(data.notes);
     if (typeof data.timezone !== 'string' || typeof target !== 'number' || typeof showing !== 'number') {
       return null;
     }
@@ -114,7 +114,7 @@ export const parseStatus = (stdout: string): HeartbeatStatus | null => {
       refreshedAt: text(data.refreshedAt),
       refreshDue: data.refreshDue === true,
       proposals: { target, showing },
-      notes: { room: typeof notesRoom === 'number' ? notesRoom : 0 }
+      notes: { room: typeof notes.room === 'number' ? notes.room : 0, scout: notes.scout !== false }
     };
   } catch {
     return null;

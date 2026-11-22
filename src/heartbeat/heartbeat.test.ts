@@ -90,7 +90,8 @@ test('the status a tick reads holds the heartbeat, the brain, and the room for p
       'timezone'
     ]);
     expect(Object.keys(status.proposals).toSorted()).toEqual(['room', 'showing', 'target']);
-    expect(Object.keys(status.notes).toSorted()).toEqual(['cap', 'room', 'today']);
+    expect(Object.keys(status.notes).toSorted()).toEqual(['cap', 'room', 'scout', 'today']);
+    expect(status.notes.scout, 'on unless the home switches it off').toBe(true);
   } finally {
     rmSync(FILES.HEARTBEAT, { force: true });
   }

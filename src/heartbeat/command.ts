@@ -5,6 +5,7 @@ import { DAILY_CAP, notesOn, roomToday } from '@/notes/rules';
 import { ledgerProblem, readProposalLedger } from '@/proposals/ledger';
 import { roomFor, showingNow, TARGET } from '@/proposals/rules';
 import { readCadence } from '@/shared/cadence';
+import { env } from '@/shared/env';
 import { CLI_COMMAND } from '@/shared/naming';
 import { flagOf } from '@/shared/utils';
 import { heartbeatProblem, readHeartbeat, writeHeartbeat } from './ledger';
@@ -39,7 +40,12 @@ const status = (args: readonly string[]): number => {
     refreshedAt,
     refreshDue: refreshDue(refreshedAt, now),
     proposals: { target: TARGET, room: roomFor(proposals, now), showing: showingNow(proposals, now).length },
-    notes: { cap: DAILY_CAP, today: notesOn(notes, now).length, room: notesProblem() ? 0 : roomToday(notes, now) }
+    notes: {
+      cap: DAILY_CAP,
+      today: notesOn(notes, now).length,
+      room: notesProblem() ? 0 : roomToday(notes, now),
+      scout: env('AGENT_NOTES_SCOUT') !== 'off'
+    }
   };
   if (args.includes('--json')) {
     console.log(JSON.stringify(view));
@@ -48,7 +54,7 @@ const status = (args: readonly string[]): number => {
   const facts = [
     beat ? `Heartbeat every ${beat.everyMinutes}m` : 'No heartbeat',
     `${view.proposals.showing} of ${view.proposals.target} proposals showing`,
-    `${view.notes.today} of ${view.notes.cap} notes today`,
+    view.notes.scout ? `${view.notes.today} of ${view.notes.cap} notes today` : 'scouting off',
     refreshedAt ? `brain refreshed ${refreshedAt}` : 'brain never refreshed'
   ];
   console.log(facts.join(' · '));

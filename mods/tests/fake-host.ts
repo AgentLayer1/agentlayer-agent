@@ -64,6 +64,8 @@ export interface FakeMachine {
   };
   /** The notes room the status reports; unset, there is none and no scouting runs. */
   notesRoom?: number;
+  /** False when the home switched scouting off (`AGENT_NOTES_SCOUT=off`). */
+  notesScout?: boolean;
   toasts: string[];
   /** What `$.ui.copy` put on the clipboard. */
   copied: string[];
@@ -73,6 +75,8 @@ export interface FakeMachine {
   commandArgs: string[];
   /** CLI calls (`task query`) that exit 1. */
   failing: string[];
+  /** CLI calls that never answer, as when the engine stops a clock mid-tick. */
+  hanging: string[];
   /** Status changes the CLI made (`task close`, `task update --status`), by task id. */
   statuses: Record<string, string>;
   /** The folder the session started in. */
@@ -116,6 +120,7 @@ export const machine = (overrides: Partial<FakeMachine> = {}): FakeMachine => ({
   commands: [],
   commandArgs: [],
   failing: [],
+  hanging: [],
   statuses: {},
   root: HOME,
   agents: [],
@@ -196,7 +201,7 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
   }
   if (args === 'heartbeat status --json') {
     const { target, showing, heartbeat, refreshedAt = '', refreshDue = false } = host.status;
-    const notes = { cap: 3, room: host.notesRoom ?? 0, today: 3 - (host.notesRoom ?? 0) };
+    const notes = { cap: 3, room: host.notesRoom ?? 0, today: 3 - (host.notesRoom ?? 0), scout: host.notesScout ?? true };
     return ran(
       0,
       JSON.stringify({
@@ -273,7 +278,11 @@ export const fakeHost = (on: On, host: FakeMachine = machine()): FakeHost => {
     if (e.argv[1]?.endsWith('/brain-audit.ts')) {
       return ran(0, JSON.stringify({ counts: { staleTasks: host.brainStale, oldestWaiting: '2026-01-01' } }));
     }
-    return cliAnswer(host, e.argv.slice(2).join(' '));
+    const args = e.argv.slice(2).join(' ');
+    if (host.hanging.includes(args)) {
+      return new Promise<never>(() => {});
+    }
+    return cliAnswer(host, args);
   });
   on('fs.read', (_$, e) => {
     host.fsCalls.push(e.path);
