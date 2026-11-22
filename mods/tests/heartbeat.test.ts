@@ -612,6 +612,30 @@ describe('notes', () => {
     return context;
   };
 
+  test('after a /clear empties session state, the tab is still the heartbeat', async ($, on) => {
+    // A /clear starts a new conversation, whose session state starts empty: from then on the heartbeat's value lives in
+    // a fresh cell.
+    let cleared = false;
+    const fresh: { value: unknown; version: number } = { value: undefined, version: 0 };
+    on('state.get', { plugin: PLUGIN, key: 'heartbeat' }, (_$, e, next) => (cleared ? { value: { ...fresh } } : next(e)));
+    on('state.set', { plugin: PLUGIN, key: 'heartbeat' }, (_$, e, next) => {
+      if (!cleared) {
+        return next(e);
+      }
+      if (e.ifVersion !== undefined && e.ifVersion !== fresh.version) {
+        return { value: { isSet: false as const, version: fresh.version } };
+      }
+      fresh.value = e.value;
+      fresh.version += 1;
+      return { value: { isSet: true as const, version: fresh.version } };
+    });
+    const { host } = await bound($, on);
+    host.notesRoom = 2;
+    cleared = true;
+    expect((await run($, 'heartbeat', 'status')).text).toStartWith('This session is the heartbeat');
+    expect((await run($, 'heartbeat', 'scout')).text).toStartWith('Scouting now');
+  });
+
   test('/heartbeat scout runs one scouting pass now in the heartbeat, and says why not anywhere else', async ($, on) => {
     const { host } = await bound($, on);
     host.notesRoom = 2;

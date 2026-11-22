@@ -292,15 +292,31 @@ async function ticked($: EngineInterface, status: Bound, now: number, skipped = 
   }
 }
 
-// The heartbeat is this running process, named by a token it picks once and keeps in session state: a /clear or a
-// /resume changes the conversation id, but not the token, and no other process holds it.
-async function ownerOf($: EngineInterface): Promise<string> {
+// The heartbeat is this running process, named by a token it picks once. Session state starts empty after a /clear,
+// which is a new conversation, so the process keeps its own copy; session state keeps one through a reload of this module.
+let processToken = '';
+
+async function heldToken($: EngineInterface): Promise<string> {
   const { owner } = await read($, beat);
   if (owner) {
+    processToken = owner;
     return owner;
+  }
+  if (processToken) {
+    const token = processToken;
+    await update($, beat, (current) => ({ ...current, owner: token }));
+  }
+  return processToken;
+}
+
+async function ownerOf($: EngineInterface): Promise<string> {
+  const held = await heldToken($);
+  if (held) {
+    return held;
   }
   const [sessionId, now] = await Promise.all([$.session.id(), $.clock.now()]);
   const token = `${sessionId}@${now.toString(36)}`;
+  processToken = token;
   await update($, beat, (current) => ({ ...current, owner: token }));
   return token;
 }
@@ -320,7 +336,12 @@ async function lastUse($: EngineInterface): Promise<number | null> {
 }
 
 async function tick($: EngineInterface): Promise<void> {
-  const [status, { isBusy }, { owner, everyMinutes = 55 }] = await Promise.all([statusOrWhy($), read($, queue), read($, beat)]);
+  const [status, { isBusy }, { everyMinutes = 55 }, owner] = await Promise.all([
+    statusOrWhy($),
+    read($, queue),
+    read($, beat),
+    heldToken($)
+  ]);
   if (typeof status === 'string') {
     // A status that won't read is a skip with its reason, and the next look keeps its interval.
     const now = await $.clock.now();
@@ -367,7 +388,7 @@ async function tick($: EngineInterface): Promise<void> {
 
 // Only a process that ran /heartbeat holds a token, so every other session starts without reading its status.
 async function arm($: EngineInterface): Promise<Bound | null> {
-  const { owner } = await read($, beat);
+  const owner = await heldToken($);
   stopClocks();
   if (!owner) {
     return null;
@@ -392,7 +413,13 @@ async function arm($: EngineInterface): Promise<Bound | null> {
 }
 
 async function describe($: EngineInterface): Promise<string> {
-  const [status, now, { owner, nextAt }, used] = await Promise.all([readStatus($), $.clock.now(), read($, beat), lastUse($)]);
+  const [status, now, { nextAt }, owner, used] = await Promise.all([
+    readStatus($),
+    $.clock.now(),
+    read($, beat),
+    heldToken($),
+    lastUse($)
+  ]);
   if (!status) {
     return "Couldn't read the heartbeat's status.";
   }
@@ -419,7 +446,7 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
   if (ask.kind === 'now') {
     // The heartbeat's own tab refreshes the brain first when one is due; anywhere else it is a refill only, since a
     // clear belongs to the heartbeat, never to a session that asked for a look.
-    const [status, { owner }] = await Promise.all([readStatus($), read($, beat)]);
+    const [status, owner] = await Promise.all([readStatus($), heldToken($)]);
     if (isOwner(status, owner) && status.refreshDue) {
       const now = await $.clock.now();
       $.clock.after(0, () => void wake($, now, status, true));
@@ -430,7 +457,7 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
   }
   if (ask.kind === 'scout') {
     // The same run a brain refresh ends with, asked for now: in the heartbeat's tab, where a home lens's clear belongs.
-    const [status, { owner, scouting }] = await Promise.all([readStatus($), read($, beat)]);
+    const [status, owner, { scouting }] = await Promise.all([readStatus($), heldToken($), read($, beat)]);
     if (!isOwner(status, owner)) {
       return "Scouting runs in the heartbeat's own tab: run /heartbeat scout there.";
     }
@@ -481,7 +508,7 @@ export const registerHeartbeat = (on: On): void => {
   // A /clear or a /resume keeps this process, and with it the heartbeat; only leaving it gives the heartbeat up. A crash
   // runs no hook, which is why a later /heartbeat still says it replaced one.
   on('session.end', { reason: ['prompt_input_exit', 'logout', 'other'] }, async ($, e, next) => {
-    const { owner } = await read($, beat);
+    const owner = await heldToken($);
     if (owner) {
       await $.process
         .run(cliArgv($.plugin.root, ['heartbeat', 'release', `--owner=${owner}`]), {
