@@ -2,7 +2,7 @@ import { mock } from 'claude-code/testing';
 import type { Engine, MockClock } from 'claude-code/testing';
 import type { AgentInfo, FsStat, On, ProcessRunResult } from 'claude-code';
 
-import type { ProposalList } from '../proposals/beat';
+import type { HeartbeatStatus } from '../heartbeat/beat';
 import type { Notice } from '../types';
 
 /**
@@ -54,16 +54,16 @@ export interface FakeMachine {
   toolText: Record<string, string>;
   fsCalls: string[];
   notices: Notice[];
-  /** What `proposals list --json` prints: the target, what's showing, and the heartbeat; room is what's left of five unless set. */
-  proposals: {
+  /** What `heartbeat status --json` is made from: the heartbeat, what's showing, and the brain; room is what's left of five unless set. */
+  status: {
     target: number;
     room?: number;
-    showing: ProposalList['showing'][number][];
-    heartbeat: ProposalList['heartbeat'];
+    showing: { id: string; title: string }[];
+    heartbeat: HeartbeatStatus['heartbeat'];
     refreshedAt?: string;
     refreshDue?: boolean;
   };
-  /** The notes room `notes list --json` reports; unset, the CLI answers without one and no scouting runs. */
+  /** The notes room the status reports; unset, there is none and no scouting runs. */
   notesRoom?: number;
   toasts: string[];
   /** What `$.ui.copy` put on the clipboard. */
@@ -110,7 +110,7 @@ export const machine = (overrides: Partial<FakeMachine> = {}): FakeMachine => ({
   toolText: {},
   fsCalls: [],
   notices: [],
-  proposals: { target: 5, showing: [], heartbeat: null },
+  status: { target: 5, showing: [], heartbeat: null },
   toasts: [],
   copied: [],
   suggestions: [],
@@ -195,25 +195,37 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
       })
     );
   }
-  if (args === 'notes list --json' && host.notesRoom !== undefined) {
-    return ran(0, JSON.stringify({ cap: 3, room: host.notesRoom, today: 3 - host.notesRoom, recent: [], lenses: {} }));
-  }
-  if (args === 'proposals list --json') {
-    const room = host.proposals.room ?? Math.max(0, host.proposals.target - host.proposals.showing.length);
-    return ran(0, JSON.stringify({ ...host.proposals, room, timezone: 'Asia/Kuala_Lumpur' }));
+  if (args === 'heartbeat status --json') {
+    const { target, showing, heartbeat, refreshedAt = '', refreshDue = false } = host.status;
+    const room = host.status.room ?? Math.max(0, target - showing.length);
+    const notes = { cap: 3, room: host.notesRoom ?? 0, today: 3 - (host.notesRoom ?? 0) };
+    return ran(
+      0,
+      JSON.stringify({
+        heartbeat,
+        timezone: 'Asia/Kuala_Lumpur',
+        refreshedAt,
+        refreshDue,
+        proposals: { target, room, showing: showing.length },
+        notes
+      })
+    );
   }
   // The CLI's heartbeat binding, kept so a test sees the owner and interval it was given.
-  const binding = /^proposals heartbeat --owner=(\S+)(?: --every=(\d+)\s*(h|m))?/.exec(args);
+  const binding = /^heartbeat bind --owner=(\S+)(?: --every=(\d+)\s*(h|m))?/.exec(args);
   if (binding) {
     const minutes = Number(binding[2] ?? 55) * (binding[3] === 'h' ? 60 : 1);
-    host.proposals.heartbeat = { owner: binding[1] ?? '', everyMinutes: minutes };
+    host.status.heartbeat = { owner: binding[1] ?? '', everyMinutes: minutes };
   }
-  if (args === 'proposals heartbeat --off') {
-    host.proposals.heartbeat = null;
+  if (args === 'heartbeat off') {
+    host.status.heartbeat = null;
   }
-  const release = /^proposals heartbeat --release --owner=(\S+)$/.exec(args);
-  if (release && host.proposals.heartbeat?.owner === release[1]) {
-    host.proposals.heartbeat = null;
+  const release = /^heartbeat release --owner=(\S+)$/.exec(args);
+  if (release && host.status.heartbeat?.owner === release[1]) {
+    host.status.heartbeat = null;
+  }
+  if (args.startsWith('heartbeat ')) {
+    return ran(0, `ran ${args}`);
   }
   if (args.startsWith('proposals ')) {
     return ran(0, `ran ${args}`);

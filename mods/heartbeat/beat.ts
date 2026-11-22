@@ -1,4 +1,4 @@
-// Pure helpers for the proposals feature: no engine calls, so tests can run them as they are.
+// Pure helpers for the heartbeat: no engine calls, so tests can run them as they are.
 
 import type { HeartbeatEvent } from '../types';
 
@@ -90,48 +90,41 @@ export const dayIn = (epochMs: number, timeZone: string): string =>
   new Date(epochMs).toLocaleDateString('sv-SE', { timeZone });
 
 /**
- * What `proposals list --json` prints, as far as the wake reads it.
+ * What `heartbeat status --json` prints, as far as the mod reads it.
  */
-export interface ProposalList {
-  target: number;
-  /** How many can be added now; 0 also when put-off proposals fill the backlog. */
-  room: number;
-  showing: readonly { id: string; title: string }[];
+export interface HeartbeatStatus {
   heartbeat: { owner: string; everyMinutes: number } | null;
   /** The home's timezone, which the day's first wake is read in. */
   timezone: string;
   /** When a sync or brain refresh last ran, an ISO time or ''; and whether the heartbeat should refresh now. */
   refreshedAt: string;
   refreshDue: boolean;
+  /** How many proposals show, the most that do, and how many can be added now. */
+  proposals: { target: number; room: number; showing: number };
+  /** How many notes may still go out today. */
+  notes: { room: number };
 }
 
-export const parseList = (stdout: string): ProposalList | null => {
+export const parseStatus = (stdout: string): HeartbeatStatus | null => {
   try {
-    const data: unknown = JSON.parse(stdout);
-    if (typeof data !== 'object' || data === null || !('target' in data) || !('showing' in data)) {
+    const data = record(JSON.parse(stdout));
+    const { target, room, showing } = record(data.proposals);
+    const beat = record(data.heartbeat);
+    const notesRoom = record(data.notes).room;
+    if (typeof data.timezone !== 'string' || typeof target !== 'number' || typeof room !== 'number' || typeof showing !== 'number') {
       return null;
     }
-    const { target, showing } = data;
-    const room = 'room' in data ? data.room : undefined;
-    const timezone = 'timezone' in data ? data.timezone : undefined;
-    const heartbeat = 'heartbeat' in data ? data.heartbeat : null;
-    const refreshedAt = 'refreshedAt' in data && typeof data.refreshedAt === 'string' ? data.refreshedAt : '';
-    const refreshDue = 'refreshDue' in data && data.refreshDue === true;
-    const beat =
-      typeof heartbeat === 'object' &&
-      heartbeat !== null &&
-      'owner' in heartbeat &&
-      'everyMinutes' in heartbeat &&
-      typeof heartbeat.owner === 'string' &&
-      typeof heartbeat.everyMinutes === 'number'
-        ? { owner: heartbeat.owner, everyMinutes: heartbeat.everyMinutes }
-        : null;
-    return typeof target === 'number' &&
-      typeof room === 'number' &&
-      typeof timezone === 'string' &&
-      Array.isArray(showing)
-      ? { target, room, showing, heartbeat: beat, timezone, refreshedAt, refreshDue }
-      : null;
+    return {
+      heartbeat:
+        typeof beat.owner === 'string' && typeof beat.everyMinutes === 'number'
+          ? { owner: beat.owner, everyMinutes: beat.everyMinutes }
+          : null,
+      timezone: data.timezone,
+      refreshedAt: text(data.refreshedAt),
+      refreshDue: data.refreshDue === true,
+      proposals: { target, room, showing },
+      notes: { room: typeof notesRoom === 'number' ? notesRoom : 0 }
+    };
   } catch {
     return null;
   }
@@ -230,18 +223,6 @@ export const workspaceTitles = (stdout: string): string[] =>
     .split('\n')
     .map((line) => WORKSPACE_LINE.exec(line)?.[1]?.trim() ?? '')
     .filter((title) => title !== '' && !PATH_TITLE.test(title));
-
-/**
- * The room for notes left today from `notes list --json`; null when it can't be read.
- */
-export const notesRoom = (stdout: string): number | null => {
-  try {
-    const data: unknown = JSON.parse(stdout);
-    return typeof data === 'object' && data !== null && 'room' in data && typeof data.room === 'number' ? data.room : null;
-  } catch {
-    return null;
-  }
-};
 
 export interface SentNote {
   id: string;

@@ -2,15 +2,15 @@ import { describe, expect, mock, test } from 'claude-code/testing';
 import type { Engine } from 'claude-code/testing';
 import type { On } from 'claude-code';
 
-import { eventView, nextLook, workspaceTitles } from '../proposals/beat';
+import { eventView, nextLook, workspaceTitles } from '../heartbeat/beat';
 import { AGENT, BAND_PROPS, HOME, NOW, PLUGIN, fakeHost, machine, run } from './fake-host';
 import type { FakeHost } from './fake-host';
 
 const MINUTE = 60_000;
 const WAKE = `${PLUGIN}:proposals`;
 
-const heartbeatHost = (on: On, heartbeat: FakeHost['proposals']['heartbeat'] = null) => {
-  const host = fakeHost(on, machine({ proposals: { target: 5, showing: [], heartbeat } }));
+const heartbeatHost = (on: On, heartbeat: FakeHost['status']['heartbeat'] = null) => {
+  const host = fakeHost(on, machine({ status: { target: 5, showing: [], heartbeat } }));
   const submitted: string[] = [];
   const filled: string[] = [];
   on('prompt.submit', (_$, e) => {
@@ -45,9 +45,9 @@ const bound = async ($: Engine, on: On, every = '') => {
   return context;
 };
 
-const heartbeatCalls = (host: FakeHost) => cliCalls(host).filter((args) => args.startsWith('proposals heartbeat'));
+const heartbeatCalls = (host: FakeHost) => cliCalls(host).filter((args) => args.startsWith('heartbeat ') && !args.startsWith('heartbeat status'));
 
-const cliCalls = (host: FakeHost) => host.argv.map((argv) => argv.slice(2).join(' ')).filter((args) => args.startsWith('proposals '));
+const cliCalls = (host: FakeHost) => host.argv.map((argv) => argv.slice(2).join(' ')).filter((args) => /^(proposals|heartbeat) /.test(args));
 
 const drawnBand = async ($: Engine) =>
   (await (await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AbovePrompt', props: BAND_PROPS })).findAll({ type: 'Text' }))
@@ -120,9 +120,9 @@ describe('proposals', () => {
     await run($, 'heartbeat', '15 mins');
     await run($, 'heartbeat', 'off');
     expect(heartbeatCalls(host)).toEqual([
-      `proposals heartbeat --owner=${TOKEN}`,
-      `proposals heartbeat --owner=${TOKEN} --every=15 mins`,
-      'proposals heartbeat --off'
+      `heartbeat bind --owner=${TOKEN}`,
+      `heartbeat bind --owner=${TOKEN} --every=15 mins`,
+      'heartbeat off'
     ]);
   });
 
@@ -145,7 +145,7 @@ describe('proposals', () => {
 
   test('/heartbeat with proposals already full still looks, since a better one can replace a card', async ($, on) => {
     const { host } = heartbeatHost(on);
-    host.proposals.room = 0;
+    host.status.room = 0;
     await start($, host);
     expect((await run($, 'heartbeat')).text).toEndWith(' Looking for proposals now.');
     await host.clock.settle();
@@ -181,11 +181,11 @@ describe('proposals', () => {
   test('a newer session that takes the heartbeat over keeps it', async ($, on) => {
     const { host } = await bound($, on);
     host.sessionId = 'session-2';
-    host.proposals.heartbeat = { owner: 'session-7@newer', everyMinutes: 15 };
+    host.status.heartbeat = { owner: 'session-7@newer', everyMinutes: 15 };
     await host.clock.advance(2 * 55 * MINUTE);
     expect(host.commands).toEqual([]);
-    expect(heartbeatCalls(host)).toEqual([`proposals heartbeat --owner=${TOKEN}`]);
-    expect(host.proposals.heartbeat).toEqual({ owner: 'session-7@newer', everyMinutes: 15 });
+    expect(heartbeatCalls(host)).toEqual([`heartbeat bind --owner=${TOKEN}`]);
+    expect(host.status.heartbeat).toEqual({ owner: 'session-7@newer', everyMinutes: 15 });
     expect(host.toasts, 'said once, when it stopped').toEqual([
       'Another session took over the heartbeat; this one stopped looking for proposals.'
     ]);
@@ -193,7 +193,7 @@ describe('proposals', () => {
 
   test('a heartbeat turned off from another session says so once, and stops', async ($, on) => {
     const { host } = await bound($, on);
-    host.proposals.heartbeat = null;
+    host.status.heartbeat = null;
     await host.clock.advance(3 * 55 * MINUTE);
     expect(host.commands).toEqual([]);
     expect(host.toasts).toEqual(['The heartbeat was turned off; this session stopped looking for proposals.']);
@@ -205,7 +205,7 @@ describe('proposals', () => {
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([]);
     await $.turn.complete({ answer: '', durationMs: 0, isAborted: false, turnId: 't1', reason: 'answer' });
-    host.proposals.showing = Array.from({ length: 5 }, (_, index) => ({ id: `p-${index}`, title: 'x' }));
+    host.status.showing = Array.from({ length: 5 }, (_, index) => ({ id: `p-${index}`, title: 'x' }));
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE]);
   });
@@ -307,7 +307,7 @@ describe('proposals', () => {
     expect(host.commands).toEqual([WAKE, 'clear', WAKE]);
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([WAKE, 'clear', WAKE, WAKE]);
-    expect(heartbeatCalls(host)).toEqual([`proposals heartbeat --owner=${TOKEN}`]);
+    expect(heartbeatCalls(host)).toEqual([`heartbeat bind --owner=${TOKEN}`]);
   });
 
   test("the operator's own /clear or /resume in the heartbeat's tab keeps it the heartbeat", async ($, on) => {
@@ -322,7 +322,7 @@ describe('proposals', () => {
   test('a /heartbeat off that fails after a /clear leaves the heartbeat running', async ($, on) => {
     const { host } = await bound($, on);
     host.sessionId = 'session-2';
-    host.failing.push('proposals heartbeat --off');
+    host.failing.push('heartbeat off');
     expect((await run($, 'heartbeat', 'off')).text).toContain('failed');
     await host.clock.advance(2 * 55 * MINUTE);
     expect(host.commands).toEqual([WAKE, WAKE]);
@@ -336,10 +336,10 @@ describe('proposals', () => {
     const { host } = await bound($, on);
     await $.session.end({ reason: 'clear', sessionId: 'session-1', resume: { id: 'session-1' } });
     await $.session.end({ reason: 'resume', sessionId: 'session-1', resume: { id: 'session-1' } });
-    expect(host.proposals.heartbeat?.owner).toBe(TOKEN);
+    expect(host.status.heartbeat?.owner).toBe(TOKEN);
     await $.session.end({ reason: 'other', sessionId: 'session-1', resume: { id: 'session-1' } });
-    expect(heartbeatCalls(host)).toEqual([`proposals heartbeat --owner=${TOKEN}`, `proposals heartbeat --release --owner=${TOKEN}`]);
-    expect(host.proposals.heartbeat).toBeNull();
+    expect(heartbeatCalls(host)).toEqual([`heartbeat bind --owner=${TOKEN}`, `heartbeat release --owner=${TOKEN}`]);
+    expect(host.status.heartbeat).toBeNull();
   });
 
   test('a session that never ran /heartbeat releases nothing when it exits', async ($, on) => {
@@ -347,12 +347,12 @@ describe('proposals', () => {
     await start($, host);
     await $.session.end({ reason: 'prompt_input_exit', sessionId: 'session-1', resume: { id: 'session-1' } });
     expect(cliCalls(host)).toEqual([]);
-    expect(host.proposals.heartbeat?.owner).toBe('session-9@other');
+    expect(host.status.heartbeat?.owner).toBe('session-9@other');
   });
 
   test('a failed read of the proposals skips the tick and keeps the clock', async ($, on) => {
     const { host } = await bound($, on);
-    host.failing.push('proposals list --json');
+    host.failing.push('heartbeat status --json');
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([]);
     host.failing.length = 0;
@@ -439,7 +439,7 @@ describe('heartbeat band', () => {
 
   test('a heartbeat that lost the job hides its band', async ($, on) => {
     const { host } = await bound($, on);
-    host.proposals.heartbeat = { owner: 'session-7@newer', everyMinutes: 55 };
+    host.status.heartbeat = { owner: 'session-7@newer', everyMinutes: 55 };
     await host.clock.advance(55 * MINUTE);
     expect(await drawn($)).not.toContain('Heartbeat');
   });
@@ -448,7 +448,7 @@ describe('heartbeat band', () => {
     const { host } = await bound($, on);
     await ended($, 'Nothing new worth proposing.');
     // A tick that can't read the proposals returns before it moves the next look on, as a period the engine refused does.
-    host.failing.push('proposals list --json');
+    host.failing.push('heartbeat status --json');
     await host.clock.advance(55 * MINUTE);
     host.failing.length = 0;
     expect(host.commands).toEqual([]);
@@ -464,7 +464,7 @@ describe('heartbeat band', () => {
   test('/heartbeat status finds a look clock that stopped, and looks', async ($, on) => {
     const { host } = await bound($, on);
     await ended($, 'Nothing new worth proposing.');
-    host.failing.push('proposals list --json');
+    host.failing.push('heartbeat status --json');
     await host.clock.advance(55 * MINUTE);
     host.failing.length = 0;
     // Past the two minutes that count as stalled, before the redraw's next look at it.
@@ -506,12 +506,12 @@ describe('notes', () => {
   test('a refresh with room for notes scouts after the brain refresh and before the look; with none it skips', async ($, on) => {
     const { host } = await bound($, on);
     host.notesRoom = 2;
-    host.proposals.refreshDue = true;
+    host.status.refreshDue = true;
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual(['clear', REFRESH, SCOUT, WAKE]);
     host.commands.length = 0;
     host.notesRoom = 0;
-    host.proposals.refreshedAt = new Date(host.clock.now() - 7 * 60 * MINUTE).toISOString();
+    host.status.refreshedAt = new Date(host.clock.now() - 7 * 60 * MINUTE).toISOString();
     await host.clock.advance(7 * 60 * MINUTE);
     expect(host.commands.filter((command) => command === SCOUT), 'no room left today').toEqual([]);
   });
@@ -585,8 +585,8 @@ describe('brain refresh', () => {
 
   test('a due refresh with something new to absorb clears, refreshes the brain, then looks', async ($, on) => {
     const { host } = await bound($, on);
-    host.proposals.refreshDue = true;
-    host.proposals.refreshedAt = new Date(NOW - 7 * 60 * MINUTE).toISOString();
+    host.status.refreshDue = true;
+    host.status.refreshedAt = new Date(NOW - 7 * 60 * MINUTE).toISOString();
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual(['clear', REFRESH, WAKE]);
     expect(refreshedWith(host)).toBe('brain');
@@ -594,8 +594,8 @@ describe('brain refresh', () => {
 
   test('a due refresh with nothing written since the last one waits, and an idle home skips the look too', async ($, on) => {
     const { host } = await bound($, on);
-    host.proposals.refreshDue = true;
-    host.proposals.refreshedAt = new Date(NOW + 10 * MINUTE).toISOString();
+    host.status.refreshDue = true;
+    host.status.refreshedAt = new Date(NOW + 10 * MINUTE).toISOString();
     host.transcripts = { 'session-9': NOW };
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual([]);
@@ -603,7 +603,7 @@ describe('brain refresh', () => {
 
   test('a refresh that never ran is due as soon as a session writes', async ($, on) => {
     const { host } = await bound($, on);
-    host.proposals.refreshDue = true;
+    host.status.refreshDue = true;
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual(['clear', REFRESH, WAKE]);
     expect(refreshedWith(host)).toBe('brain');
@@ -611,14 +611,14 @@ describe('brain refresh', () => {
 
   test("the band says what the refresh and the look after it did, and how old the brain's refresh is", async ($, on) => {
     const { host } = await bound($, on);
-    host.proposals.refreshDue = true;
+    host.status.refreshDue = true;
     await host.clock.advance(55 * MINUTE);
     const finish = (answer: string, turnId: string) =>
       $.turn.complete({ answer, durationMs: 0, isAborted: false, turnId, reason: 'answer' });
     await finish('🧠 Brain refreshed: compiled 3, lint fixed 1, flywheel closed 0, stalled 2.', 'r');
     await finish('Proposed 1: Decide on ab-012.', 'l');
-    host.proposals.refreshDue = false;
-    host.proposals.refreshedAt = new Date(host.clock.now()).toISOString();
+    host.status.refreshDue = false;
+    host.status.refreshedAt = new Date(host.clock.now()).toISOString();
     await host.clock.advance(2 * 60 * MINUTE);
     const band = (
       await (await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AbovePrompt', props: BAND_PROPS })).findAll({ type: 'Text' })
@@ -632,7 +632,7 @@ describe('brain refresh', () => {
 
   test('a refresh that ends without stamping is not tried again until its window passes', async ($, on) => {
     const { host } = await bound($, on);
-    host.proposals.refreshDue = true;
+    host.status.refreshDue = true;
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual(['clear', REFRESH, WAKE]);
     await host.clock.advance(55 * MINUTE);
@@ -645,8 +645,8 @@ describe('brain refresh', () => {
 
   test('/heartbeat now in a session that just lost the heartbeat never clears it', async ($, on) => {
     const { host } = await bound($, on);
-    host.proposals.heartbeat = { owner: 'session-7@newer', everyMinutes: 55 };
-    host.proposals.refreshDue = true;
+    host.status.heartbeat = { owner: 'session-7@newer', everyMinutes: 55 };
+    host.status.refreshDue = true;
     expect((await run($, 'heartbeat', 'now')).text).toBe('Looking for proposals now.');
     await host.clock.settle();
     expect(host.commands).toEqual([WAKE]);
@@ -654,7 +654,7 @@ describe('brain refresh', () => {
 
   test('/heartbeat now in the heartbeat refreshes first when one is due; elsewhere it only looks', async ($, on) => {
     const { host } = await bound($, on);
-    host.proposals.refreshDue = true;
+    host.status.refreshDue = true;
     expect((await run($, 'heartbeat', 'now')).text).toBe('Refreshing the brain, then looking for proposals.');
     await host.clock.settle();
     expect(host.commands).toEqual(['clear', REFRESH, WAKE]);

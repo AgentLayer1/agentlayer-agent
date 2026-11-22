@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code';
 import type { EngineInterface, On } from 'claude-code';
 
-import { PROPOSALS_FEATURE } from '../shared/catalog';
+import { HEARTBEAT_FEATURE } from '../shared/catalog';
 import { cliArgv, cliError } from '../shared/cli';
 import { TURN_REASONS } from '../shared/turns';
 import { clip } from '../tasks/task';
@@ -20,17 +20,16 @@ import {
   logged,
   nextLook,
   noticeText,
-  notesRoom,
   notesSent,
   parseHeartbeat,
-  parseList,
+  parseStatus,
   workspaceTitles,
   NOTE_CHOICES,
   NOTE_DECISION,
   PROPOSAL_DECISION,
   type Decision,
   type NoteChoice,
-  type ProposalList
+  type HeartbeatStatus
 } from './beat';
 
 const USAGE = `Usage: /proposal <${CHOICES.join('|')}> <id> [--workspace=<id>]`;
@@ -111,8 +110,8 @@ async function said($: EngineInterface, args: readonly string[]): Promise<string
   );
 }
 
-async function readList($: EngineInterface): Promise<ProposalList | null> {
-  return runCli($, ['proposals', 'list', '--json']).then(parseList, () => null);
+async function readStatus($: EngineInterface): Promise<HeartbeatStatus | null> {
+  return runCli($, ['heartbeat', 'status', '--json']).then(parseStatus, () => null);
 }
 
 async function decide($: EngineInterface, { choice, id, workspace }: Decision): Promise<string> {
@@ -188,7 +187,7 @@ async function wake($: EngineInterface, now: number, zone: string, refresh = fal
 
 // Scouting for notes rides on the refresh, reading the brain it just compiled, while the day has room.
 async function scout($: EngineInterface): Promise<void> {
-  const room = await runCli($, ['notes', 'list', '--json']).then(notesRoom, () => null);
+  const room = (await readStatus($))?.notes.room;
   if (!room) {
     return;
   }
@@ -201,12 +200,12 @@ async function note($: EngineInterface, event: HeartbeatEvent): Promise<void> {
   await update($, beat, (current) => ({ ...current, log: logged(current.log ?? [], event) }));
 }
 
-const refreshedMs = (list: ProposalList): number => Date.parse(list.refreshedAt) || 0;
+const refreshedMs = (status: HeartbeatStatus): number => Date.parse(status.refreshedAt) || 0;
 
-const facts = (list: ProposalList) => ({
-  showing: list.showing.length,
-  target: list.target,
-  refreshedAt: refreshedMs(list)
+const facts = (status: HeartbeatStatus) => ({
+  showing: status.proposals.showing,
+  target: status.proposals.target,
+  refreshedAt: refreshedMs(status)
 });
 
 const seen = (list: Bound, now: number) => ({ nextAt: now + list.heartbeat.everyMinutes * MINUTE_MS, ...facts(list) });
@@ -231,9 +230,9 @@ async function ownerOf($: EngineInterface): Promise<string> {
   return token;
 }
 
-type Bound = ProposalList & { heartbeat: NonNullable<ProposalList['heartbeat']> };
+type Bound = HeartbeatStatus & { heartbeat: NonNullable<HeartbeatStatus['heartbeat']> };
 
-const isOwner = (list: ProposalList | null, owner: string): list is Bound =>
+const isOwner = (list: HeartbeatStatus | null, owner: string): list is Bound =>
   owner !== '' && list?.heartbeat?.owner === owner;
 
 // The newest write to any other session's transcript in this home's folder, the heartbeat's own and the one its last
@@ -246,7 +245,7 @@ async function lastUse($: EngineInterface): Promise<number | null> {
 }
 
 async function tick($: EngineInterface): Promise<void> {
-  const [list, { isBusy }, { owner }] = await Promise.all([readList($), read($, queue), read($, beat)]);
+  const [list, { isBusy }, { owner }] = await Promise.all([readStatus($), read($, queue), read($, beat)]);
   if (!list) {
     return;
   }
@@ -294,7 +293,7 @@ async function arm($: EngineInterface): Promise<Bound | null> {
   if (!owner) {
     return null;
   }
-  const list = await readList($);
+  const list = await readStatus($);
   if (!isOwner(list, owner)) {
     await update($, beat, (current) => ({ ...current, isHeartbeat: false }));
     return null;
@@ -314,11 +313,11 @@ async function arm($: EngineInterface): Promise<Bound | null> {
 }
 
 async function status($: EngineInterface): Promise<string> {
-  const [list, now, { owner, nextAt }, used] = await Promise.all([readList($), $.clock.now(), read($, beat), lastUse($)]);
+  const [list, now, { owner, nextAt }, used] = await Promise.all([readStatus($), $.clock.now(), read($, beat), lastUse($)]);
   if (!list) {
-    return "Couldn't read the proposals.";
+    return "Couldn't read the heartbeat's status.";
   }
-  const showing = `${list.showing.length} of ${list.target} proposals showing`;
+  const showing = `${list.proposals.showing} of ${list.proposals.target} proposals showing`;
   if (!list.heartbeat) {
     return `No heartbeat. ${showing}. /heartbeat makes this session the one.`;
   }
@@ -341,7 +340,7 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
   if (ask.kind === 'now') {
     // The heartbeat's own tab refreshes the brain first when one is due; anywhere else it is a refill only, since a
     // clear belongs to the heartbeat, never to a session that asked for a look.
-    const [list, { owner }] = await Promise.all([readList($), read($, beat)]);
+    const [list, { owner }] = await Promise.all([readStatus($), read($, beat)]);
     if (isOwner(list, owner) && list.refreshDue) {
       const now = await $.clock.now();
       $.clock.after(0, () => void wake($, now, list.timezone, true));
@@ -351,12 +350,12 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
     return 'Looking for proposals now.';
   }
   if (ask.kind === 'off') {
-    const text = await said($, ['proposals', 'heartbeat', '--off']);
+    const text = await said($, ['heartbeat', 'off']);
     await arm($);
     return text;
   }
   const every = ask.every ? [`--every=${ask.every}`] : [];
-  const text = await said($, ['proposals', 'heartbeat', `--owner=${await ownerOf($)}`, ...every]);
+  const text = await said($, ['heartbeat', 'bind', `--owner=${await ownerOf($)}`, ...every]);
   return `${text}${await firstLook($, await arm($))}`;
 }
 
@@ -369,9 +368,9 @@ async function firstLook($: EngineInterface, list: Bound | null): Promise<string
   return ' Looking for proposals now.';
 }
 
-export const registerProposals = (on: On): void => {
+export const registerHeartbeat = (on: On): void => {
   on('session.start', { isInteractive: true }, async ($, e, next) => {
-    await Promise.all(PROPOSALS_FEATURE.commands.map((command) => $.command.register(command)));
+    await Promise.all(HEARTBEAT_FEATURE.commands.map((command) => $.command.register(command)));
     $.clock.after(0, () => void arm($));
     return next(e);
   });
@@ -382,7 +381,7 @@ export const registerProposals = (on: On): void => {
     const { owner } = await read($, beat);
     if (owner) {
       await $.process
-        .run(cliArgv($.plugin.root, ['proposals', 'heartbeat', '--release', `--owner=${owner}`]), {
+        .run(cliArgv($.plugin.root, ['heartbeat', 'release', `--owner=${owner}`]), {
           cwd: await $.session.root(),
           timeoutMs: RELEASE_TIMEOUT_MS
         })
@@ -438,7 +437,7 @@ export const registerProposals = (on: On): void => {
           : { at: now, kind: 'stopped', text: `the ${done} stopped (${e.reason})` }
       );
       // What the turn changed (proposals, the tasks summary, the brain) shows now, here and on the dashboard and sidebar.
-      const list = await readList($);
+      const list = await readStatus($);
       if (list) {
         await update($, beat, (current) => ({ ...current, ...facts(list) }));
       }

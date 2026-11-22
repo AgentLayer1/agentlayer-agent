@@ -4,7 +4,7 @@ import { registerAgents } from '../agents/agents';
 import { registerCommands } from '../commands/commands';
 import { registerManuals } from '../manuals/manuals';
 import { registerNotices } from '../notices/notices';
-import { registerProposals } from '../proposals/proposals';
+import { registerHeartbeat } from '../heartbeat/heartbeat';
 import { registerQueue } from '../queue/queue';
 import { registerReports } from '../reports/reports';
 import { registerSetup } from '../setup/setup';
@@ -19,7 +19,7 @@ export const register: Register = (on) => {
   registerTasks(on);
   registerNotices(on);
   registerQueue(on);
-  registerProposals(on);
+  registerHeartbeat(on);
   registerSetup(on);
   registerAgents(on);
 };

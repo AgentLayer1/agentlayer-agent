@@ -132,8 +132,8 @@ export const SETUP_FEATURE = {
   tools: []
 } as const satisfies ModFeature;
 
-export const PROPOSALS_FEATURE = {
-  id: 'proposals',
+export const HEARTBEAT_FEATURE = {
+  id: 'heartbeat',
   title: 'Proposals and the heartbeat',
   summary:
     'Start, put off or skip the sessions the agent proposes, and make one long session the heartbeat that keeps proposals coming, with no model turn for either.',
@@ -178,7 +178,7 @@ export const MOD_FEATURES: readonly ModFeature[] = [
   SYNC_FEATURE,
   NOTICES_FEATURE,
   QUEUE_FEATURE,
-  PROPOSALS_FEATURE,
+  HEARTBEAT_FEATURE,
   SETUP_FEATURE,
   AGENTS_FEATURE
 ];
