@@ -26,7 +26,7 @@ export const codexHost = {
       skillDir: "the loaded skill's own folder, the one holding its SKILL.md",
       toolPrefix: `\`mcp__${pluginName()}__<tool>\`, the same tool on this host's ${pluginName()} MCP server`,
       askUser:
-        "this host's question tool: `request_user_input` (Plan mode) returns the answer as its result, so use it and carry on; `request_user_input_async` returns before the answer, so end your turn and wait for it. With neither, or for a multi-select question (neither tool offers one), ask in chat (the question, then numbered options with the recommended one first), then end your turn and wait for the answer",
+        "in Plan mode, `request_user_input`, which returns the answer as its result, so carry on; otherwise, and for a multi-select question, ask in chat (the question, then numbered options with the recommended one first), then end your turn and wait for the answer. Not `request_user_input_async`: Codex dismisses its card when your turn's final message renders",
       subagent:
         "this host's subagent tool if it offers one (`spawn_agent`); otherwise do each part yourself, one after another, to the same output contract",
       skill: '`$<name>`, the same skill run the way this host runs one',
