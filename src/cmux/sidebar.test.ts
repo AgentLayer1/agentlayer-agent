@@ -52,23 +52,23 @@ run('the Manager leaves out the heartbeat’s own tab until it needs you', () =>
 
 const SCOUT_ENTRY = homeEntry(SCOUT_HOME, SCOUT, SCOUT_STATE);
 
-run('MESSAGES leads the Manager above NEEDS YOU, its cards closed and its put-off and started ones hidden', () => {
+run('INBOX leads the Manager above NEEDS YOU, its cards closed and its put-off and started ones hidden', () => {
   const sidebar = mount(installed(), CMUX_DATA);
   const folded = sidebar.visibleTexts();
-  expect(folded.indexOf('MESSAGES')).toBeGreaterThan(-1);
-  expect(folded.indexOf('MESSAGES')).toBeLessThan(folded.indexOf('NEEDS YOU'));
-  sidebar.tap('MESSAGES');
+  expect(folded.indexOf('INBOX')).toBeGreaterThan(-1);
+  expect(folded.indexOf('INBOX')).toBeLessThan(folded.indexOf('NEEDS YOU'));
+  sidebar.tap('INBOX');
   expect(sidebar.visibleTexts(), 'no card opens on its own').not.toContain('Drafts the reply with the quantities from the price list.');
   expect(
     between(sidebar.visibleTexts(), 'Reply to the supplier', 'Reproduce the rounding bug'),
     'a closed card shows why now under its badges'
-  ).toEqual(['Reply to the supplier', '~5m', '🦉 Nova', 'due Fri', 'The supplier wrote two hours ago']);
+  ).toEqual(['Reply to the supplier', '~5m', 'Proposal', 'due Fri', 'The supplier wrote two hours ago']);
   sidebar.tap('Reply to the supplier');
   const texts = sidebar.visibleTexts();
   expect(between(texts, 'Reply to the supplier', 'Reproduce the rounding bug')).toEqual([
     'Reply to the supplier',
     '~5m',
-    '🦉 Nova',
+    'Proposal',
     'due Fri',
     'The supplier wrote two hours ago',
     '“Can you confirm the spring order by Friday?”',
@@ -85,7 +85,7 @@ run('MESSAGES leads the Manager above NEEDS YOU, its cards closed and its put-of
 
 run('Start types the choice into the agent’s heartbeat, and the card stays until the published ledger drops it', () => {
   const sidebar = mount(installed(), CMUX_DATA);
-  sidebar.tap('MESSAGES');
+  sidebar.tap('INBOX');
   sidebar.tap('Reply to the supplier');
   expect(sidebar.tap('Start')).toEqual({
     kind: 'cmux',
@@ -95,14 +95,14 @@ run('Start types the choice into the agent’s heartbeat, and the card stays unt
   expect(sidebar.visibleTexts(), 'a Start that fails leaves the card where it was').toContain('Reply to the supplier');
   const decided = { ...NOVA_ENTRY, proposals: NOVA_ENTRY.proposals.filter(({ id }) => id !== 'p-a1') };
   const redrawn = mount(installed({ [NOVA_HOME]: decided }), CMUX_DATA);
-  redrawn.tap('MESSAGES');
+  redrawn.tap('INBOX');
   expect(redrawn.visibleTexts()).not.toContain('Reply to the supplier');
   expect(redrawn.visibleTexts(), 'the next card stays closed').not.toContain('Runs the checkout with the totals from the issue.');
 });
 
 run('a card put off with Later shows once the clock passes its time', () => {
   const sidebar = mount(installed(), CMUX_DATA);
-  sidebar.tap('MESSAGES');
+  sidebar.tap('INBOX');
   expect(sidebar.visibleTexts()).not.toContain('Tidy the release notes');
   sidebar.setData({ clock: { ...CMUX_DATA.clock, epoch: CMUX_DATA.clock.epoch + 2 * 60 * 60 } });
   expect(sidebar.visibleTexts()).toContain('Tidy the release notes');
@@ -119,7 +119,7 @@ run('another agent started in the heartbeat’s old tab is not the heartbeat, an
   );
   const sidebar = mount(installed(), codex);
   expect(sidebar.visibleTexts()).toContain('Morning brief');
-  sidebar.tap('MESSAGES');
+  sidebar.tap('INBOX');
   expect(sidebar.visibleTexts()).toContain('Start Nova’s heartbeat');
   expect(sidebar.visibleTexts()).not.toContain('Start');
 });
@@ -140,7 +140,7 @@ run('a heartbeat tab moved to another workspace gets the choice where it is now'
     ]
   };
   const sidebar = mount(installed(), moved);
-  sidebar.tap('MESSAGES');
+  sidebar.tap('INBOX');
   sidebar.tap('Reply to the supplier');
   expect(sidebar.tap('Start')?.params).toMatchObject({ surface_id: 'w-nova-s2-surface', workspace_id: 'w-code' });
 });
@@ -152,7 +152,7 @@ run('a heartbeat tab whose Claude has ended or gone offers a new heartbeat, and 
   const gone = novaHeartbeatAgents((agents) => agents.filter((agent) => agent.panelId !== 'w-nova-s2-panel'));
   [ended, gone].forEach((data) => {
     const sidebar = mount(installed(), data);
-    sidebar.tap('MESSAGES');
+    sidebar.tap('INBOX');
     const texts = sidebar.visibleTexts();
     expect(texts).toContain('Start Nova’s heartbeat');
     expect(texts).not.toContain('Start');
@@ -162,13 +162,13 @@ run('a heartbeat tab whose Claude has ended or gone offers a new heartbeat, and 
 run('a home whose heartbeat isn’t open in cmux shows its proposals with how to start them, and no buttons', () => {
   const gone = { ...NOVA_ENTRY, heartbeat: { surfaceId: 'closed-surface', workspaceId: 'w-nova' } };
   const sidebar = mount(installed({ [NOVA_HOME]: gone }), CMUX_DATA);
-  sidebar.tap('MESSAGES');
+  sidebar.tap('INBOX');
   sidebar.tap('Reply to the supplier');
   const texts = sidebar.visibleTexts();
   expect(texts).toContain('Run /heartbeat in one of Nova’s sessions to act on these here.');
   expect(texts).not.toContain('Start');
   const scout = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
-  scout.tap('MESSAGES');
+  scout.tap('INBOX');
   scout.tap('Audit the dark mode colours');
   expect(scout.visibleTexts()).toContain('Run /heartbeat in one of Scout’s sessions to act on these here.');
   expect(() => scout.tap('Start')).toThrow();
@@ -179,11 +179,10 @@ const HEARTBEAT_LINE =
 
 run('a home without a heartbeat gets a card that opens one in a focused tab of the selected workspace', () => {
   const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
-  sidebar.tap('MESSAGES');
+  sidebar.tap('INBOX');
   sidebar.tap('Start Scout’s heartbeat');
   expect(between(sidebar.visibleTexts(), 'Start Scout’s heartbeat', 'Audit the dark mode colours')).toEqual([
     'Start Scout’s heartbeat',
-    '🐢 Scout',
     HEARTBEAT_LINE,
     'Start heartbeat'
   ]);
@@ -194,7 +193,7 @@ run('a home without a heartbeat gets a card that opens one in a focused tab of t
   });
   expect(sidebar.visibleTexts(), 'the card stays until the rewrite drops it').toContain('Start Scout’s heartbeat');
   const billed = mount(installed({ [SCOUT_HOME]: { ...SCOUT_ENTRY, launcher: 'agent' } }), selecting('w-code'));
-  billed.tap('MESSAGES');
+  billed.tap('INBOX');
   billed.tap('Start Scout’s heartbeat');
   expect(billed.tap('Start heartbeat')?.params).toEqual({
     workspace_id: 'w-code',
@@ -207,7 +206,7 @@ run('a home without a heartbeat gets a card that opens one in a focused tab of t
 run('a home path with an apostrophe goes to cmux as the folder, never through the shell', () => {
   const home = join('/Users', 'ada', "Ada's Agents", 'Scout');
   const sidebar = mount(installed({ [home]: { ...SCOUT_ENTRY, home } }), CMUX_DATA);
-  sidebar.tap('MESSAGES');
+  sidebar.tap('INBOX');
   sidebar.tap('Start Scout’s heartbeat');
   expect(sidebar.tap('Start heartbeat')?.params).toMatchObject({ working_directory: home, initial_input: 'claude "/heartbeat"\r' });
 });
@@ -221,7 +220,7 @@ run('with no workspace selected, or a remote one, the heartbeat opens in a new w
   };
   [selecting('none'), remote].forEach((data) => {
     const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), data);
-    sidebar.tap('MESSAGES');
+    sidebar.tap('INBOX');
     sidebar.tap('Start Scout’s heartbeat');
     expect(sidebar.tap('Start heartbeat')).toEqual({
       kind: 'cmux',
@@ -231,34 +230,34 @@ run('with no workspace selected, or a remote one, the heartbeat opens in a new w
   });
 });
 
-run('with no heartbeat reachable, MESSAGES starts folded too, and the header opens it', () => {
+run('with no heartbeat reachable, INBOX starts folded too, and the header opens it', () => {
   const gone = { ...NOVA_ENTRY, heartbeat: null };
   const sidebar = mount(installed({ [NOVA_HOME]: gone, [SCOUT_HOME]: SCOUT_ENTRY }), selecting('w-other'));
   const texts = sidebar.visibleTexts();
-  expect(texts).toContain('MESSAGES');
+  expect(texts).toContain('INBOX');
   expect(texts).not.toContain('Start Scout’s heartbeat');
   expect(texts).not.toContain('Reply to the supplier');
-  sidebar.tap('MESSAGES');
+  sidebar.tap('INBOX');
   expect(sidebar.visibleTexts()).toEqual(expect.arrayContaining(['Start Nova’s heartbeat', 'Start Scout’s heartbeat']));
 });
 
 run('a reachable heartbeat adds no card to start it', () => {
   const sidebar = mount(installed({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
-  sidebar.tap('MESSAGES');
+  sidebar.tap('INBOX');
   expect(sidebar.visibleTexts()).toContain('Reply to the supplier');
   expect(sidebar.visibleTexts()).not.toContain('Start Nova’s heartbeat');
 });
 
-run('MESSAGES shows with no proposals anywhere while a home has no heartbeat', () => {
+run('INBOX shows with no proposals anywhere while a home has no heartbeat', () => {
   const sidebar = mount(installed({ [SCOUT_HOME]: { ...SCOUT_ENTRY, proposals: [] } }), CMUX_DATA);
-  expect(sidebar.visibleTexts()).toContain('MESSAGES');
-  sidebar.tap('MESSAGES');
+  expect(sidebar.visibleTexts()).toContain('INBOX');
+  sidebar.tap('INBOX');
   expect(sidebar.visibleTexts()).toContain('Start Scout’s heartbeat');
 });
 
 run('in a workspace no agent owns, every joined agent’s messages share the section, the ones a heartbeat can decide first', () => {
   const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY, [NOVA_HOME]: NOVA_ENTRY }), selecting('w-other'));
-  sidebar.tap('MESSAGES');
+  sidebar.tap('INBOX');
   const texts = sidebar.visibleTexts();
   const titles = [
     'Reply to the supplier',
@@ -270,12 +269,12 @@ run('in a workspace no agent owns, every joined agent’s messages share the sec
     texts.filter((text) => titles.includes(text)),
     'Nova’s first, then Scout’s heartbeat card and its proposal'
   ).toEqual(titles);
-  expect(texts).toContain('🐢 Scout');
+  expect(texts, 'the kind leads the badges; the scope names the agent').not.toContain('🐢 Scout');
 });
 
-run('an entry from an older plugin adds nothing to MESSAGES', () => {
+run('an entry from an older plugin adds nothing to INBOX', () => {
   const texts = mount(installed({ [NOVA_HOME]: { ...NOVA_ENTRY, schema: 7 } }), CMUX_DATA).visibleTexts();
-  expect(texts).not.toContain('MESSAGES');
+  expect(texts).not.toContain('INBOX');
   expect(texts).toContain('NEEDS YOU');
 });
 
@@ -728,7 +727,7 @@ run('the Discuss icon on a task or a goal opens a session about it, and the task
 run("a session opens in its own agent's workspace, focused, never in another joined agent's, even the selected one", () => {
   const both = { [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY };
   const fromElsewhere = mount(installed(both), selecting('w-other'));
-  fromElsewhere.tap('MESSAGES');
+  fromElsewhere.tap('INBOX');
   fromElsewhere.tap('Reply to the supplier');
   expect(fromElsewhere.tap('Start')?.params?.text, "Nova's own workspace, though Downloads is selected").toBe(
     '/message start p-a1 --workspace=w-nova\n'
@@ -742,11 +741,11 @@ run("a session opens in its own agent's workspace, focused, never in another joi
   ]);
 });
 
-run("MESSAGES shows the selected workspace's agent only, and every agent where no agent can be told", () => {
+run("INBOX shows the selected workspace's agent only, and every agent where no agent can be told", () => {
   const both = { [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY };
   const shows = (workspace: string) => {
     const sidebar = mount(installed(both), selecting(workspace));
-    sidebar.tap('MESSAGES');
+    sidebar.tap('INBOX');
     const texts = sidebar.visibleTexts();
     return ['Reply to the supplier', 'Audit the dark mode colours'].filter((title) => texts.includes(title));
   };
@@ -755,7 +754,7 @@ run("MESSAGES shows the selected workspace's agent only, and every agent where n
   expect(shows('w-other'), 'Downloads, no agent').toEqual(['Reply to the supplier', 'Audit the dark mode colours']);
 });
 
-run('a note and the proposals share MESSAGES, newest first, with the same three buttons; a fresh note opens it', () => {
+run('a note and the proposals share INBOX, newest first, with the same three buttons; a fresh note opens it', () => {
   const note: Note = {
     id: 'n-1',
     at: nowISO(new Date()),
@@ -788,7 +787,7 @@ run('a note and the proposals share MESSAGES, newest first, with the same three 
     installed({ [NOVA_HOME]: homeEntry(NOVA_HOME, NOVA, { ...NOVA_STATE, notes: { notes: [{ ...note, laterUntil: '2999-01-01T08:00:00+08:00' }] } }) }),
     CMUX_DATA
   );
-  putOff.tap('MESSAGES');
+  putOff.tap('INBOX');
   expect(putOff.visibleTexts(), 'put off until a time still to come').not.toContain(note.title);
 });
 

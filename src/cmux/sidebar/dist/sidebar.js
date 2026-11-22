@@ -409,6 +409,7 @@ var keepWidth = (view) => view.lineLimit(1).fixedSize("horizontal");
 var pillText = (label, color) => Text(label).font(9).weight("semibold").color(color).paddingHorizontal(5).paddingVertical(1).background(`${color}26`).cornerRadius(4);
 var pill = (label, color) => keepWidth(pillText(label, color));
 var shrinkingPill = (label, color) => pillText(label, color).lineLimit(1).truncation("tail");
+var folderButton = (url) => url ? [toolIcon("folder", "Open in Finder", () => openURL(url))] : [];
 var toolIcon = (symbol, help, onTap) => Image(symbol).font(11).color("secondary").padding(5).cornerRadius(6).hoverBackground("#7f7f7f3d").cursor("pointer").help(help).onTap(onTap);
 var CARD = "#7f7f7f12";
 var foldingCard = (header, expanded, setExpanded, body) => VStack({ spacing: 0 }, [
@@ -879,7 +880,8 @@ var projectsBody = (entry) => {
     HStack({ spacing: 4 }, [
       searchField("Search tasks…", setQuery),
       toolIcon("square.grid.3x3", "Dashboard", () => cmux("browser.tab.new", { url: `${dashboard}#today` })),
-      ...roadmap ? [toolIcon("map", "Roadmap", () => cmux("browser.tab.new", { url: roadmap }))] : []
+      ...roadmap ? [toolIcon("map", "Roadmap", () => cmux("browser.tab.new", { url: roadmap }))] : [],
+      ...folderButton(entry.folders?.projects)
     ]),
     when2(searching, () => VStack({ spacing: 1 }, [
       dividedList(found, (item) => item.task.id, (item) => taskRow(entry, item.task, item.color)),
@@ -955,7 +957,7 @@ var recentBody = (entry) => {
   const days = computed(() => byDay(recent.filter((item) => matchesQuery(query(), item.title, item.kind, item.project))));
   const searching = () => query().trim() !== "";
   return VStack({ spacing: 10 }, [
-    searchField("Search recent files…", setQuery),
+    HStack({ spacing: 4 }, [searchField("Search recent files…", setQuery), ...folderButton(entry.folders?.recent)]),
     VStack({ spacing: 6 }, [dayCards(days, searching, row)]),
     Text(() => days().length ? "" : searching() ? "No matching files." : "Nothing changed in the last 30 days.").font(11).color("tertiary").paddingHorizontal(4)
   ]);
@@ -982,7 +984,7 @@ var reportsBody = (entry) => {
   const searching = () => query().trim() !== "";
   const [pinsOpen, setPinsOpen] = signal(true);
   return VStack({ spacing: 10 }, [
-    searchField("Search reports…", setQuery),
+    HStack({ spacing: 4 }, [searchField("Search reports…", setQuery), ...folderButton(entry.folders?.reports)]),
     VStack({ spacing: 6 }, [
       when2(() => shownPins().length > 0, () => foldCard({
         title: "Pinned",
@@ -1016,15 +1018,7 @@ var agentPage = (options) => {
     scopedPage(options.home, (entry) => VStack({ spacing: 8 }, [
       HStack({ spacing: 4 }, [
         ...SECTIONS2.map((item) => chip(item.label, () => section() === item, () => setSection(item))),
-        Spacer({ minLength: 0 }),
-        ForEach({
-          items: () => {
-            const id = section().id;
-            const url = id === "goals" ? undefined : entry.folders?.[id];
-            return url ? [url] : [];
-          },
-          key: (url) => url
-        }, (url) => toolIcon("folder", "Open in Finder", () => openURL(url())))
+        Spacer({ minLength: 0 })
       ]),
       ForEach({ items: () => [section()], key: (item) => item.label }, (item) => item().body(entry))
     ]))
@@ -1085,16 +1079,17 @@ var body = ({ entry, message }) => VStack({ spacing: 5, alignment: "leading" }, 
     choiceButton("Dismiss", () => type(`/message dismiss ${message.item.id}`))
   ], `Run /heartbeat in one of ${entry.name}’s sessions to act on these here.`)
 ]);
+var PROPOSAL_BADGE = { text: "Proposal", color: PURPLE, icon: "sparkles" };
+var NOTE_BADGE = { text: "Note", color: ACCENT, icon: "note.text" };
 var card = (shown) => {
-  const { entry, message, key } = shown;
-  const agent = { text: `${entry.emoji} ${entry.name}`, color: entry.colors?.primary ?? PURPLE };
+  const { message, key } = shown;
   if (message.kind === "proposal") {
     const { item } = message;
     return {
       key,
       title: item.title,
       ...item.estimate ? { span: `~${item.estimate}` } : {},
-      badges: [agent, ...item.due ? [{ text: item.due, color: ORANGE, icon: "calendar" }] : []],
+      badges: [PROPOSAL_BADGE, ...item.due ? [{ text: item.due, color: ORANGE, icon: "calendar" }] : []],
       ...item.trigger ? { summary: item.trigger } : {},
       searchText: `${item.trigger} ${item.detail}`,
       body: () => body(shown)
@@ -1105,7 +1100,7 @@ var card = (shown) => {
     key,
     title: item.title,
     span: hhmm(item.at),
-    badges: [agent],
+    badges: [NOTE_BADGE],
     summary: item.next,
     searchText: `${item.body} ${item.next}`,
     body: () => body(shown)
@@ -1121,7 +1116,6 @@ var heartbeatBody = (entry) => VStack({ spacing: 5, alignment: "leading" }, [
 var heartbeatCard = (home, entry) => ({
   key: `${home}#heartbeat`,
   title: `Start ${entry.name}’s heartbeat`,
-  badges: [{ text: `${entry.emoji} ${entry.name}`, color: entry.colors?.primary ?? PURPLE }],
   body: () => heartbeatBody(entry)
 });
 var messagesSection = (scope) => {
@@ -1142,7 +1136,7 @@ var messagesSection = (scope) => {
   ]);
   const fresh = () => inScope().some(([, entry]) => (entry.notes ?? []).some((note) => nowMs() - Date.parse(note.at) < DAY_MS2));
   return {
-    label: "MESSAGES",
+    label: "INBOX",
     icon: "tray.full.fill",
     color: PURPLE,
     folded: () => !fresh(),

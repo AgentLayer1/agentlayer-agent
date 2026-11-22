@@ -153,6 +153,12 @@ export const shrinkingPill = (label: string, color: string) =>
 /**
  * A plain icon button for the top row; `help` names it on hover.
  */
+/**
+ * A button that opens a folder in Finder, as the last icon on a search row; none when there's no folder to open.
+ */
+export const folderButton = (url: string | undefined) =>
+  url ? [toolIcon('folder', 'Open in Finder', () => openURL(url))] : [];
+
 export const toolIcon = (symbol: string, help: string, onTap: () => void) =>
   Image(symbol)
     .font(11)

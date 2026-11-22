@@ -3,7 +3,7 @@ import { isShown } from '../../proposals/shown';
 import { SCHEMA, type HomeEntry, type NoteItem, type ProposalItem } from './data';
 import { choiceButton, heartbeatActions, heartbeatRoute } from './heartbeat';
 import { openSession, placeSession } from './session';
-import { nowMs, ORANGE, PURPLE } from './style';
+import { ACCENT, nowMs, ORANGE, PURPLE } from './style';
 
 type Message = { kind: 'proposal'; item: ProposalItem } | { kind: 'note'; item: NoteItem };
 
@@ -58,16 +58,18 @@ const body = ({ entry, message }: Shown) =>
     )
   ]);
 
+const PROPOSAL_BADGE = { text: 'Proposal', color: PURPLE, icon: 'sparkles' };
+const NOTE_BADGE = { text: 'Note', color: ACCENT, icon: 'note.text' };
+
 const card = (shown: Shown): SectionCard => {
-  const { entry, message, key } = shown;
-  const agent = { text: `${entry.emoji} ${entry.name}`, color: entry.colors?.primary ?? PURPLE };
+  const { message, key } = shown;
   if (message.kind === 'proposal') {
     const { item } = message;
     return {
       key,
       title: item.title,
       ...(item.estimate ? { span: `~${item.estimate}` } : {}),
-      badges: [agent, ...(item.due ? [{ text: item.due, color: ORANGE, icon: 'calendar' }] : [])],
+      badges: [PROPOSAL_BADGE, ...(item.due ? [{ text: item.due, color: ORANGE, icon: 'calendar' }] : [])],
       ...(item.trigger ? { summary: item.trigger } : {}),
       searchText: `${item.trigger} ${item.detail}`,
       body: () => body(shown)
@@ -78,7 +80,7 @@ const card = (shown: Shown): SectionCard => {
     key,
     title: item.title,
     span: hhmm(item.at),
-    badges: [agent],
+    badges: [NOTE_BADGE],
     summary: item.next,
     searchText: `${item.body} ${item.next}`,
     body: () => body(shown)
@@ -101,12 +103,11 @@ const heartbeatBody = (entry: HomeEntry) =>
 const heartbeatCard = (home: string, entry: HomeEntry): SectionCard => ({
   key: `${home}#heartbeat`,
   title: `Start ${entry.name}’s heartbeat`,
-  badges: [{ text: `${entry.emoji} ${entry.name}`, color: entry.colors?.primary ?? PURPLE }],
   body: () => heartbeatBody(entry)
 });
 
 /**
- * The Manager's MESSAGES section: what the agents surfaced on their own, proposals and notes alike, newest first, those
+ * The Manager's INBOX: the messages the agents surfaced on their own, proposals and notes alike, newest first, those
  * put off with Later hidden until their time. It shows the agent `scope` names, or every joined agent when it names
  * none. Messages a reachable heartbeat can decide come first; each agent without one follows as a card that starts its
  * heartbeat, then its messages. A button types `/message <choice> <id>` into that agent's heartbeat.
@@ -136,7 +137,7 @@ export const messagesSection = (scope: () => string | undefined): HostSection =>
   const fresh = () =>
     inScope().some(([, entry]) => (entry.notes ?? []).some((note) => nowMs() - Date.parse(note.at) < DAY_MS));
   return {
-    label: 'MESSAGES',
+    label: 'INBOX',
     icon: 'tray.full.fill',
     color: PURPLE,
     folded: () => !fresh(),

@@ -17,6 +17,7 @@ import {
   progressBar,
   PURPLE,
   RED,
+  folderButton,
   toolIcon,
   when
 } from './style';
@@ -254,7 +255,8 @@ export const projectsBody = (entry: HomeEntry) => {
     HStack({ spacing: 4 }, [
       searchField('Search tasks…', setQuery),
       toolIcon('square.grid.3x3', 'Dashboard', () => cmux('browser.tab.new', { url: `${dashboard}#today` })),
-      ...(roadmap ? [toolIcon('map', 'Roadmap', () => cmux('browser.tab.new', { url: roadmap }))] : [])
+      ...(roadmap ? [toolIcon('map', 'Roadmap', () => cmux('browser.tab.new', { url: roadmap }))] : []),
+      ...folderButton(entry.folders?.projects)
     ]),
     when(searching, () =>
       VStack({ spacing: 1 }, [
