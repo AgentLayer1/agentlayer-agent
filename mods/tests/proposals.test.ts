@@ -483,6 +483,13 @@ describe('heartbeat band', () => {
     expect(quiet('Proposed 1, retired 1: Draft the reply.')).toBe('✓');
   });
 
+  test('a scouting run is marked by the notes it sent, however its line is worded', () => {
+    const at = Date.parse('2026-03-11T10:00:00+08:00');
+    const mark = (sent: number, text: string) => eventView({ at, kind: 'notes', text, sent }, 'Asia/Kuala_Lumpur').mark;
+    expect(mark(1, 'Sent 1 note: The snippet names the old plugin.')).toBe('✎');
+    expect(mark(0, 'Nothing earned a note this time.')).toBe('·');
+  });
+
   test('a next look the Mac slept through reads late', () => {
     const due = Date.parse('2026-03-11T10:00:00+08:00');
     expect(nextLook(due, due - 90 * MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look in 1h 30m · 10:00');

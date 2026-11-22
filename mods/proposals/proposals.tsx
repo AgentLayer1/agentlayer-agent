@@ -192,6 +192,7 @@ async function scout($: EngineInterface): Promise<void> {
   if (!room) {
     return;
   }
+  await update($, beat, (current) => ({ ...current, notesThisWake: 0 }));
   await expectTurn($, 'notes');
   await $.command.run({ command: `${$.plugin.name}:notes` });
 }
@@ -411,7 +412,13 @@ export const registerProposals = (on: On): void => {
         sent.notes.map((item) => $.session.append({ message: { type: 'system', content: [{ type: 'text', text: noticeText(item) }] } }))
       );
       const [now, { zone = 'UTC' }] = await Promise.all([$.clock.now(), read($, beat)]);
-      await update($, beat, (current) => ({ ...current, notesDay: dayIn(now, zone), notesSent: sent.today, notesCap: sent.cap }));
+      await update($, beat, (current) => ({
+        ...current,
+        notesDay: dayIn(now, zone),
+        notesSent: sent.today,
+        notesCap: sent.cap,
+        notesThisWake: (current.notesThisWake ?? 0) + sent.notes.length
+      }));
     }
     return result;
   });
@@ -421,13 +428,13 @@ export const registerProposals = (on: On): void => {
     const { awaiting = [] } = await read($, beat);
     const kind = awaiting[0];
     if (e.agentId === undefined && kind) {
-      const now = await $.clock.now();
+      const [now, { notesThisWake = 0 }] = await Promise.all([$.clock.now(), read($, beat)]);
       const done = kind === 'refresh' || kind === 'notes' ? kind : 'look';
       await update($, beat, (current) => ({ ...current, awaiting: (current.awaiting ?? []).slice(1), workingSince: now }));
       await note(
         $,
         e.reason === 'answer'
-          ? { at: now, kind: done, text: closingLine(e.answer) || 'done' }
+          ? { at: now, kind: done, text: closingLine(e.answer) || 'done', ...(done === 'notes' ? { sent: notesThisWake } : {}) }
           : { at: now, kind: 'stopped', text: `the ${done} stopped (${e.reason})` }
       );
       // What the turn changed (proposals, the tasks summary, the brain) shows now, here and on the dashboard and sidebar.

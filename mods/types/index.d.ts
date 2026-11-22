@@ -138,6 +138,8 @@ export interface HeartbeatEvent {
   kind: 'look' | 'refresh' | 'notes' | 'skip' | 'stopped';
   /** The look's or refresh's closing line, a skip's reason, or what stopped. */
   text: string;
+  /** For a scouting run, how many notes it sent. */
+  sent?: number;
   /** How many skips this one stands for, and when the first was; absent for one. */
   count?: number;
   since?: number;
@@ -163,6 +165,8 @@ export interface HeartbeatClock {
   notesDay?: string;
   notesSent?: number;
   notesCap?: number;
+  /** How many notes the scouting run under way has sent so far. */
+  notesThisWake?: number;
   /** When this heartbeat last started a brain refresh, epoch ms, so a failed one isn't retried every tick. */
   refreshTriedAt?: number;
   /** When a sync or brain refresh last ran, epoch ms; 0 when never. */

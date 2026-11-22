@@ -196,7 +196,7 @@ export const eventView = (
     return { mark: '↻', color: 'cyan', text: event.text };
   }
   if (event.kind === 'notes') {
-    return /^no (note|room)/i.test(event.text) ? { mark: '·', text: event.text } : { mark: '✎', color: 'magenta', text: event.text };
+    return event.sent ? { mark: '✎', color: 'magenta', text: event.text } : { mark: '·', text: event.text };
   }
   if (event.kind === 'stopped') {
     return { mark: '✗', color: 'red', text: event.text };
