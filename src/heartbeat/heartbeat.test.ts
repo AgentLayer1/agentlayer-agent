@@ -3,7 +3,7 @@ import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { dirname, resolve } from 'node:path';
 import { FILES } from '@/config';
 import { runHeartbeatCommand } from './command';
-import { parseHeartbeat, readHeartbeat } from './ledger';
+import { parseHeartbeat, readHeartbeat, type Heartbeat } from './ledger';
 import { lastRefreshed, parseEvery, refreshDue, released } from './rules';
 
 const NOW = new Date('2026-11-20T10:00:00+08:00');
@@ -122,4 +122,40 @@ test('proposals and notes know nothing of the heartbeat', () => {
       .map((name) => `${domain}/${name}`);
   });
   expect(offenders).toEqual([]);
+});
+
+test("a 1.0.9 home's heartbeat, kept in proposals.json, moves into its own file on the first read", () => {
+  rmSync(FILES.HEARTBEAT, { force: true });
+  mkdirSync(dirname(FILES.PROPOSALS), { recursive: true });
+  const beat: Heartbeat = {
+    owner: 'old@1',
+    everyMinutes: 55,
+    places: [{ adapter: 'cmux', surfaceId: 's', workspaceId: 'w' }]
+  };
+  writeFileSync(FILES.PROPOSALS, JSON.stringify({ heartbeat: beat, proposals: [] }));
+  try {
+    expect(readHeartbeat()).toEqual(beat);
+    expect(JSON.parse(readFileSync(FILES.HEARTBEAT, 'utf-8')), 'now in its own file').toEqual(beat);
+    expect(Object.keys(JSON.parse(readFileSync(FILES.PROPOSALS, 'utf-8'))), 'and gone from the proposals').toEqual([
+      'proposals'
+    ]);
+    quietly(() => runHeartbeatCommand('off', []));
+    expect(readHeartbeat(), 'off stays off').toBeNull();
+  } finally {
+    rmSync(FILES.HEARTBEAT, { force: true });
+    rmSync(FILES.PROPOSALS, { force: true });
+  }
+});
+
+test("a notes file that won't parse stops the scouting, never the looks: the status reads, with no room for notes", () => {
+  rmSync(FILES.HEARTBEAT, { force: true });
+  mkdirSync(dirname(FILES.NOTES), { recursive: true });
+  writeFileSync(FILES.NOTES, '{"notes": [');
+  try {
+    const { result, lines } = quietly(() => runHeartbeatCommand('status', ['--json']));
+    expect(result).toBe(0);
+    expect(JSON.parse(lines[0] ?? '').notes.room).toBe(0);
+  } finally {
+    rmSync(FILES.NOTES, { force: true });
+  }
 });

@@ -12,7 +12,6 @@ const NOTE: Note = {
   body: '',
   sources: [],
   next: '',
-  prompt: '',
   reaction: '',
   laterUntil: '',
   folder: '',

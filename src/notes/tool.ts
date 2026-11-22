@@ -31,11 +31,6 @@ const NOTE = z.object({
     .max(5)
     .describe('What backs it: full URLs of pages anyone can open, or for a finding about the brain, the home files (knowledge/…, projects/…).'),
   next: text(200).min(1).describe('The one next step, small and concrete: "Inspect the install URL in Search Console and request indexing."'),
-  prompt: text(8000)
-    .default('')
-    .describe(
-      'When the next step is work a session can do, its whole first message: what to do, what it may touch (drafts only), and where to stop. Empty otherwise.'
-    ),
   folder: text(400)
     .default('')
     .describe('The folder the next step works in: the repo path for code work; empty when none fits.'),

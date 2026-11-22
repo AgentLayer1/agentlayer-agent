@@ -119,6 +119,23 @@ test('Start records the note before opening a session, so a repeat opens nothing
   }
 });
 
+test('a dismissed source is refused while its note is on record, however long ago it was sent', () => {
+  const dismissed = decided(addNotes(EMPTY_NOTES, [input('site:x')], NOW, counter()).ledger, 'n-0', 'dismiss');
+  const later = new Date(NOW.getTime() + 20 * 24 * HOUR);
+  expect(addNotes(dismissed, [input('site:x')], later).refused.map(({ reason }) => reason)).toEqual(['dismissed by the operator']);
+});
+
+test('a note put off near the end of its week waits until its Later time, not the week', () => {
+  const sixDays = new Date(NOW.getTime() + 6.9 * 24 * HOUR);
+  const putOff = decided(addNotes(EMPTY_NOTES, [input('a')], NOW, counter()).ledger, 'n-0', 'later');
+  const later = decideNote(putOff, 'n-0', 'later', sixDays);
+  if (later.outcome !== 'decided') {
+    throw new Error('expected Later to land');
+  }
+  const atLaterTime = new Date(Date.parse(later.note.laterUntil) + HOUR);
+  expect(openNotes(later.ledger, atLaterTime).map(({ id }) => id)).toEqual(['n-0']);
+});
+
 test("a note keeps the workspace and folder the agent picked; a note from an older ledger reads both as ''", () => {
   const [note] = addNotes(EMPTY_NOTES, [input('a', { workspace: 'Code Reviews', folder: '/code/acme' })], NOW, counter()).added;
   if (!note) {
@@ -130,7 +147,7 @@ test("a note keeps the workspace and folder the agent picked; a note from an old
   expect([read?.workspace, read?.folder, read?.laterUntil]).toEqual(['', '', '']);
 });
 
-test('every note can be started: one without a prompt gets one built from its finding, drafts only', () => {
+test("every note starts from a prompt built from what its card showed, under the code's own reach", () => {
   const [note] = addNotes(EMPTY_NOTES, [input('a')], NOW, counter()).added;
   if (!note) {
     throw new Error('expected the note to be added');
@@ -139,14 +156,14 @@ test('every note can be started: one without a prompt gets one built from its fi
   expect(built).toContain('Next step: Do the one small thing.');
   expect(built).toContain('https://example.com/page');
   expect(built).toContain('Drafts only');
-  expect(notePrompt({ ...note, prompt: 'Fix it, then stop.' })).toBe('Fix it, then stop.');
+  expect(built.startsWith('-'), 'never read as a CLI flag').toBe(false);
 });
 
-test('a lens record counts a started note as useful', () => {
+test('a lens record counts the started and dismissed notes per lens', () => {
   const { ledger } = addNotes(EMPTY_NOTES, [input('a'), input('b', { lens: 'signals' })], NOW, counter());
   expect(lensRecord(decided(ledger, 'n-0', 'start'))).toEqual({
-    'public-drift': { lastAt: nowISO(NOW), notes: 1, useful: 1, dismissed: 0 },
-    signals: { lastAt: nowISO(NOW), notes: 1, useful: 0, dismissed: 0 }
+    'public-drift': { lastAt: nowISO(NOW), notes: 1, started: 1, dismissed: 0 },
+    signals: { lastAt: nowISO(NOW), notes: 1, started: 0, dismissed: 0 }
   });
 });
 
@@ -187,14 +204,14 @@ test('of a group, the first available adapter stands in for the rest, unless the
 test('an adapter that fails is skipped and the rest still deliver', async () => {
   const good = fake('report');
   const bad = fake('cmux', true, true);
-  const note: Note = { ...input('a'), id: 'n-0', at: '', prompt: '', reaction: '', laterUntil: '', folder: '', workspace: '' };
+  const note: Note = { ...input('a'), id: 'n-0', at: '', reaction: '', laterUntil: '', folder: '', workspace: '' };
   expect(await deliverNote(note, [bad.adapter, good.adapter], CONTEXT)).toEqual(['report']);
   expect(good.got).toEqual(['n-0']);
 });
 
 test('a sent note lands in reports/notes, and the result says who delivered it and how many went out today', async () => {
   rmSync(FILES.NOTES, { force: true });
-  const sent = await sendNotes([input('site:snippet', { prompt: 'Fix it, then stop.' })], [reportAdapter], NOW);
+  const sent = await sendNotes([input('site:snippet')], [reportAdapter], NOW);
   expect(sent.added.map(({ delivered }) => delivered)).toEqual([['report']]);
   expect([sent.today, sent.cap]).toEqual([1, DAILY_CAP]);
   const folder = resolve(FOLDERS.REPORTS, 'notes');

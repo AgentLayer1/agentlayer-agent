@@ -1,5 +1,6 @@
 import { expect, spyOn, test } from 'bun:test';
-import { rmSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { FILES } from '@/config';
 import { addNotes } from '@/notes/rules';
 import { EMPTY_NOTES, readNotes, writeNotes } from '@/notes/ledger';
@@ -63,5 +64,18 @@ test('decide finds a message by its id in either ledger, and Dismiss means the s
     said.mockRestore();
     rmSync(FILES.PROPOSALS, { force: true });
     rmSync(FILES.NOTES, { force: true });
+  }
+});
+
+test("a decision on a ledger that won't parse names the file instead of saying nothing waits", () => {
+  mkdirSync(dirname(FILES.PROPOSALS), { recursive: true });
+  writeFileSync(FILES.PROPOSALS, '{"proposals": [{"id": "p-ab12"');
+  const failed = spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    expect(runMessagesCommand('decide', ['start', 'p-ab12'])).toBe(1);
+    expect(String(failed.mock.calls[0]?.[0])).toContain('is not valid JSON');
+  } finally {
+    failed.mockRestore();
+    rmSync(FILES.PROPOSALS, { force: true });
   }
 });

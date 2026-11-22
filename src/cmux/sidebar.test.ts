@@ -176,7 +176,7 @@ run('a home whose heartbeat isn’t open in cmux shows its proposals with how to
 });
 
 const HEARTBEAT_LINE =
-  'Opens a session in Scout’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing, and refreshes the brain every 6 hours when there’s something new.';
+  'Opens a session in Scout’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing. Every 6 hours, when there’s something new, it refreshes the brain and scouts the web and the brain for up to three notes a day.';
 
 run('a home without a heartbeat gets a card that opens one in a focused tab of the selected workspace', () => {
   const sidebar = mount(installed({ [SCOUT_HOME]: SCOUT_ENTRY }), CMUX_DATA);
@@ -247,6 +247,21 @@ run('a reachable heartbeat adds no card to start it', () => {
   sidebar.tap('INBOX');
   expect(sidebar.visibleTexts()).toContain('Reply to the supplier');
   expect(sidebar.visibleTexts()).not.toContain('Start Nova’s heartbeat');
+});
+
+run('a heartbeat waiting on a question gets no typed choice: the card says to answer it there', () => {
+  const asking = {
+    ...CMUX_DATA,
+    workspaces: CMUX_DATA.workspaces.map((item) => ({
+      ...item,
+      agents: item.agents.map((agent) => (agent.title === 'Morning brief' ? { ...agent, status: 'needs_input' as const } : agent))
+    }))
+  };
+  const sidebar = mount(installed(), asking);
+  sidebar.tap('INBOX');
+  sidebar.tap('Reply to the supplier');
+  expect(sidebar.visibleTexts()).toContain('Nova’s heartbeat is waiting on you in its tab; answer it there first.');
+  expect(() => sidebar.tap('Later')).toThrow();
 });
 
 run('INBOX shows with no proposals anywhere while a home has no heartbeat', () => {
@@ -765,7 +780,6 @@ run('a note and the proposals share INBOX, newest first, with the same three but
     body: 'The page lists the old plans.',
     sources: ['https://example.com/pricing'],
     next: 'Update the pricing table.',
-    prompt: '',
     reaction: '',
     laterUntil: '',
     folder: '',

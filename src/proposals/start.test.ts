@@ -131,3 +131,18 @@ test('the core never imports an adapter', () => {
   expect(logic.length).toBeGreaterThan(2);
   expect(offenders).toEqual([]);
 });
+
+test("a prompt file that can't be written leaves the proposal waiting, with the error, instead of started", () => {
+  const id = seed();
+  rmSync(FOLDERS.PROMPTS, { recursive: true, force: true });
+  mkdirSync(dirname(FOLDERS.PROMPTS), { recursive: true });
+  writeFileSync(FOLDERS.PROMPTS, 'a file where the folder goes');
+  try {
+    const { adapter, started } = fakeAdapter(true);
+    expect(decideProposal(id, 'start', context([adapter]))).toStartWith("Couldn't start Reply to the review:");
+    expect(started).toHaveLength(0);
+    expect(readProposalLedger().proposals[0]?.state).toBe('waiting');
+  } finally {
+    rmSync(FOLDERS.PROMPTS, { force: true });
+  }
+});

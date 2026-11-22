@@ -78,16 +78,27 @@ async function onRedraw($: EngineInterface): Promise<void> {
   await revive($);
 }
 
+// Several callers can find the clock stopped in the same moment; only the first restarts it and looks.
+let reviving = false;
+
 async function revive($: EngineInterface): Promise<void> {
-  const { isHeartbeat, nextAt, everyMinutes, zone = 'UTC' } = await read($, beat);
-  const now = await $.clock.now();
-  if (!isHeartbeat || nextAt === undefined || everyMinutes === undefined || now - nextAt <= STALL_MS) {
+  if (reviving) {
     return;
   }
-  startLooks($, everyMinutes);
-  await update($, beat, (current) => ({ ...current, nextAt: now + everyMinutes * MINUTE_MS }));
-  await note($, { at: now, kind: 'stopped', text: `the look due ${clockIn(nextAt, zone)} never came; the clock restarted` });
-  await tick($);
+  reviving = true;
+  try {
+    const { isHeartbeat, nextAt, everyMinutes, zone = 'UTC' } = await read($, beat);
+    const now = await $.clock.now();
+    if (!isHeartbeat || nextAt === undefined || everyMinutes === undefined || now - nextAt <= STALL_MS) {
+      return;
+    }
+    startLooks($, everyMinutes);
+    await update($, beat, (current) => ({ ...current, nextAt: now + everyMinutes * MINUTE_MS }));
+    await note($, { at: now, kind: 'stopped', text: `the look due ${clockIn(nextAt, zone)} never came; the clock restarted` });
+    await tick($);
+  } finally {
+    reviving = false;
+  }
 }
 
 // The session root, not its cwd: a shell `cd` in a turn moves the cwd out of the home.
@@ -171,16 +182,19 @@ async function wake($: EngineInterface, now: number, status: HeartbeatStatus, re
     if (refresh) {
       await expectTurn($, 'refresh');
       await $.command.run({ command: `${$.plugin.name}:sync`, args: 'brain' });
-      await scout($, status);
+      // Pages the scout fetched stay out of the look, which runs with wider grants.
+      if (await scout($, status)) {
+        await $.command.run({ command: 'clear' });
+      }
     }
     await look($);
   });
 }
 
-// Scouting for notes rides on the refresh, reading the brain it just compiled, while the day has room.
-async function scout($: EngineInterface, status: HeartbeatStatus): Promise<void> {
+// Scouting for notes rides on the refresh, reading the brain it just compiled, while the day has room. Says whether it ran.
+async function scout($: EngineInterface, status: HeartbeatStatus): Promise<boolean> {
   if (!status.notes.room) {
-    return;
+    return false;
   }
   const titles = await workspacesNow($);
   await update($, beat, (current) => ({ ...current, notesThisWake: 0 }));
@@ -189,6 +203,7 @@ async function scout($: EngineInterface, status: HeartbeatStatus): Promise<void>
     command: `${$.plugin.name}:notes`,
     args: titles.length ? `workspaces: ${JSON.stringify(titles)}` : ''
   });
+  return true;
 }
 
 async function note($: EngineInterface, event: HeartbeatEvent): Promise<void> {
@@ -473,7 +488,7 @@ export const registerHeartbeat = (on: On): void => {
           <Text weight="semibold">Heartbeat</Text>
           {working ? (
             <Text color="magenta">
-              {`◉ ${working === 'refresh' ? 'refreshing the brain' : 'looking for proposals'}…${
+              {`◉ ${working === 'refresh' ? 'refreshing the brain' : working === 'notes' ? 'scouting for notes' : 'looking for proposals'}…${
                 state.workingSince ? ` since ${clockIn(state.workingSince, zone)}` : ''
               }`}
             </Text>

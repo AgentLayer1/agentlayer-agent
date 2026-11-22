@@ -16,7 +16,7 @@ const KEEP_MS = 60 * DAY_MS;
 const OPEN_MS = 7 * DAY_MS;
 
 export type NoteInput = Pick<Note, 'source' | 'lens' | 'title' | 'body' | 'sources' | 'next'> &
-  Partial<Pick<Note, 'prompt' | 'folder' | 'workspace'>>;
+  Partial<Pick<Note, 'folder' | 'workspace'>>;
 
 interface Refusal {
   source: string;
@@ -59,6 +59,9 @@ const blockedBy = (ledger: NoteLedger, input: NoteInput, now: Date): string => {
   if (sentLately(ledger, now).some((note) => note.source === input.source)) {
     return 'noted in the last two weeks';
   }
+  if (ledger.notes.some((note) => note.source === input.source && note.reaction === 'dismissed')) {
+    return 'dismissed by the operator';
+  }
   return input.sources.some(isSourceRef) ? '' : 'no source to back it: a URL, or a file in the home';
 };
 
@@ -79,7 +82,6 @@ export const addNotes = (
       }
       const note: Note = {
         ...input,
-        prompt: input.prompt ?? '',
         folder: input.folder ?? '',
         workspace: input.workspace ?? '',
         id: freshId(new Set(result.ledger.notes.map(({ id }) => id)), makeId),
@@ -98,7 +100,7 @@ export const addNotes = (
  */
 export const openNotes = (ledger: NoteLedger, now: Date): Note[] =>
   ledger.notes
-    .filter((note) => note.reaction === '' && now.getTime() - isoMs(note.at) < OPEN_MS)
+    .filter((note) => note.reaction === '' && now.getTime() - Math.max(isoMs(note.at), isoMs(note.laterUntil)) < OPEN_MS)
     .toSorted((a, b) => isoMs(b.at) - isoMs(a.at));
 
 type NoteDecision =
@@ -133,11 +135,10 @@ export const reopenNote = (ledger: NoteLedger, id: string): NoteLedger => ({
 });
 
 /**
- * The first message of the session Start opens: the note's own prompt, else one built from the finding, so every note
- * can be started.
+ * The first message of the session Start opens, built from what the card showed, under a reach the code sets: a scout
+ * that read untrusted pages never writes what a session runs.
  */
 export const notePrompt = (note: Note): string =>
-  note.prompt ||
   [
     `A note you sent on your own: ${note.title}`,
     '',
@@ -152,7 +153,7 @@ export const notePrompt = (note: Note): string =>
 interface LensStats {
   lastAt: string;
   notes: number;
-  useful: number;
+  started: number;
   dismissed: number;
 }
 
@@ -160,18 +161,14 @@ interface LensStats {
  * Each lens's record: when it last produced a note, and how its notes were received.
  */
 export const lensRecord = (ledger: NoteLedger): Record<string, LensStats> =>
-  ledger.notes.reduce<Record<string, LensStats>>(
-    (record, note) => {
-      const current = record[note.lens] ?? { lastAt: '', notes: 0, useful: 0, dismissed: 0 };
-      return {
-        ...record,
-        [note.lens]: {
-          lastAt: isoMs(note.at) > isoMs(current.lastAt) ? note.at : current.lastAt,
-          notes: current.notes + 1,
-          useful: current.useful + Number(note.reaction === 'useful' || note.reaction === 'started'),
-          dismissed: current.dismissed + Number(note.reaction === 'dismissed')
-        }
-      };
-    },
-    {}
+  Object.fromEntries(
+    ledger.notes.reduce((record, note) => {
+      const current = record.get(note.lens) ?? { lastAt: '', notes: 0, started: 0, dismissed: 0 };
+      return new Map(record).set(note.lens, {
+        lastAt: isoMs(note.at) > isoMs(current.lastAt) ? note.at : current.lastAt,
+        notes: current.notes + 1,
+        started: current.started + Number(note.reaction === 'started'),
+        dismissed: current.dismissed + Number(note.reaction === 'dismissed')
+      });
+    }, new Map<string, LensStats>())
   );

@@ -22,7 +22,7 @@ const publish = (): void => redrawHome(FOLDERS.HOME);
 
 // An unreadable record fails the status, so the heartbeat's tick skips and keeps its clock instead of seeing none.
 const status = (args: readonly string[]): number => {
-  const problem = heartbeatProblem() || ledgerProblem() || notesProblem();
+  const problem = heartbeatProblem() || ledgerProblem();
   if (problem) {
     console.error(problem);
     return 1;
@@ -39,7 +39,7 @@ const status = (args: readonly string[]): number => {
     refreshedAt,
     refreshDue: refreshDue(refreshedAt, now),
     proposals: { target: TARGET, room: roomFor(proposals, now), showing: showingNow(proposals, now).length },
-    notes: { cap: DAILY_CAP, today: notesOn(notes, now).length, room: roomToday(notes, now) }
+    notes: { cap: DAILY_CAP, today: notesOn(notes, now).length, room: notesProblem() ? 0 : roomToday(notes, now) }
   };
   if (args.includes('--json')) {
     console.log(JSON.stringify(view));
@@ -105,6 +105,7 @@ export const runHeartbeatCommand = (command: string | undefined, args: readonly 
     return release(args);
   }
   if (command === 'off') {
+    readHeartbeat();
     writeHeartbeat(null);
     publish();
     console.log('No heartbeat now.');

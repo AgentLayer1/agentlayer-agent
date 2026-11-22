@@ -13,6 +13,8 @@ import { DEFAULT_AGENT_NAME } from '@/shared/persona';
 import { TASK_REF } from '@/tasks/prefix';
 import { MAY_HOLD_ID, linkTaskIds } from '../../mods/tasks/link';
 import { showsInRecent } from '../../mods/sidebar/paths';
+import { MESSAGE_CHOICES as MOD_CHOICES } from '../../mods/heartbeat/beat';
+import { MESSAGE_CHOICES } from '@/shared/message';
 import { readRecentFiles } from '@/cmux/recent';
 
 describe('mods', () => {
@@ -120,4 +122,8 @@ describe('mods', () => {
     expect(registered.length).toBeGreaterThan(0);
     expect(MOD_FEATURES.map((feature) => feature.id).sort()).toEqual(registered.sort());
   });
+});
+
+test("/message takes exactly the choices messages decide does, so the sidebar's buttons never type one the CLI refuses", () => {
+  expect([...MOD_CHOICES]).toEqual([...MESSAGE_CHOICES]);
 });

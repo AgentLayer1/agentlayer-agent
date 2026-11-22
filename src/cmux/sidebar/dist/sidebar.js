@@ -1028,6 +1028,7 @@ var agentPage = (options) => {
 
 // src/cmux/sidebar/heartbeat.ts
 var isRunningClaude = (agent) => agent.kind === "claude" && agent.status !== "ended";
+var heartbeatWaiting = (place) => place !== null && (data.workspaces() ?? []).some((workspace) => workspace.tabs.some((tab) => tab.surfaceId === place.surfaceId && (workspace.agents ?? []).some((agent) => agent.panelId === tab.id && agent.status === "needs_input")));
 var heartbeatRoute = (place) => {
   const found = place && (data.workspaces() ?? []).find((workspace) => workspace.tabs.some((tab) => tab.surfaceId === place.surfaceId && (workspace.agents ?? []).some((agent) => agent.panelId === tab.id && isRunningClaude(agent))));
   return place && found ? { surfaceId: place.surfaceId, workspaceId: found.id } : null;
@@ -1041,8 +1042,10 @@ var PROPOSAL_BADGE = { text: "Proposal", color: PINK, icon: "sparkles" };
 var NOTE_BADGE = { text: "Note", color: ACCENT, icon: "note.text" };
 var choiceButton = (label, onTap, tint) => Text(label).font(11).weight("semibold").color(tint ? "#ffffff" : "secondary").paddingHorizontal(tint ? 14 : 9).paddingVertical(5).background(tint ?? null).cornerRadius(8).hoverBackground(tint ?? "#7f7f7f3d").cursor("pointer").fixedSize("horizontal").onTap(onTap);
 var sentAt = (at) => {
-  const day = at.slice(0, 10);
-  return day === today() ? clock(at.slice(11, 16)) : dayTitle(day, today());
+  const sent = new Date(Date.parse(at));
+  const day = isoDay(sent.getTime() / 1000);
+  const time = `${String(sent.getHours()).padStart(2, "0")}:${String(sent.getMinutes()).padStart(2, "0")}`;
+  return day === today() ? clock(time) : dayTitle(day, today());
 };
 var fact = (symbol, text, tone, look = {}) => {
   const plain = Text(text).font(11).color(tone);
@@ -1092,9 +1095,10 @@ var lookOf2 = (message) => {
 };
 var actions = (entry, id, start) => {
   const route = computed(() => heartbeatRoute(entry.heartbeat));
+  const waiting = computed(() => heartbeatWaiting(route()));
   const type = (command) => {
     const target = route();
-    if (target) {
+    if (target && !waiting()) {
       cmux("surface.send_text", {
         surface_id: target.surfaceId,
         workspace_id: target.workspaceId,
@@ -1104,7 +1108,8 @@ var actions = (entry, id, start) => {
     }
   };
   return [
-    when2(() => route() !== null, () => HStack({ spacing: 4 }, [
+    when2(() => waiting(), () => Text(`${entry.name}’s heartbeat is waiting on you in its tab; answer it there first.`).font(10).color("tertiary").paddingTop(3)),
+    when2(() => route() !== null && !waiting(), () => HStack({ spacing: 4 }, [
       choiceButton("Start", () => type(start()), entry.colors?.primary ?? PURPLE),
       choiceButton("Later", () => type(`/message later ${id}`)),
       choiceButton("Dismiss", () => type(`/message dismiss ${id}`)),
@@ -1128,7 +1133,7 @@ var card = ({ entry, message }) => {
   };
 };
 var heartbeatBody = (entry) => VStack({ spacing: 5, alignment: "leading" }, [
-  Text(`Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing, and refreshes the brain every 6 hours when there’s something new.`).font(11).color("secondary"),
+  Text(`Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing. Every 6 hours, when there’s something new, it refreshes the brain and scouts the web and the brain for up to three notes a day.`).font(11).color("secondary"),
   HStack({ spacing: 4 }, [
     choiceButton("Start heartbeat", () => openSession(entry, "/heartbeat"), entry.colors?.primary ?? PURPLE),
     Spacer({ minLength: 0 })

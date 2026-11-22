@@ -2,7 +2,8 @@ import type { CardBadge, HostSection, SectionCard } from 'cmux-custom-manager/se
 import { isShown } from '../../shared/message';
 import { SCHEMA, type HomeEntry, type NoteItem, type ProposalItem } from './data';
 import { clock, dayTitle } from './days';
-import { heartbeatRoute } from './heartbeat';
+import { isoDay } from './due';
+import { heartbeatRoute, heartbeatWaiting } from './heartbeat';
 import type { WorkHint } from './placement';
 import { openSession, placeSession } from './session';
 import { ACCENT, nowMs, ORANGE, PINK, PURPLE, when } from './style';
@@ -32,10 +33,12 @@ const choiceButton = (label: string, onTap: () => void, tint?: string) =>
     .fixedSize('horizontal')
     .onTap(onTap);
 
-// When a note went out: its time today, else its day.
+// When a note went out, read in this Mac's own zone: its time today, else its day.
 const sentAt = (at: string): string => {
-  const day = at.slice(0, 10);
-  return day === today() ? clock(at.slice(11, 16)) : dayTitle(day, today());
+  const sent = new Date(Date.parse(at));
+  const day = isoDay(sent.getTime() / 1000);
+  const time = `${String(sent.getHours()).padStart(2, '0')}:${String(sent.getMinutes()).padStart(2, '0')}`;
+  return day === today() ? clock(time) : dayTitle(day, today());
 };
 
 type Tone = 'secondary' | 'tertiary';
@@ -97,9 +100,10 @@ const lookOf = (message: Message) => {
 // The card's three buttons, each typing its command into the agent's heartbeat; with no heartbeat to reach, the hint.
 const actions = (entry: HomeEntry, id: string, start: () => string) => {
   const route = computed(() => heartbeatRoute(entry.heartbeat));
+  const waiting = computed(() => heartbeatWaiting(route()));
   const type = (command: string) => {
     const target = route();
-    if (target) {
+    if (target && !waiting()) {
       cmux('surface.send_text', {
         surface_id: target.surfaceId,
         workspace_id: target.workspaceId,
@@ -109,7 +113,15 @@ const actions = (entry: HomeEntry, id: string, start: () => string) => {
   };
   return [
     when(
-      () => route() !== null,
+      () => waiting(),
+      () =>
+        Text(`${entry.name}’s heartbeat is waiting on you in its tab; answer it there first.`)
+          .font(10)
+          .color('tertiary')
+          .paddingTop(3)
+    ),
+    when(
+      () => route() !== null && !waiting(),
       () =>
         HStack({ spacing: 4 }, [
           choiceButton('Start', () => type(start()), entry.colors?.primary ?? PURPLE),
@@ -149,7 +161,7 @@ const card = ({ entry, message }: Placed): SectionCard => {
 const heartbeatBody = (entry: HomeEntry) =>
   VStack({ spacing: 5, alignment: 'leading' }, [
     Text(
-      `Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing, and refreshes the brain every 6 hours when there’s something new.`
+      `Opens a session in ${entry.name}’s home that looks for proposals now, then every 55 minutes while the home’s other sessions are active, keeping the best five showing. Every 6 hours, when there’s something new, it refreshes the brain and scouts the web and the brain for up to three notes a day.`
     )
       .font(11)
       .color('secondary'),

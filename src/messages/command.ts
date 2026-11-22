@@ -1,8 +1,8 @@
 import { LAUNCHERS, redrawHome } from '@/adapters';
 import { FOLDERS } from '@/config';
-import { readNotes } from '@/notes/ledger';
+import { notesProblem, readNotes } from '@/notes/ledger';
 import { decideOnNote } from '@/notes/start';
-import { readProposalLedger } from '@/proposals/ledger';
+import { ledgerProblem, readProposalLedger } from '@/proposals/ledger';
 import { decideProposal } from '@/proposals/start';
 import type { StartContext } from '@/sessions/launch';
 import { MESSAGE_CHOICES } from '@/shared/message';
@@ -23,6 +23,12 @@ export const runMessagesCommand = (command: string | undefined, args: readonly s
   const choice = MESSAGE_CHOICES.find((known) => known === word);
   if (command !== 'decide' || !choice || !id) {
     console.error(USAGE);
+    return 1;
+  }
+  // The lookup reads a broken ledger as empty, so it would answer "nothing waits" instead of naming the file.
+  const problem = ledgerProblem() || notesProblem();
+  if (problem) {
+    console.error(problem);
     return 1;
   }
   const workspace = flagOf(args, 'workspace');

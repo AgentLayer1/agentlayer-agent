@@ -62,7 +62,7 @@ test('Start selects the workspace and opens a focused tab whose command names ne
       '--focus',
       'true',
       '--command',
-      `agent "$(cat '${join('.state', 'proposals', 'p-a1.prompt')}')"`
+      `agent -- "$(cat '${join('.state', 'proposals', 'p-a1.prompt')}')"`
     ]
   ]);
 });
@@ -72,7 +72,7 @@ test('a prompt file outside the home opens nothing, and a quote in its path stay
   expect(() => adapter.start(startInput(join('/Users', 'ada', 'p-a1.prompt')), PLACE)).toThrow('inside the home');
   expect(calls).toEqual([]);
   adapter.start(startInput(join(HOME, '.state', "it's.prompt")), PLACE);
-  expect(calls.at(-1)?.at(-1)).toBe(`agent "$(cat '${join('.state', "it'\\''s.prompt")}')"`);
+  expect(calls.at(-1)?.at(-1)).toBe(`agent -- "$(cat '${join('.state', "it'\\''s.prompt")}')"`);
 });
 
 test('a cmux that refuses throws its own words, so the core puts the proposal back', () => {
@@ -110,6 +110,9 @@ test('a Start through the core passes the prompt only as a file the new shell re
   expect(valueOf(args, '--workspace')).toBe('workspace-1');
   expect(valueOf(args, '--working-directory')).toBe(FOLDERS.HOME);
   const command = valueOf(args, '--command');
+  expect(command, 'options end before the prompt, so a prompt that starts with - is never a flag').toContain(
+    ' -- "$(cat '
+  );
   const file = join(FOLDERS.HOME, command.match(/cat '([^']+)'/)?.[1] ?? '');
   expect(readFileSync(file, 'utf-8')).toBe(prompt);
   expect(args.join('\n')).not.toContain('whoami');

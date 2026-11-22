@@ -14,10 +14,11 @@ export type Launcher = ReturnType<typeof homeLauncher>;
 const shellQuoted = (text: string): string => `'${text.replaceAll("'", "'\\''")}'`;
 
 /**
- * The shell line that starts the launcher on a prompt file's text; the path is quoted, so nothing in it runs as shell.
+ * The shell line that starts the launcher on a prompt file's text. The path is quoted, so nothing in it runs as shell,
+ * and `--` ends the options, so a prompt that starts with `-` is read as the prompt, never as a flag.
  */
 export const promptLaunch = (launcher: Launcher, promptPath: string): string =>
-  `${launcher} "$(cat ${shellQuoted(promptPath)})"`;
+  `${launcher} -- "$(cat ${shellQuoted(promptPath)})"`;
 
 export interface StartInput {
   home: string;
@@ -91,15 +92,15 @@ export const startPrompt = (
   item: { id: string; prompt: string },
   context: StartContext
 ): { where: string } | { error: string } => {
-  const input: StartInput = {
-    home: context.home,
-    promptFile: writePromptFile(item, context.now),
-    launcher: homeLauncher(context.home)
-  };
   const found = locateIn(context.adapters, context.env);
   const located =
     found && context.workspace ? { ...found, place: { ...found.place, workspaceId: context.workspace } } : found;
   try {
+    const input: StartInput = {
+      home: context.home,
+      promptFile: writePromptFile(item, context.now),
+      launcher: homeLauncher(context.home)
+    };
     return { where: located ? located.adapter.start(input, located.place) : manualStart(input) };
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error) };

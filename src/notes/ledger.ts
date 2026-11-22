@@ -3,7 +3,7 @@ import { isRecord } from '@/shared/json-block';
 import { jsonProblem, writeJsonChecked } from '@/shared/utils';
 import { readFileSync } from 'node:fs';
 
-const REACTIONS = ['', 'useful', 'dismissed', 'started'] as const;
+const REACTIONS = ['', 'dismissed', 'started'] as const;
 export type Reaction = (typeof REACTIONS)[number];
 
 /**
@@ -24,10 +24,6 @@ export interface Note {
   body: string;
   sources: string[];
   next: string;
-  /**
-   * The whole first message of a session that takes the next step, '' when there is none to start.
-   */
-  prompt: string;
   reaction: Reaction;
   /**
    * When a note put off with Later shows again, an ISO time with an offset; '' when it shows now.
@@ -46,7 +42,7 @@ export interface NoteLedger {
 
 export const EMPTY_NOTES: NoteLedger = { notes: [] };
 
-const TEXT_FIELDS = ['id', 'at', 'source', 'lens', 'title', 'body', 'next', 'prompt'] as const;
+const TEXT_FIELDS = ['id', 'at', 'source', 'lens', 'title', 'body', 'next'] as const;
 
 const isReaction = (value: unknown): value is Reaction => REACTIONS.some((reaction) => reaction === value);
 
@@ -70,7 +66,6 @@ const parseNote = (data: unknown): Note | null => {
     body: required('body'),
     sources: strings(data.sources),
     next: required('next'),
-    prompt: required('prompt'),
     reaction: isReaction(data.reaction) ? data.reaction : '',
     laterUntil: text('laterUntil'),
     folder: text('folder'),

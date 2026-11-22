@@ -1,8 +1,9 @@
 import { FILES } from '@/config';
+import { readProposalLedger, writeProposalLedger } from '@/proposals/ledger';
 import type { SessionPlace } from '@/sessions/launch';
 import { isRecord } from '@/shared/json-block';
 import { jsonProblem, writeJsonChecked } from '@/shared/utils';
-import { readFileSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 
 /**
  * The session that keeps the home's work coming, by the token its process chose, and the places launchers can reach it.
@@ -33,15 +34,33 @@ export const parseHeartbeat = (data: unknown): Heartbeat | null => {
   };
 };
 
-/**
- * The home's heartbeat, or null when no session is one.
- */
-export const readHeartbeat = (): Heartbeat | null => {
+const parseFile = (path: string, pick: (data: Record<string, unknown>) => unknown): Heartbeat | null => {
   try {
-    return parseHeartbeat(JSON.parse(readFileSync(FILES.HEARTBEAT, 'utf-8')));
+    const data: unknown = JSON.parse(readFileSync(path, 'utf-8'));
+    return isRecord(data) ? parseHeartbeat(pick(data)) : null;
   } catch {
     return null;
   }
+};
+
+/**
+ * The home's heartbeat, or null when no session is one. A home on 1.0.9 kept it under proposals.json's `heartbeat`;
+ * the first read moves it into its own file, so a heartbeat bound before the upgrade keeps its place.
+ */
+export const readHeartbeat = (): Heartbeat | null => {
+  if (existsSync(FILES.HEARTBEAT)) {
+    return parseFile(FILES.HEARTBEAT, (data) => data);
+  }
+  const legacy = parseFile(FILES.PROPOSALS, (data) => data.heartbeat);
+  if (legacy) {
+    try {
+      writeHeartbeat(legacy);
+      writeProposalLedger(readProposalLedger());
+    } catch {
+      // A file that won't parse is left for the operator; the heartbeat still reads from where it was.
+    }
+  }
+  return legacy;
 };
 
 /**
