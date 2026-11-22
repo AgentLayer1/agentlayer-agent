@@ -25,11 +25,12 @@ export const claudeHost: HostAdapter = {
     why: "the shell guard also checks the Monitor tool's commands and the sandbox holds in a worktree resumed by `claude -p`, on top of a per-agent subscription token read from `--settings` (2.1.312 ignores it in a home's own settings), mods with `/done` autocomplete, Sonnet 5.5 behind the Haiku-tier remap, `bashEditDiffEnabled` and `claude plugin eval`",
     update: 'claude update'
   },
+  skill: (name) => `${SKILL_PREFIX}${name}`,
   usedBy: () => true,
-  homeIssues: (home) =>
+  homeIssues: (home, skill) =>
     existsSync(resolve(home, 'AGENTS.md')) && !existsSync(resolve(home, '.claude', 'CLAUDE.md'))
       ? [
-          `\`.claude/CLAUDE.md\` is missing, so Claude Code loads neither the manual nor the identity stack — run \`${SKILL_PREFIX}upgrade\` to write the bridge`
+          `\`.claude/CLAUDE.md\` is missing, so Claude Code loads neither the manual nor the identity stack — run \`${skill('upgrade')}\` to write the bridge`
         ]
       : [],
   billing: () => {

@@ -30,11 +30,12 @@ export interface HostFloor {
 export interface InjectDelivery {
   kind: 'inject';
   glossary: Record<DialectTerm, string>;
-  /**
-   * How the operator runs a skill here, in front of its name.
-   */
-  skillPrefix: string;
 }
+
+/**
+ * How the operator runs the named skill on a host: what the plugin writes wherever its own text names one.
+ */
+export type SkillCommand = (name: string) => string;
 
 export interface HostAdapter {
   name: HostName;
@@ -60,10 +61,11 @@ export interface HostAdapter {
    * The home is wired for this host.
    */
   usedBy: (home: string) => boolean;
+  skill: SkillCommand;
   /**
-   * Problems in the home's wiring for this host, one line each.
+   * Problems in the home's wiring for this host, one line each, naming skills the session host's way.
    */
-  homeIssues: (home: string) => string[];
+  homeIssues: (home: string, skill: SkillCommand) => string[];
   /**
    * This session bills the wrong account: the banner's line, and the context section that has the agent report it.
    */

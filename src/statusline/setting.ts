@@ -7,7 +7,6 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { pluginName } from '../shared/naming';
 import { existingTarget } from '../shared/paths';
 
 export interface StatusLineSetting {
@@ -49,7 +48,11 @@ const commandIn = (path: string): unknown => {
  * Why the home's status line will not render from this checkout, or nothing when it is
  * absent, the operator's own, or already current. The local file wins, as it does in Claude Code.
  */
-export const statusLineDrift = (claudeDir: string, cliPath: string): string | undefined => {
+export const statusLineDrift = (
+  claudeDir: string,
+  cliPath: string,
+  skill: (name: string) => string
+): string | undefined => {
   const source = ['settings.local.json', 'settings.json']
     .map((name) => ({
       name,
@@ -59,5 +62,5 @@ export const statusLineDrift = (claudeDir: string, cliPath: string): string | un
   if (!source || typeof source.command !== 'string') return undefined;
   const pinned = commandCliPath(source.command);
   if (pinned === undefined || canonical(pinned) === canonical(cliPath)) return undefined;
-  return `\`.claude/${source.name}\` runs the status line from \`${pinned}\`, not this plugin (\`${resolve(cliPath)}\`), so the footer stays blank — run \`/${pluginName()}:upgrade\` to re-point it`;
+  return `\`.claude/${source.name}\` runs the status line from \`${pinned}\`, not this plugin (\`${resolve(cliPath)}\`), so the footer stays blank — run \`${skill('upgrade')}\` to re-point it`;
 };

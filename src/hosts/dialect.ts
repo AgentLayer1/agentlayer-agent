@@ -11,6 +11,7 @@ export const SKILL_PREFIX = `/${PLUGIN_NAME}:`;
  */
 export const DIALECT = {
   pluginRoot: '${CLAUDE_PLUGIN_ROOT}',
+  skillDir: '${CLAUDE_SKILL_DIR}',
   toolPrefix: `${MCP_PREFIX}<tool>`,
   askUser: 'AskUserQuestion',
   subagent: 'Agent, a subagent',

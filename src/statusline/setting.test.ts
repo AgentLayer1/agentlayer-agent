@@ -5,6 +5,8 @@ import { join, resolve } from 'node:path';
 import { commandCliPath, statusLineDrift, statusLineSetting } from './setting';
 import { PLUGIN_NAME } from '@/config';
 
+const skill = (name: string): string => `/${PLUGIN_NAME}:${name}`;
+
 const dirs: string[] = [];
 /** A home's `.claude` folder holding each named settings file. */
 const claudeDir = (files: Record<string, string>): string => {
@@ -47,20 +49,22 @@ describe('commandCliPath', () => {
 
 describe('statusLineDrift', () => {
   test('is silent for no file, no entry, an operator-owned command, a current path, or unparsable JSON', () => {
-    expect(statusLineDrift('/nonexistent/.claude', CLI)).toBeUndefined();
-    expect(statusLineDrift(settingsFile('{}'), CLI)).toBeUndefined();
+    expect(statusLineDrift('/nonexistent/.claude', CLI, skill)).toBeUndefined();
+    expect(statusLineDrift(settingsFile('{}'), CLI, skill)).toBeUndefined();
     expect(
-      statusLineDrift(settingsFile('{"statusLine":{"type":"command","command":"~/.claude/statusline.sh"}}'), CLI)
+      statusLineDrift(settingsFile('{"statusLine":{"type":"command","command":"~/.claude/statusline.sh"}}'), CLI, skill)
     ).toBeUndefined();
-    expect(statusLineDrift(settingsFile(JSON.stringify({ statusLine: statusLineSetting(CLI) })), CLI)).toBeUndefined();
-    expect(statusLineDrift(settingsFile('{not json'), CLI)).toBeUndefined();
+    expect(
+      statusLineDrift(settingsFile(JSON.stringify({ statusLine: statusLineSetting(CLI) })), CLI, skill)
+    ).toBeUndefined();
+    expect(statusLineDrift(settingsFile('{not json'), CLI, skill)).toBeUndefined();
   });
 
   test('names both paths when the command pins another checkout', () => {
     const stale = settingsFile(
       JSON.stringify({ statusLine: statusLineSetting(`/cache/${PLUGIN_NAME}/0.4.4/src/cli.ts`) })
     );
-    const drift = statusLineDrift(stale, CLI);
+    const drift = statusLineDrift(stale, CLI, skill);
     expect(drift).toContain(`/cache/${PLUGIN_NAME}/0.4.4/src/cli.ts`);
     expect(drift).toContain('/opt/plugin/src/cli.ts');
     expect(drift).toContain(`/${PLUGIN_NAME}:upgrade`);
@@ -70,11 +74,13 @@ describe('statusLineDrift', () => {
   test('reads the local file first, as Claude Code does', () => {
     const stale = JSON.stringify({ statusLine: statusLineSetting(`/cache/${PLUGIN_NAME}/0.4.4/src/cli.ts`) });
     const current = JSON.stringify({ statusLine: statusLineSetting(CLI) });
-    expect(statusLineDrift(claudeDir({ 'settings.local.json': current, 'settings.json': stale }), CLI)).toBeUndefined();
-    expect(statusLineDrift(claudeDir({ 'settings.local.json': stale, 'settings.json': current }), CLI)).toContain(
-      '.claude/settings.local.json'
-    );
-    expect(statusLineDrift(claudeDir({ 'settings.local.json': '{}', 'settings.json': stale }), CLI)).toContain(
+    expect(
+      statusLineDrift(claudeDir({ 'settings.local.json': current, 'settings.json': stale }), CLI, skill)
+    ).toBeUndefined();
+    expect(
+      statusLineDrift(claudeDir({ 'settings.local.json': stale, 'settings.json': current }), CLI, skill)
+    ).toContain('.claude/settings.local.json');
+    expect(statusLineDrift(claudeDir({ 'settings.local.json': '{}', 'settings.json': stale }), CLI, skill)).toContain(
       '.claude/settings.json'
     );
   });

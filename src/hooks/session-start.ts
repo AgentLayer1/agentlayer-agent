@@ -25,8 +25,8 @@
  */
 import { AGENT_SLUG, FILES, FOLDERS, isInitialized, PLUGIN_NAME, staticContextFiles } from '@/config';
 import { assembleContext } from '@/hooks/context';
-import type { HostAdapter } from '@/hosts/contract';
-import { renderGlossary, SKILL_PREFIX } from '@/hosts/dialect';
+import type { HostAdapter, SkillCommand } from '@/hosts/contract';
+import { renderGlossary } from '@/hosts/dialect';
 import { DEFAULT_HOST } from '@/hosts/registry';
 import { drainDeferredCaptures } from '@/knowledge/session-capture';
 import { BANNER, BANNER_LINES, BANNER_TAG } from '@/hooks/banner';
@@ -46,17 +46,17 @@ export interface SessionStartResult {
   error?: string;
 }
 
-const PRE_INIT_RESULT: SessionStartResult = {
-  systemMessage: ['', BANNER, '', `→ Not set up yet, run /${PLUGIN_NAME}:init to get started.`].join('\n'),
+const preInitResult = (skill: SkillCommand): SessionStartResult => ({
+  systemMessage: ['', BANNER, '', `→ Not set up yet, run ${skill('init')} to get started.`].join('\n'),
   additionalContext: [
-    `The ${PLUGIN_NAME} plugin is loaded, but \`/${PLUGIN_NAME}:init\` hasn't been run yet — the Agent home directory and identity files don't exist.`,
+    `The ${PLUGIN_NAME} plugin is loaded, but \`${skill('init')}\` hasn't been run yet — the Agent home directory and identity files don't exist.`,
     '',
-    `If the user asks you to do anything that requires the agent's data (compile, briefing, task ops, knowledge lookup), suggest they run \`/${PLUGIN_NAME}:init\` first.`,
+    `If the user asks you to do anything that requires the agent's data (compile, briefing, task ops, knowledge lookup), suggest they run \`${skill('init')}\` first.`,
     '',
     "If they ask general questions or want help with something unrelated to the agent, answer normally — you don't need the agent's context to be helpful."
   ].join('\n'),
   hasIssues: false
-};
+});
 
 /**
  * `SOUL.md` present, this agent's data dir absent. Two causes, and the operator
@@ -98,7 +98,6 @@ export async function sessionStart({
   color = false
 }: { host?: HostAdapter; promptRow?: boolean; color?: boolean } = {}): Promise<SessionStartResult> {
   const inject = host.delivery.kind === 'inject' ? host.delivery : undefined;
-  const inHostDialect = (text: string): string => (inject ? text.replaceAll(SKILL_PREFIX, inject.skillPrefix) : text);
   const glossary = inject ? [renderGlossary(host.name, inject.glossary)] : [];
   try {
     if (!isInitialized()) {
@@ -112,11 +111,11 @@ export async function sessionStart({
       } else {
         log.info('hook fired (pre-init)');
       }
-      const result = stranded ? strandedHomeResult() : PRE_INIT_RESULT;
+      const result = stranded ? strandedHomeResult() : preInitResult(host.skill);
       return {
         ...result,
-        systemMessage: inHostDialect(color ? result.systemMessage : result.systemMessage.replace(BANNER, PLAIN_BANNER)),
-        additionalContext: [...glossary, inHostDialect(result.additionalContext)].join('\n\n')
+        systemMessage: color ? result.systemMessage : result.systemMessage.replace(BANNER, PLAIN_BANNER),
+        additionalContext: [...glossary, result.additionalContext].join('\n\n')
       };
     }
     await drainDeferredCaptures().catch((err: unknown) => log.error('deferred captures not drained', err));
@@ -150,12 +149,12 @@ export async function sessionStart({
       });
     const additionalContext =
       [
-        `<!-- ${AGENT_SLUG} static context · harness: ${host.name} · plugin root: ${FOLDERS.ROOT} · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs ${inject.skillPrefix}upgrade · delivered by the plugin's SessionStart hook because this host has no @-import -->`,
+        `<!-- ${AGENT_SLUG} static context · harness: ${host.name} · hooks and MCP server run from: ${FOLDERS.ROOT} · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs ${host.skill('upgrade')} · delivered by the plugin's SessionStart hook because this host has no @-import -->`,
         ...glossary,
         ...files,
         ...(lane.context.trim() ? [`<!-- session context (dynamic lane) -->\n${lane.context.trimEnd()}`] : [])
       ].join('\n\n') + '\n';
-    return { systemMessage: inHostDialect(banner), additionalContext, hasIssues: lane.hasIssues };
+    return { systemMessage: banner, additionalContext, hasIssues: lane.hasIssues };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log.error('hook failed', err);

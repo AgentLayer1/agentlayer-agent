@@ -17,14 +17,13 @@ import {
   FILES,
   FOLDERS,
   HOME_TIMEZONE,
-  PLUGIN_NAME,
   PLUGIN_VERSION,
   TIMEZONE,
   TIMEZONE_ISSUE
 } from '@/config';
 import { followMove, historyStatus, restorePointer } from '@/home/history';
-import type { HostAdapter } from '@/hosts/contract';
-import { HOSTS } from '@/hosts/registry';
+import type { HostAdapter, SkillCommand } from '@/hosts/contract';
+import { DEFAULT_HOST, HOSTS } from '@/hosts/registry';
 import { checkHosts, hostIssues, requiredHosts } from '@/upgrade/hosts';
 import type { Notice, NoticeFact, NoticeLevel } from '@/notices/notices';
 import { collectNotices } from '@/notices/notices';
@@ -288,11 +287,11 @@ const TONE_COLOR: Record<NonNullable<NoticeFact['tone']>, string> = { accent: AN
 /**
  * A text glyph rather than an emoji, so the level can color it; two spaces keep it in the emoji column.
  */
-const noticeLine = (notice: Notice): string =>
+const noticeLine = (notice: Notice, skill: SkillCommand): string =>
   [
     `  ${paint(notice.icon, ANSI.bold, LEVEL_COLOR[notice.level])}  ${`${notice.label}:`.padEnd(11)}${paint(notice.title, ANSI.bold)}`,
     ...notice.facts.map((fact) => paint(fact.text, ...(fact.tone ? [TONE_COLOR[fact.tone]] : []))),
-    paint(`run /${notice.command}`, ANSI.dim)
+    paint(`run ${skill(notice.command.slice(notice.command.indexOf(':') + 1))}`, ANSI.dim)
   ].join(' · ');
 
 const welcomePart = (): string => {
@@ -320,7 +319,8 @@ function renderBanner(
   entries: ManifestEntry[],
   contextBytes: number,
   notices: readonly Notice[],
-  billing: string | null
+  billing: string | null,
+  skill: SkillCommand
 ): string {
   const labelWidth = Math.max(...entries.map((e) => e.label.length), 12);
   const sizeWidth = Math.max(...entries.map((e) => formatKB(e.bytes).length));
@@ -336,7 +336,7 @@ function renderBanner(
     `  📁 Projects:  ${FOLDERS.PROJECTS}`,
     `  📚 Context  · ${formatKB(contextBytes)}`
   ];
-  head.splice(1, 0, ...notices.map(noticeLine));
+  head.splice(1, 0, ...notices.map((notice) => noticeLine(notice, skill)));
   if (welcomePending()) {
     head.splice(
       1,
@@ -362,12 +362,12 @@ export interface AssembledContext {
  * The knowledge lane says why history is missing instead of a bare ⚠, when the knowledge folder
  * lives in the home. A home with a remote, or one inside a larger project, keeps the plain log.
  */
-function homeHistoryLane(plain: ManifestEntry, restored: boolean): ManifestEntry {
+function homeHistoryLane(plain: ManifestEntry, restored: boolean, skill: SkillCommand): ManifestEntry {
   if (!isInside(FOLDERS.KNOWLEDGE, FOLDERS.HOME)) {
     return plain;
   }
   const history = historyStatus(FOLDERS.HOME);
-  const turnOn = `run /${PLUGIN_NAME}:history`;
+  const turnOn = `run ${skill('history')}`;
   switch (history.state) {
     case 'off':
       return { ...plain, status: 'off', note: `off · ${turnOn}` };
@@ -421,7 +421,10 @@ interface GatheredContext {
  * `contextManifest` (which exposes the structured manifest for the status
  * screen) so the two never drift.
  */
-async function gatherContext(restoredHistory = false): Promise<GatheredContext> {
+async function gatherContext(
+  restoredHistory = false,
+  skill: SkillCommand = DEFAULT_HOST.skill
+): Promise<GatheredContext> {
   const tail = await lastSessionTail(CONTEXT.SESSION_TAIL_BYTES);
   const reports = await todaysReports(CONTEXT.REPORTS_BYTES);
   const pinned = pinnedReports(CONTEXT.MAX_PINS);
@@ -464,7 +467,7 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
     reports.entry,
     pinned.entry,
     ...(extensions ? [extensions.entry] : []),
-    ...(knowledgeGit ? [homeHistoryLane(knowledgeGit, restoredHistory)] : []),
+    ...(knowledgeGit ? [homeHistoryLane(knowledgeGit, restoredHistory, skill)] : []),
     ...extraGit
   ];
 
@@ -508,7 +511,9 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
     ]);
   }
 
-  const layout = HOSTS.filter((host) => host.usedBy(FOLDERS.HOME)).flatMap((host) => host.homeIssues(FOLDERS.HOME));
+  const layout = HOSTS.filter((host) => host.usedBy(FOLDERS.HOME)).flatMap((host) =>
+    host.homeIssues(FOLDERS.HOME, skill)
+  );
   if (layout.length > 0) {
     warn('manual layout', 'needs upgrade', [
       '## ⚠️ Operating manual layout',
@@ -523,7 +528,7 @@ async function gatherContext(restoredHistory = false): Promise<GatheredContext> 
   // A due upgrade re-points the footer itself, and the banner's upgrade line already says to run it.
   const statusLine =
     getUpgradeStatus().state === 'current'
-      ? statusLineDrift(resolve(FOLDERS.HOME, '.claude'), CLI_PATH)
+      ? statusLineDrift(resolve(FOLDERS.HOME, '.claude'), CLI_PATH, skill)
       : undefined;
   if (statusLine) {
     warn('status line', 'needs upgrade', [
@@ -623,7 +628,7 @@ export async function assembleContext({
     log.error('notices skipped', err);
     return [];
   });
-  const gathered = await gatherContext(healHistoryLink());
+  const gathered = await gatherContext(healHistoryLink(), host.skill);
   const billing = host.billing();
   const { entries } = gathered;
   // Right after `## Today`, so the size cap below never cuts it.
@@ -632,7 +637,7 @@ export async function assembleContext({
 
   const context = fitContext(parts, CONTEXT.MAX_CHARS);
   const notices = (await pendingNotices).filter((notice) => !promptRow || notice.level === 'hint');
-  const banner = renderBanner(entries, context.length, notices, billing?.banner ?? null);
+  const banner = renderBanner(entries, context.length, notices, billing?.banner ?? null, host.skill);
   const hasIssues = billing !== null || entries.some((entry) => entry.status !== 'loaded' && entry.status !== 'off');
   return { context, banner, hasIssues };
 }

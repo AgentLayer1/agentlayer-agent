@@ -131,15 +131,15 @@ exports[`session start, per host and home state Codex, initialized home 1`] = `
 fatal: not a git repository (or any of the parent directories): .git
 <TIMESTAMP> WARN  [🪝 session] [start] hook fired (codex)
   🦊 Agent:     Nova · v<VERSION>
-  ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
-  ⟳  Sync:      Brain never synced · run /agentlayer:sync
+  ↑  Upgrade:   Turn on update tracking · run $upgrade
+  ⟳  Sync:      Brain never synced · run $sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
   📚 Context  · 0.0KB
     ✗ session tail     0.0KB
     ✗ today's reports  0.0KB
     ○ pinned reports   0.0KB  (none pinned)
-    ○ history          0.0KB  (off · run /agentlayer:history)
+    ○ history          0.0KB  (off · run $history)
 "
 ,
   "stdout": 
@@ -152,12 +152,13 @@ fatal: not a git repository (or any of the parent directories): .git
     ✗ session tail     0.0KB
     ✗ today's reports  0.0KB
     ○ pinned reports   0.0KB  (none pinned)
-    ○ history          0.0KB  (off · run $history)","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<!-- agent static context · harness: codex · plugin root: <ROOT> · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs $upgrade · delivered by the plugin's SessionStart hook because this host has no @-import -->
+    ○ history          0.0KB  (off · run $history)","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<!-- agent static context · harness: codex · hooks and MCP server run from: <ROOT> · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs $upgrade · delivered by the plugin's SessionStart hook because this host has no @-import -->
 
 <!-- agentlayer glossary for codex: the skills are written in Claude Code's terms; read each one as follows -->
-- \`\${CLAUDE_PLUGIN_ROOT}\` → the plugin root, \`<ROOT>\`
+- \`\${CLAUDE_PLUGIN_ROOT}\` → two folders above the loaded skill's SKILL.md (its \`<skill>\` block's \`<path>\`): the plugin copy that skill came from
+- \`\${CLAUDE_SKILL_DIR}\` → the loaded skill's own folder, the one holding its SKILL.md
 - \`mcp__plugin_agentlayer_agent__<tool>\` → \`mcp__agentlayer__<tool>\`, the same tool on this host's agentlayer MCP server
-- \`AskUserQuestion\` → this host's question tool if it offers one (\`request_user_input_async\`, or \`request_user_input\` in Plan mode); otherwise ask in chat (the question, then numbered options with the recommended one first). Either way, end your turn and wait for the answer
+- \`AskUserQuestion\` → this host's question tool: \`request_user_input\` (Plan mode) returns the answer as its result, so use it and carry on; \`request_user_input_async\` returns before the answer, so end your turn and wait for it. With neither, or for a multi-select question (neither tool offers one), ask in chat (the question, then numbered options with the recommended one first), then end your turn and wait for the answer
 - \`Agent, a subagent\` → this host's subagent tool if it offers one (\`spawn_agent\`); otherwise do each part yourself, one after another, to the same output contract
 - \`/agentlayer:<name> or Skill(agentlayer:<name>)\` → \`$<name>\`, the same skill run the way this host runs one
 - \`WebSearch\` → this host's web search, or the agent's \`web_search\` tool
@@ -214,9 +215,10 @@ exports[`session start, per host and home state Codex, pre-init home 1`] = `
 ===OPPI=== 🐙
 
 → Not set up yet, run $init to get started.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<!-- agentlayer glossary for codex: the skills are written in Claude Code's terms; read each one as follows -->
-- \`\${CLAUDE_PLUGIN_ROOT}\` → the plugin root, \`<ROOT>\`
+- \`\${CLAUDE_PLUGIN_ROOT}\` → two folders above the loaded skill's SKILL.md (its \`<skill>\` block's \`<path>\`): the plugin copy that skill came from
+- \`\${CLAUDE_SKILL_DIR}\` → the loaded skill's own folder, the one holding its SKILL.md
 - \`mcp__plugin_agentlayer_agent__<tool>\` → \`mcp__agentlayer__<tool>\`, the same tool on this host's agentlayer MCP server
-- \`AskUserQuestion\` → this host's question tool if it offers one (\`request_user_input_async\`, or \`request_user_input\` in Plan mode); otherwise ask in chat (the question, then numbered options with the recommended one first). Either way, end your turn and wait for the answer
+- \`AskUserQuestion\` → this host's question tool: \`request_user_input\` (Plan mode) returns the answer as its result, so use it and carry on; \`request_user_input_async\` returns before the answer, so end your turn and wait for it. With neither, or for a multi-select question (neither tool offers one), ask in chat (the question, then numbered options with the recommended one first), then end your turn and wait for the answer
 - \`Agent, a subagent\` → this host's subagent tool if it offers one (\`spawn_agent\`); otherwise do each part yourself, one after another, to the same output contract
 - \`/agentlayer:<name> or Skill(agentlayer:<name>)\` → \`$<name>\`, the same skill run the way this host runs one
 - \`WebSearch\` → this host's web search, or the agent's \`web_search\` tool
@@ -247,9 +249,10 @@ exports[`session start, per host and home state Codex, stranded home 1`] = `
 ===OPPI=== 🐙
 
 → <HOME> has a SOUL.md but no .state/version.json recording this agent — see the note below. Do NOT run init.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<!-- agentlayer glossary for codex: the skills are written in Claude Code's terms; read each one as follows -->
-- \`\${CLAUDE_PLUGIN_ROOT}\` → the plugin root, \`<ROOT>\`
+- \`\${CLAUDE_PLUGIN_ROOT}\` → two folders above the loaded skill's SKILL.md (its \`<skill>\` block's \`<path>\`): the plugin copy that skill came from
+- \`\${CLAUDE_SKILL_DIR}\` → the loaded skill's own folder, the one holding its SKILL.md
 - \`mcp__plugin_agentlayer_agent__<tool>\` → \`mcp__agentlayer__<tool>\`, the same tool on this host's agentlayer MCP server
-- \`AskUserQuestion\` → this host's question tool if it offers one (\`request_user_input_async\`, or \`request_user_input\` in Plan mode); otherwise ask in chat (the question, then numbered options with the recommended one first). Either way, end your turn and wait for the answer
+- \`AskUserQuestion\` → this host's question tool: \`request_user_input\` (Plan mode) returns the answer as its result, so use it and carry on; \`request_user_input_async\` returns before the answer, so end your turn and wait for it. With neither, or for a multi-select question (neither tool offers one), ask in chat (the question, then numbered options with the recommended one first), then end your turn and wait for the answer
 - \`Agent, a subagent\` → this host's subagent tool if it offers one (\`spawn_agent\`); otherwise do each part yourself, one after another, to the same output contract
 - \`/agentlayer:<name> or Skill(agentlayer:<name>)\` → \`$<name>\`, the same skill run the way this host runs one
 - \`WebSearch\` → this host's web search, or the agent's \`web_search\` tool
