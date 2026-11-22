@@ -76,6 +76,13 @@ describe('host contract', () => {
     expect(offenders).toEqual([]);
   });
 
+  test("the CLI's help offers every host wherever it lists --hook-protocol", () => {
+    const help = readFileSync(join(ROOT, 'src', 'cli.ts'), 'utf-8').match(/const HELP = `([\s\S]*?)`;/)?.[1] ?? '';
+    const lists = [...help.matchAll(/\[--hook-protocol=([^\]]+)\]/g)].map((match) => match[1]);
+    expect(lists.length).toBeGreaterThanOrEqual(2);
+    expect(lists.filter((list) => list !== HOST_NAMES.join('|'))).toEqual([]);
+  });
+
   test('every host name finds the adapter that carries it', () => {
     expect(HOST_NAMES.filter((name) => hostNamed(name)?.name !== name)).toEqual([]);
   });

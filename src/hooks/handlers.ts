@@ -98,7 +98,7 @@ export const runSessionCapture = async (flag: Flag): Promise<number> => {
   const mode = flag('mode');
   if (mode !== 'session-end' && mode !== 'pre-compact') {
     throw new Error(
-      `Usage: ${CLI_COMMAND} session-capture --mode=session-end|pre-compact [--hook-protocol=claude|codex] [--transcript=PATH --cwd=PATH --session-id=X] [--format=claude|codex]`
+      `Usage: ${CLI_COMMAND} session-capture --mode=session-end|pre-compact [--hook-protocol=${HOST_NAMES.join('|')}] [--transcript=PATH --cwd=PATH --session-id=X] [--format=${HOST_NAMES.join('|')}]`
     );
   }
   const host = hostOf(flag);
