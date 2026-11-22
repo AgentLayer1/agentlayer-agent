@@ -19,7 +19,6 @@ import {
   HOME_TIMEZONE,
   PLUGIN_NAME,
   PLUGIN_VERSION,
-  SUBSCRIPTION_MARKER,
   TIMEZONE,
   TIMEZONE_ISSUE
 } from '@/config';
@@ -31,7 +30,6 @@ import type { Notice, NoticeFact, NoticeLevel } from '@/notices/notices';
 import { collectNotices } from '@/notices/notices';
 import { agentColors, agentDisplayName, agentEmoji } from '@/shared/agent-name';
 import { ANSI, paint, rgbEscape } from '@/shared/ansi';
-import { env } from '@/shared/env';
 import { readCadence } from '@/shared/cadence';
 import { log as baseLog } from '@/shared/log';
 import { CLI_PATH } from '@/shared/naming';
@@ -42,7 +40,6 @@ import { livePins } from '@/status/surfaces';
 import { statusLineDrift } from '@/statusline/setting';
 import { getUpgradeStatus, readMigratedFrom } from '@/upgrade/version';
 import { execSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { basename, relative, resolve, sep } from 'node:path';
 import { FIRST_SESSION_HEADER_RE, SESSION_BLOCK_SEPARATOR_RE, TRAILING_SEPARATOR_RE, TURN_MARKER } from '@/knowledge/session-format';
@@ -323,7 +320,7 @@ function renderBanner(
   entries: ManifestEntry[],
   contextBytes: number,
   notices: readonly Notice[],
-  subscription: string | null
+  billing: string | null
 ): string {
   const labelWidth = Math.max(...entries.map((e) => e.label.length), 12);
   const sizeWidth = Math.max(...entries.map((e) => formatKB(e.bytes).length));
@@ -349,8 +346,8 @@ function renderBanner(
         : "  👋 Welcome:   first session, say hi and I'll suggest where to start"
     );
   }
-  if (subscription) {
-    head.splice(1, 0, `  ⚠️ Billing:   ${subscription}`);
+  if (billing) {
+    head.splice(1, 0, `  ⚠️ Billing:   ${billing}`);
   }
   return [...head, ...lines].join('\n');
 }
@@ -587,14 +584,6 @@ export const fitContext = (parts: readonly string[], maxChars: number): string =
 };
 
 /**
- * A home with its own Claude subscription file, in a session that didn't start with it, bills the default login.
- */
-export const subscriptionIssue = (hasSubscription: boolean, marker: string | undefined): string | null =>
-  hasSubscription && marker !== '1'
-    ? 'started with "claude" instead of "agent", so it bills your default login. /exit, then run "agent".'
-    : null;
-
-/**
  * Scaffold placeholders left unresolved in the home's identity files.
  *
  * `init` and `upgrade` substitute `{{TOKEN}}` when they write these, and both
@@ -635,25 +624,16 @@ export async function assembleContext({
     return [];
   });
   const gathered = await gatherContext(healHistoryLink());
-  const subscription =
-    host.billsSubscription
-      ? subscriptionIssue(existsSync(FILES.CLAUDE_SUBSCRIPTION), env(SUBSCRIPTION_MARKER))
-      : null;
+  const billing = host.billing();
   const { entries } = gathered;
   // Right after `## Today`, so the size cap below never cuts it.
   const [today, ...rest] = gathered.parts;
-  const parts = subscription
-    ? [
-        today,
-        `## ⚠️ Claude subscription\n\nThis agent has its own Claude subscription, but this session ${subscription} If the operator did start with "agent", \`.state/secrets/.env.claude.json\` is missing \`"${SUBSCRIPTION_MARKER}": "1"\` in its \`env\`.\n\n**Report this to the operator before anything else**: every turn until they restart bills the wrong account.`,
-        ...rest
-      ]
-    : gathered.parts;
+  const parts = billing ? [today, billing.section, ...rest] : gathered.parts;
 
   const context = fitContext(parts, CONTEXT.MAX_CHARS);
   const notices = (await pendingNotices).filter((notice) => !promptRow || notice.level === 'hint');
-  const banner = renderBanner(entries, context.length, notices, subscription);
-  const hasIssues = subscription !== null || entries.some((entry) => entry.status !== 'loaded' && entry.status !== 'off');
+  const banner = renderBanner(entries, context.length, notices, billing?.banner ?? null);
+  const hasIssues = billing !== null || entries.some((entry) => entry.status !== 'loaded' && entry.status !== 'off');
   return { context, banner, hasIssues };
 }
 

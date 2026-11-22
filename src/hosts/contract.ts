@@ -65,7 +65,7 @@ export interface HostAdapter {
    */
   homeIssues: (home: string) => string[];
   /**
-   * The per-agent subscription check applies: the host bills a subscription the agent can have its own of.
+   * This session bills the wrong account: the banner's line, and the context section that has the agent report it.
    */
-  billsSubscription: boolean;
+  billing: () => { banner: string; section: string } | null;
 }

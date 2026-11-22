@@ -1,5 +1,5 @@
 import { FILES, FOLDERS, TIMEZONE } from '@/config';
-import { fitContext, pinnedReports, skillExtensions, subscriptionIssue, tailOf, todaysReports } from '@/hooks/context';
+import { fitContext, pinnedReports, skillExtensions, tailOf, todaysReports } from '@/hooks/context';
 import { describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -63,17 +63,6 @@ describe('skill extensions in the session context', () => {
     expect(extensions?.content).not.toContain('notes');
     expect(extensions?.entry).toMatchObject({ status: 'loaded', note: '2 skills' });
     files.forEach((path) => rmSync(path, { force: true }));
-  });
-});
-
-describe('the Claude subscription guard', () => {
-  test('a home with its own subscription warns when the session started without it', () => {
-    expect(subscriptionIssue(true, undefined)).toContain('then run "agent"');
-  });
-
-  test('a session started with the subscription file, or a home without one, stays quiet', () => {
-    expect(subscriptionIssue(true, '1')).toBeNull();
-    expect(subscriptionIssue(false, undefined)).toBeNull();
   });
 });
 

@@ -16,7 +16,7 @@ export const codexHost = {
   },
   usedBy: (home) => existsSync(resolve(home, '.codex', 'hooks.json')),
   homeIssues: () => [],
-  billsSubscription: false,
+  billing: () => null,
   delivery: {
     kind: 'inject',
     glossary: {

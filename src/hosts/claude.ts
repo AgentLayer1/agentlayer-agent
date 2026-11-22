@@ -1,8 +1,17 @@
+import { FILES, SUBSCRIPTION_MARKER } from '@/config';
 import type { HostAdapter } from '@/hosts/contract';
 import { SKILL_PREFIX } from '@/hosts/dialect';
 import { env } from '@/shared/env';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+/**
+ * A home with its own Claude subscription file, in a session that didn't start with it, bills the default login.
+ */
+export const subscriptionIssue = (hasSubscription: boolean, marker: string | undefined): string | null =>
+  hasSubscription && marker !== '1'
+    ? 'started with "claude" instead of "agent", so it bills your default login. /exit, then run "agent".'
+    : null;
 
 export const claudeHost: HostAdapter = {
   name: 'claude',
@@ -23,5 +32,13 @@ export const claudeHost: HostAdapter = {
           `\`.claude/CLAUDE.md\` is missing, so Claude Code loads neither the manual nor the identity stack — run \`${SKILL_PREFIX}upgrade\` to write the bridge`
         ]
       : [],
-  billsSubscription: true
+  billing: () => {
+    const issue = subscriptionIssue(existsSync(FILES.CLAUDE_SUBSCRIPTION), env(SUBSCRIPTION_MARKER));
+    return issue === null
+      ? null
+      : {
+          banner: issue,
+          section: `## ⚠️ Claude subscription\n\nThis agent has its own Claude subscription, but this session ${issue} If the operator did start with "agent", \`.state/secrets/.env.claude.json\` is missing \`"${SUBSCRIPTION_MARKER}": "1"\` in its \`env\`.\n\n**Report this to the operator before anything else**: every turn until they restart bills the wrong account.`
+        };
+  }
 };
