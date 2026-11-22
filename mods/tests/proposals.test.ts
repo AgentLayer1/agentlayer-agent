@@ -1,9 +1,9 @@
-import { describe, expect, test } from 'claude-code/testing';
+import { describe, expect, mock, test } from 'claude-code/testing';
 import type { Engine } from 'claude-code/testing';
 import type { On } from 'claude-code';
 
 import { eventView, nextLook, workspaceTitles } from '../proposals/beat';
-import { BAND_PROPS, HOME, NOW, PLUGIN, fakeHost, machine, run } from './fake-host';
+import { AGENT, BAND_PROPS, HOME, NOW, PLUGIN, fakeHost, machine, run } from './fake-host';
 import type { FakeHost } from './fake-host';
 
 const MINUTE = 60_000;
@@ -48,6 +48,11 @@ const bound = async ($: Engine, on: On, every = '') => {
 const heartbeatCalls = (host: FakeHost) => cliCalls(host).filter((args) => args.startsWith('proposals heartbeat'));
 
 const cliCalls = (host: FakeHost) => host.argv.map((argv) => argv.slice(2).join(' ')).filter((args) => args.startsWith('proposals '));
+
+const drawnBand = async ($: Engine) =>
+  (await (await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AbovePrompt', props: BAND_PROPS })).findAll({ type: 'Text' }))
+    .map((element) => element.text)
+    .join('|');
 
 describe('proposals', () => {
   test('/proposal runs the decision through the CLI with no model turn', async ($, on) => {
@@ -483,6 +488,61 @@ describe('heartbeat band', () => {
     expect(nextLook(due, due - 90 * MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look in 1h 30m · 10:00');
     expect(nextLook(due, due + MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look now · 10:00');
     expect(nextLook(due, due + 2 * MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look was due 10:00');
+  });
+});
+
+describe('notes', () => {
+  const REFRESH = `${PLUGIN}:sync`;
+  const SCOUT = `${PLUGIN}:notes`;
+  const NOTE_ADD = `mcp__plugin_${PLUGIN}_${AGENT}__note_add` as const;
+
+  test('a refresh with room for notes scouts after the brain refresh and before the look; with none it skips', async ($, on) => {
+    const { host } = await bound($, on);
+    host.notesRoom = 2;
+    host.proposals.refreshDue = true;
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands).toEqual(['clear', REFRESH, SCOUT, WAKE]);
+    host.commands.length = 0;
+    host.notesRoom = 0;
+    host.proposals.refreshedAt = new Date(host.clock.now() - 7 * 60 * MINUTE).toISOString();
+    await host.clock.advance(7 * 60 * MINUTE);
+    expect(host.commands.filter((command) => command === SCOUT), 'no room left today').toEqual([]);
+  });
+
+  test("a sent note lands in the session's scrollback as a notice, and the band counts the day's notes", async ($, on) => {
+    const session = mock.session(on);
+    on('tool.call', { tool: NOTE_ADD }, () => ({
+      result: 'ok',
+      text: JSON.stringify({ added: [{ id: 'n-1', title: 'The snippet names the old plugin', delivered: ['report'] }], refused: [], roomToday: 2 })
+    }));
+    const { host } = await bound($, on);
+    await $.tool.call({
+      tool: NOTE_ADD,
+      notes: [
+        {
+          source: 'site:snippet',
+          lens: 'public-drift',
+          title: 'The snippet names the old plugin',
+          body: 'Search still shows the old install line.',
+          sources: ['https://example.com/install'],
+          next: 'Request indexing for the install page.',
+          prompt: 'Check the page, then stop.'
+        }
+      ]
+    });
+    const notices = session.appended().map((row) => JSON.stringify(row));
+    expect(notices.join('\n')).toContain('📝 The snippet names the old plugin');
+    expect(notices.join('\n')).toContain('/note start n-1 · /note useful n-1 · /note dismiss n-1');
+    await host.clock.advance(MINUTE);
+    expect(await drawnBand($)).toContain('1 of 3 notes today');
+  });
+
+  test('/note reacts or starts through the CLI, and anything else gets the usage', async ($, on) => {
+    const { host } = heartbeatHost(on);
+    await run($, 'note', 'useful n-1');
+    await run($, 'note', 'start n-2');
+    expect(host.argv.slice(-2).map((argv) => argv.slice(2).join(' '))).toEqual(['notes react useful n-1', 'notes start n-2']);
+    expect((await run($, 'note', 'later n-1')).text).toBe('Usage: /note <useful|dismiss|start> <id>');
   });
 });
 

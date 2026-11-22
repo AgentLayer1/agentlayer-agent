@@ -135,7 +135,7 @@ export interface ReportRow {
 /** One tick of the heartbeat as its band shows it; repeats of one skip fold into a single event. */
 export interface HeartbeatEvent {
   at: number;
-  kind: 'look' | 'refresh' | 'skip' | 'stopped';
+  kind: 'look' | 'refresh' | 'notes' | 'skip' | 'stopped';
   /** The look's or refresh's closing line, a skip's reason, or what stopped. */
   text: string;
   /** How many skips this one stands for, and when the first was; absent for one. */
@@ -159,13 +159,16 @@ export interface HeartbeatClock {
   /** How many proposals showed at the last tick, and the most there are. */
   showing?: number;
   target?: number;
+  /** The local day the last notes went out, and how many had gone out that day. */
+  notesDay?: string;
+  notesSent?: number;
   /** When this heartbeat last started a brain refresh, epoch ms, so a failed one isn't retried every tick. */
   refreshTriedAt?: number;
   /** When a sync or brain refresh last ran, epoch ms; 0 when never. */
   refreshedAt?: number;
   /** The latest ticks, newest first. */
   log?: HeartbeatEvent[];
-  /** The wake turns started and not yet ended, oldest first: `look` or `refresh`. */
+  /** The wake turns started and not yet ended, oldest first: `look`, `refresh` or `notes`. */
   awaiting?: string[];
   /** When the first of `awaiting` was queued, epoch ms. */
   workingSince?: number;

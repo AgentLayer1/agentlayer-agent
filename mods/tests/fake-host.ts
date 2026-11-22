@@ -63,6 +63,8 @@ export interface FakeMachine {
     refreshedAt?: string;
     refreshDue?: boolean;
   };
+  /** The notes room `notes list --json` reports; unset, the CLI answers without one and no scouting runs. */
+  notesRoom?: number;
   toasts: string[];
   /** What `$.ui.copy` put on the clipboard. */
   copied: string[];
@@ -192,6 +194,9 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
         dueSoon: items(host.taskScan.dueSoon)
       })
     );
+  }
+  if (args === 'notes list --json' && host.notesRoom !== undefined) {
+    return ran(0, JSON.stringify({ cap: 3, room: host.notesRoom, today: 3 - host.notesRoom, recent: [], lenses: {} }));
   }
   if (args === 'proposals list --json') {
     const room = host.proposals.room ?? Math.max(0, host.proposals.target - host.proposals.showing.length);

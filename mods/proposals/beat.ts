@@ -178,13 +178,16 @@ export const nextLook = (nextAt: number, now: number, timeZone: string): string 
 export const eventView = (
   event: HeartbeatEvent,
   timeZone: string
-): { mark: string; color?: 'green' | 'cyan' | 'red'; text: string } => {
+): { mark: string; color?: 'green' | 'cyan' | 'red' | 'magenta'; text: string } => {
   if (event.kind === 'skip') {
     const times = event.count && event.since ? ` ${event.count}× since ${clockIn(event.since, timeZone)}` : '';
     return { mark: '–', text: `skipped${times} · ${event.text}` };
   }
   if (event.kind === 'refresh') {
     return { mark: '↻', color: 'cyan', text: event.text };
+  }
+  if (event.kind === 'notes') {
+    return /^no (note|room)/i.test(event.text) ? { mark: '·', text: event.text } : { mark: '✎', color: 'magenta', text: event.text };
   }
   if (event.kind === 'stopped') {
     return { mark: '✗', color: 'red', text: event.text };
@@ -218,3 +221,70 @@ export const workspaceTitles = (stdout: string): string[] =>
     .split('\n')
     .map((line) => WORKSPACE_LINE.exec(line)?.[1]?.trim() ?? '')
     .filter((title) => title !== '' && !PATH_TITLE.test(title));
+
+/**
+ * The room for notes left today from `notes list --json`; null when it can't be read.
+ */
+export const notesRoom = (stdout: string): number | null => {
+  try {
+    const data: unknown = JSON.parse(stdout);
+    return typeof data === 'object' && data !== null && 'room' in data && typeof data.room === 'number' ? data.room : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * A note as the heartbeat's tab shows it.
+ */
+export interface SentNote {
+  id: string;
+  title: string;
+  body: string;
+  next: string;
+  sources: string[];
+  canStart: boolean;
+}
+
+const text = (value: unknown): string => (typeof value === 'string' ? value : '');
+
+/**
+ * The notes a `note_add` call sent, joined with what it was asked to send, and the room left today; null when its
+ * result isn't the tool's JSON.
+ */
+export const notesSent = (input: unknown, resultText: string): { notes: SentNote[]; roomToday: number } | null => {
+  try {
+    const result: unknown = JSON.parse(resultText);
+    if (typeof result !== 'object' || result === null || !('added' in result) || !Array.isArray(result.added)) {
+      return null;
+    }
+    const asked: Record<string, unknown>[] =
+      typeof input === 'object' && input !== null && 'notes' in input && Array.isArray(input.notes) ? input.notes : [];
+    const notes = result.added.flatMap((added: unknown): SentNote[] => {
+      const id = typeof added === 'object' && added !== null && 'id' in added ? text(added.id) : '';
+      const title = typeof added === 'object' && added !== null && 'title' in added ? text(added.title) : '';
+      const note = asked.find((item) => text(item.title) === title);
+      if (!id || !note) {
+        return [];
+      }
+      const sources = Array.isArray(note.sources) ? note.sources.map(text).filter(Boolean) : [];
+      return [{ id, title, body: text(note.body), next: text(note.next), sources, canStart: text(note.prompt) !== '' }];
+    });
+    const roomToday = 'roomToday' in result && typeof result.roomToday === 'number' ? result.roomToday : 0;
+    return { notes, roomToday };
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * A note as a notice row in the transcript: kept in the scrollback, never read by the model.
+ */
+export const noticeText = (note: SentNote): string =>
+  [
+    `📝 ${note.title}`,
+    note.body,
+    `Next: ${note.next}`,
+    ...note.sources.map((url) => `· ${url}`),
+    `${note.canStart ? `/note start ${note.id} · ` : ''}/note useful ${note.id} · /note dismiss ${note.id}`
+  ].join('\n');

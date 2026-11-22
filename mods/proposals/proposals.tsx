@@ -21,6 +21,9 @@ import {
   lastWrite,
   logged,
   nextLook,
+  noticeText,
+  notesRoom,
+  notesSent,
   parseDecision,
   parseHeartbeat,
   parseList,
@@ -30,6 +33,9 @@ import {
 } from './beat';
 
 const USAGE = `Usage: /proposal <${CHOICES.join('|')}> <id> [--workspace=<id>]`;
+const NOTE_USAGE = 'Usage: /note <useful|dismiss|start> <id>';
+// The notes core's daily cap, which the band counts against.
+const NOTES_A_DAY = 3;
 // Inside the engine's short bound on every session.end hook.
 const RELEASE_TIMEOUT_MS = 1000;
 // TODO(windows): cmux is a macOS app, found only in /Applications.
@@ -160,9 +166,20 @@ async function wake($: EngineInterface, now: number, zone: string, refresh = fal
     if (refresh) {
       await expectTurn($, 'refresh');
       await $.command.run({ command: `${$.plugin.name}:sync`, args: 'brain' });
+      await scout($);
     }
     await look($);
   });
+}
+
+// Scouting for notes rides on the refresh, reading the brain it just compiled, while the day has room.
+async function scout($: EngineInterface): Promise<void> {
+  const room = await runCli($, ['notes', 'list', '--json']).then(notesRoom, () => null);
+  if (!room) {
+    return;
+  }
+  await expectTurn($, 'notes');
+  await $.command.run({ command: `${$.plugin.name}:notes` });
 }
 
 async function note($: EngineInterface, event: HeartbeatEvent): Promise<void> {
@@ -366,13 +383,35 @@ export const registerProposals = (on: On): void => {
 
   on('command.run', { command: 'heartbeat' }, async ($, e) => ({ text: await heartbeat($, e.args) }));
 
+  on('command.run', { command: 'note' }, async ($, e) => {
+    const [choice, id] = e.args.trim().split(/\s+/);
+    if (!id || (choice !== 'useful' && choice !== 'dismiss' && choice !== 'start')) {
+      return { text: NOTE_USAGE };
+    }
+    return { text: await said($, choice === 'start' ? ['notes', 'start', id] : ['notes', 'react', choice, id]) };
+  });
+
+  // A note the session sends lands in its scrollback as a notice the model never reads; the heartbeat's band counts it.
+  on('tool.call', { tool: /__note_add$/ }, async ($, e, next) => {
+    const result = await next(e);
+    const sent = notesSent(e, result.text ?? '');
+    if (sent?.notes.length) {
+      await Promise.all(
+        sent.notes.map((item) => $.session.append({ message: { type: 'system', content: [{ type: 'text', text: noticeText(item) }] } }))
+      );
+      const [now, { zone = 'UTC' }] = await Promise.all([$.clock.now(), read($, beat)]);
+      await update($, beat, (current) => ({ ...current, notesDay: dayIn(now, zone), notesSent: NOTES_A_DAY - sent.roomToday }));
+    }
+    return result;
+  });
+
   // A wake's turn ends on the skill's one-line ending, which is what the band says it did.
   on('turn.complete', { reason: TURN_REASONS }, async ($, e, next) => {
     const { awaiting = [] } = await read($, beat);
     const kind = awaiting[0];
     if (e.agentId === undefined && kind) {
       const now = await $.clock.now();
-      const done = kind === 'refresh' ? 'refresh' : 'look';
+      const done = kind === 'refresh' || kind === 'notes' ? kind : 'look';
       await update($, beat, (current) => ({ ...current, awaiting: (current.awaiting ?? []).slice(1), workingSince: now }));
       await note(
         $,
@@ -409,7 +448,8 @@ export const registerProposals = (on: On): void => {
     const facts = [
       `every ${state.everyMinutes ?? 55}m`,
       state.target ? `${state.showing ?? 0} of ${state.target} proposals showing` : '',
-      state.refreshedAt ? `brain refreshed ${ago(state.refreshedAt, now)}` : ''
+      state.refreshedAt ? `brain refreshed ${ago(state.refreshedAt, now)}` : '',
+      state.notesSent && state.notesDay === dayIn(now, zone) ? `${state.notesSent} of ${NOTES_A_DAY} notes today` : ''
     ].filter(Boolean);
     // The time, the mark and the gaps around them.
     const width = Math.max(20, e.props.bodyColumns - 13);

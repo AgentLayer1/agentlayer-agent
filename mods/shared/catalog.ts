@@ -146,6 +146,12 @@ export const PROPOSALS_FEATURE = {
       immediate: true
     },
     {
+      name: 'note',
+      description: 'Say a note was useful, dismiss it, or start the session it suggests (no Claude turn)',
+      argumentHint: '<useful|dismiss|start> <id>',
+      immediate: true
+    },
+    {
       name: 'heartbeat',
       description: 'Make this session the heartbeat: it looks for proposals now, then every 55m unless set; or off, now, status',
       argumentHint: '[15m | 2h | off | now | status]',
