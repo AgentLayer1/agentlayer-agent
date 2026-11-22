@@ -225,6 +225,48 @@ export interface SentNote {
 
 const text = (value: unknown): string => (typeof value === 'string' ? value : '');
 
+/**
+ * What `notes brief --json` hands the heartbeat: the lens to run, and for a web lens the scout's whole task.
+ */
+export interface NotesBrief {
+  lens: string;
+  web: boolean;
+  prompt: string;
+}
+
+export const parseBrief = (stdout: string): NotesBrief | null => {
+  try {
+    const data = record(JSON.parse(stdout));
+    return typeof data.lens === 'string' && data.lens
+      ? { lens: data.lens, web: data.web === true && text(data.prompt) !== '', prompt: text(data.prompt) }
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+const SCOUT_TOOLS = /^(WebSearch|WebFetch)$|__note_add$/;
+
+/**
+ * The tools the web scout may run: it reads the web and sends notes, nothing else.
+ */
+export const isScoutTool = (tool: string): boolean => SCOUT_TOOLS.test(tool);
+
+/**
+ * Every tool but those a home-lens notes run reads the home with; Bash is among them, since only one shell call is allowed.
+ */
+export const BEYOND_HOME_LENS =
+  /^(?!(?:Read|Grep|Glob|ToolSearch)$)(?!.*__(?:note_add|task_query|task_get|github_sweep|helpdesk_stats|appstore_reviews)$)/;
+// The notes skill's one shell call, whole: anything chained to it would run too.
+const NOTES_LIST = /^bun\s+"(?:\$\{CLAUDE_PLUGIN_ROOT\}|[^"$`\\]+)\/src\/cli\.ts"\s+notes\s+list(?:\s+--json)?$/;
+
+/**
+ * Whether a home-lens notes run may make this call. It reads ticket and review text beside the home's private files, so
+ * nothing it runs reaches past the machine; the web is the scout's.
+ */
+export const homeLensMay = (tool: string, command: string): boolean =>
+  tool === 'Bash' ? NOTES_LIST.test(command.trim()) : !BEYOND_HOME_LENS.test(tool);
+
 const record = (value: unknown): Record<string, unknown> =>
   typeof value === 'object' && value !== null ? Object.fromEntries(Object.entries(value)) : {};
 

@@ -66,6 +66,8 @@ export interface FakeMachine {
   notesRoom?: number;
   /** False when the home switched scouting off (`AGENT_NOTES_SCOUT=off`). */
   notesScout?: boolean;
+  /** What `notes brief --json` answers; unset, the brain lens, which runs in the heartbeat. */
+  notesBrief?: { lens: string; web: boolean; prompt: string };
   toasts: string[];
   /** What `$.ui.copy` put on the clipboard. */
   copied: string[];
@@ -83,6 +85,8 @@ export interface FakeMachine {
   root: string;
   /** The subagents `$.agent.list()` answers; a spawn adds one running. */
   agents: AgentInfo[];
+  /** What each spawn was given: its description and its prompt. */
+  spawned: { description: string; prompt: string }[];
   /** What `$.session.id()` answers; a test changes it to stand for another conversation. */
   sessionId: string;
   /** What `ping` says about the folder: false outside an agent home. */
@@ -124,6 +128,7 @@ export const machine = (overrides: Partial<FakeMachine> = {}): FakeMachine => ({
   statuses: {},
   root: HOME,
   agents: [],
+  spawned: [],
   sessionId: 'session-1',
   isHome: true,
   shellWrites: {},
@@ -198,6 +203,9 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
         dueSoon: items(host.taskScan.dueSoon)
       })
     );
+  }
+  if (args === 'notes brief --json') {
+    return ran(0, JSON.stringify(host.notesBrief ?? { lens: 'brain', web: false, prompt: '' }));
   }
   if (args === 'heartbeat status --json') {
     const { target, showing, heartbeat, refreshedAt = '', refreshDue = false } = host.status;
@@ -331,9 +339,12 @@ export const fakeHost = (on: On, host: FakeMachine = machine()): FakeHost => {
   on('skill.prompt', (_$, e) => ({ text: e.text }));
   on('agent.spawn', (_$, e) => {
     host.agents.push({ id: e.description, description: e.description, type: e.subagentType, status: 'running' });
+    host.spawned.push({ description: e.description, prompt: e.prompt });
     return { model: 'fake', agentId: e.description };
   });
   on('agent.list', () => ({ value: host.agents }));
+  on('agent.offer', () => ({ isOffered: true }));
+  on('agent.report', (_$, e) => ({ text: e.text }));
   on('turn.complete', () => ({ text: '', reason: 'answer' as const }));
   on('session.compact', (_$, e) => ({ messages: e.messages }));
   on('session.end', (_$, e) => ({ sessionId: e.sessionId }));

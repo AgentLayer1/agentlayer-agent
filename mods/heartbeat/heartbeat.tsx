@@ -26,6 +26,10 @@ import {
   MESSAGE_CHOICES,
   MESSAGE_AT_END,
   decisionInDraft,
+  BEYOND_HOME_LENS,
+  homeLensMay,
+  isScoutTool,
+  parseBrief,
   parseDecision,
   type Decision,
   type HeartbeatStatus
@@ -37,6 +41,13 @@ const RELEASE_TIMEOUT_MS = 1000;
 // TODO(windows): cmux is a macOS app, found only in /Applications.
 const CMUX_BIN = '/Applications/cmux.app/Contents/Resources/bin/cmux';
 const CMUX_TIMEOUT_MS = 5000;
+// A scout still running this long after it started is given up on; any report it sends later is still kept out.
+const SCOUT_TIMEOUT_MS = 20 * MINUTE_MS;
+const HOME_LENS_ONLY =
+  "The heartbeat's notes run reads the home, so nothing it runs reaches past the machine; the web scout searches the web.";
+const SCOUT_ONLY = 'The scout runs WebSearch, WebFetch and note_add only.';
+const SCOUT_REPORT_KEPT = "The scout's notes are in the notes list; its report stays out of this conversation.";
+const SCOUT_DESCRIPTION = 'Scout the web for notes';
 
 // Kept in session state, which outlives a /clear and a reload of this module, unlike its own variables.
 const beat = atom({ plugin: 'agentlayer', key: 'heartbeat' } as const, { wokeOn: '', owner: '' });
@@ -75,7 +86,18 @@ function startRedraw($: EngineInterface): void {
 
 async function onRedraw($: EngineInterface): Promise<void> {
   await update($, redrawn, (count) => count + 1);
+  await giveUpOnScout($);
   await revive($);
+}
+
+// A scout that outlives its time is no longer waited on; a report it sends later is still kept out.
+async function giveUpOnScout($: EngineInterface): Promise<void> {
+  const [{ scoutId, scoutSince = 0 }, now] = await Promise.all([read($, beat), $.clock.now()]);
+  if (scoutId === undefined || now - scoutSince < SCOUT_TIMEOUT_MS) {
+    return;
+  }
+  await update($, beat, (current) => ({ ...current, scoutId: undefined, scoutSince: undefined }));
+  await note($, { at: now, kind: 'stopped', text: `the scout didn't finish in ${SCOUT_TIMEOUT_MS / MINUTE_MS}m` });
 }
 
 // Several callers can find the clock stopped in the same moment; only the first restarts it and looks.
@@ -182,8 +204,9 @@ async function wake($: EngineInterface, now: number, status: HeartbeatStatus, re
     if (refresh) {
       await expectTurn($, 'refresh');
       await $.command.run({ command: `${$.plugin.name}:sync`, args: 'brain' });
-      // Pages the scout fetched stay out of the look, which runs with wider grants.
-      if (await scout($, status)) {
+      // Ticket and review text a home lens read stays out of the look, which runs with wider grants. A web lens runs in
+      // the scout, outside this conversation.
+      if ((await scout($, status)) === 'home') {
         await $.command.run({ command: 'clear' });
       }
     }
@@ -191,19 +214,52 @@ async function wake($: EngineInterface, now: number, status: HeartbeatStatus, re
   });
 }
 
-// Scouting for notes rides on the refresh, reading the brain it just compiled, while the day has room. Says whether it ran.
-async function scout($: EngineInterface, status: HeartbeatStatus): Promise<boolean> {
+const scoutType = ($: EngineInterface): string => `${$.plugin.name}:scout`;
+
+// Scouting for notes rides on the refresh while the day has room, through the lens the code picks: a home lens runs here,
+// a web lens in the scout. Says which ran.
+async function scout($: EngineInterface, status: HeartbeatStatus): Promise<'none' | 'home' | 'web'> {
   if (!status.notes.scout || !status.notes.room) {
-    return false;
+    return 'none';
+  }
+  const brief = await runCli($, ['notes', 'brief', '--json']).then(parseBrief, () => null);
+  if (!brief) {
+    await note($, { at: await $.clock.now(), kind: 'skip', text: "the notes brief didn't read" });
+    return 'none';
+  }
+  await update($, beat, (current) => ({ ...current, notesThisWake: 0 }));
+  if (brief.web) {
+    await sendScout($, brief.prompt);
+    return 'web';
   }
   const titles = await workspacesNow($);
-  await update($, beat, (current) => ({ ...current, notesThisWake: 0 }));
   await expectTurn($, 'notes');
   await $.command.run({
     command: `${$.plugin.name}:notes`,
-    args: titles.length ? `workspaces: ${JSON.stringify(titles)}` : ''
+    args: [`lens: ${brief.lens}`, ...(titles.length ? [`workspaces: ${JSON.stringify(titles)}`] : [])].join(' ')
   });
-  return true;
+  return 'home';
+}
+
+// The scout's prompt is the brief the code wrote, whole: no model chose a word of it. Its id is how every guard below
+// knows its loop.
+async function sendScout($: EngineInterface, prompt: string): Promise<void> {
+  const started = await $.agent
+    .spawn({ prompt, subagentType: scoutType($), description: SCOUT_DESCRIPTION })
+    .catch((error: unknown) => ({ deny: error instanceof Error ? error.message : String(error) }));
+  const now = await $.clock.now();
+  if (started.deny !== undefined || !started.agentId) {
+    const why = started.deny ? `: ${started.deny}` : '';
+    await note($, { at: now, kind: 'stopped', text: `the scout didn't start${why}` });
+    return;
+  }
+  const id = started.agentId;
+  await update($, beat, (current) => ({ ...current, scoutId: id, scoutSince: now }));
+}
+
+async function isScout($: EngineInterface, agentId: string | undefined): Promise<boolean> {
+  const { scoutId } = await read($, beat);
+  return agentId !== undefined && agentId === scoutId;
 }
 
 async function note($: EngineInterface, event: HeartbeatEvent): Promise<void> {
@@ -439,8 +495,53 @@ export const registerHeartbeat = (on: On): void => {
     return result;
   });
 
-  // A wake's turn ends on the skill's one-line ending, which is what the band says it did.
+  // No model can start the scout: a prompt a model wrote could carry what it read in the home out to the web.
+  on('agent.offer', { agent: /:scout$/ }, async ($, e, next) =>
+    e.provider.plugin === $.plugin.name ? { isOffered: false } : next(e)
+  ).catch(($, e, next) => (next.called ? next(e) : { isOffered: false }));
+
+  // What the scout read on the web never reaches a conversation; its notes are in the list, and its line is the band's.
+  on('agent.report', async ($, e, next) =>
+    e.subagentType === scoutType($) ? { consumed: SCOUT_REPORT_KEPT } : next(e)
+  ).catch(($, e, next) =>
+    next.called || e.subagentType !== scoutType($) ? next(e) : { consumed: SCOUT_REPORT_KEPT }
+  );
+
+  // The scout runs unattended, so its own three tools need no one's yes, and anything else is refused behind its
+  // `tools:` list. A failure here leaves the call to the engine's own check.
+  on('tool.check', async ($, e, next) => {
+    if (!(await isScout($, e.agentId))) {
+      return next(e);
+    }
+    return isScoutTool(String(e.tool)) ? { decision: 'allow' } : { decision: 'deny', reason: SCOUT_ONLY };
+  }).catch(($, e, next) => next(e));
+
+  // While a home lens runs, this conversation holds the home's files and text from tickets and reviews together.
+  on('tool.call', { tool: BEYOND_HOME_LENS }, async ($, e, next) => {
+    if (e.agentId !== undefined) {
+      return next(e);
+    }
+    const { isHeartbeat, awaiting = [] } = await read($, beat);
+    const tool = String(e.tool);
+    if (!isHeartbeat || awaiting[0] !== 'notes' || homeLensMay(tool, e.tool === 'Bash' ? e.command : '')) {
+      return next(e);
+    }
+    return { deny: HOME_LENS_ONLY };
+  }).catch(($, e, next) => (next.called ? next(e) : { deny: HOME_LENS_ONLY }));
+
+  // A wake's turn ends on the skill's one-line ending, which is what the band says it did; the scout's ends its run.
   on('turn.complete', { reason: TURN_REASONS }, async ($, e, next) => {
+    if (await isScout($, e.agentId)) {
+      const [now, { notesThisWake = 0 }] = await Promise.all([$.clock.now(), read($, beat)]);
+      await update($, beat, (current) => ({ ...current, scoutId: undefined, scoutSince: undefined }));
+      await note(
+        $,
+        e.reason === 'answer'
+          ? { at: now, kind: 'notes', text: closingLine(e.answer) || 'done', sent: notesThisWake }
+          : { at: now, kind: 'stopped', text: `the scout stopped (${e.reason})` }
+      );
+      return next(e);
+    }
     const { awaiting = [] } = await read($, beat);
     const kind = awaiting[0];
     if (e.agentId === undefined && kind) {
@@ -504,6 +605,8 @@ export const registerHeartbeat = (on: On): void => {
                 state.workingSince ? ` since ${clockIn(state.workingSince, zone)}` : ''
               }`}
             </Text>
+          ) : state.scoutId ? (
+            <Text color="magenta">{`◉ scouting the web…${state.scoutSince ? ` since ${clockIn(state.scoutSince, zone)}` : ''}`}</Text>
           ) : state.nextAt ? (
             <Text color={late ? 'yellow' : undefined} dimColor={!late}>{`○ ${nextLook(state.nextAt, now, zone)}`}</Text>
           ) : null}

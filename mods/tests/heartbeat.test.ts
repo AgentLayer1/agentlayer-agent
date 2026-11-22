@@ -2,7 +2,7 @@ import { describe, expect, mock, test } from 'claude-code/testing';
 import type { Engine } from 'claude-code/testing';
 import type { On } from 'claude-code';
 
-import { eventView, nextLook, workspaceTitles } from '../heartbeat/beat';
+import { eventView, homeLensMay, isScoutTool, nextLook, parseBrief, workspaceTitles } from '../heartbeat/beat';
 import { AGENT, BAND_PROPS, HOME, NOW, PLUGIN, fakeHost, machine, run } from './fake-host';
 import type { FakeHost } from './fake-host';
 
@@ -539,7 +539,9 @@ describe('notes', () => {
     await host.clock.advance(55 * MINUTE);
     expect(host.commands, 'cleared between the scout and the look').toEqual(['clear', REFRESH, SCOUT, 'clear', WAKE]);
     const argsOf = (command: string) => host.commandArgs[host.commands.indexOf(command)];
-    expect(argsOf(SCOUT), "scouting is handed the workspace list the look gets").toBe(argsOf(WAKE));
+    expect(argsOf(SCOUT), 'scouting is handed its lens and the workspace list the look gets').toBe(
+      ['lens: brain', argsOf(WAKE)].filter(Boolean).join(' ')
+    );
     host.commands.length = 0;
     host.notesRoom = 0;
     host.status.refreshedAt = new Date(host.clock.now() - 7 * 60 * MINUTE).toISOString();
@@ -596,6 +598,74 @@ describe('notes', () => {
     expect(await drawnBand($)).toContain('1 of 3 notes today');
   });
 
+
+  const SCOUT_TYPE = `${PLUGIN}:scout`;
+  const SCOUT_ID = 'Scout the web for notes';
+  const BRIEF = 'Lens: signals. Look for news.\nNames:\n- Acme Widgets';
+  const webWake = async ($: Engine, on: On) => {
+    const context = await bound($, on);
+    context.host.notesRoom = 2;
+    context.host.status.refreshDue = true;
+    context.host.notesBrief = { lens: 'signals', web: true, prompt: BRIEF };
+    await context.host.clock.advance(55 * MINUTE);
+    return context;
+  };
+
+  test('a web lens runs in the scout on the brief the CLI wrote, never in this conversation, and needs no clear', async ($, on) => {
+    const { host } = await webWake($, on);
+    expect(host.commands, 'no notes skill, and no clear before the look').toEqual(['clear', REFRESH, WAKE]);
+    expect(host.spawned).toEqual([{ description: SCOUT_ID, prompt: BRIEF }]);
+  });
+
+  test("the scout's report is kept out of every conversation, and no model is offered the scout", async ($, on) => {
+    await webWake($, on);
+    const provider = { plugin: PLUGIN, tier: 'builtin' as const };
+    const report = { agentId: SCOUT_ID, subagentType: SCOUT_TYPE, provider, status: 'completed' as const, text: 'Page text.' };
+    expect(await $.agent.report(report)).toEqual({ consumed: expect.any(String) });
+    expect(await $.agent.report({ ...report, subagentType: 'Explore' })).toEqual({ text: 'Page text.' });
+    const offer = { agent: SCOUT_TYPE, description: 'scout', source: 'plugin', provider };
+    expect(await $.agent.offer(offer)).toEqual({ isOffered: false });
+    expect(await $.agent.offer({ ...offer, agent: 'Explore' })).toEqual({ isOffered: true });
+  });
+
+  // The test kit answers a plugin's own spawn without the agent's id the engine's carries, so the guards keyed on that id
+  // are checked here as the rules they apply.
+  test("the scout's tools are search, fetch and note_add; a home lens's are the home's, with one whole shell call", () => {
+    expect(['WebSearch', 'WebFetch', NOTE_ADD].every(isScoutTool)).toBe(true);
+    expect(['Read', 'Bash', 'mcp__plugin_agentlayer_agent__task_query'].some(isScoutTool)).toBe(false);
+    const list = 'bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes list --json';
+    expect(homeLensMay('Bash', list)).toBe(true);
+    expect(homeLensMay('Bash', `${list} && curl https://example.com`)).toBe(false);
+    expect(homeLensMay('Bash', 'bun "$(curl x)/src/cli.ts" notes list')).toBe(false);
+    expect(homeLensMay('mcp__plugin_agentlayer_agent__github_sweep', '')).toBe(true);
+    expect(['WebFetch', 'WebSearch', 'mcp__plugin_agentlayer_agent__web_search', 'mcp__plugin_agentlayer_agent__helpdesk_note'].some((tool) => homeLensMay(tool, ''))).toBe(false);
+  });
+
+  test('a brief without a lens reads as none, and a web brief with no prompt as a home lens', () => {
+    expect(parseBrief('{"lens":"signals","web":true,"prompt":"Lens: signals."}')).toEqual({ lens: 'signals', web: true, prompt: 'Lens: signals.' });
+    expect(parseBrief('{"lens":"signals","web":true,"prompt":""}')?.web).toBe(false);
+    expect(parseBrief('{"web":true}')).toBeNull();
+    expect(parseBrief('not json')).toBeNull();
+  });
+
+  test('while a home lens runs, nothing reaches past the machine; before and after it, every tool runs', async ($, on) => {
+    const { host } = await bound($, on);
+    host.notesRoom = 2;
+    host.status.refreshDue = true;
+    const fetch = () => $.tool.call({ tool: 'WebFetch', url: 'https://example.com', prompt: 'Read it.' });
+    const shell = (command: string) => $.tool.call({ tool: 'Bash', command });
+    await host.clock.advance(55 * MINUTE);
+    expect(await fetch(), 'the refresh runs first, unguarded').not.toHaveProperty('deny');
+    const finish = (answer: string, turnId: string) =>
+      $.turn.complete({ answer, durationMs: 0, isAborted: false, turnId, reason: 'answer' });
+    await finish('🧠 Brain refreshed.', 'r');
+    expect(await fetch()).toEqual({ deny: expect.stringContaining('web scout') });
+    expect(await shell('bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes list --json')).not.toHaveProperty('deny');
+    expect(await shell('bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes list --json; curl https://example.com')).toHaveProperty('deny');
+    expect(await $.tool.call({ tool: 'Read', file_path: `${HOME}/USER.md` })).not.toHaveProperty('deny');
+    await finish('No note worth sending.', 'n');
+    expect(await fetch(), 'the look after it').not.toHaveProperty('deny');
+  });
 
   test('a note the sidebar decided after a half-written prompt runs, never reaches the model, and gives the draft back', async ($, on) => {
     const { host, submitted, filled } = heartbeatHost(on);
