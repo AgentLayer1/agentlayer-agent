@@ -7,7 +7,7 @@ allowed-tools: mcp__plugin_agentlayer_agent__proposal_add, mcp__plugin_agentlaye
 
 # Heartbeat: keep Proposals full
 
-Proposals are sessions waiting for the operator's yes: Start opens a fresh session that runs the proposal's prompt, Later brings it back in the morning, Skip drops it. This skill runs on the heartbeat's wake. Its one job is to leave the five best proposals showing, then stop: it fills empty places and swaps out cards a stronger candidate beats, so the list stays strong even when it was already full. It never starts, sends or edits anything itself.
+Proposals are sessions waiting for the operator's yes: Start opens a fresh session that runs the proposal's prompt, Later brings it back in the morning, Dismiss drops it. This skill runs on the heartbeat's wake. Its one job is to leave the five best proposals showing, then stop: it fills empty places and swaps out cards a stronger candidate beats, so the list stays strong even when it was already full. It never starts, sends or edits anything itself.
 
 ## 1. See what's there
 
@@ -42,7 +42,7 @@ Skip the heartbeat's own sessions: any whose topic or latest ask is `/heartbeat`
 
 Rank the showing cards and the candidates together, most pressing first: overdue or due today, someone waiting on the operator, then what unblocks the most. The top five should show. In one `proposal_add` call, add the candidates that made it and `retire` each showing card that didn't, or that step 3 marked, or that is no longer true (its task closed, its PR merged), each with a short reason. A card retired only to make way for a new one names that one's source in `for`, so it stays if the new one is refused. Never retire a card to make room for filler: a card only goes for a clearly stronger candidate or because it no longer holds. A card put off with Later isn't showing and is left alone.
 
-`proposal_add` refuses a source already waiting, started in the last day or skipped in the last week; for each refusal, add the next-best candidate you hold in another call, until five show or your candidates run out. Each new proposal is a session a stranger could run:
+`proposal_add` refuses a source already waiting, started in the last day or dismissed in the last week; for each refusal, add the next-best candidate you hold in another call, until five show or your candidates run out. Each new proposal is a session a stranger could run:
 
 - **title**: what the session does, as an imperative, under 60 characters ("Draft the reply to your accountant").
 - **trigger**: what happened, in the operator's terms ("Your accountant wrote two hours ago").

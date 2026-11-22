@@ -1032,7 +1032,7 @@ var heartbeatRoute = (place) => {
   return place && found ? { surfaceId: place.surfaceId, workspaceId: found.id } : null;
 };
 
-// src/shared/later.ts
+// src/shared/message.ts
 var isShown = (laterUntil, nowMs) => laterUntil === "" || Date.parse(laterUntil) <= nowMs;
 
 // src/cmux/sidebar/messages.ts

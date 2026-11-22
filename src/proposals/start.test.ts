@@ -99,14 +99,14 @@ test('a Start whose session cannot open puts the proposal back', () => {
   expect(readProposalLedger().proposals[0]?.state).toBe('waiting');
 });
 
-test('Later and Skip record the choice', () => {
+test('Later and Dismiss record the choice', () => {
   const later = fakeAdapter(true);
   expect(decideProposal(seed(), 'later', context([later.adapter]))).toBe(
     'Later: Reply to the review comes back in the morning.'
   );
   expect(readProposalLedger().proposals.at(-1)?.laterUntil).not.toBe('');
-  expect(decideProposal(seed(), 'skip', context([]))).toBe('Skipped: Reply to the review.');
-  expect(decideProposal('p-none', 'skip', context([]))).toBe('No proposal p-none.');
+  expect(decideProposal(seed(), 'dismiss', context([]))).toBe('Dismissed: Reply to the review.');
+  expect(decideProposal('p-none', 'dismiss', context([]))).toBe('No proposal p-none.');
 });
 
 test('a ledger that won’t parse is never written over, a Start on it opens nothing, and the list fails rather than show none', () => {

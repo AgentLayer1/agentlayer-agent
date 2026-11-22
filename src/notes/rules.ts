@@ -1,4 +1,5 @@
 import { DAY_MS, isoMs, nextMorning, nowISO, todayDate } from '@/shared/date';
+import type { MessageChoice } from '@/shared/message';
 import { freshId, shortId } from '@/shared/utils';
 import type { Note, NoteLedger } from './ledger';
 
@@ -97,9 +98,6 @@ export const openNotes = (ledger: NoteLedger, now: Date): Note[] =>
     .filter((note) => note.reaction === '' && now.getTime() - isoMs(note.at) < OPEN_MS)
     .toSorted((a, b) => isoMs(b.at) - isoMs(a.at));
 
-export const NOTE_CHOICES = ['start', 'later', 'dismiss'] as const;
-export type NoteChoice = (typeof NOTE_CHOICES)[number];
-
 type NoteDecision =
   | { outcome: 'decided'; ledger: NoteLedger; note: Note }
   | { outcome: 'unknown' }
@@ -109,7 +107,7 @@ type NoteDecision =
  * Records the operator's choice. Start and Dismiss are final, so a second Start changes nothing and a double click
  * can't open two sessions; Later puts the note off until the next morning and can be chosen again.
  */
-export const decideNote = (ledger: NoteLedger, id: string, choice: NoteChoice, now: Date): NoteDecision => {
+export const decideNote = (ledger: NoteLedger, id: string, choice: MessageChoice, now: Date): NoteDecision => {
   const found = ledger.notes.find((note) => note.id === id);
   if (!found) {
     return { outcome: 'unknown' };

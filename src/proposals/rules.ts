@@ -1,12 +1,9 @@
 import { DAY_MS, isoMs, nextMorning, nowISO } from '@/shared/date';
 import { freshId, shortId } from '@/shared/utils';
 import type { Proposal, ProposalLedger } from './ledger';
-import { isShown } from '@/shared/later';
+import { isShown, type MessageChoice } from '@/shared/message';
 
 const randomId = shortId('p');
-
-export const CHOICES = ['start', 'later', 'skip'] as const;
-export type Choice = (typeof CHOICES)[number];
 
 /**
  * How many proposals the heartbeat keeps showing.
@@ -17,9 +14,9 @@ export const TARGET = 5;
  */
 export const BACKLOG = 20;
 
-// A source started within a day, or skipped within a week, isn't proposed again.
+// A source started within a day, or dismissed within a week, isn't proposed again.
 const STARTED_QUIET_MS = DAY_MS;
-const SKIPPED_QUIET_MS = 7 * DAY_MS;
+const DISMISSED_QUIET_MS = 7 * DAY_MS;
 // Decided proposals older than this are dropped, once no rule above can read them.
 const KEEP_DECIDED_MS = 30 * DAY_MS;
 
@@ -51,8 +48,8 @@ const blockedBy = (proposals: readonly Proposal[], source: string, nowMs: number
   if (same.some((proposal) => proposal.state === 'started' && nowMs - isoMs(proposal.decidedAt) < STARTED_QUIET_MS)) {
     return 'started in the last day';
   }
-  if (same.some((proposal) => proposal.state === 'skipped' && nowMs - isoMs(proposal.decidedAt) < SKIPPED_QUIET_MS)) {
-    return 'skipped in the last week';
+  if (same.some((proposal) => proposal.state === 'dismissed' && nowMs - isoMs(proposal.decidedAt) < DISMISSED_QUIET_MS)) {
+    return 'dismissed in the last week';
   }
   return '';
 };
@@ -203,13 +200,13 @@ type Decision =
   | { outcome: 'already'; proposal: Proposal };
 
 // Later leaves a proposal waiting, with the time it shows again.
-const STATE_OF: Record<Choice, Proposal['state']> = { start: 'started', later: 'waiting', skip: 'skipped' };
+const STATE_OF: Record<MessageChoice, Proposal['state']> = { start: 'started', later: 'waiting', dismiss: 'dismissed' };
 
 /**
- * Records the operator's choice. Start and Skip are final: a second Start changes nothing, so a double click can't
+ * Records the operator's choice. Start and Dismiss are final: a second Start changes nothing, so a double click can't
  * open two sessions. Later can be chosen again.
  */
-export const decide = (ledger: ProposalLedger, id: string, choice: Choice, now: Date): Decision => {
+export const decide = (ledger: ProposalLedger, id: string, choice: MessageChoice, now: Date): Decision => {
   const found = ledger.proposals.find((proposal) => proposal.id === id);
   if (!found) {
     return { outcome: 'unknown' };

@@ -1,12 +1,13 @@
 import { startPrompt, type StartContext } from '@/sessions/launch';
 import { notesProblem, readNotes, writeNotes } from './ledger';
-import { decideNote, notePrompt, reopenNote, type NoteChoice } from './rules';
+import type { MessageChoice } from '@/shared/message';
+import { decideNote, notePrompt, reopenNote } from './rules';
 
 /**
  * Applies the operator's choice on a note and says what happened. Start marks the note started before opening anything,
  * so a repeat can't open a second session, and puts it back if the session couldn't open.
  */
-export const decideOnNote = (id: string, choice: NoteChoice, context: StartContext): string => {
+export const decideOnNote = (id: string, choice: MessageChoice, context: StartContext): string => {
   const problem = notesProblem();
   if (problem) {
     return problem;

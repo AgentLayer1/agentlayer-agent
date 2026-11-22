@@ -1,5 +1,5 @@
 import type { CardBadge, HostSection, SectionCard } from 'cmux-custom-manager/sections';
-import { isShown } from '../../shared/later';
+import { isShown } from '../../shared/message';
 import { DAY_MS } from '../../work/due';
 import { SCHEMA, type HomeEntry, type NoteItem, type ProposalItem } from './data';
 import { clock, dayTitle } from './days';

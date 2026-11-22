@@ -92,7 +92,7 @@ Groups:
   heartbeat                         The session that keeps the home's work coming: status, bind, release, off
   messages                          What the agent surfaced on its own, proposals and notes alike: decide
   notes                             What the agent found and sent on its own, at most three a day: list
-  proposals                         Sessions the agent proposes: list, decide
+  proposals                         Sessions the agent proposes: list
   prune                             Delete memory/YYYY-MM-DD*.md older than 14 days
   links                             Rewrite bare task IDs + shorthand into [[wikilinks]]
   dashboard                         Rebuild the Agent OS dashboard at <HOME>/dashboard.html + projects/TASKS.md (open in any browser)
@@ -198,8 +198,6 @@ Notes commands:
 
 Proposals commands:
   proposals list [--json]           What's showing and the room for more
-  proposals decide <start|later|skip> <id>
-                                    Start it (a fresh session runs its prompt), put it off until morning, or drop it
 
 Heartbeat commands:
   heartbeat status [--json]         Who the heartbeat is, its interval, the brain's last refresh, and the room for proposals and notes

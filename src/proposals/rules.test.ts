@@ -54,23 +54,23 @@ test('refuses a source that is already proposed, even twice in one call', () => 
   ]);
 });
 
-test('a started source rests a day and a skipped one a week', () => {
+test('a started source rests a day and a dismissed one a week', () => {
   const started = decide(withTwo(), 'p-0', 'start', NOW);
-  const skipped = started.outcome === 'decided' ? decide(started.ledger, 'p-1', 'skip', NOW) : started;
-  if (skipped.outcome !== 'decided') {
+  const dismissed = started.outcome === 'decided' ? decide(started.ledger, 'p-1', 'dismiss', NOW) : started;
+  if (dismissed.outcome !== 'decided') {
     throw new Error('expected both decisions to land');
   }
   const again = [input('task:aa-001'), input('sync')];
   const nextDay = new Date(NOW.getTime() + 25 * 60 * 60 * 1000);
   const nextWeek = new Date(NOW.getTime() + 8 * 24 * 60 * 60 * 1000);
-  expect(addProposals(skipped.ledger, again, NOW).refused.map(({ reason }) => reason)).toEqual([
+  expect(addProposals(dismissed.ledger, again, NOW).refused.map(({ reason }) => reason)).toEqual([
     'started in the last day',
-    'skipped in the last week'
+    'dismissed in the last week'
   ]);
-  expect(addProposals(skipped.ledger, again, nextDay).refused.map(({ reason }) => reason)).toEqual([
-    'skipped in the last week'
+  expect(addProposals(dismissed.ledger, again, nextDay).refused.map(({ reason }) => reason)).toEqual([
+    'dismissed in the last week'
   ]);
-  expect(addProposals(skipped.ledger, again, nextWeek).refused).toEqual([]);
+  expect(addProposals(dismissed.ledger, again, nextWeek).refused).toEqual([]);
 });
 
 test(`refuses past ${BACKLOG} waiting`, () => {
@@ -125,6 +125,11 @@ test('what a surface is given never carries a prompt or a source', () => {
   expect(cards).toHaveLength(2);
   expect(JSON.stringify(cards)).not.toContain('Secret prompt');
   expect(cards.every((card) => !('source' in card) && !('prompt' in card))).toBe(true);
+});
+
+test("a ledger written before Skip became Dismiss reads its skipped proposals as dismissed", () => {
+  const [proposal] = withTwo().proposals;
+  expect(parseLedger({ proposals: [{ ...proposal, state: 'skipped' }] }).proposals[0]?.state).toBe('dismissed');
 });
 
 test('a ledger read back keeps what it can and drops what it cannot use', () => {

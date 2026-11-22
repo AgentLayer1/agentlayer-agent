@@ -54,7 +54,7 @@ const PROPOSAL = z.object({
 export const tools: ToolDef[] = [
   defineTool({
     name: 'proposal_add',
-    description: `Propose sessions for the operator to start later, and retire showing ones a better candidate outranks, a live session already covers, or that are no longer true. Each waits in Proposals until they choose Start (a fresh session runs its prompt), Later (back tomorrow morning) or Skip. A source already waiting, started in the last day or skipped in the last week is refused, as is anything past ${BACKLOG} waiting. Returns what was added, what was refused and why, and what's showing (the heartbeat keeps ${TARGET}).`,
+    description: `Propose sessions for the operator to start later, and retire showing ones a better candidate outranks, a live session already covers, or that are no longer true. Each waits in Proposals until they choose Start (a fresh session runs its prompt), Later (back tomorrow morning) or Dismiss. A source already waiting, started in the last day or dismissed in the last week is refused, as is anything past ${BACKLOG} waiting. Returns what was added, what was refused and why, and what's showing (the heartbeat keeps ${TARGET}).`,
     inputSchema: {
       proposals: z.array(PROPOSAL).max(10).default([]).describe('The sessions to propose, best first.'),
       retire: z

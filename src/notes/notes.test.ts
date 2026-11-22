@@ -5,6 +5,7 @@ import { FILES, FOLDERS } from '@/config';
 import { localISO, nowISO, shiftDate, todayDate } from '@/shared/date';
 import { chosenAdapters, deliverNote, type NoteAdapter, type NoteContext } from './adapter';
 import type { SessionLauncher, StartContext } from '@/sessions/launch';
+import type { MessageChoice } from '@/shared/message';
 import { EMPTY_NOTES, readNotes, writeNotes, type Note, type NoteLedger } from './ledger';
 import {
   addNotes,
@@ -14,7 +15,6 @@ import {
   notePrompt,
   openNotes,
   roomToday,
-  type NoteChoice,
   type NoteInput
 } from './rules';
 import { decideOnNote } from './start';
@@ -63,7 +63,7 @@ test('a note with nothing to back it is refused; a brain finding may cite a home
 });
 
 // The ledger after a decision that lands.
-const decided = (ledger: NoteLedger, id: string, choice: NoteChoice): NoteLedger => {
+const decided = (ledger: NoteLedger, id: string, choice: MessageChoice): NoteLedger => {
   const decision = decideNote(ledger, id, choice, NOW);
   if (decision.outcome !== 'decided') {
     throw new Error(`expected ${choice} on ${id} to land`);

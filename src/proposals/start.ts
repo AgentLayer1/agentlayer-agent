@@ -1,13 +1,13 @@
 import { startPrompt, type StartContext } from '@/sessions/launch';
 import { ledgerProblem, readProposalLedger, writeProposalLedger } from './ledger';
 import { decide, reopen } from './rules';
-import type { Choice } from './rules';
+import type { MessageChoice } from '@/shared/message';
 
 /**
  * Applies the operator's choice and says what happened. Start marks the proposal started before opening anything, so a
  * repeat can't open a second session, and puts it back if the session couldn't open.
  */
-export const decideProposal = (id: string, choice: Choice, context: StartContext): string => {
+export const decideProposal = (id: string, choice: MessageChoice, context: StartContext): string => {
   const problem = ledgerProblem();
   if (problem) {
     return problem;
@@ -22,7 +22,7 @@ export const decideProposal = (id: string, choice: Choice, context: StartContext
   const { proposal } = decision;
   if (choice !== 'start') {
     writeProposalLedger(decision.ledger);
-    return choice === 'later' ? `Later: ${proposal.title} comes back in the morning.` : `Skipped: ${proposal.title}.`;
+    return choice === 'later' ? `Later: ${proposal.title} comes back in the morning.` : `Dismissed: ${proposal.title}.`;
   }
   writeProposalLedger(decision.ledger);
   const opened = startPrompt(proposal, context);

@@ -95,7 +95,7 @@ It renders in isolation (its own `HOME`, environment, and working directory), re
 
 Two words, kept apart: **the heartbeat** is the one long-running session per home and its clock (`/heartbeat`); everything about the list itself (filling it, deciding, its sources, the sidebar section) is **proposals**.
 
-Proposals are sessions the agent prepared and waits on a yes for: Start opens a fresh session that runs the proposal's prompt (in cmux, a new tab in the heartbeat's workspace), Later brings it back at 08:00, Skip drops it. One long-running session per home, the heartbeat, tops them back up to five on its own clock.
+Proposals are sessions the agent prepared and waits on a yes for: Start opens a fresh session that runs the proposal's prompt (in cmux, a new tab in the heartbeat's workspace), Later brings it back at 08:00, Dismiss drops it. One long-running session per home, the heartbeat, tops them back up to five on its own clock.
 
 | Piece | Lives in |
 | --- | --- |

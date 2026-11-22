@@ -4,7 +4,7 @@ import { jsonProblem, writeJsonChecked } from '@/shared/utils';
 import { readFileSync } from 'node:fs';
 
 // Retired: the agent withdrew it, outranked, taken up by a session already, or no longer true.
-const STATES = ['waiting', 'started', 'skipped', 'retired'] as const;
+const STATES = ['waiting', 'started', 'dismissed', 'retired'] as const;
 type ProposalState = (typeof STATES)[number];
 
 /**
@@ -83,9 +83,13 @@ const optional = (value: unknown): string => (typeof value === 'string' ? value 
 
 const isState = (value: unknown): value is ProposalState => STATES.some((state) => state === value);
 
+// A ledger written before Skip became Dismiss says `skipped`; it reads as the state it always meant.
+const stateOf = (value: unknown): unknown => (value === 'skipped' ? 'dismissed' : value);
+
 // A hand-edited entry missing a field is dropped, never half-read: a proposal without its prompt can't be started.
 const parseProposal = (data: unknown): Proposal | null => {
-  if (!isRecord(data) || !isState(data.state) || !TEXT_FIELDS.every((field) => typeof data[field] === 'string')) {
+  const state = isRecord(data) ? stateOf(data.state) : undefined;
+  if (!isRecord(data) || !isState(state) || !TEXT_FIELDS.every((field) => typeof data[field] === 'string')) {
     return null;
   }
   const text = (field: (typeof TEXT_FIELDS)[number]): string => String(data[field]);
@@ -105,7 +109,7 @@ const parseProposal = (data: unknown): Proposal | null => {
     decidedAt: text('decidedAt'),
     folder: optional(data.folder),
     workspace: optional(data.workspace),
-    state: data.state
+    state
   };
 };
 
