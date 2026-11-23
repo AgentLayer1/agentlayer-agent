@@ -114,11 +114,14 @@ The heartbeat sends notes as well as proposals, both land in one INBOX, and each
 - A team plugin's skills under Codex keep their own `${CLAUDE_PLUGIN_ROOT}`.
 - A helpdesk profile's `## Pulse` can post its private notes without asking, as a workflow can.
 - Skills no longer look for an `extensions/` folder the home doesn't have when session start listed
-  none (an `ls` that failed on every heartbeat bind).
+  none (an `ls` that failed on every heartbeat bind), and the manual says so too, so a Codex session
+  no longer searches for one before running a skill.
 
 ### Upgrade
 - `settings: mandatory` — add `mcp__plugin_agentlayer_agent__note_add` to `permissions.allow` in
   `settings.json`.
+- `template/AGENTS.md: mandatory` — the tree's `extensions/skills/` line says extensions are listed at
+  session start only when the home has any, so none listed means none to look for.
 - `manual: required` — If a session is your heartbeat, restart it and run `/heartbeat` there: the
   heartbeat's new mod (notes, the INBOX's actions, the fixes above) runs only in a session started
   on 1.0.10, and a restarted session is the heartbeat again only after `/heartbeat`.
