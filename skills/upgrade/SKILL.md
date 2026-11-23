@@ -102,7 +102,9 @@ The plugin only loads next session if the host's registration matches what this 
 ships: the checkout's catalogs are named `agentlayer-dev`, consumers install
 `agentlayer@agentlayer` from `AgentLayer1/agentlayer-agent-marketplace`. A registration
 made under an older name (a checkout registered as `agentlayer`, a retired marketplace repo,
-a Codex marketplace whose catalog was renamed) keeps this session alive but breaks the next.
+a Codex marketplace whose catalog was renamed) keeps this session alive but breaks the next,
+and a Codex copy of the plugin older than this release (`stale-copy`) keeps Codex reading the
+old skills, since Codex does not refresh that copy when the plugin updates.
 Check before anything else:
 
 ```bash

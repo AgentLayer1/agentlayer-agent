@@ -7,7 +7,7 @@
  *
  * Usage: registration-check.ts --home <dir> [--plugin-root <dir>] [--claude-dir <dir>] [--codex-dir <dir>]
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { codexHost } from '../../../src/hosts/codex';
@@ -23,7 +23,7 @@ const PUBLISHED = {
 
 interface Finding {
   host: HostName;
-  kind: 'renamed-catalog' | 'retired-marketplace' | 'not-installed';
+  kind: 'renamed-catalog' | 'retired-marketplace' | 'not-installed' | 'stale-copy';
   detail: string;
   commands: string[];
 }
@@ -68,7 +68,8 @@ const catalogName = (dir: string): string | undefined => {
   return typeof claude === 'string' ? claude : typeof codex === 'string' ? codex : undefined;
 };
 
-const plugin = String(readJson(resolve(pluginRoot, '.claude-plugin', 'plugin.json'))?.name ?? '');
+const manifest = readJson(resolve(pluginRoot, '.claude-plugin', 'plugin.json'));
+const plugin = String(manifest?.name ?? '');
 if (!plugin) {
   throw new Error(`${pluginRoot} has no .claude-plugin/plugin.json`);
 }
@@ -178,8 +179,9 @@ if (existsSync(codexConfigPath)) {
     });
   }
 }
-const codexHasPlugin = Object.keys(config.plugins ?? {}).some((id) => id.startsWith(`${plugin}@`));
-if (codexHost.usedBy(homeDir) && !codexHasPlugin) {
+const codexIds = Object.keys(config.plugins ?? {}).filter((id) => id.startsWith(`${plugin}@`));
+const codexWired = codexHost.usedBy(homeDir);
+if (codexWired && codexIds.length === 0) {
   const [source, catalog] =
     devName && existsSync(resolve(pluginRoot, '.git')) ? [pluginRoot, devName] : [PUBLISHED.repo, PUBLISHED.name];
   findings.push({
@@ -187,6 +189,28 @@ if (codexHost.usedBy(homeDir) && !codexHasPlugin) {
     kind: 'not-installed',
     detail: `This home is wired for Codex, but Codex has no ${plugin} plugin, so Codex sessions here load none of its skills.`,
     commands: [`codex plugin marketplace add ${source}`, `codex plugin add ${plugin}@${catalog}`]
+  });
+}
+// Codex reads the skills from a copy it makes at install, one folder per version, and does not refresh it when the plugin updates.
+const version = String(manifest?.version ?? '');
+const cachedVersions = (marketplace: string): string[] => {
+  const dir = resolve(codexDir, 'plugins', 'cache', marketplace, plugin);
+  return existsSync(dir) ? readdirSync(dir) : [];
+};
+for (const id of codexWired && version ? codexIds : []) {
+  const marketplace = id.slice(plugin.length + 1);
+  const cached = cachedVersions(marketplace);
+  if (cached.length === 0 || cached.includes(version)) continue;
+  const fromGit = config.marketplaces?.[marketplace]?.source_type === 'git';
+  findings.push({
+    host: 'codex',
+    kind: 'stale-copy',
+    detail: `Codex's copy of ${id} is ${cached.join(', ')}, and this plugin is ${version}, so Codex sessions here read older skills than the code they run.`,
+    commands: [
+      ...(fromGit ? [`codex plugin marketplace upgrade ${marketplace}`] : []),
+      `codex plugin remove ${id}`,
+      `codex plugin add ${id}`
+    ]
   });
 }
 

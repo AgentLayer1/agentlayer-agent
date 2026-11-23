@@ -219,4 +219,25 @@ describe('registration-check', () => {
     write('codex/config.toml', '[plugins."agent-scout@agentdev-scout"]\nenabled = true\n');
     expect(run().ok).toBe(true);
   });
+
+  test("Codex's copy of the plugin is an older version than the plugin: remove and add it again", () => {
+    const { root, write, run } = machine();
+    write('home/.codex/hooks.json', { hooks: {} });
+    write('codex/config.toml', '[plugins."agent-scout@agentdev-scout"]\nenabled = true\n');
+    mkdirSync(join(root, 'codex', 'plugins', 'cache', 'agentdev-scout', 'agent-scout', '0.3.0'), { recursive: true });
+    expect(run().findings).toEqual([
+      expect.objectContaining({
+        host: 'codex',
+        kind: 'stale-copy',
+        commands: ['codex plugin remove agent-scout@agentdev-scout', 'codex plugin add agent-scout@agentdev-scout']
+      })
+    ]);
+    write(
+      'codex/config.toml',
+      '[marketplaces.agentdev-scout]\nsource_type = "git"\nsource = "acme/scout"\n\n[plugins."agent-scout@agentdev-scout"]\nenabled = true\n'
+    );
+    expect(run().findings[0].commands[0]).toBe('codex plugin marketplace upgrade agentdev-scout');
+    mkdirSync(join(root, 'codex', 'plugins', 'cache', 'agentdev-scout', 'agent-scout', '0.4.1'));
+    expect(run().ok).toBe(true);
+  });
 });
