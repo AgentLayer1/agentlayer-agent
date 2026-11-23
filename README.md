@@ -27,7 +27,7 @@ It installs as a plugin into the agent CLI you already use, [Claude Code](https:
 Your agent wakes up as Oppi 🐙. An octopus keeps many arms busy at once with one brain behind them, and that is how it works for you: several jobs in flight, one memory of all of them. Call it whatever you like; Oppi is just who shows up first. See [why an octopus](https://agentlayer.one/docs/run/naming#why-an-octopus).
 
 <div align="center">
-<img src="assets/cmux-workstation.png" alt="cmux with three agents, Oppi, Nova and Scout: their sessions on the left, Oppi working in the middle, and the AgentLayer sidebar on the right" width="900" />
+<img src="assets/cmux-workstation.png" alt="cmux with three agents, Oppi, Nova and Scout: their sessions on the left, Oppi working in the middle, and the AgentLayer sidebar on the right on Sessions, the ones that need you on top" width="900" />
 </div>
 
 On a Mac, your agents live in [cmux](https://cmux.com), and the [AgentLayer sidebar](https://agentlayer.one/docs/workstation/cmux#the-agentlayer-sidebar) sits beside your terminals:
