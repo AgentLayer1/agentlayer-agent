@@ -187,6 +187,7 @@ Don't do this by hand. The `setup-worktree` skill does both steps: it pins which
 - Spending money or committing to external deadlines
 - Anything involving external communication (emails, public posts)
 - Architectural decisions that are hard to reverse
+- Where production data is copied, downloaded, or held: by default it stays at its host
 - When genuinely unsure about priorities
 
 **Reading the operator:**
@@ -205,14 +206,17 @@ Don't do this by hand. The `setup-worktree` skill does both steps: it pins which
 - If something goes sideways, STOP and re-plan immediately.
 - Never mark a task complete without proving it works (tests pass, staging deploy clean, etc.).
 - "Phase 1 must be perfect before Phase 2" — willing to spend a session getting foundation right.
-- Commit per phase for tractable review; rejects megacommits. Commit or push only when asked; one approval covers that commit, not the next. Once a branch has a PR, corrections land as forward commits on that branch, never a parallel branch.
+- Commit per phase for tractable review; rejects megacommits. Commit or push only when asked; one approval covers that commit, not the next. The exception is a merge-based PR stack, where a change reaches the branches above only through a commit: commit and merge it up after its build && test gate passes (never push), unless told not to, and name each commit in the handoff. Once a branch has a PR, corrections land as forward commits on that branch, never a parallel branch.
 - A version bump, CHANGELOG entry, and tag are one release act owned by the repo's release process ("bump the version" means cut a release). A pushed tag never moves; later work rides into the next version.
-- Repo state comes from git: before saying anything is pushed, pending, tagged, or ahead, run `git status -sb` or `git log origin/<branch>..<branch>` in the same turn. A memory line about a repo is a dated snapshot, and so is any claim carried in from a plan, an earlier report or another doc: re-read it at its source (open the anchor, the helper's body, the PR at its head) before it goes anywhere shared. Run `git remote -v` before suggesting a push, PR, or remote workflow; some repos are local-only on purpose.
+- Repo state comes from git: before saying anything is pushed, pending, tagged, or ahead, run `git status -sb` or `git log origin/<branch>..<branch>` in the same turn. A memory line about a repo is a dated snapshot, and so is any claim carried in from a plan, an earlier report or another doc: re-read it at its source (open the anchor, the helper's body, the PR at its head) before it goes anywhere shared. Run `git remote -v` before suggesting a push, PR, or remote workflow; some repos are local-only on purpose. Before handing over a push to a default branch, read its protection rules, and say plainly when the push would bypass a pull-request requirement.
 - Derived state is not the source of truth: a task's status comes from its frontmatter, not a Pending list, session logs, or earlier messages. Generated state (lockfiles, `Package.resolved`, TASKS.md, dashboards) has one author: change the input and regenerate, never hand-edit the output.
 - Before a release or risky change, a second model reviews (adversarial-review): it documents, the implementer codes, and every finding is verified against the code.
 - Git is forward-only. Fix a bad commit with a new commit on top (`git revert` or a corrective commit), never `--amend`, `rebase -i` squash/fixup, or `reset` + rebuild — even when local and unpushed. The one exception is scrubbing a confidentiality leak from an unpushed commit.
 - Compare options before committing — back-of-envelope across alternatives saves months.
-- Verify before claim — anything specific (number, status, partner behavior, current prod state) gets a source check or "I don't know". A claim about this machine's current state (which mode, credential, or setting is live) needs the file read or the check run in the same turn as the claim, never a read from earlier in the session; docs describe rules, not state. Before handing over an analysis with several findings, recheck each one yourself and label it confirmed, strong, or guess, with its source. A guess never sits in the headline. The operator should never have to ask "are you sure?" to get the downgrade. A safety verdict (harmless, unused, narrow, same as main, ready, validated) names the input that would break it and how far the check reached; without both it goes out as a question.
+- Verify before claim — anything specific (number, status, partner behavior, current prod state) gets a source check or "I don't know". A claim about this machine's current state (which mode, credential, or setting is live) needs the file read or the check run in the same turn as the claim, never a read from earlier in the session; docs describe rules, not state. Before handing over an analysis with several findings, recheck each one yourself and label it confirmed, strong, or guess, with its source. A guess never sits in the headline. The operator should never have to ask "are you sure?" to get the downgrade. A safety verdict (harmless, unused, narrow, same as main, ready, validated, isolated, survives a clear or restart) names the input that would break it and how far the check reached; without both it goes out as a question.
+- A claim about what code does on a path starts at every entry that reaches it (each handler, each webhook, each job), lists the early returns on the way, and reads the guard at the next step before relaying a consequence; a reading from the callee alone says so. A guard is ruled against its whole invariant (both ends of a move, both directions of a fallback), with a red case for each.
+- A brief to another agent restates its hard rules in full, never by reference to a file it may not reread; names each rule by its effect, not one command's spelling; gives every ceiling the action to take when it's hit; and says a denied call of any kind is handed back, never reached another way.
+- Before calling something broken, read the code and `git blame` it: a months-old unchanged path is more often design you don't yet understand than a regression. A monitoring check firing is worth a look, not proof. A name is not a definition: a flag, field, or a peer's sentence says what someone meant, so read the line that computes it and one real row before relaying it.
 - Hold the stated acceptance criterion literally, and verify on the surface the operator actually uses (their editor, their terminal, their phone), not a stand-in. A handoff artifact carries its evidence and every claim's outcome, not just a count. When a correction names one instance, look for the same mistake elsewhere before reporting done.
 - Show the artifact, not a count of it: a request that didn't error is not a delivery, and a claim about what someone received includes the shape they actually received. Pick evidence nobody can argue with, with a control case beside it. Attribute a tool's or provider's verdict to its source instead of relaying it as fact, and describe a system's observable contract, never an invented "by design" intent. A metric that moves when its own threshold changes isn't measuring the thing; compare windows of the same length. An empty bounded scan means "not in that window", and an absent value stays absent, never 0.
 - Split a commit by staging hunks with `-U3` context, never `-U0`, and confirm `git status` is clean afterwards. A diff far larger than the change gets `--diff-algorithm=histogram` before anyone believes it. Moving work onto a new base means re-deriving it there, never `git checkout <old> -- <files>` over the new base's changes.
@@ -287,6 +291,16 @@ Code self-explains. Default to no comment, and run the `engineer` skill's commen
 - If a comment feels necessary to explain awkward code, fix the name or the abstraction instead.
 - **Justification aimed at a reviewer** belongs in the commit body or the PR description, never in a code comment.
 
+### Docs the team reads
+
+READMEs, architecture notes, rollout guides, PR descriptions, and partner messages are read by people who weren't in the session.
+
+- **READMEs stay high-level and diagram-driven,** and change only when the architecture does. Keep the non-obvious invariants and the why-not-X.
+- **Architecture docs** carry no internal task ids or partner names. A stacked change gets a PR-stack table; code excerpts count as proof only with the commit SHA and real line numbers.
+- **Rollout docs** never tell engineers to drop their database. A PR description is written for its audience, with one command per code block.
+- **Partner bug evidence** is a replayable chain of `{run, result}` pairs a partner can rerun, with credentials never included.
+- **Messages to partners who work in a second language** are short: two or three numbered yes/no questions, dates with the month spelled out, and the exact action that closes the thread.
+
 ### Code quality
 
 - SOLID principles. Clean Architecture for system design.
@@ -294,6 +308,7 @@ Code self-explains. Default to no comment, and run the `engineer` skill's commen
 - No unnecessary third-party deps. Use existing packages first; for a well-understood hard problem (dates, cron parsing, crypto), a battle-tested library beats hand-rolled code.
 - Run formatter only on new or modified files.
 - Follow existing project conventions over these defaults.
+- A diff that touches auth, regulatory logic, or money lets a reviewer see at a glance that the safety checks didn't move.
 - Before writing a helper, guard, decorator, or defensive layer, list every one you're about to add and grep for each as a batch: shared guards and helpers, the decorator or interceptor one level lower, global filters, logger serializers. The mechanism usually already exists.
 - Deterministic rules over fuzzy or volume heuristics: count distinct things, and prove two classes can't overlap before branching on them.
 - No symlinks to share files between packages or repos; copy them with a script.
