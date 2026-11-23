@@ -17,7 +17,7 @@ import { afterAll } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from './shared/naming';
+import { HOME_MARKER_FILES, RUNTIME_DIR, TEST_HOME_VAR, pluginName } from './shared/naming';
 
 // `mkdtemp`, never a fixed name: $TMPDIR is per-uid, so a stable path would be shared with any
 // concurrent `bun test` run on this machine.
@@ -25,6 +25,7 @@ const home = mkdtempSync(resolve(tmpdir(), 'agentlayer-test-home-'));
 mkdirSync(resolve(home, RUNTIME_DIR), { recursive: true });
 writeFileSync(resolve(home, RUNTIME_DIR, HOME_MARKER_FILES[0]), `${JSON.stringify({ plugin: pluginName() })}\n`);
 process.env.AGENT_HOME = home;
+process.env[TEST_HOME_VAR] = home;
 
 // A preload-registered `afterAll` fires once for the whole run, not per file (verified), and
 // `bun test` never runs `process.on('exit')` handlers — so this is the only hook that works here.

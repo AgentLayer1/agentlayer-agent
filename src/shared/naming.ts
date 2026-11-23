@@ -139,6 +139,12 @@ export const RUNTIME_DIR = '.state';
 export const HOME_MARKER_FILES = ['version.json', 'knowledge.json'] as const;
 
 /**
+ * Set by the test preload (`src/test.ts`) to the throwaway home it pins. A test run without it never
+ * loaded the preload, so resolving a home would reach the operator's real one.
+ */
+export const TEST_HOME_VAR = 'AGENT_TEST_HOME';
+
+/**
  * The plugin a data dir's `version.json` says scaffolded it, or undefined when
  * the file is missing, unreadable, or predates the `plugin` field.
  */
