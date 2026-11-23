@@ -69,7 +69,9 @@ The heartbeat sends notes as well as proposals, both land in one INBOX, and each
 - A Notes walk in `configure-skills`, offered by init: drafts `knowledge/public.md` from the home,
   leaves out anything not already public, writes it on your yes, checks what the code keeps with
   `notes public`, then turns scouting on. The compile never writes that file.
-- `/heartbeat scout` runs one scouting pass now, in the heartbeat's tab.
+- `/heartbeat scout` runs one scouting pass now, in the heartbeat's tab. Binding a heartbeat and
+  `/heartbeat status` say how to turn notes on while they're off, or how to add the web while only
+  the home is scouted.
 - The cmux sidebar's INBOX: proposals and notes in one section, scoped to the workspace's agent,
   folded by default, each card led by a Proposal or Note badge and reading what, why now, limits.
 - A Recent section on the sidebar's Agents tab: the home's 40 newest changed files from the last

@@ -98,7 +98,7 @@ export interface HeartbeatStatus {
   /** How many proposals show, and the most that do. */
   proposals: { target: number; showing: number };
   /** How many notes may still go out today, and whether the home lets the heartbeat scout for them. */
-  notes: { room: number; scout: boolean };
+  notes: { room: number; scout: boolean; web: boolean };
 }
 
 export const parseStatus = (stdout: string): HeartbeatStatus | null => {
@@ -119,7 +119,7 @@ export const parseStatus = (stdout: string): HeartbeatStatus | null => {
       refreshedAt: text(data.refreshedAt),
       refreshDue: data.refreshDue === true,
       proposals: { target, showing },
-      notes: { room: typeof notes.room === 'number' ? notes.room : 0, scout: notes.scout === true }
+      notes: { room: typeof notes.room === 'number' ? notes.room : 0, scout: notes.scout === true, web: notes.web === true }
     };
   } catch {
     return null;
@@ -249,6 +249,19 @@ export const parseBrief = (stdout: string): NotesBrief | null => {
   } catch {
     return null;
   }
+};
+
+/**
+ * What the heartbeat says about notes when it binds or reports: how to turn scouting on, or how to add the web to it;
+ * nothing once both run.
+ */
+export const notesHint = (plugin: string, notes: { scout: boolean; web: boolean }): string => {
+  if (!notes.scout) {
+    return ` Notes are off: run /${plugin}:configure-skills and choose Notes to have it scout for findings too.`;
+  }
+  return notes.web
+    ? ''
+    : ` Notes scout your home only: /${plugin}:configure-skills → Notes adds the public facts the web scout may search with.`;
 };
 
 /**

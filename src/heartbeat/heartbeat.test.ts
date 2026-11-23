@@ -90,7 +90,7 @@ test('the status a tick reads holds the heartbeat, the brain, and the room for p
       'timezone'
     ]);
     expect(Object.keys(status.proposals).toSorted()).toEqual(['room', 'showing', 'target']);
-    expect(Object.keys(status.notes).toSorted()).toEqual(['cap', 'room', 'scout', 'today']);
+    expect(Object.keys(status.notes).toSorted()).toEqual(['cap', 'room', 'scout', 'today', 'web']);
     const before = process.env.AGENT_NOTES_SCOUT;
     const scoutWith = (value: string | undefined): unknown => {
       if (value === undefined) {

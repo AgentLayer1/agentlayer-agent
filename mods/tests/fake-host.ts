@@ -66,6 +66,8 @@ export interface FakeMachine {
   notesRoom?: number;
   /** False when the home hasn't turned scouting on (`AGENT_NOTES_SCOUT=true`); unset here, it is on. */
   notesScout?: boolean;
+  /** False when the home has no usable `knowledge/public.md`, so only home lenses run; unset, it has one. */
+  notesWeb?: boolean;
   /** What `notes brief --json` answers; unset, the brain lens, which runs in the home lens agent. */
   notesBrief?: NotesBrief;
   toasts: string[];
@@ -212,7 +214,7 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
   }
   if (args === 'heartbeat status --json') {
     const { target, showing, heartbeat, refreshedAt = '', refreshDue = false } = host.status;
-    const notes = { cap: 3, room: host.notesRoom ?? 0, today: 3 - (host.notesRoom ?? 0), scout: host.notesScout ?? true };
+    const notes = { cap: 3, room: host.notesRoom ?? 0, today: 3 - (host.notesRoom ?? 0), scout: host.notesScout ?? true, web: host.notesWeb ?? true };
     return ran(
       0,
       JSON.stringify({

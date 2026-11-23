@@ -29,6 +29,7 @@ import {
   MESSAGE_AT_END,
   decisionInDraft,
   homeLensTools,
+  notesHint,
   scoutTools,
   carriesEmail,
   carriesPrivateName,
@@ -439,7 +440,7 @@ async function describe($: EngineInterface): Promise<string> {
   const who = mine ? 'This session' : 'Another session';
   const activity = used === null ? "its sessions can't be seen" : used === 0 ? 'no other session yet' : `last activity ${Math.round((now - used) / MINUTE_MS)}m ago`;
   const next = mine && nextAt ? ` Its ${nextLook(nextAt, now, status.timezone)}.` : '';
-  return `${who} is the heartbeat, every ${status.heartbeat.everyMinutes}m, skipping a wake when no other session in the home was active in that time (${activity}). ${showing}.${next}`;
+  return `${who} is the heartbeat, every ${status.heartbeat.everyMinutes}m, skipping a wake when no other session in the home was active in that time (${activity}). ${showing}.${next}${notesHint($.plugin.name, status.notes)}`;
 }
 
 async function heartbeat($: EngineInterface, args: string): Promise<string> {
@@ -496,7 +497,8 @@ async function heartbeat($: EngineInterface, args: string): Promise<string> {
   }
   const every = ask.every ? [`--every=${ask.every}`] : [];
   const text = await said($, ['heartbeat', 'bind', `--owner=${await ownerOf($)}`, ...every]);
-  return `${text}${await firstLook($, await arm($))}`;
+  const bound = await arm($);
+  return `${text}${bound ? notesHint($.plugin.name, bound.notes) : ''}${await firstLook($, bound)}`;
 }
 
 async function firstLook($: EngineInterface, status: Bound | null): Promise<string> {

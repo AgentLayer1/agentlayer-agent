@@ -1,5 +1,6 @@
 import { LAUNCHERS, redrawHome } from '@/adapters';
 import { FOLDERS, TIMEZONE } from '@/config';
+import { canScout, readPublic } from '@/notes/brief';
 import { notesProblem, readNotes } from '@/notes/ledger';
 import { DAILY_CAP, notesOn, roomToday } from '@/notes/rules';
 import { ledgerProblem, readProposalLedger } from '@/proposals/ledger';
@@ -20,6 +21,11 @@ const USAGE = [
 ].join('\n');
 
 const publish = (): void => redrawHome(FOLDERS.HOME);
+
+const scoutable = (): boolean => {
+  const known = readPublic();
+  return known !== null && canScout(known.facts);
+};
 
 // An unreadable record fails the status, so the heartbeat's tick skips and keeps its clock instead of seeing none.
 const status = (args: readonly string[]): number => {
@@ -45,7 +51,9 @@ const status = (args: readonly string[]): number => {
       today: notesOn(notes, now).length,
       room: notesProblem() ? 0 : roomToday(notes, now),
       // Off until the operator approves the public brief, which turns it on (configure-skills' notes walk).
-      scout: env('AGENT_NOTES_SCOUT') === 'true'
+      scout: env('AGENT_NOTES_SCOUT') === 'true',
+      // Whether knowledge/public.md gives the web scout something to search with; without it only home lenses run.
+      web: scoutable()
     }
   };
   if (args.includes('--json')) {

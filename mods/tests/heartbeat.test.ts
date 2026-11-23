@@ -156,6 +156,15 @@ describe('the heartbeat', () => {
     expect(host.commands).toEqual([WAKE, WAKE]);
   });
 
+  test('binding and the status say how to turn notes on, or add the web, and nothing once both run', async ($, on) => {
+    const { host } = await bound($, on);
+    expect((await run($, 'heartbeat', 'status')).text).not.toContain('Notes');
+    host.notesWeb = false;
+    expect((await run($, 'heartbeat', 'status')).text).toContain(`Notes scout your home only: /${PLUGIN}:configure-skills → Notes`);
+    host.notesScout = false;
+    expect((await run($, 'heartbeat', '15m')).text).toContain(`Notes are off: run /${PLUGIN}:configure-skills and choose Notes`);
+  });
+
   test('a bare /heartbeat in the tab that already is the heartbeat only says so; an interval still rebinds', async ($, on) => {
     const { host } = await bound($, on);
     expect((await run($, 'heartbeat')).text).toStartWith('This session is the heartbeat, every 55m');
