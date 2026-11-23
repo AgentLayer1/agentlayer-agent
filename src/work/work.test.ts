@@ -228,9 +228,14 @@ describe('views', () => {
     expect(isOverdue({ ...task, status: 'done' }, '2026-11-09')).toBe(false);
   });
 
-  test('closed and recently updated tasks come from those in place only', () => {
+  test('recently closed tasks include archived ones, from the day given', () => {
     const work = buildWork();
-    expect(ids(closedSince(work, '2026-10-01'))).toEqual(['ac-003']);
+    expect(ids(closedSince(work, '2026-10-01'))).toEqual(['ac-003', 'ac-000']);
+    expect(ids(closedSince(work, '2026-10-02'))).toEqual(['ac-003']);
+  });
+
+  test('recently updated tasks and tasks by status come from those in place only', () => {
+    const work = buildWork();
     expect(ids(touchedRecently(work, '2026-11-10'))).toEqual(['ac-002']);
     expect(ids(withStatus(work, 'active', 'done'))).toEqual(['ac-002', 'ac-003']);
   });

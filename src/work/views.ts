@@ -55,10 +55,11 @@ export const overdue = (work: Tasks, today: string): WorkTask[] =>
 export const stale = (work: Tasks, today: string): WorkTask[] => inPlace(work).filter((task) => isStale(task, today));
 
 /**
- * Closed tasks still in place whose `closed:` date is on or after `since`.
+ * Closed tasks whose `closed:` date is on or after `since`, archived ones included: sync archives a task once it
+ * closes, so a list of only those in place would empty at every sync.
  */
 export const closedSince = (work: Tasks, since: string): WorkTask[] =>
-  inPlace(work).filter((task) => isClosed(task.status) && task.closed !== '' && task.closed >= since);
+  work.tasks.filter((task) => isClosed(task.status) && task.closed !== '' && task.closed >= since);
 
 /**
  * Tasks in place updated today or yesterday: dates carry no time, so yesterday keeps the list from emptying at
