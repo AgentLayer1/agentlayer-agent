@@ -214,6 +214,27 @@ describe('shellGuard: shared temp dir', () => {
     expect(claude('cat ${TMPDIRX}/prompt.md')).toBeUndefined();
   });
 
+  test('refuses output sent to an inline mktemp, whose path nothing keeps', () => {
+    expect(claude('bun test > "$(mktemp "${TMPDIR:-/tmp}/gate-XXXXXX")" 2>&1')).toContain('inline "$(mktemp');
+    expect(claude('bun test >> $(mktemp)')).toContain('inline "$(mktemp');
+    expect(claude('( bun run typecheck && bun test ) &> "$(mktemp)"; echo "exit=$?"')).toContain('inline "$(mktemp');
+    expect(claude('bun test 2>&1 | tee -a "$(mktemp -t gate)"')).toContain('inline "$(mktemp');
+    expect(claude('bun test 2> "$(mktemp)"')).toContain('inline "$(mktemp');
+  });
+
+  test('allows a mktemp path held in a variable, and substitutions that name no output', () => {
+    expect(claude('O=$(mktemp "${TMPDIR:-/tmp}/gate-XXXXXX") && bun test > "$O" 2>&1; grep pass "$O"')).toBeUndefined();
+    expect(claude('echo "> $(mktemp)"')).toBeUndefined();
+    expect(claude('cp "$(mktemp)" out.txt')).toBeUndefined();
+    expect(claude('bun test > "$(git rev-parse --show-toplevel)/out.log"')).toBeUndefined();
+    expect(claude('X=$(mktemp) && bun test "$(pwd)" > "$(git rev-parse --show-toplevel)/out.log"')).toBeUndefined();
+  });
+
+  test('pairs each substitution with its own $(…), not an earlier one', () => {
+    expect(claude('cat "$(mktemp)" > "$(git rev-parse --show-toplevel)/x"')).toBeUndefined();
+    expect(claude('cat "$(git rev-parse HEAD)" > "$(mktemp)"')).toContain('inline "$(mktemp');
+  });
+
   test('a pattern after a --flag= is still a pattern', () => {
     expect(claude('bun x.ts --out=$TMPDIR/run-*')).toContain('by pattern');
   });

@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import { posix, win32 } from 'node:path';
 import type { GuardPolicy } from '@/hosts/contract';
 import { existingTarget } from '@/shared/paths';
-import { commandWords, scanShell, type ShellCommand, type ShellJoiner } from './shell-scan';
+import { commandWords, scanShell, type ShellCommand, type ShellJoiner, type ShellWord } from './shell-scan';
 
 /** One platform's path rules, with the home and the starting cwd already in that platform's form. */
 interface Paths {
@@ -99,7 +99,9 @@ const WRITES = new Map<string, 'all' | 'last'>([
 ]);
 
 /** The paths a command writes. Only a write can misplace a file; a read from the wrong cwd merely fails. */
-const writeTargets = (command: ShellCommand): string[] => {
+const writeTargets = (command: ShellCommand): string[] => writeWords(command).map((word) => word.text);
+
+const writeWords = (command: ShellCommand): ShellWord[] => {
   const [name, ...args] = commandWords(command);
   const operands = args.filter(
     (word, index) => !word.operator && !args[index - 1]?.operator && !word.text.startsWith('-')
@@ -110,7 +112,7 @@ const writeTargets = (command: ShellCommand): string[] => {
     const before = command.words[index - 1];
     return before?.operator === true && OUTPUT_REDIRECT.test(before.text);
   });
-  return [...redirected, ...named].map((word) => word.text);
+  return [...redirected, ...named];
 };
 
 /**
@@ -170,6 +172,61 @@ const scratchProblem = (command: ShellCommand): string | undefined => {
     picked &&
     `Blocked: ${picked.variable}/${picked.folder} is a hand-picked name in the shared temp dir, which another session can write at the same moment. ${SCRATCH_FIX}`
   );
+};
+
+const SUBSTITUTION = '$(…)';
+
+/** Each `$(…)` in the command's words, in order, and whether it sits in a path the command writes. */
+const substitutionTargets = (command: ShellCommand): boolean[] => {
+  const written = new Set(writeWords(command));
+  return command.words.flatMap((word) =>
+    Array.from({ length: word.text.split(SUBSTITUTION).length - 1 }, () => written.has(word))
+  );
+};
+
+/**
+ * The first command of each substitution written in `commands[at]`, in order. A substitution's
+ * commands end just before the command holding it, one shell deeper, so they are the run right
+ * before it, and the last ones in that run belong to its own `$(…)`s.
+ */
+const substitutionsOf = (commands: ShellCommand[], at: number): ShellCommand[] => {
+  const outer = commands[at]?.shells ?? [];
+  const inside = (command: ShellCommand): boolean =>
+    command.shells.length > outer.length && outer.every((id, index) => command.shells[index] === id);
+  const start = commands.slice(0, at).findLastIndex((command) => !inside(command)) + 1;
+  const firsts = new Map<number, ShellCommand>();
+  commands
+    .slice(start, at)
+    .filter((command) => command.shells.length === outer.length + 1)
+    .forEach((command) => {
+      const id = command.shells[outer.length] ?? -1;
+      if (!firsts.has(id)) {
+        firsts.set(id, command);
+      }
+    });
+  return [...firsts.values()];
+};
+
+/**
+ * Why a command loses its own output, or undefined: a redirect to an inline `$(mktemp …)` writes
+ * a file whose path nothing kept, so the run has to happen again to read what it printed.
+ */
+const lostScratchMessage = (commands: ShellCommand[]): string | undefined => {
+  const lost = commands.some((command, at) => {
+    const targets = substitutionTargets(command);
+    if (!targets.includes(true)) {
+      return false;
+    }
+    const firsts = substitutionsOf(commands, at).slice(-targets.length);
+    return targets.some((isTarget, index) => {
+      const first = firsts[index];
+      return isTarget && first !== undefined && commandWords(first)[0]?.text === 'mktemp';
+    });
+  });
+  return lost
+    ? 'Blocked: this command writes to an inline "$(mktemp …)", so the path is never kept and no later command can read what it wrote. ' +
+        'Hold the path in a variable first: O=$(mktemp "${TMPDIR:-/tmp}/<prefix>-XXXXXX") && … > "$O", then read "$O" in the same command.'
+    : undefined;
 };
 
 /**
@@ -380,6 +437,7 @@ export function shellGuard(
   const launchedHome = launch === undefined || insideHome(paths.api.resolve(paths.native(launch)), paths);
   return (
     commands.map(scratchProblem).find(Boolean) ??
+    lostScratchMessage(commands) ??
     rewriteMessage(commands) ??
     stashMessage(commands) ??
     gateMessage(commands) ??
