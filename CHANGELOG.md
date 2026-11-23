@@ -47,6 +47,35 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.0.11] - 2026-11-23
+
+The cmux sidebar is one page, and a heartbeat look that changed nothing stays quiet.
+
+### Changed
+- The cmux sidebar is one page: the cmux Manager's header and tallies over four tabs, Sessions,
+  Projects, Reports and Recent, each for the agent of the selected workspace (cmux-custom-manager
+  0.5.0). The Manager/Agents switch and the agent chips are gone. INBOX sits on Sessions, whose
+  search row carries the dashboard, roadmap and Finder buttons; a switch beside the Projects search
+  shows the goals. The sidebar opens on Sessions.
+
+### Removed
+- `cmux sidebar order`: it ordered the agent chips, which the sidebar no longer has.
+
+### Fixed
+- A heartbeat look that adds or retires no proposal and sends no note ends without cmux's done
+  notification or its waiting-for-input reminder. A look that changed something, and every turn you
+  type, ends as before.
+- `remove_worktree` (and `worktree remove`) no longer asks for `force` when the branch's commits are
+  already on a local `dev`, `develop`, `main` or `master`, such as a branch fast-forwarded into an
+  unpushed local `main`.
+
+### Upgrade
+- `deps: required` — `cmux-custom-manager` moves to `2ec4672` (0.5.0); run `bun install` in the
+  plugin root.
+- `manual: optional` — If a session is your heartbeat, restart it and run `/heartbeat` there: the
+  quiet look runs only in a session started on 1.0.11. The sidebar takes its new layout at the next
+  dashboard refresh or sync.
+
 ## [1.0.10] - 2026-11-23
 
 The heartbeat sends notes as well as proposals, both land in one INBOX, and each host gets the plugin in its own terms.
