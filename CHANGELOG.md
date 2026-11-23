@@ -97,6 +97,16 @@ The heartbeat sends notes as well as proposals, both land in one INBOX, and each
 - `home_history` regenerates the Codex wiring only for a home wired for Codex (`.codex/hooks.json`),
   not one that holds only a `.codex/config.toml`.
 - The tasks summary rides the folded Tasks card; the Discuss sparkles are yellow.
+- The shell guard refuses a command that writes to an inline `$(mktemp …)` (a redirect, `tee`, a
+  copy's target): the path is never kept, so nothing can read what was written without running it
+  again. A path held in a variable first (`O=$(mktemp …) && … > "$O"`) still runs.
+- The manual's Workflow rules add: read a default branch's protection rules before handing over a
+  push; "isolated" and "survives a clear or restart" are claims that need a probe; a merge-based PR
+  stack commits and merges up after its gate; a claim about a code path starts at every entry that
+  reaches it; a brief to another agent restates its hard rules; read the code and its history before
+  calling something broken. Production data stays at its host unless you agree otherwise, a new
+  section covers docs the team reads, and a diff touching auth, regulatory logic or money keeps its
+  safety checks easy to see.
 
 ### Fixed
 - A bare `/heartbeat` in the heartbeat's own tab reports its status instead of rebinding at 55m.
@@ -119,12 +129,15 @@ The heartbeat sends notes as well as proposals, both land in one INBOX, and each
 - Skills no longer look for an `extensions/` folder the home doesn't have when session start listed
   none (an `ls` that failed on every heartbeat bind), and the manual says so too, so a Codex session
   no longer searches for one before running a skill.
+- A `bun test` started outside the plugin checkout, which never loads the test preload, stops at its
+  first home read instead of resolving a real home (and loading its secrets).
 
 ### Upgrade
 - `settings: mandatory` — add `mcp__plugin_agentlayer_agent__note_add` to `permissions.allow` in
   `settings.json`.
 - `template/AGENTS.md: mandatory` — the tree's `extensions/skills/` line says extensions are listed at
-  session start only when the home has any, so none listed means none to look for.
+  session start only when the home has any, so none listed means none to look for; the Workflow,
+  "Ask first", Code quality and new "Docs the team reads" rules listed under Changed.
 - `manual: required` — If a session is your heartbeat, restart it and run `/heartbeat` there: the
   heartbeat's new mod (notes, the INBOX's actions, the fixes above) runs only in a session started
   on 1.0.10, and a restarted session is the heartbeat again only after `/heartbeat`.
