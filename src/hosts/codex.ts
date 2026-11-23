@@ -21,8 +21,8 @@ export const codexHost = {
   delivery: {
     kind: 'inject',
     glossary: {
-      pluginRoot: `\`${PLUGIN_SOURCE_ROOT}\`, the plugin checkout this session's hooks and MCP server run from, never the folder above a loaded skill: that is Codex's cached copy, which can be an older version`,
-      skillDir: `\`${join(PLUGIN_SOURCE_ROOT, 'skills', '<skill>')}\`, with the loaded skill's name for \`<skill>\``,
+      pluginRoot: `in one of ${pluginName()}'s skills (its \`<path>\` runs through \`${pluginName()}/<version>/skills/\`), \`${PLUGIN_SOURCE_ROOT}\`, the checkout this session's hooks and MCP server run from, since that \`<path>\` is Codex's cached copy and can be an older version; in another plugin's skill, two folders above its SKILL.md`,
+      skillDir: `in one of ${pluginName()}'s skills, \`${join(PLUGIN_SOURCE_ROOT, 'skills', '<skill>')}\` with the skill's name for \`<skill>\`; in another plugin's skill, the folder holding its SKILL.md`,
       toolPrefix: `\`mcp__${pluginName()}__<tool>\`, the same tool on this host's ${pluginName()} MCP server`,
       askUser:
         "in Plan mode, `request_user_input`, which returns the answer as its result, so carry on; otherwise, and for a multi-select question, ask in chat (the question, then numbered options with the recommended one first), then end your turn and wait for the answer. Not `request_user_input_async`: Codex dismisses its card when your turn's final message renders",
