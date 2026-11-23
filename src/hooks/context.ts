@@ -47,8 +47,11 @@ const log = baseLog.session.with('context');
 
 export interface ManifestEntry {
   label: string;
-  /** `off` is a choice the operator made (history not turned on), so it never raises the issue flag. */
-  status: 'loaded' | 'missing' | 'unavailable' | 'off';
+  /**
+   * Neither `off`, a choice the operator made (history not turned on), nor `empty`, nothing to load yet (no report
+   * today), raises the issue flag.
+   */
+  status: 'loaded' | 'missing' | 'unavailable' | 'off' | 'empty';
   bytes: number;
   note?: string;
 }
@@ -157,7 +160,7 @@ async function lastSessionTail(maxBytes: number): Promise<TailResult> {
   }
   return {
     content: null,
-    entry: { label: 'session tail', status: 'missing', bytes: 0 }
+    entry: { label: 'session tail', status: 'empty', bytes: 0, note: 'no session in the last week' }
   };
 }
 
@@ -176,10 +179,14 @@ export async function todaysReports(maxBytes: number): Promise<ReportsResult> {
   let raw: string;
   try {
     raw = await readTextAsync(FILES.REPORTS_INDEX);
-  } catch {
+  } catch (err) {
+    // The first report writes the index, so a home without one has simply written none yet.
+    const unwritten = err instanceof Error && 'code' in err && err.code === 'ENOENT';
     return {
       content: null,
-      entry: { label: "today's reports", status: 'missing', bytes: 0 }
+      entry: unwritten
+        ? { label: "today's reports", status: 'empty', bytes: 0, note: 'no reports yet' }
+        : { label: "today's reports", status: 'missing', bytes: 0 }
     };
   }
 
@@ -190,7 +197,7 @@ export async function todaysReports(maxBytes: number): Promise<ReportsResult> {
       content: null,
       entry: {
         label: "today's reports",
-        status: 'missing',
+        status: 'empty',
         bytes: 0,
         note: 'no entries today'
       }
@@ -209,7 +216,7 @@ export async function todaysReports(maxBytes: number): Promise<ReportsResult> {
       content: null,
       entry: {
         label: "today's reports",
-        status: 'missing',
+        status: 'empty',
         bytes: 0,
         note: 'heading empty'
       }
@@ -274,7 +281,8 @@ const STATUS_ICON: Record<ManifestEntry['status'], string> = {
   loaded: '✓',
   missing: '✗',
   unavailable: '⚠',
-  off: '○'
+  off: '○',
+  empty: '○'
 };
 
 /**
@@ -639,7 +647,7 @@ export async function assembleContext({
   const context = fitContext(parts, CONTEXT.MAX_CHARS);
   const notices = (await pendingNotices).filter((notice) => !promptRow || notice.level === 'hint');
   const banner = renderBanner(entries, context.length, notices, billing?.banner ?? null, host.skill);
-  const hasIssues = billing !== null || entries.some((entry) => entry.status !== 'loaded' && entry.status !== 'off');
+  const hasIssues = billing !== null || entries.some((entry) => entry.status === 'missing' || entry.status === 'unavailable');
   return { context, banner, hasIssues };
 }
 

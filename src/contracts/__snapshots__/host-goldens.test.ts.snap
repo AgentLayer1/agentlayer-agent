@@ -5,15 +5,15 @@ exports[`session start, per host and home state Claude Code, initialized home 1`
   "exit": 0,
   "stderr": 
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=claude
-<TIMESTAMP> WARN  [🪝 session] [start] hook fired (claude)
+<TIMESTAMP> INFO  [🪝 session] [start] hook fired (claude)
   🦊 Agent:     Nova · v<VERSION>
   ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
   📚 Context  · 0.0KB
-    ✗ session tail     0.0KB
-    ✗ today's reports  0.0KB
+    ○ session tail     0.0KB  (no session in the last week)
+    ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
     ○ history          0.0KB  (off · run /agentlayer:history)
 "
@@ -26,8 +26,8 @@ exports[`session start, per host and home state Claude Code, initialized home 1`
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
   📚 Context  · 0.0KB
-    ✗ session tail     0.0KB
-    ✗ today's reports  0.0KB
+    ○ session tail     0.0KB  (no session in the last week)
+    ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
     ○ history          0.0KB  (off · run /agentlayer:history)","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"## Today
 <WEEKDAY>, <MONTH> <DAY>, <YEAR> (UTC)"}}"
@@ -91,15 +91,15 @@ exports[`session start, per host and home state Claude Code in its terminal, ini
   "exit": 0,
   "stderr": 
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=claude
-<TIMESTAMP> WARN  [🪝 session] [start] hook fired (claude)
+<TIMESTAMP> INFO  [🪝 session] [start] hook fired (claude)
   🦊 Agent:     Nova · v<VERSION>
   ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
   📚 Context  · 0.0KB
-    ✗ session tail     0.0KB
-    ✗ today's reports  0.0KB
+    ○ session tail     0.0KB  (no session in the last week)
+    ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
     ○ history          0.0KB  (off · run /agentlayer:history)
 "
@@ -112,8 +112,8 @@ exports[`session start, per host and home state Claude Code in its terminal, ini
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
   📚 Context  · 0.0KB
-    ✗ session tail     0.0KB
-    ✗ today's reports  0.0KB
+    ○ session tail     0.0KB  (no session in the last week)
+    ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
     ○ history          0.0KB  (off · run /agentlayer:history)","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"## Today
 <WEEKDAY>, <MONTH> <DAY>, <YEAR> (UTC)"}}"
@@ -126,15 +126,15 @@ exports[`session start, per host and home state Codex, initialized home 1`] = `
   "exit": 0,
   "stderr": 
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=codex --home=<HOME>
-<TIMESTAMP> WARN  [🪝 session] [start] hook fired (codex)
+<TIMESTAMP> INFO  [🪝 session] [start] hook fired (codex)
   🦊 Agent:     Nova · v<VERSION>
   ↑  Upgrade:   Turn on update tracking · run $upgrade
   ⟳  Sync:      Brain never synced · run $sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
   📚 Context  · 0.0KB
-    ✗ session tail     0.0KB
-    ✗ today's reports  0.0KB
+    ○ session tail     0.0KB  (no session in the last week)
+    ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
     ○ history          0.0KB  (off · run $history)
 "
@@ -146,8 +146,8 @@ exports[`session start, per host and home state Codex, initialized home 1`] = `
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
   📚 Context  · 0.0KB
-    ✗ session tail     0.0KB
-    ✗ today's reports  0.0KB
+    ○ session tail     0.0KB  (no session in the last week)
+    ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
     ○ history          0.0KB  (off · run $history)","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<!-- agent static context · harness: codex · hooks and MCP server run from: <ROOT> · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs $upgrade · delivered by the plugin's SessionStart hook because this host has no @-import -->
 
@@ -272,15 +272,15 @@ exports[`session start, per host and home state no protocol, initialized home 1`
   "exit": 0,
   "stderr": 
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start
-<TIMESTAMP> WARN  [🪝 session] [start] hook fired (claude)
+<TIMESTAMP> INFO  [🪝 session] [start] hook fired (claude)
   🦊 Agent:     Nova · v<VERSION>
   ↑  Upgrade:   Turn on update tracking · run /agentlayer:upgrade
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
   📚 Context  · 0.0KB
-    ✗ session tail     0.0KB
-    ✗ today's reports  0.0KB
+    ○ session tail     0.0KB  (no session in the last week)
+    ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
     ○ history          0.0KB  (off · run /agentlayer:history)
 "
@@ -294,13 +294,13 @@ exports[`session start, per host and home state no protocol, initialized home 1`
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
   📚 Context  · 0.0KB
-    ✗ session tail     0.0KB
-    ✗ today's reports  0.0KB
+    ○ session tail     0.0KB  (no session in the last week)
+    ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
     ○ history          0.0KB  (off · run /agentlayer:history)",
   "additionalContext": "## Today
 <WEEKDAY>, <MONTH> <DAY>, <YEAR> (UTC)",
-  "hasIssues": true
+  "hasIssues": false
 }
 "
 ,

@@ -1636,7 +1636,8 @@ const MANIFEST_ICON: Record<ManifestEntry['status'], { icon: string; cls: string
   loaded: { icon: '✓', cls: 'good' },
   missing: { icon: '✗', cls: 'bad' },
   unavailable: { icon: '⚠', cls: 'warn' },
-  off: { icon: '○', cls: 'dim' }
+  off: { icon: '○', cls: 'dim' },
+  empty: { icon: '○', cls: 'dim' }
 };
 
 /** The "what loads into every session" view — static @-imports plus the

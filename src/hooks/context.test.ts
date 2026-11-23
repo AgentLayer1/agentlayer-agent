@@ -5,6 +5,15 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 describe("today's reports in the session context", () => {
+  test('no reports yet, or none today, is empty: nothing to load and nothing wrong', async () => {
+    rmSync(FILES.REPORTS_INDEX, { force: true });
+    expect((await todaysReports(100)).entry).toEqual({ label: "today's reports", status: 'empty', bytes: 0, note: 'no reports yet' });
+    mkdirSync(FOLDERS.REPORTS, { recursive: true });
+    writeFileSync(FILES.REPORTS_INDEX, '# Reports\n\n## 2000-01-01\n\n- 09:00 · [Old](plans/old.md)\n');
+    expect((await todaysReports(100)).entry).toEqual({ label: "today's reports", status: 'empty', bytes: 0, note: 'no entries today' });
+    rmSync(FILES.REPORTS_INDEX, { force: true });
+  });
+
   test('a section over the cap is cut at the last whole entry', async () => {
     const today = new Date().toLocaleDateString('sv-SE', { timeZone: TIMEZONE });
     const entry = (index: number) => `- 09:0${index} · [Report ${index}](plans/report-${index}.md) · \`plan-spec\``;
