@@ -185,31 +185,25 @@ const substitutionTargets = (command: ShellCommand): boolean[] => {
 };
 
 /**
- * The first command of each substitution written in `commands[at]`, in order. A substitution's
- * commands end just before the command holding it, one shell deeper, so they are the run right
- * before it, and the last ones in that run belong to its own `$(…)`s.
+ * The first command of each substitution in `command`, in order. A substitution's commands end just
+ * before the command holding it, one shell deeper, so they are the run at the end of `before`, and
+ * the last ones in that run belong to its own `$(…)`s.
  */
-const substitutionsOf = (commands: ShellCommand[], at: number): ShellCommand[] => {
-  const outer = commands[at]?.shells ?? [];
-  const inside = (command: ShellCommand): boolean =>
-    command.shells.length > outer.length && outer.every((id, index) => command.shells[index] === id);
-  const start = commands.slice(0, at).findLastIndex((command) => !inside(command)) + 1;
-  const firsts = new Map<number, ShellCommand>();
-  commands
-    .slice(start, at)
-    .filter((command) => command.shells.length === outer.length + 1)
-    .forEach((command) => {
-      const id = command.shells[outer.length] ?? -1;
-      if (!firsts.has(id)) {
-        firsts.set(id, command);
-      }
-    });
-  return [...firsts.values()];
+const substitutionsOf = (before: ShellCommand[], command: ShellCommand): ShellCommand[] => {
+  const depth = command.shells.length;
+  const inside = (other: ShellCommand): boolean =>
+    other.shells.length > depth && command.shells.every((id, index) => other.shells[index] === id);
+  const children = before
+    .slice(before.findLastIndex((other) => !inside(other)) + 1)
+    .filter((other) => other.shells.length === depth + 1);
+  return children.filter(
+    (child, index) => children.findIndex((other) => other.shells[depth] === child.shells[depth]) === index
+  );
 };
 
 /**
- * Why a command loses its own output, or undefined: a redirect to an inline `$(mktemp …)` writes
- * a file whose path nothing kept, so the run has to happen again to read what it printed.
+ * Why a command loses what it writes, or undefined: a path built from an inline `$(mktemp …)` is
+ * never kept, so the run has to happen again to read what it wrote.
  */
 const lostScratchMessage = (commands: ShellCommand[]): string | undefined => {
   const lost = commands.some((command, at) => {
@@ -217,7 +211,7 @@ const lostScratchMessage = (commands: ShellCommand[]): string | undefined => {
     if (!targets.includes(true)) {
       return false;
     }
-    const firsts = substitutionsOf(commands, at).slice(-targets.length);
+    const firsts = substitutionsOf(commands.slice(0, at), command).slice(-targets.length);
     return targets.some((isTarget, index) => {
       const first = firsts[index];
       return isTarget && first !== undefined && commandWords(first)[0]?.text === 'mktemp';

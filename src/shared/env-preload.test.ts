@@ -23,8 +23,7 @@ const runFixture = (marker: string) =>
   Bun.spawnSync(['bun', 'test', fixture], {
     cwd: scratch,
     env: { ...process.env, AGENT_HOME: scratch, [TEST_HOME_VAR]: marker },
-    stderr: 'pipe',
-    stdout: 'pipe'
+    stderr: 'pipe'
   });
 
 describe('a test run without the preload', () => {

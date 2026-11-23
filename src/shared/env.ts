@@ -30,6 +30,10 @@ import { dirname, resolve } from 'node:path';
  * needs only a name imports `shared/naming.ts` instead.
  */
 
+// Bun.main names the test file under `bun test`, even when the shell set NODE_ENV, and never does for
+// the CLI, a hook or the server.
+const TEST_FILE = /[._](test|spec)\.[cm]?[jt]sx?$/;
+
 /**
  * Resolve the agent HOME: `AGENT_HOME` when set, else the nearest ancestor of
  * cwd (cwd included)
@@ -57,7 +61,11 @@ import { dirname, resolve } from 'node:path';
  * cwd walk until they're taught here.
  */
 export function agentHomePath(): string {
-  refuseTestRunWithoutPreload();
+  if (TEST_FILE.test(Bun.main) && !resolveEnv(TEST_HOME_VAR)) {
+    throw new Error(
+      "bun test ran without the plugin's test preload, so it would resolve a real agent home. Run it from the plugin checkout: ( cd <checkout> && bun test <paths> )"
+    );
+  }
   const fromVar = resolveEnv('AGENT_HOME');
   if (fromVar) {
     const expanded = expandTilde(fromVar);
@@ -72,18 +80,6 @@ export function agentHomePath(): string {
   process.env.AGENT_HOME = home;
   return home;
 }
-
-// Bun.main names the test file under `bun test`, even when the shell set NODE_ENV, and never does for
-// the CLI, a hook or the server.
-const TEST_FILE = /[._](test|spec)\.[cm]?[jt]sx?$/;
-
-const refuseTestRunWithoutPreload = (): void => {
-  if (typeof Bun !== 'undefined' && TEST_FILE.test(Bun.main) && !resolveEnv(TEST_HOME_VAR)) {
-    throw new Error(
-      `bun test ran without the plugin's test preload, so it would resolve a real agent home. Run it from the plugin checkout: ( cd <checkout> && bun test <paths> )`
-    );
-  }
-};
 
 /** Nearest ancestor of `start` (inclusive) that is this agent's home, or undefined. */
 const homeAbove = (start: string): string | undefined => {
