@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { homeEntry } from './entry';
-import { mergeHomes, newerCode, orderHomes, parseSidebar, renderSidebar } from './file';
+import { mergeHomes, newerCode, parseSidebar, renderSidebar } from './file';
 import { NOVA, NOVA_HOME, NOVA_STATE, SCOUT, SCOUT_HOME, SCOUT_STATE } from './preview/fixture';
 
 const NOVA_ENTRY = homeEntry(NOVA_HOME, NOVA, NOVA_STATE);
@@ -31,15 +31,6 @@ test('each home puts in only its own entry, a new home joins last, and a rewrite
     [SCOUT_HOME, renamed],
     [NOVA_HOME, NOVA_ENTRY]
   ]);
-});
-
-test('an order puts the given homes first, in that order, and the rest keep theirs', () => {
-  const ADA_HOME = '/tmp/agents/Ada';
-  const ada = { ...NOVA_ENTRY, name: 'Ada' };
-  const homes = { [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY, [ADA_HOME]: ada };
-  expect(Object.keys(orderHomes(homes, [ADA_HOME, NOVA_HOME]))).toEqual([ADA_HOME, NOVA_HOME, SCOUT_HOME]);
-  expect(Object.keys(orderHomes(homes, [SCOUT_HOME, SCOUT_HOME]))).toEqual([SCOUT_HOME, NOVA_HOME, ADA_HOME]);
-  expect(orderHomes(homes, [])).toEqual(homes);
 });
 
 test('a home whose folder is gone drops out, and a null entry takes the home out', () => {

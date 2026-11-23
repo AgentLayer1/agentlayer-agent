@@ -790,8 +790,6 @@ Show it:           cmux right-sidebar set custom agentlayer
 Refresh by hand:   bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar refresh --home="<HOME_DIR>"
 ```
 
-Agents keep the order they joined, which is the order INBOX lists them in where every agent's messages show. When the operator wants another order, hand them `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar order <first> <second> …` (agent names, any case) to run in their own terminal; the agents it names go first, the rest keep their order, and the order holds through every home's refresh.
-
 ### A.2k — Notes walk
 
 Turns on the heartbeat's scouting: after each brain refresh it sends at most three short notes a day, each a finding it checked with one next step. A home lens (the brain against itself, what waits on the operator) reads the home and reaches no web. A web lens runs in a separate scout that sees only `knowledge/public.md`: the operator's list of what may go into a web search. Scouting stays off until the operator approves that list, so this walk writes it first and turns scouting on last. No keys, no permissions.

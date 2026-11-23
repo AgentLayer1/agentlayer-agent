@@ -56,7 +56,7 @@ export const renderSidebar = ({ version, homes, bundle }: SidebarParts): string 
 
 /**
  * The installed homes with this one's entry put in (or taken out, for `null`), minus homes whose folder is gone.
- * Every home keeps its place, so the order set by `orderHomes` holds whichever home writes; a new home joins last.
+ * Every home keeps its place whichever home writes; a new home joins last.
  */
 export const mergeHomes = (
   current: SidebarParts | null,
@@ -69,15 +69,6 @@ export const mergeHomes = (
   return Object.fromEntries(
     merged.filter((pair): pair is [string, HomeEntry] => pair[1] !== null && (pair[0] === home || homeExists(pair[0])))
   );
-};
-
-/**
- * The homes at `first` moved to the front in that order; the rest keep their order after them.
- */
-export const orderHomes = (homes: Record<string, HomeEntry>, first: readonly string[]): Record<string, HomeEntry> => {
-  const entries = Object.entries(homes);
-  const picked = first.flatMap((home) => entries.filter(([path]) => path === home));
-  return Object.fromEntries([...picked, ...entries.filter(([path]) => !first.includes(path))]);
 };
 
 /**

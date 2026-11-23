@@ -186,7 +186,6 @@ Sidebar commands for cmux (this CLI's, not the cmux app's own; run them from a t
   cmux sidebar install              Add this home to the AgentLayer sidebar (starting it if it's the first), have cmux check it, and show it
   cmux sidebar refresh              Put this home's latest projects and tasks into the sidebar (every dashboard refresh also does this)
   cmux sidebar remove               Take this home out of the sidebar; the last home out deletes it
-  cmux sidebar order <agent>…       Put these agents first on the sidebar, in this order (by name or home folder); it holds across every home's refresh
   cmux settings --file=<ghostty|cmux> [--launcher=<claude|agent>] [--json]
                                     Compare a Mac's Ghostty or cmux settings with the recommended ones (read-only;
                                     prints what to paste and the command to run; without --json, exit 3 unless the file is complete)

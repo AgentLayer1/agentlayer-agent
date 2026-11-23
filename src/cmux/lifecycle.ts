@@ -10,7 +10,6 @@ import { homeEntry, readHomeState } from './entry';
 import {
   mergeHomes,
   newerCode,
-  orderHomes,
   parseSidebar,
   renderSidebar,
   SIDEBAR_NAME,
@@ -160,45 +159,6 @@ export const installSidebar = (
   const shown = cmux.run(['right-sidebar', 'set', 'custom', SIDEBAR_NAME]);
   const hint = shown ? '' : ` Show it with: cmux right-sidebar set custom ${SIDEBAR_NAME}`;
   return { ok: true, message: `${entry.name} is in the AgentLayer sidebar.${hint}` };
-};
-
-export type SidebarOrder =
-  | { kind: 'not-installed' }
-  | { kind: 'unmatched'; unmatched: string[]; names: string[] }
-  | { kind: 'unchanged' | 'written'; names: string[] };
-
-const namesOf = (homes: Record<string, HomeEntry>): string[] => Object.values(homes).map((item) => item.name);
-
-// The home each pick names, by its folder or its agent's name in any case; a pick naming none, or two, is unmatched.
-const matchHomes = (homes: Record<string, HomeEntry>, picks: readonly string[]) => {
-  const found = picks.map((pick) => ({
-    pick,
-    paths: Object.entries(homes)
-      .filter(([path, item]) => path === pick || item.name.toLowerCase() === pick.toLowerCase())
-      .map(([path]) => path)
-  }));
-  return {
-    paths: found.flatMap(({ paths }) => (paths.length === 1 ? paths : [])),
-    unmatched: found.filter(({ paths }) => paths.length !== 1).map(({ pick }) => pick)
-  };
-};
-
-/**
- * Puts the agents `picks` name first on the sidebar, in that order; it's one list for the Mac, so any home can set it.
- */
-export const orderSidebar = (picks: readonly string[], target: SidebarTarget): SidebarOrder => {
-  const installed = readInstalled(target);
-  const current = installed?.current;
-  if (!installed || !current) {
-    return { kind: 'not-installed' };
-  }
-  const { paths, unmatched } = matchHomes(current.homes, picks);
-  if (unmatched.length) {
-    return { kind: 'unmatched', unmatched, names: namesOf(current.homes) };
-  }
-  const homes = orderHomes(current.homes, paths);
-  const next = renderSidebar({ ...current, homes });
-  return { kind: writeIfChanged(installed.path, installed.text, next), names: namesOf(homes) };
 };
 
 type RemoveResult = Absent | 'removed' | 'removed-file';

@@ -6,7 +6,6 @@ import { homeEntry } from './entry';
 import { parseSidebar, sidebarFile } from './file';
 import {
   installSidebar,
-  orderSidebar,
   refreshSidebar,
   refreshSidebarQuietly,
   removeSidebar,
@@ -135,36 +134,6 @@ test('remove takes one home out, and the last home out deletes the file', () => 
   expect(removeSidebar(NOVA_HOME, where)).toBe('not-joined');
   expect(removeSidebar(SCOUT_HOME, where)).toBe('removed-file');
   expect(existsSync(sidebarFile(where.dir))).toBe(false);
-});
-
-test('an order holds through every home’s refresh, and an order that names no agent writes nothing', () => {
-  const where = target();
-  expect(orderSidebar(['Scout'], where)).toEqual({ kind: 'not-installed' });
-  installSidebar(NOVA_HOME, nova, where, fakeCmux());
-  installSidebar(SCOUT_HOME, scout, where, fakeCmux());
-  expect(orderSidebar(['Scout', 'Nova'], where)).toEqual({ kind: 'written', names: ['Scout', 'Nova'] });
-  refreshSidebar(NOVA_HOME, { ...nova, name: 'Nova II' }, where);
-  refreshSidebar(SCOUT_HOME, scout, where);
-  expect(Object.keys(installed(where)?.homes ?? {})).toEqual([SCOUT_HOME, NOVA_HOME]);
-  const before = readFileSync(sidebarFile(where.dir), 'utf8');
-  expect(orderSidebar(['Bea'], where)).toEqual({ kind: 'unmatched', unmatched: ['Bea'], names: ['Scout', 'Nova II'] });
-  expect(orderSidebar(['scout'], where)).toEqual({ kind: 'unchanged', names: ['Scout', 'Nova II'] });
-  expect(readFileSync(sidebarFile(where.dir), 'utf8')).toBe(before);
-});
-
-test('an order names an agent by any case or by its folder, and a name two agents share matches neither', () => {
-  const where = target();
-  installSidebar(NOVA_HOME, nova, where, fakeCmux());
-  installSidebar(SCOUT_HOME, scout, where, fakeCmux());
-  expect(orderSidebar([SCOUT_HOME, 'NOVA'], where)).toEqual({ kind: 'written', names: ['Scout', 'Nova'] });
-  const twin = '/tmp/agents/Nova2';
-  installSidebar(twin, nova, where, fakeCmux());
-  expect(orderSidebar(['Nova', 'Bea'], where)).toEqual({
-    kind: 'unmatched',
-    unmatched: ['Nova', 'Bea'],
-    names: ['Scout', 'Nova', 'Nova']
-  });
-  expect(orderSidebar([twin], where)).toEqual({ kind: 'written', names: ['Nova', 'Scout', 'Nova'] });
 });
 
 test('the dashboard’s refresh never throws, even when the write fails', () => {
