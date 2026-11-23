@@ -343,6 +343,36 @@ export const notesSent = (resultText: string): { notes: SentNote[]; today: numbe
 };
 
 /**
+ * Whether a `proposal_add` call changed what Proposals shows: a card added or one retired.
+ */
+export const proposalsChanged = (resultText: string): boolean => {
+  try {
+    const { added, retired } = record(JSON.parse(resultText));
+    return [added, retired].some((list) => Array.isArray(list) && list.length > 0);
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * The heartbeat's next look as a scheduled wakeup in a Stop hook's input, a one-shot cron in the home's time. A terminal
+ * that holds a turn's "done" notification while a wakeup is pending (cmux) then stays quiet.
+ */
+export const nextLookCron = (nextAt: number, timeZone: string) => {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', { timeZone, minute: 'numeric', hour: 'numeric', day: 'numeric', month: 'numeric', hourCycle: 'h23' })
+      .formatToParts(nextAt)
+      .map(({ type, value }) => [type, Number(value)])
+  );
+  return {
+    id: 'heartbeat',
+    schedule: `${parts.minute} ${parts.hour} ${parts.day} ${parts.month} *`,
+    recurring: false,
+    prompt: '/heartbeat now'
+  };
+};
+
+/**
  * A note as a notice row in the transcript: kept in the scrollback, never read by the model.
  */
 export const noticeText = (note: SentNote): string =>

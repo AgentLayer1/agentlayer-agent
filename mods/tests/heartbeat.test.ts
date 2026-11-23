@@ -2,7 +2,7 @@ import { describe, expect, mock, test } from 'claude-code/testing';
 import type { Engine } from 'claude-code/testing';
 import type { On } from 'claude-code';
 
-import { carriesEmail, carriesPrivateName, eventView, privateNames, homeLensTools, nextLook, parseBrief, scoutTools, workspaceTitles } from '../heartbeat/beat';
+import { carriesEmail, carriesPrivateName, eventView, privateNames, homeLensTools, nextLook, nextLookCron, parseBrief, proposalsChanged, scoutTools, workspaceTitles } from '../heartbeat/beat';
 import { AGENT, BAND_PROPS, HOME, NOW, PLUGIN, fakeHost, machine, run } from './fake-host';
 import type { FakeHost } from './fake-host';
 
@@ -541,6 +541,97 @@ describe('heartbeat band', () => {
     expect(nextLook(due, due - 90 * MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look in 1h 30m · 10:00');
     expect(nextLook(due, due + MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look now · 10:00');
     expect(nextLook(due, due + 2 * MINUTE, 'Asia/Kuala_Lumpur')).toBe('next look was due 10:00');
+  });
+});
+
+describe('quiet wakes', () => {
+  const PROPOSAL_ADD = `mcp__plugin_${PLUGIN}_${AGENT}__proposal_add` as const;
+
+  // The terminal's own Stop hook, beneath the plugin: what it reads is the wakeups the input names as pending.
+  const terminal = (on: On) => {
+    const seen: unknown[][] = [];
+    on('classic.Stop', (_$, e) => {
+      seen.push([...(e.session_crons ?? [])]);
+      return {};
+    });
+    return async ($: Engine) => {
+      await $.classic.Stop({ stop_hook_active: false, last_assistant_message: 'done', session_crons: [], background_tasks: [] });
+      return seen.at(-1);
+    };
+  };
+
+  const proposalResult = (on: On, added: number, retired: number) =>
+    on('tool.call', { tool: PROPOSAL_ADD }, () => ({
+      result: 'ok',
+      text: JSON.stringify({
+        added: Array.from({ length: added }, (_, i) => ({ id: `p-${i}`, title: 'Draft the reply' })),
+        refused: [],
+        retired: Array.from({ length: retired }, (_, i) => `p-old-${i}`),
+        keptShowing: [],
+        showing: []
+      })
+    }));
+
+  const CRON = { id: 'heartbeat', schedule: '55 9 10 3 *', recurring: false, prompt: '/heartbeat now' };
+
+  test('a look that changed nothing names the next look as a pending wakeup, so cmux holds its notification', async ($, on) => {
+    const stopped = terminal(on);
+    await bound($, on);
+    expect(await stopped($)).toEqual([CRON]);
+  });
+
+  test('a look that added or retired a proposal ends as any turn does, and the next quiet one is held again', async ($, on) => {
+    const stopped = terminal(on);
+    proposalResult(on, 0, 1);
+    await bound($, on);
+    await $.tool.call({ tool: PROPOSAL_ADD, proposals: [], retire: [{ id: 'p-old-0', reason: 'closed' }] });
+    expect(await stopped($)).toEqual([]);
+    expect(await stopped($), 'the change lasts one wake turn').toEqual([CRON]);
+  });
+
+  test('a look that sent a note ends as any turn does', async ($, on) => {
+    const stopped = terminal(on);
+    const NOTE_ADD = `mcp__plugin_${PLUGIN}_${AGENT}__note_add` as const;
+    on('tool.call', { tool: NOTE_ADD }, () => ({
+      result: 'ok',
+      text: JSON.stringify({ added: [{ id: 'n-1', title: 'A note', body: 'b', next: 'n', sources: [] }], refused: [], cap: 3, today: 1 })
+    }));
+    await bound($, on);
+    await $.tool.call({ tool: NOTE_ADD, notes: [] });
+    expect(await stopped($)).toEqual([]);
+  });
+
+  test('a proposal_add that was refused everything is not a change', async ($, on) => {
+    const stopped = terminal(on);
+    proposalResult(on, 0, 0);
+    await bound($, on);
+    await $.tool.call({ tool: PROPOSAL_ADD, proposals: [], retire: [] });
+    expect(await stopped($)).toEqual([CRON]);
+  });
+
+  test("an ordinary turn in the heartbeat's tab, after the look ended, ends untouched", async ($, on) => {
+    const stopped = terminal(on);
+    await bound($, on);
+    await ended($, 'Nothing new worth proposing.');
+    expect(await stopped($)).toEqual([]);
+  });
+
+  test('a session that is not the heartbeat ends untouched', async ($, on) => {
+    const stopped = terminal(on);
+    const { host } = heartbeatHost(on);
+    await start($, host);
+    expect(await stopped($)).toEqual([]);
+  });
+
+  test('a change is read off the tool result: added or retired, anything else is not one', () => {
+    expect(proposalsChanged(JSON.stringify({ added: [{ id: 'p-1' }], retired: [] }))).toBe(true);
+    expect(proposalsChanged(JSON.stringify({ added: [], retired: ['p-1'] }))).toBe(true);
+    expect(proposalsChanged(JSON.stringify({ added: [], retired: [], refused: [{ source: 'sync' }] }))).toBe(false);
+    expect(proposalsChanged('Pass proposals to add, retire to withdraw, or both.')).toBe(false);
+  });
+
+  test("the next look's wakeup is a one-shot cron in the home's time", () => {
+    expect(nextLookCron(Date.parse('2026-03-11T23:05:00Z'), 'Asia/Kuala_Lumpur').schedule).toBe('5 7 12 3 *');
   });
 });
 

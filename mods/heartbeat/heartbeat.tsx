@@ -20,10 +20,12 @@ import {
   lastWrite,
   logged,
   nextLook,
+  nextLookCron,
   noticeText,
   notesSent,
   parseAsk,
   parseStatus,
+  proposalsChanged,
   workspaceTitles,
   MESSAGE_CHOICES,
   MESSAGE_AT_END,
@@ -279,6 +281,10 @@ async function sendScout($: EngineInterface, { agent, prompt }: NotesBrief): Pro
 
 const isScoutLoop = (state: { scouting?: { id: string } }, agentId: string | undefined): boolean =>
   agentId !== undefined && state.scouting?.id === agentId;
+
+async function markChanged($: EngineInterface): Promise<void> {
+  await update($, beat, (current) => (current.isHeartbeat && current.awaiting?.length ? { ...current, wakeChanged: true } : current));
+}
 
 async function note($: EngineInterface, event: HeartbeatEvent): Promise<void> {
   await update($, beat, (current) => ({ ...current, log: logged(current.log ?? [], event) }));
@@ -543,11 +549,36 @@ export const registerHeartbeat = (on: On): void => {
 
   on('command.run', { command: 'heartbeat' }, async ($, e) => ({ text: await heartbeat($, e.args) }));
 
+  on('tool.call', { tool: /__proposal_add$/ }, async ($, e, next) => {
+    const result = await next(e);
+    if (e.agentId === undefined && proposalsChanged(result.text ?? '')) {
+      await markChanged($);
+    }
+    return result;
+  });
+
+  // A wake that changed nothing names the next look as a pending wakeup in its Stop, so cmux holds its turn-done
+  // notification and its "waiting for input" reminder; one that changed something ends as any turn does.
+  on('classic.Stop', async ($, e, next) => {
+    const { isHeartbeat, awaiting = [], wakeChanged, nextAt, zone = 'UTC' } = await read($, beat);
+    if (!isHeartbeat || !awaiting.length) {
+      return next(e);
+    }
+    await update($, beat, (current) => ({ ...current, wakeChanged: false }));
+    if (wakeChanged || nextAt === undefined) {
+      return next(e);
+    }
+    return next({ ...e, session_crons: [...(e.session_crons ?? []), nextLookCron(nextAt, zone)] });
+  }).catch(($, e, next) => next(e));
+
   // A note the session sends lands in its scrollback as a notice the model never reads; the heartbeat's band counts it.
   on('tool.call', { tool: /__note_add$/ }, async ($, e, next) => {
     const result = await next(e);
     const sent = notesSent(result.text ?? '');
     if (sent?.notes.length) {
+      if (e.agentId === undefined) {
+        await markChanged($);
+      }
       await Promise.all(
         sent.notes.map((item) => $.session.append({ message: { type: 'system', content: [{ type: 'text', text: noticeText(item) }] } }))
       );

@@ -177,6 +177,8 @@ export interface HeartbeatClock {
   awaiting?: string[];
   /** When the first of `awaiting` was queued, epoch ms. */
   workingSince?: number;
+  /** Set when the wake turn under way added or retired a proposal or sent a note, so its end is worth a notification. */
+  wakeChanged?: boolean;
   /** The scouting agent under way: the id its spawn answered, when it started (epoch ms), and which agent it is. */
   /** For the scout, the private names its searches and fetches may not carry. */
   scouting?: { id: string; since: number; agent: 'scout' | 'home-lens'; privateNames?: string[] };
