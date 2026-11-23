@@ -27,7 +27,7 @@ ask before anything optional.
 HOME_DIR="${AGENT_HOME:-$PWD}"
 DATA_DIR="$HOME_DIR/.state"
 [ -f "$DATA_DIR/version.json" ] || echo "NOT_AN_AGENT_HOME: $HOME_DIR"
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-<SKILL_BASE_DIR>/../..}"   # Claude Code fills the variable in; under Codex replace <SKILL_BASE_DIR> with this skill's base directory (the <skill> block's <path>) before running
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-<SKILL_BASE_DIR>/../..}"   # Claude Code fills the variable in; under Codex set PLUGIN_ROOT to the plugin root the session context names, or with none replace <SKILL_BASE_DIR> with this skill's base directory (the <skill> block's <path>)
 [ -d "$PLUGIN_ROOT/.claude-plugin" ] || echo "SET PLUGIN_ROOT: $PLUGIN_ROOT is not the plugin checkout"
 
 # Detect whether the loaded plugin is a git checkout (directory marketplace /

@@ -5,7 +5,7 @@ description: Monthly upkeep of the agent's brain and rules, with the operator. T
 
 # Self-Review
 
-> **Plugin root:** `${CLAUDE_PLUGIN_ROOT}`. Claude Code writes the real path there when it loads this file; Codex leaves it unfilled, and there the plugin root is this skill's base directory two levels up (the `<skill>` block's `<path>`). Playbook commands write `<plugin root>`: put this path in its place before running one, since no shell fills it in.
+> **Plugin root:** `${CLAUDE_PLUGIN_ROOT}`. Claude Code writes the real path there when it loads this file; Codex leaves it unfilled, and there the plugin root is the one the session context names, or, in a session without one, this skill's base directory two levels up (the `<skill>` block's `<path>`). Playbook commands write `<plugin root>`: put this path in its place before running one, since no shell fills it in.
 
 Keep the agent's brain and context lean and correct, and close the feedback loop, with the operator in the room. Stale, wrong and crowded data costs as much as missing data: it gets acted on, and it buries what's live.
 

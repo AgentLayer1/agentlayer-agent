@@ -12,7 +12,7 @@ allowed-tools: mcp__plugin_agentlayer_agent__attention_write, mcp__plugin_agentl
 
 # Goals
 
-> **Plugin root:** `${CLAUDE_PLUGIN_ROOT}`. Claude Code writes the real path there when it loads this file; Codex leaves it unfilled, and there the plugin root is this skill's base directory two levels up (the `<skill>` block's `<path>`). Playbook commands write `<plugin root>`: put this path in its place before running one, since no shell fills it in.
+> **Plugin root:** `${CLAUDE_PLUGIN_ROOT}`. Claude Code writes the real path there when it loads this file; Codex leaves it unfilled, and there the plugin root is the one the session context names, or, in a session without one, this skill's base directory two levels up (the `<skill>` block's `<path>`). Playbook commands write `<plugin root>`: put this path in its place before running one, since no shell fills it in.
 
 What should be true by tonight, this week, this month and this year. Goals are outcomes; the attention skill plans the tasks that reach them.
 

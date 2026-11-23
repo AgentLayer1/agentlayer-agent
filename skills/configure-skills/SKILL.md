@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), B
 
 # Configure Skills
 
-> **Plugin root.** Claude Code fills in `CLAUDE_PLUGIN_ROOT`; Codex leaves it unset. Under Codex, read every `CLAUDE_PLUGIN_ROOT` path in this skill and its playbooks as this skill's base directory two levels up (the `<skill>` block's `<path>`).
+> **Plugin root.** Claude Code fills in `CLAUDE_PLUGIN_ROOT`; Codex leaves it unset. Under Codex, read every `CLAUDE_PLUGIN_ROOT` path in this skill and its playbooks as the plugin root the session context names, or, in a session without one, as this skill's base directory two levels up (the `<skill>` block's `<path>`).
 
 This skill manages the agent's optional capabilities. Use it to:
 1. **Configure a pack** (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, Slack, or cmux) — writes API keys, registers MCP servers, sets up database connections, seeds coding rules, grants tool permissions
@@ -715,7 +715,7 @@ With a Client ID in hand (pasted, or from *Yes*), plant it in `$SETTINGS_FILE` `
 
 **(1) Grant** via §E: the seven read tools `mcp__plugin_agentlayer_agent__slack_whoami`, `..._slack_channels`, `..._slack_history`, `..._slack_batch_history`, `..._slack_thread`, `..._slack_search` and `..._slack_waiting`; `WebFetch(domain:slack.com)` (follows a pasted permalink, which without Slack cookies only ever reaches public pages); and `Skill(agentlayer:slack)`, so the skill runs on "slack pulse" without a confirm prompt.
 
-**(2) Auth, from a terminal outside the agent.** The OAuth callback binds a localhost port, which the sandbox blocks, so the operator runs it. Resolve the CLI path first (under Codex, `CLAUDE_PLUGIN_ROOT` is this skill's base directory two levels up):
+**(2) Auth, from a terminal outside the agent.** The OAuth callback binds a localhost port, which the sandbox blocks, so the operator runs it. Resolve the CLI path first (under Codex, `CLAUDE_PLUGIN_ROOT` is the plugin root the session context names):
 
 ```bash
 AGENT_CLI="${CLAUDE_PLUGIN_ROOT}/src/cli.ts"

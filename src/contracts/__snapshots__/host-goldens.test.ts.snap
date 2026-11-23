@@ -152,8 +152,8 @@ exports[`session start, per host and home state Codex, initialized home 1`] = `
     ○ history          0.0KB  (off · run $history)","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<!-- agent static context · harness: codex · hooks and MCP server run from: <ROOT> · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs $upgrade · delivered by the plugin's SessionStart hook because this host has no @-import -->
 
 <!-- agentlayer glossary for codex: the skills are written in Claude Code's terms; read each one as follows -->
-- \`\${CLAUDE_PLUGIN_ROOT}\` → two folders above the loaded skill's SKILL.md (its \`<skill>\` block's \`<path>\`): the plugin copy that skill came from
-- \`\${CLAUDE_SKILL_DIR}\` → the loaded skill's own folder, the one holding its SKILL.md
+- \`\${CLAUDE_PLUGIN_ROOT}\` → \`<ROOT>\`, the plugin checkout this session's hooks and MCP server run from, never the folder above a loaded skill: that is Codex's cached copy, which can be an older version
+- \`\${CLAUDE_SKILL_DIR}\` → \`<ROOT>/skills/<skill>\`, with the loaded skill's name for \`<skill>\`
 - \`mcp__plugin_agentlayer_agent__<tool>\` → \`mcp__agentlayer__<tool>\`, the same tool on this host's agentlayer MCP server
 - \`AskUserQuestion\` → in Plan mode, \`request_user_input\`, which returns the answer as its result, so carry on; otherwise, and for a multi-select question, ask in chat (the question, then numbered options with the recommended one first), then end your turn and wait for the answer. Not \`request_user_input_async\`: Codex dismisses its card when your turn's final message renders
 - \`Agent, a subagent\` → this host's subagent tool if it offers one (\`spawn_agent\`); otherwise do each part yourself, one after another, to the same output contract
@@ -212,8 +212,8 @@ exports[`session start, per host and home state Codex, pre-init home 1`] = `
 ===OPPI=== 🐙
 
 → Not set up yet, run $init to get started.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<!-- agentlayer glossary for codex: the skills are written in Claude Code's terms; read each one as follows -->
-- \`\${CLAUDE_PLUGIN_ROOT}\` → two folders above the loaded skill's SKILL.md (its \`<skill>\` block's \`<path>\`): the plugin copy that skill came from
-- \`\${CLAUDE_SKILL_DIR}\` → the loaded skill's own folder, the one holding its SKILL.md
+- \`\${CLAUDE_PLUGIN_ROOT}\` → \`<ROOT>\`, the plugin checkout this session's hooks and MCP server run from, never the folder above a loaded skill: that is Codex's cached copy, which can be an older version
+- \`\${CLAUDE_SKILL_DIR}\` → \`<ROOT>/skills/<skill>\`, with the loaded skill's name for \`<skill>\`
 - \`mcp__plugin_agentlayer_agent__<tool>\` → \`mcp__agentlayer__<tool>\`, the same tool on this host's agentlayer MCP server
 - \`AskUserQuestion\` → in Plan mode, \`request_user_input\`, which returns the answer as its result, so carry on; otherwise, and for a multi-select question, ask in chat (the question, then numbered options with the recommended one first), then end your turn and wait for the answer. Not \`request_user_input_async\`: Codex dismisses its card when your turn's final message renders
 - \`Agent, a subagent\` → this host's subagent tool if it offers one (\`spawn_agent\`); otherwise do each part yourself, one after another, to the same output contract
@@ -246,8 +246,8 @@ exports[`session start, per host and home state Codex, stranded home 1`] = `
 ===OPPI=== 🐙
 
 → <HOME> has a SOUL.md but no .state/version.json recording this agent — see the note below. Do NOT run init.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<!-- agentlayer glossary for codex: the skills are written in Claude Code's terms; read each one as follows -->
-- \`\${CLAUDE_PLUGIN_ROOT}\` → two folders above the loaded skill's SKILL.md (its \`<skill>\` block's \`<path>\`): the plugin copy that skill came from
-- \`\${CLAUDE_SKILL_DIR}\` → the loaded skill's own folder, the one holding its SKILL.md
+- \`\${CLAUDE_PLUGIN_ROOT}\` → \`<ROOT>\`, the plugin checkout this session's hooks and MCP server run from, never the folder above a loaded skill: that is Codex's cached copy, which can be an older version
+- \`\${CLAUDE_SKILL_DIR}\` → \`<ROOT>/skills/<skill>\`, with the loaded skill's name for \`<skill>\`
 - \`mcp__plugin_agentlayer_agent__<tool>\` → \`mcp__agentlayer__<tool>\`, the same tool on this host's agentlayer MCP server
 - \`AskUserQuestion\` → in Plan mode, \`request_user_input\`, which returns the answer as its result, so carry on; otherwise, and for a multi-select question, ask in chat (the question, then numbered options with the recommended one first), then end your turn and wait for the answer. Not \`request_user_input_async\`: Codex dismisses its card when your turn's final message renders
 - \`Agent, a subagent\` → this host's subagent tool if it offers one (\`spawn_agent\`); otherwise do each part yourself, one after another, to the same output contract
@@ -591,26 +591,6 @@ exports[`session capture, per host by hand, with --format overriding the default
 }
 `;
 
-exports[`session capture, per host a queued Codex capture keeps its format through the queue and is drained at Codex's session start 1`] = `
-"--- <DATE>.md
-# Session Log: <DATE>
-
-### Session (<TIME>) [0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6] · <DATE> · <HOME> · turns 1–4 · codex: gpt-test
-
-**User:** codex turn 1
-
-**Assistant:** codex turn 2
-
-**User:** codex turn 3
-
-**Assistant:** codex turn 4
-
-
----
-
-"
-`;
-
 exports[`session capture, per host a queued Claude Code capture is drained at Claude Code's session start 1`] = `
 "--- <DATE>.md
 # Session Log: <DATE>
@@ -624,6 +604,26 @@ exports[`session capture, per host a queued Claude Code capture is drained at Cl
 **User:** claude turn 3
 
 **Assistant:** claude turn 4
+
+
+---
+
+"
+`;
+
+exports[`session capture, per host a queued Codex capture keeps its format through the queue and is drained at Codex's session start 1`] = `
+"--- <DATE>.md
+# Session Log: <DATE>
+
+### Session (<TIME>) [0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6] · <DATE> · <HOME> · turns 1–4 · codex: gpt-test
+
+**User:** codex turn 1
+
+**Assistant:** codex turn 2
+
+**User:** codex turn 3
+
+**Assistant:** codex turn 4
 
 
 ---

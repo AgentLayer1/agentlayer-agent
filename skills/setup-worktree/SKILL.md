@@ -11,7 +11,7 @@ allowed-tools: mcp__plugin_agentlayer_agent__setup_worktree, mcp__plugin_agentla
 
 # setup-worktree — parallel checkout, ready to code
 
-> **Plugin root.** Claude Code fills in `CLAUDE_PLUGIN_ROOT`; Codex leaves it unset. Under Codex, read every `CLAUDE_PLUGIN_ROOT` path in this skill and its playbooks as this skill's base directory two levels up (the `<skill>` block's `<path>`).
+> **Plugin root.** Claude Code fills in `CLAUDE_PLUGIN_ROOT`; Codex leaves it unset. Under Codex, read every `CLAUDE_PLUGIN_ROOT` path in this skill and its playbooks as the plugin root the session context names, or, in a session without one, as this skill's base directory two levels up (the `<skill>` block's `<path>`).
 
 Stand up a [git worktree](https://git-scm.com/docs/git-worktree) so a second agent can work a
 branch in parallel without touching the main checkout's files. Pin the repo, then hand the create

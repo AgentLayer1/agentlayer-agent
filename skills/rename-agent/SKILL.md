@@ -54,7 +54,7 @@ through; a symlinked `IDENTITY.md` stops the run. Don't reproduce it with `sed`,
 
 ```bash
 HOME_DIR="${AGENT_HOME:-$PWD}"
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-<SKILL_BASE_DIR>/../..}"   # Claude Code fills the variable in; under Codex replace <SKILL_BASE_DIR> with this skill's base directory (the <skill> block's <path>) before running
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-<SKILL_BASE_DIR>/../..}"   # Claude Code fills the variable in; under Codex set PLUGIN_ROOT to the plugin root the session context names, or with none replace <SKILL_BASE_DIR> with this skill's base directory (the <skill> block's <path>)
 RENAME="$PLUGIN_ROOT/skills/rename-agent/scripts/rename-agent.ts"
 ```
 
