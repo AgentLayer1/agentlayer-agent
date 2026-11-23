@@ -90,6 +90,10 @@ The heartbeat sends notes as well as proposals, both land in one INBOX, and each
   from the checkout its hooks run from.
 - `upgrade` flags a Codex copy of the plugin older than the plugin (`stale-copy`), with the commands
   that refresh it.
+- Captures queued while another capture ran are written at the next session start on Claude Code
+  too, as on Codex.
+- `home_history` regenerates the Codex wiring only for a home wired for Codex (`.codex/hooks.json`),
+  not one that holds only a `.codex/config.toml`.
 - The tasks summary rides the folded Tasks card; the Discuss sparkles are yellow.
 
 ### Fixed
@@ -101,6 +105,9 @@ The heartbeat sends notes as well as proposals, both land in one INBOX, and each
   showed, under a drafts-only line the code adds, never on a prompt the scout wrote.
 - A killed or slow capture drain no longer loses or replays the queued captures.
 - Session start no longer prints git's "not a git repository" when the knowledge folder isn't one.
+- A per-session context that fails to build costs only that context: the banner says so and the
+  session starts with the rest, where Claude Code used to get an empty start. The setup banners are
+  plain text outside a terminal.
 - A Codex question no longer disappears: Codex asks in chat unless it is in Plan mode.
 - A team plugin's skills under Codex keep their own `${CLAUDE_PLUGIN_ROOT}`.
 - A helpdesk profile's `## Pulse` can post its private notes without asking, as a workflow can.
