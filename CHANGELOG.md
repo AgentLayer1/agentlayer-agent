@@ -66,15 +66,15 @@ The heartbeat sends notes as well as proposals, both land in one INBOX, and each
   comma-separated) narrows where else notes go.
 - A Notes walk in `configure-skills`, offered by init: drafts `knowledge/public.md` from the home,
   leaves out anything not already public, writes it on your yes, checks what the code keeps with
-  `notes brief`, then turns scouting on. The compile never writes that file.
+  `notes public`, then turns scouting on. The compile never writes that file.
 - `/heartbeat scout` runs one scouting pass now, in the heartbeat's tab.
 - The cmux sidebar's INBOX: proposals and notes in one section, scoped to the workspace's agent,
   folded by default, each card led by a Proposal or Note badge and reading what, why now, limits.
 - A Recent section on the sidebar's Agents tab: the home's 40 newest changed files from the last
   30 days, by day, with a search; a file this conversation writes shows within seconds. Finder
   buttons open the home's folders.
-- The CLI's `heartbeat` (`status`, `bind`, `release`, `off`), `messages decide`, `notes list` and
-  `notes brief`.
+- The CLI's `heartbeat` (`status`, `bind`, `release`, `off`), `messages decide`, `notes list`,
+  `notes brief` (hands out a scouting run) and `notes public` (what the code keeps of `public.md`).
 
 ### Changed
 - One `/message <start|later|dismiss> <id>` decides a proposal or a note; Skip is Dismiss everywhere.

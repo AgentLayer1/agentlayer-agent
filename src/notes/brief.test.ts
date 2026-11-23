@@ -143,6 +143,24 @@ test("a home brief carries the day, the room, what is taken, and the open worksp
   expect(text).not.toContain("operator's own rules");
 });
 
+test('notes public reports what the code keeps and leaves out, and hands out no run', () => {
+  const said = spyOn(console, 'log').mockImplementation(() => {});
+  const warned = spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    expect(runNotesCommand('public', []), 'no public file yet').toBe(1);
+    mkdirSync(dirname(FILES.PUBLIC), { recursive: true });
+    writeFileSync(FILES.PUBLIC, PUBLIC);
+    expect(runNotesCommand('public', [])).toBe(0);
+    const out = said.mock.calls.map(([line]) => String(line)).join('\n');
+    expect(out).toContain('Kept: 1 names, 1 sites, 1 facts, 0 topics, 1 place.');
+    expect(out).toContain('Left out: "Write to ada@acme.example" (an email address).');
+    expect(readNotesForTest().ranAt ?? {}).toEqual({});
+  } finally {
+    said.mockRestore();
+    warned.mockRestore();
+  }
+});
+
 test('with no public file only a home lens runs, and with one a web lens gets its brief', () => {
   expect(briefJson()).toMatchObject({ lens: 'brain', agent: 'home-lens' });
   writeNotes({

@@ -2,7 +2,7 @@ import { CLI_COMMAND } from '@/shared/naming';
 import { agentFor, canScout, homeBrief, readPublic, scoutBrief } from './brief';
 import { nowISO } from '@/shared/date';
 import { notesProblem, readNotes, writeNotes } from './ledger';
-import { FOLDERS } from '@/config';
+import { FILES, FOLDERS } from '@/config';
 import { flagOf } from '@/shared/utils';
 import { existsSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
@@ -12,7 +12,8 @@ import { DAILY_CAP, lensRecord, notesOn, pickLens, roomToday, sentLately } from 
 const USAGE = [
   `Usage: ${CLI_COMMAND} notes <command>`,
   `  list [--json]    Today's notes, the room left, and the notes of the last two weeks`,
-  `  brief [--json] [--workspaces=<json list>]   Hand out the next scouting run's lens (recorded as run), the agent it runs in, and that agent's whole task`
+  `  brief [--json] [--workspaces=<json list>]   Hand out the next scouting run's lens (recorded as run), the agent it runs in, and that agent's whole task`,
+  `  public           What the code keeps of knowledge/public.md, and each line it leaves out; hands out no run`
 ].join('\n');
 
 const list = (args: readonly string[]): number => {
@@ -75,6 +76,24 @@ const brief = (args: readonly string[]): number => {
   return 0;
 };
 
+// The Notes walk's check before scouting is turned on. It hands out no run, so setting Notes up spends no lens's turn.
+const publicCheck = (): number => {
+  const known = readPublic();
+  if (!known) {
+    console.error(`No ${relative(FOLDERS.HOME, FILES.PUBLIC)} yet.`);
+    return 1;
+  }
+  const kept = Object.entries(known.facts).map(([heading, items]) => `${items.length} ${heading}`);
+  console.log(
+    [
+      `Kept: ${kept.join(', ')}.`,
+      ...known.refused.map(({ line, reason }) => `Left out: "${line}" (${reason}).`),
+      ...(canScout(known.facts) ? [] : ['No name, site or topic is left for the scout to search with, so only the home lenses will run.'])
+    ].join('\n')
+  );
+  return 0;
+};
+
 /**
  * `notes …`: the CLI over the notes core. Returns the process exit code.
  */
@@ -84,6 +103,9 @@ export const runNotesCommand = (command: string | undefined, args: readonly stri
   }
   if (command === 'brief') {
     return brief(args);
+  }
+  if (command === 'public') {
+    return publicCheck();
   }
   console.error(USAGE);
   return 1;

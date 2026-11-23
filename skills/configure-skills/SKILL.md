@@ -1,7 +1,7 @@
 ---
 name: configure-skills
 description: Configure the agent's optional skill packs (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, Slack, cmux, Notes) or author a brand-new custom skill. The pack skills ship with the plugin and auto-load — this skill just wires up API keys, MCP server registrations, database connections, coding rules, and tool permissions. Custom-authored skills land in `<HOME>/.claude/skills/<name>/`. Invoked at the end of /agentlayer:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
-allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), Bash(cp *), Bash(ls *), Bash(rm *), Bash(rmdir *), Bash(bunx skills *), Bash(test *), Bash(head *), Bash(command -v *), Bash(bun -e *), Bash(sw_vers *), Bash(xcode-select -p), Bash(xcodebuild -version), Bash(xcrun -f *), Bash(xcrun mcp-server status), Bash(bun *src/cli.ts notes brief*)
+allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), Bash(cp *), Bash(ls *), Bash(rm *), Bash(rmdir *), Bash(bunx skills *), Bash(test *), Bash(head *), Bash(command -v *), Bash(bun -e *), Bash(sw_vers *), Bash(xcode-select -p), Bash(xcodebuild -version), Bash(xcrun -f *), Bash(xcrun mcp-server status), Bash(bun *src/cli.ts notes public*)
 ---
 
 # Configure Skills
@@ -813,10 +813,10 @@ Leave out everything that isn't already public: people's names (family, colleagu
 **(4) Check what the code keeps.**
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes brief
+bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes public
 ```
 
-The code refuses a bullet with an email address, a long number or a link that isn't plain https, and names each one on a "Left out of the public brief" line. Relay any, and fix them with the operator before going on.
+It prints how many bullets the code keeps under each heading, then a "Left out" line for each bullet it refuses: an email address, a long number, a secret, or a link that isn't plain https. Relay any, and fix them with the operator before going on. It hands out no scouting run, so checking spends no lens's turn.
 
 **(5) Turn scouting on.** Set `AGENT_NOTES_SCOUT` to `true` in `$SETTINGS_FILE`'s `env` (§D.2). The heartbeat reads it at its next tick; no restart. Turned on with no `public.md`, scouting runs the home lenses only.
 
