@@ -53,14 +53,17 @@ The heartbeat sends notes as well as proposals, both land in one INBOX, and each
 
 ### Added
 - Notes: short findings the agent checked, each with one next step, at most three a day. The
-  heartbeat scouts after each brain refresh, one lens a run: a home lens (the brain against itself,
-  what waits on you) reads the home and reaches no web; a web lens runs in a separate scout on
-  Sonnet that sees only `knowledge/public.md`, the facts you approved for web searches, and no
-  `CLAUDE.md`. No model can start the scout, and its searches can't carry the home's private names.
-  Scouting is off until you approve that list (`AGENT_NOTES_SCOUT=true`).
-- `note_add`, in the always-on core: refuses a source noted in the last two weeks or a note with no
-  public source. Every note lands in `reports/notes/`; with the heartbeat in a cmux tab it also posts
-  a desktop notification that opens that tab (a plain macOS notification without one).
+  heartbeat scouts after each brain refresh, one lens a run, each in an agent of its own so the
+  heartbeat's tab is never cleared for it: a home lens (the brain against itself, what waits on you)
+  reads the home and reaches no web; a web lens runs in a separate scout on Sonnet that sees only
+  `knowledge/public.md`, the facts you approved for web searches, and no `CLAUDE.md`. No model can
+  start either agent, and the scout's searches can't carry an email address or the home's private
+  folder names. Scouting is off until you approve that list (`AGENT_NOTES_SCOUT=true`).
+- `note_add`, in the always-on core: refuses past the day's cap, a source noted in the last two
+  weeks or one you dismissed, and a note with no source (a URL or a home file). Every note lands in
+  `reports/notes/`; with the heartbeat in a cmux tab it also posts a desktop notification that opens
+  that tab (a plain macOS notification without one). `AGENT_NOTES_DELIVER` (adapter names,
+  comma-separated) narrows where else notes go.
 - A Notes walk in `configure-skills`, offered by init: drafts `knowledge/public.md` from the home,
   leaves out anything not already public, writes it on your yes, checks what the code keeps with
   `notes brief`, then turns scouting on. The compile never writes that file.
@@ -70,7 +73,8 @@ The heartbeat sends notes as well as proposals, both land in one INBOX, and each
 - A Recent section on the sidebar's Agents tab: the home's 40 newest changed files from the last
   30 days, by day, with a search; a file this conversation writes shows within seconds. Finder
   buttons open the home's folders.
-- The CLI's `heartbeat` (`status`, `bind`, `release`, `off`), `messages decide` and `notes list`.
+- The CLI's `heartbeat` (`status`, `bind`, `release`, `off`), `messages decide`, `notes list` and
+  `notes brief`.
 
 ### Changed
 - One `/message <start|later|dismiss> <id>` decides a proposal or a note; Skip is Dismiss everywhere.
@@ -91,17 +95,22 @@ The heartbeat sends notes as well as proposals, both land in one INBOX, and each
 - A `/clear` no longer makes the tab forget it is the heartbeat.
 - The heartbeat's two clocks restart each other when the host ends one, so looks no longer stop
   overnight in a live session; a look that found nothing draws the quiet mark however its line ends.
-- A prompt that starts with `-` can never become a flag; a note's Start builds its prompt from what
-  the card showed, never from text the scout wrote.
+- A prompt that starts with `-` can never become a flag; a note's Start opens on what the card
+  showed, under a drafts-only line the code adds, never on a prompt the scout wrote.
 - A killed or slow capture drain no longer loses or replays the queued captures.
 - Session start no longer prints git's "not a git repository" when the knowledge folder isn't one.
 - A Codex question no longer disappears: Codex asks in chat unless it is in Plan mode.
 - A team plugin's skills under Codex keep their own `${CLAUDE_PLUGIN_ROOT}`.
 - A helpdesk profile's `## Pulse` can post its private notes without asking, as a workflow can.
+- Skills no longer look for an `extensions/` folder the home doesn't have when session start listed
+  none (an `ls` that failed on every heartbeat bind).
 
 ### Upgrade
 - `settings: mandatory` — add `mcp__plugin_agentlayer_agent__note_add` to `permissions.allow` in
   `settings.json`.
+- `manual: required` — If a session is your heartbeat, restart it and run `/heartbeat` there: the
+  heartbeat's new mod (notes, the INBOX's actions, the fixes above) runs only in a session started
+  on 1.0.10, and a restarted session is the heartbeat again only after `/heartbeat`.
 - `manual: optional` — Notes stay off until you approve the public facts the web scout may search
   with: run `/agentlayer:configure-skills` → Notes. Without it the heartbeat keeps proposing as
   before.
