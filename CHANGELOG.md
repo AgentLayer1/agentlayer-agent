@@ -107,6 +107,9 @@ The heartbeat sends notes as well as proposals, both land in one INBOX, and each
   showed, under a drafts-only line the code adds, never on a prompt the scout wrote.
 - A killed or slow capture drain no longer loses or replays the queued captures.
 - Session start no longer prints git's "not a git repository" when the knowledge folder isn't one.
+- A day with no report yet, or a home with no session in the last week, shows as empty (○) at session
+  start and on the dashboard instead of missing, so it no longer logs the session start as a warning.
+- `TASKS.md`'s Recently Closed keeps the tasks sync archived, so it no longer empties at every sync.
 - A per-session context that fails to build costs only that context: the banner says so and the
   session starts with the rest, where Claude Code used to get an empty start. The setup banners are
   plain text outside a terminal.
