@@ -14,7 +14,7 @@
  */
 import { FILES } from '@/config';
 import { hashBuffer, listRawFiles } from '@/knowledge/utils';
-import { parseEntryHeaders } from '@/knowledge/session-format';
+import { parseEntryHeaders, type ParsedEntryHeader } from '@/knowledge/session-format';
 import { log as baseLog } from '@/shared/log';
 import type { SessionIndex, SessionRecord, TranscriptTurn } from '@/knowledge/types';
 import { writeJsonAtomic } from '@/shared/utils';
@@ -118,6 +118,35 @@ export function recordCapture(index: SessionIndex, ev: CaptureEvent): SessionInd
     blocks: mergeBlock(base.blocks, ev.date, ev.from, ev.to)
   };
   return { schema: index.schema, sessions: { ...index.sessions, [ev.sessionId]: record } };
+}
+
+/**
+ * The index with a session's cursor moved up to the last turn its day-file blocks already hold, so a capture that
+ * stopped after its append and before its index save is not written a second time.
+ */
+export function healFromDayFiles(
+  index: SessionIndex,
+  sessionId: string,
+  turns: TranscriptTurn[],
+  headers: ParsedEntryHeader[],
+  briefingStub: string
+): SessionIndex {
+  const last = headers
+    .filter((header) => header.sessionId === sessionId)
+    .reduce<ParsedEntryHeader | null>((best, header) => (best && best.to >= header.to ? best : header), null);
+  const cursor = index.sessions[sessionId]?.captured_turns ?? 0;
+  if (!last || last.to <= cursor || last.to > turns.length) {
+    return index;
+  }
+  return recordCapture(index, {
+    sessionId,
+    date: last.date,
+    cwd: last.source,
+    from: cursor + 1,
+    to: last.to,
+    lastTurnFp: fingerprintTurn(turns[last.to - 1]),
+    briefingStub
+  });
 }
 
 // ── I/O ──────────────────────────────────────────────────────────────

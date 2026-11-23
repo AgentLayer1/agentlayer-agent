@@ -13,17 +13,23 @@
  */
 import { FOLDERS, KNOWLEDGE, PLUGIN_NAME, isInitialized } from '@/config';
 import type { HostName } from '@/hosts/contract';
-import { ENTRY_SEPARATOR, formatEntryHeader } from '@/knowledge/session-format';
+import {
+  ENTRY_SEPARATOR,
+  formatEntryHeader,
+  parseEntryHeaders,
+  type ParsedEntryHeader
+} from '@/knowledge/session-format';
 import {
   adoptLegacyKey,
   diffTurns,
   fingerprintTurn,
+  healFromDayFiles,
   loadIndex,
   recordCapture,
   saveIndex
 } from '@/knowledge/session-index';
 import { redactSecrets } from '@/knowledge/utils';
-import { nowTime, todayDate } from '@/shared/date';
+import { nowTime, shiftDate, todayDate } from '@/shared/date';
 import { log as baseLog } from '@/shared/log';
 import type { TranscriptTurn } from '@/knowledge/types';
 import { existsSync, readFileSync } from 'node:fs';
@@ -380,6 +386,20 @@ export async function drainDeferredCaptures(): Promise<void> {
   }
 }
 
+/**
+ * Block headers in today's and yesterday's day files, where a capture that stopped before its index save left its
+ * block.
+ */
+async function recentHeaders(): Promise<ParsedEntryHeader[]> {
+  const today = todayDate();
+  const texts = await Promise.all(
+    [shiftDate(today, -1), today].map((day) =>
+      readFile(resolve(FOLDERS.SESSIONS, `${day}.md`), 'utf-8').catch(() => '')
+    )
+  );
+  return texts.flatMap(parseEntryHeaders);
+}
+
 async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessionResult> {
   const { mode } = opts;
   const format = opts.format ?? 'claude';
@@ -387,12 +407,18 @@ async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessio
   const cfg = MODES[mode];
   {
     const loaded = await loadIndex();
-    const index = adoptLegacyKey(loaded, opts.sessionId);
+    const adopted = adoptLegacyKey(loaded, opts.sessionId);
+    const index = healFromDayFiles(adopted, opts.sessionId, turns, await recentHeaders(), briefingStub(turns));
+    if (index !== adopted) {
+      log.warn(
+        `(${mode}) [${opts.sessionId}] the index was behind the day file; cursor moved to turn ${index.sessions[opts.sessionId]?.captured_turns}`
+      );
+    }
     const prior = index.sessions[opts.sessionId] ?? null;
     const diff = diffTurns(turns, prior);
 
     if (diff.newTurns.length === 0) {
-      // An adopted legacy key is still worth keeping.
+      // An adopted legacy key or a healed cursor is still worth keeping.
       if (index !== loaded) await saveIndex(index);
       log.info(`skip (${mode}) — no new turns since last capture (cursor ${prior?.captured_turns ?? 0})`);
       return { saved: false, reason: 'no-new-turns', turns: 0 };

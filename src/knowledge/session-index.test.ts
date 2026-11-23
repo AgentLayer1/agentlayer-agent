@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { formatEntryHeader, parseEntryHeaders } from '@/knowledge/session-format';
-import { adoptLegacyKey, diffTurns, fingerprintTurn, recordCapture } from '@/knowledge/session-index';
+import { adoptLegacyKey, diffTurns, fingerprintTurn, healFromDayFiles, recordCapture } from '@/knowledge/session-index';
 import type { SessionIndex, SessionRecord, TranscriptTurn } from '@/knowledge/types';
 
 const turn = (role: 'user' | 'assistant', text: string): TranscriptTurn => ({ role, text });
@@ -268,5 +268,50 @@ describe('header format ↔ parse round-trip', () => {
   test('legacy headers without a turn range are skipped', () => {
     const legacy = '### Session (09:14) [abc12345] · ~/Kevin';
     expect(parseEntryHeaders(legacy)).toHaveLength(0);
+  });
+});
+
+describe('healFromDayFiles', () => {
+  const sessionId = '0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6';
+  const header = (from: number, to: number, id = sessionId) => ({
+    heading: 'Session',
+    sessionId: id,
+    date: '2026-06-02',
+    source: '~/Kevin',
+    from,
+    to
+  });
+  const indexAt = (turns: TranscriptTurn[], captured: number): SessionIndex => ({
+    schema: 1,
+    sessions: { [sessionId]: recordFor(turns, captured) }
+  });
+
+  test('moves a cursor the day file is ahead of, so the written turns are not offered again', () => {
+    const turns = transcript(3);
+    const healed = healFromDayFiles(indexAt(turns, 2), sessionId, turns, [header(1, 2), header(3, 3)], 'stub');
+    expect(healed.sessions[sessionId]).toMatchObject({ captured_turns: 3, last_turn_fp: fingerprintTurn(turns[2]) });
+    expect(diffTurns(turns, healed.sessions[sessionId] ?? null).newTurns).toHaveLength(0);
+  });
+
+  test('creates the record when the first capture wrote its block and never saved the index', () => {
+    const turns = transcript(2);
+    const healed = healFromDayFiles({ schema: 1, sessions: {} }, sessionId, turns, [header(1, 2)], 'stub');
+    expect(healed.sessions[sessionId]).toMatchObject({ captured_turns: 2, briefing: 'stub', first_seen: '2026-06-02' });
+  });
+
+  test('leaves the index alone when it already covers the day file, or the blocks are another session', () => {
+    const turns = transcript(3);
+    const current = indexAt(turns, 3);
+    expect(healFromDayFiles(current, sessionId, turns, [header(1, 3)], 'stub')).toBe(current);
+    const behind = indexAt(turns, 2);
+    expect(
+      healFromDayFiles(behind, sessionId, turns, [header(3, 3, 'ffffffff-0000-4000-8000-000000000000')], 'stub')
+    ).toBe(behind);
+  });
+
+  test('ignores a block past the end of the transcript, which a rewritten transcript cannot vouch for', () => {
+    const turns = transcript(2);
+    const behind = indexAt(turns, 1);
+    expect(healFromDayFiles(behind, sessionId, turns, [header(1, 5)], 'stub')).toBe(behind);
   });
 });
