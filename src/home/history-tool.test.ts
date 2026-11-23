@@ -57,6 +57,8 @@ describe('home_history tool', () => {
     writeFileSync(resolve(HOME, '.claude', 'settings.local.json'), JSON.stringify({ env: { AGENT_HOME_GIT_DIR: GIT_DIR } }));
     mkdirSync(resolve(HOME, '.codex'), { recursive: true });
     writeFileSync(resolve(HOME, '.codex', 'config.toml'), '');
+    expect(await homeHistory().handler({ action: 'status' })).toMatchObject({ codexWired: false });
+    writeFileSync(resolve(HOME, '.codex', 'hooks.json'), '{}');
     const regranted = await setup();
     expect(regranted).toMatchObject({ settingsChanged: true, codexWired: true, codex: { ok: true } });
     expect(readFileSync(resolve(HOME, '.codex', 'config.toml'), 'utf-8')).toContain(GIT_DIR);

@@ -9,10 +9,10 @@
  */
 import { FOLDERS, PLUGIN_VERSION, TIMEZONE, isInitialized } from '@/config';
 import { historyStatus, restorePointer, setupHistory } from '@/home/history';
+import { codexHost } from '@/hosts/codex';
 import { runGroup } from '@/shared/process-group';
 import { defineTool, type ToolDef } from '@/shared/tool-def';
-import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { z } from 'zod';
 
 const SCRIPT_TIMEOUT_MS = 60_000;
@@ -57,8 +57,6 @@ const runCodexSetup = async (): Promise<SetupResult> => {
   };
 };
 
-const codexWired = (): boolean => existsSync(join(FOLDERS.HOME, '.codex', 'config.toml'));
-
 export const tools: ToolDef[] = [
   defineTool({
     name: 'ping',
@@ -99,12 +97,12 @@ export const tools: ToolDef[] = [
     handler: async ({ action, name, startOver }) => {
       if (action === 'setup') {
         const result = setupHistory(FOLDERS.HOME, { name, startOver });
-        const wired = codexWired();
+        const wired = codexHost.usedBy(FOLDERS.HOME);
         // Codex derives its writable roots from the grants setup just wrote, so a stale profile can't reach the history folder.
         return { ...result, codexWired: wired, ...(wired && result.settingsChanged ? { codex: await runCodexSetup() } : {}) };
       }
       const restored = restorePointer(FOLDERS.HOME);
-      return { ...historyStatus(FOLDERS.HOME), restored, codexWired: codexWired() };
+      return { ...historyStatus(FOLDERS.HOME), restored, codexWired: codexHost.usedBy(FOLDERS.HOME) };
     }
   }),
   defineTool({
