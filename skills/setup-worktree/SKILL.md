@@ -179,7 +179,7 @@ Flow:
      can't be removed and they need to commit (or stash/discard) first. `force` does **not** override
      this — never pass it to bypass uncommitted work. The `uncommitted` array lists the dirty paths.
    - **`blocked-unpushed`** — everything's committed but the branch has `unpushed` commits on no
-     remote. First check the branch's PR (see **PR status** below): if it's **merged**, those commits
+     remote and no local base branch (a branch already fast-forwarded into local `main` passes). First check the branch's PR (see **PR status** below): if it's **merged**, those commits
      are the merged work (typical after a squash-merge with the remote branch auto-deleted) — tell the
      operator "PR #N was merged, safe to remove" and proceed with `force: true`, don't alarm them about
      lost work. Otherwise **warn and ask**: "That branch has N commit(s) not pushed anywhere — remove

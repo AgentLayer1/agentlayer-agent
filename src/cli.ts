@@ -177,8 +177,8 @@ Worktree commands:
                                     unpushed / pushed-unmerged / missing / base / main). Read-only — fine anywhere.
   worktree remove <worktreePath> [--delete-branch] [--force] [--dry-run]
                                     Safely remove a worktree: refuses on a dev/develop/main/master worktree and on
-                                    uncommitted changes; needs --force when the branch has committed-but-unpushed
-                                    commits; runs the repo's \`clean\` script first.
+                                    uncommitted changes; needs --force when the branch has commits on no remote
+                                    and no local base branch; runs the repo's \`clean\` script first.
                                     Keeps the branch unless --delete-branch. --dry-run reports the status without
                                     touching anything. Same sandbox note — use remove_worktree there.
 

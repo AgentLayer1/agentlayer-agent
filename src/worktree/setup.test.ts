@@ -231,3 +231,62 @@ describe('setupWorktree', () => {
     }
   );
 });
+
+describe('removeWorktree', () => {
+  let root: string;
+  let repo: string;
+
+  const run = (cwd: string, args: string[]) =>
+    execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+
+  const branchWith = (name: string) => {
+    const path = join(root, `repo-${name}`);
+    run(repo, ['worktree', 'add', path, '-b', name]);
+    writeFileSync(join(path, `${name}.txt`), `${name}\n`);
+    run(path, ['add', '.']);
+    run(path, ['commit', '-m', name]);
+    return path;
+  };
+
+  beforeAll(() => {
+    root = mkdtempSync(join(tmpdir(), 'agentlayer-worktree-remove-'));
+    const origin = join(root, 'origin.git');
+    execFileSync('git', ['init', '--bare', origin], { encoding: 'utf8' });
+    repo = join(root, 'repo');
+    execFileSync('git', ['init', '-b', 'main', repo], { encoding: 'utf8' });
+    run(repo, ['config', 'user.email', 'test@example.com']);
+    run(repo, ['config', 'user.name', 'Test']);
+    run(repo, ['config', 'commit.gpgsign', 'false']);
+    writeFileSync(join(repo, 'README.md'), 'hello\n');
+    run(repo, ['add', '.']);
+    run(repo, ['commit', '-m', 'initial']);
+    run(repo, ['remote', 'add', 'origin', origin]);
+    run(repo, ['push', '-u', 'origin', 'main']);
+  });
+
+  afterAll(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  test('a branch fast-forwarded into local main goes without force, though main is unpushed', async () => {
+    const path = branchWith('landed');
+    run(repo, ['merge', '--ff-only', 'landed']);
+    expect(await removeWorktree({ worktreePath: path, dryRun: true })).toMatchObject({
+      status: 'removable',
+      unpushed: 0
+    });
+    const result = await removeWorktree({ worktreePath: path, deleteBranch: true });
+    expect(result).toMatchObject({ status: 'removed', branchDeleted: true });
+    expect(existsSync(path)).toBe(false);
+    expect(run(repo, ['branch', '--list', 'landed'])).toBe('');
+  });
+
+  test('a commit on no remote and no local base branch still needs force', async () => {
+    const path = branchWith('stranded');
+    expect(await removeWorktree({ worktreePath: path, deleteBranch: true })).toMatchObject({
+      status: 'blocked-unpushed',
+      unpushed: 1
+    });
+    expect(existsSync(path)).toBe(true);
+  });
+});

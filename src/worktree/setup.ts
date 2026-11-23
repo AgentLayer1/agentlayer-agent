@@ -8,7 +8,7 @@
  * Read-only against the source checkout — it copies, never deletes or overwrites there.
  *
  * `removeWorktree` tears one down safely: it refuses outright on a base branch (dev/develop/main/
- * master) or uncommitted changes, gates committed-but-unpushed removal behind an explicit `force`,
+ * master) or uncommitted changes, gates work on no remote and no local base branch behind an explicit `force`,
  * runs the repo's `clean` script when present, then `git worktree remove`s it. The branch is left
  * alone unless `deleteBranch` is set.
  * It never passes `--force` — a git refusal (dirty/locked) fails loud. On native Windows it first
@@ -364,7 +364,7 @@ export interface RemoveWorktreeOptions {
   worktreePath: string;
   /** Also delete the worktree's branch after removal. Off by default — the branch survives unless asked. */
   deleteBranch?: boolean;
-  /** Proceed when the branch has committed-but-unpushed work. Never overrides uncommitted changes. */
+  /** Proceed when the branch has commits on no remote and no local base branch. Never overrides uncommitted changes. */
   force?: boolean;
   /** Report what would happen (the `status`) WITHOUT cleaning or removing anything. The pre-check the
    *  skill runs to decide whether to unwire the VS Code workspace before committing to the removal. */
@@ -389,7 +389,7 @@ export interface RemoveWorktreeResult {
   branchDeleted: boolean;
   /** Porcelain status lines when blocked on uncommitted changes; empty otherwise. */
   uncommitted: string[];
-  /** Commits reachable from HEAD but on no remote — the unpushed count. */
+  /** Commits reachable from HEAD on no remote and no local base branch: the work removal could lose. */
   unpushed: number;
   /** The clean script that ran (e.g. `pnpm run clean`), or null when none was present. */
   cleaned: string | null;
@@ -400,10 +400,10 @@ export interface RemoveWorktreeResult {
 /** Dirty-tree porcelain lines — the single definition of "dirty" for both the audit and the removal gate. */
 const dirtyStatus = (cwd: string): string[] => git(cwd, ['status', '--porcelain']).split('\n').filter(Boolean);
 
-/** Count commits reachable from `ref` that no remote-tracking branch has — the unpushed work. */
-const unpushedCount = (cwd: string, ref = 'HEAD'): number => {
+/** Count commits reachable from `ref` that no remote-tracking branch has, nor any of `kept`. */
+const unpushedCount = (cwd: string, ref = 'HEAD', kept: readonly string[] = []): number => {
   try {
-    return Number(git(cwd, ['rev-list', '--count', ref, '--not', '--remotes'])) || 0;
+    return Number(git(cwd, ['rev-list', '--count', ref, '--not', '--remotes', ...kept])) || 0;
   } catch {
     return 0;
   }
@@ -527,14 +527,18 @@ export const removeWorktree = async ({
   }
 
   const uncommitted = dirtyStatus(resolvedWorktree);
-  const unpushed = unpushedCount(resolvedWorktree);
+  // Work already on a local base branch survives the removal even before it's pushed.
+  const localBases = BASE_BRANCH_PREFERENCE.map((name) => `refs/heads/${name}`).filter((ref) =>
+    refExists(mainCheckout, ref)
+  );
+  const unpushed = unpushedCount(resolvedWorktree, 'HEAD', localBases);
   const base = { worktreePath: resolvedWorktree, branch, mainCheckout, branchDeleted: false, uncommitted, unpushed };
 
   // Uncommitted work is a hard stop — `force` never overrides it.
   if (uncommitted.length > 0) {
     return { ...base, status: 'blocked-uncommitted', removed: false, cleaned: null, steps: [] };
   }
-  // Committed-but-unpushed work needs an explicit go-ahead.
+  // Work on no remote and no local base branch needs an explicit go-ahead.
   if (unpushed > 0 && !force) {
     return { ...base, status: 'blocked-unpushed', removed: false, cleaned: null, steps: [] };
   }

@@ -59,7 +59,7 @@ export const tools: ToolDef[] = [
   defineTool({
     name: 'remove_worktree',
     description:
-      "Tear down a git worktree safely, running outside the Bash sandbox so `git worktree remove` can write the main repo's .git/config. Throws on a worktree checked out on dev, develop, main or master — those are never removed. Refuses outright if the worktree has UNCOMMITTED changes (returns status `blocked-uncommitted` — tell the operator to commit first; `force` does NOT override this). If the branch has committed-but-UNPUSHED work it returns `blocked-unpushed` unless `force` is set — surface that and ask the operator to confirm before re-calling with force. Pass `dryRun: true` first as a pre-check: it returns the same statuses (`removable` when the gates pass) WITHOUT touching anything, so the skill can unwire the VS Code workspace only once removal is guaranteed to proceed. Never passes `git worktree remove --force` — if git refuses (dirty/locked) or a leftover can't be deleted, it returns `status: 'failed'` (nothing force-removed). Runs the repo's `clean` script (e.g. `pnpm run clean`) before removal when present. Leaves the branch intact unless `deleteBranch` is set. Returns { status, removed, branch, branchDeleted, uncommitted, unpushed, cleaned, steps }.",
+      "Tear down a git worktree safely, running outside the Bash sandbox so `git worktree remove` can write the main repo's .git/config. Throws on a worktree checked out on dev, develop, main or master — those are never removed. Refuses outright if the worktree has UNCOMMITTED changes (returns status `blocked-uncommitted` — tell the operator to commit first; `force` does NOT override this). If the branch has commits on no remote and no local base branch (dev, develop, main, master) it returns `blocked-unpushed` unless `force` is set — surface that and ask the operator to confirm before re-calling with force. A branch already fast-forwarded or merged into a local base branch is removable without force. Pass `dryRun: true` first as a pre-check: it returns the same statuses (`removable` when the gates pass) WITHOUT touching anything, so the skill can unwire the VS Code workspace only once removal is guaranteed to proceed. Never passes `git worktree remove --force` — if git refuses (dirty/locked) or a leftover can't be deleted, it returns `status: 'failed'` (nothing force-removed). Runs the repo's `clean` script (e.g. `pnpm run clean`) before removal when present. Leaves the branch intact unless `deleteBranch` is set. Returns { status, removed, branch, branchDeleted, uncommitted, unpushed, cleaned, steps }.",
     inputSchema: {
       worktreePath: z
         .string()
@@ -74,7 +74,7 @@ export const tools: ToolDef[] = [
         .boolean()
         .optional()
         .describe(
-          'Proceed when the branch has committed-but-unpushed commits (the operator confirmed "yes, remove it anyway"). Never overrides uncommitted changes.'
+          'Proceed when the branch has commits on no remote and no local base branch (the operator confirmed "yes, remove it anyway"). Never overrides uncommitted changes.'
         ),
       dryRun: z
         .boolean()
