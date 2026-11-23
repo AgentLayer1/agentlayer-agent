@@ -193,6 +193,8 @@ Sidebar commands for cmux (this CLI's, not the cmux app's own; run them from a t
 
 Notes commands:
   notes list [--json]               Today's notes, the room left, and each lens's record
+  notes brief [--json] [--workspaces=<json list>]
+                                    Hand out the next scouting run's lens (recorded as run), the agent it runs in, and that agent's whole task; names each line of knowledge/public.md it leaves out
   messages decide <start|later|dismiss> <id> [--workspace=<id>]
                                     Open a session on a proposal or a note (in that cmux workspace when named), put it off until morning, or drop it
 
