@@ -7,12 +7,13 @@
  *
  * Usage: registration-check.ts --home <dir> [--plugin-root <dir>] [--claude-dir <dir>] [--codex-dir <dir>]
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { codexHost } from '../../../src/hosts/codex';
 import type { HostName } from '../../../src/hosts/contract';
 import { PLUGIN_SOURCE_ROOT } from '../../../src/shared/naming';
+import { listDirs } from '../../../src/shared/text';
 
 /** Where consumers install from, and the marketplace repos that name replaced. */
 const PUBLISHED = {
@@ -70,8 +71,9 @@ const catalogName = (dir: string): string | undefined => {
 
 const manifest = readJson(resolve(pluginRoot, '.claude-plugin', 'plugin.json'));
 const plugin = String(manifest?.name ?? '');
-if (!plugin) {
-  throw new Error(`${pluginRoot} has no .claude-plugin/plugin.json`);
+const version = String(manifest?.version ?? '');
+if (!plugin || !version) {
+  throw new Error(`${pluginRoot} has no .claude-plugin/plugin.json naming the plugin and its version`);
 }
 const devName = catalogName(pluginRoot);
 const findings: Finding[] = [];
@@ -179,8 +181,8 @@ if (existsSync(codexConfigPath)) {
     });
   }
 }
-const codexIds = Object.keys(config.plugins ?? {}).filter((id) => id.startsWith(`${plugin}@`));
 const codexWired = codexHost.usedBy(homeDir);
+const codexIds = codexWired ? Object.keys(config.plugins ?? {}).filter((id) => id.startsWith(`${plugin}@`)) : [];
 if (codexWired && codexIds.length === 0) {
   const [source, catalog] =
     devName && existsSync(resolve(pluginRoot, '.git')) ? [pluginRoot, devName] : [PUBLISHED.repo, PUBLISHED.name];
@@ -192,27 +194,28 @@ if (codexWired && codexIds.length === 0) {
   });
 }
 // Codex reads the skills from a copy it makes at install, one folder per version, and does not refresh it when the plugin updates.
-const version = String(manifest?.version ?? '');
-const cachedVersions = (marketplace: string): string[] => {
-  const dir = resolve(codexDir, 'plugins', 'cache', marketplace, plugin);
-  return existsSync(dir) ? readdirSync(dir) : [];
-};
-for (const id of codexWired && version ? codexIds : []) {
-  const marketplace = id.slice(plugin.length + 1);
-  const cached = cachedVersions(marketplace);
-  if (cached.length === 0 || cached.includes(version)) continue;
-  const fromGit = config.marketplaces?.[marketplace]?.source_type === 'git';
-  findings.push({
-    host: 'codex',
-    kind: 'stale-copy',
-    detail: `Codex's copy of ${id} is ${cached.join(', ')}, and this plugin is ${version}, so Codex sessions here read older skills than the code they run.`,
-    commands: [
-      ...(fromGit ? [`codex plugin marketplace upgrade ${marketplace}`] : []),
-      `codex plugin remove ${id}`,
-      `codex plugin add ${id}`
-    ]
-  });
-}
+findings.push(
+  ...codexIds.flatMap((id): Finding[] => {
+    const marketplace = id.slice(plugin.length + 1);
+    const cached = listDirs(resolve(codexDir, 'plugins', 'cache', marketplace, plugin));
+    if (cached.length === 0 || cached.includes(version)) {
+      return [];
+    }
+    const fromGit = config.marketplaces?.[marketplace]?.source_type === 'git';
+    return [
+      {
+        host: 'codex',
+        kind: 'stale-copy',
+        detail: `Codex's copy of ${id} is ${cached.join(', ')}, and this plugin is ${version}, so Codex sessions here read older skills than the code they run.`,
+        commands: [
+          ...(fromGit ? [`codex plugin marketplace upgrade ${marketplace}`] : []),
+          `codex plugin remove ${id}`,
+          `codex plugin add ${id}`
+        ]
+      }
+    ];
+  })
+);
 
 const ok = findings.length === 0 && Object.keys(settings).length === 0;
 process.stdout.write(`${JSON.stringify({ plugin, ok, findings, settings, warnings }, null, 2)}\n`);

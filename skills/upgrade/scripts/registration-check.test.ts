@@ -225,10 +225,12 @@ describe('registration-check', () => {
     write('home/.codex/hooks.json', { hooks: {} });
     write('codex/config.toml', '[plugins."agent-scout@agentdev-scout"]\nenabled = true\n');
     mkdirSync(join(root, 'codex', 'plugins', 'cache', 'agentdev-scout', 'agent-scout', '0.3.0'), { recursive: true });
+    write('codex/plugins/cache/agentdev-scout/agent-scout/.DS_Store', '');
     expect(run().findings).toEqual([
       expect.objectContaining({
         host: 'codex',
         kind: 'stale-copy',
+        detail: expect.stringContaining('copy of agent-scout@agentdev-scout is 0.3.0, and this plugin is 0.4.1'),
         commands: ['codex plugin remove agent-scout@agentdev-scout', 'codex plugin add agent-scout@agentdev-scout']
       })
     ]);
