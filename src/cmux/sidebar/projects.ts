@@ -2,6 +2,7 @@ import { searchField } from 'cmux-custom-manager/components';
 import type { HomeEntry, PinItem, ProjectCard, TaskItem } from './data';
 import { BUCKETS, dueBucket, type DueBucket } from '../../work/due';
 import { dueLabel } from './due';
+import { goalsBody } from './goals';
 import {
   ACCENT,
   chevron,
@@ -17,8 +18,7 @@ import {
   progressBar,
   PURPLE,
   RED,
-  folderButton,
-  toolIcon,
+  tabIcon,
   when
 } from './style';
 import { count, taskRow, today } from './tasks';
@@ -237,12 +237,21 @@ const stateGroup = (
   ]);
 };
 
-/**
- * The scoped agent's work: a search over its tasks, every task at a glance, then its projects by state.
- */
+const projectsList = (entry: HomeEntry, listed: readonly Listed[], tasksOf: ReadonlyMap<string, TaskItem[]>) =>
+  VStack({ spacing: 10 }, [
+    tasksCard(entry, listed),
+    ...STATES.flatMap(({ title, holds }) => {
+      const projects = entry.projects.filter(holds);
+      return projects.length ? [stateGroup(entry, title, projects, tasksOf)] : [];
+    }),
+    ...(entry.projects.length ? [] : [note('No projects yet.')])
+  ]);
+
+type Shelf = 'projects' | 'goals';
+
 export const projectsBody = (entry: HomeEntry) => {
-  const { dashboard, roadmap } = entry;
   const [query, setQuery] = signal('');
+  const [shelf, setShelf] = signal<Shelf>(DATA.open?.goals ? 'goals' : 'projects');
   const listed = listedTasks(entry);
   const tasksOf = entry.tasks.reduce(
     (byProject, task) => byProject.set(task.project, [...(byProject.get(task.project) ?? []), task]),
@@ -251,12 +260,26 @@ export const projectsBody = (entry: HomeEntry) => {
   const found = computed(() => listed.filter(({ task }) => matchesQuery(query(), task.title, task.id)));
   const searching = () => query().trim() !== '';
   return VStack({ spacing: 10 }, [
-    // The dashboard and roadmap ride the search row, which leaves the section chips the full width.
     HStack({ spacing: 4 }, [
       searchField('Search tasks…', setQuery),
-      toolIcon('square.grid.3x3', 'Dashboard', () => cmux('browser.tab.new', { url: `${dashboard}#today` })),
-      ...(roadmap ? [toolIcon('map', 'Roadmap', () => cmux('browser.tab.new', { url: roadmap }))] : []),
-      ...folderButton(entry.folders?.projects)
+      HStack({ spacing: 2 }, [
+        tabIcon(
+          'checklist',
+          'Projects',
+          () => shelf() === 'projects',
+          () => setShelf('projects')
+        ),
+        tabIcon(
+          'target',
+          'Goals',
+          () => shelf() === 'goals',
+          () => setShelf('goals')
+        )
+      ])
+        .padding(2)
+        .background('#7f7f7f1f')
+        .cornerRadius(8)
+        .fixedSize()
     ]),
     when(searching, () =>
       VStack({ spacing: 1 }, [
@@ -271,17 +294,9 @@ export const projectsBody = (entry: HomeEntry) => {
           .paddingHorizontal(4)
       ])
     ),
-    when(
-      () => !searching(),
-      () =>
-        VStack({ spacing: 10 }, [
-          tasksCard(entry, listed),
-          ...STATES.flatMap(({ title, holds }) => {
-            const projects = entry.projects.filter(holds);
-            return projects.length ? [stateGroup(entry, title, projects, tasksOf)] : [];
-          }),
-          ...(entry.projects.length ? [] : [note('No projects yet.')])
-        ])
+    // Keyed by shelf, so leaving one disposes it and coming back builds it fresh.
+    ForEach({ items: () => (searching() ? [] : [shelf()]), key: (name) => name }, (name) =>
+      name() === 'goals' ? goalsBody(entry) : projectsList(entry, listed, tasksOf)
     )
   ]);
 };

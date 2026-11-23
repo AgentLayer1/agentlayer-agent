@@ -1,7 +1,7 @@
 import { searchField } from 'cmux-custom-manager/components';
 import type { HomeEntry, RecentItem } from './data';
 import { byDay, dayCards, datedRow } from './days';
-import { folderButton, note, pill } from './style';
+import { note, pill } from './style';
 import { matchesQuery, projectColors } from './view';
 
 /**
@@ -21,7 +21,7 @@ export const recentBody = (entry: HomeEntry) => {
   );
   const searching = () => query().trim() !== '';
   return VStack({ spacing: 10 }, [
-    HStack({ spacing: 4 }, [searchField('Search recent files…', setQuery), ...folderButton(entry.folders?.recent)]),
+    searchField('Search recent files…', setQuery),
     VStack({ spacing: 6 }, [dayCards(days, searching, row)]),
     Text(() =>
       days().length ? '' : searching() ? 'No matching files.' : 'Nothing changed in the last 30 days.'

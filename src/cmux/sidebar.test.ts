@@ -20,7 +20,7 @@ const installed = (homes: Record<string, HomeEntry> = { [NOVA_HOME]: NOVA_ENTRY 
 
 const onProjects = (homes?: Record<string, HomeEntry>) => {
   const sidebar = mount(installed(homes), CMUX_DATA);
-  sidebar.tap('Agents');
+  sidebar.tap('Projects');
   return sidebar;
 };
 
@@ -28,10 +28,23 @@ test('sidebar/dist/sidebar.js is built from the current source', async () => {
   expect(await bundleSidebar(), 'dist is stale: run `bun run cmux:build`').toBe(readFileSync(DIST, 'utf8'));
 });
 
-run('it opens on the Manager, with its tabs beside the Manager’s title', () => {
+run('it opens on Sessions, its four tabs under the Manager’s title and tallies', () => {
   const texts = mount(installed(), CMUX_DATA).visibleTexts();
   expect(texts[0]).toBe('Manager');
+  const tabs = ['Sessions', 'Projects', 'Reports', 'Recent'];
+  expect(texts.filter((text) => tabs.includes(text))).toEqual(tabs);
+  expect(texts).not.toContain('Agents');
   expect(texts).toEqual(expect.arrayContaining(['Support sweep', 'Fix the checkout total']));
+});
+
+run('the Manager’s title and tallies stay on every tab', () => {
+  const sidebar = mount(installed(), CMUX_DATA);
+  const head = sidebar.visibleTexts().slice(0, sidebar.visibleTexts().indexOf('Sessions'));
+  ['Projects', 'Reports', 'Recent'].forEach((tab) => {
+    sidebar.tap(tab);
+    const texts = sidebar.visibleTexts();
+    expect(texts.slice(0, texts.indexOf('Sessions')), tab).toEqual(head);
+  });
 });
 
 run('the Manager leaves out the heartbeat’s own tab until it needs you', () => {
@@ -294,8 +307,8 @@ run('an entry from an older plugin adds nothing to INBOX', () => {
   expect(texts).toContain('NEEDS YOU');
 });
 
-run('Projects opens the dashboard and the roadmap as full tabs', () => {
-  const sidebar = onProjects();
+run('Sessions opens the dashboard and the roadmap as full tabs', () => {
+  const sidebar = mount(installed(), CMUX_DATA);
   expect(sidebar.tap('Dashboard')).toEqual({
     kind: 'cmux',
     method: 'browser.tab.new',
@@ -461,37 +474,16 @@ run('a card opens into its roadmap, its pins, then its tasks with id, priority, 
   });
 });
 
-run('with two agents joined, a chip per agent picks the other one', () => {
-  const sidebar = onProjects({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY });
-  expect(sidebar.visibleTexts()).toEqual(expect.arrayContaining(['🦉 Nova', '🐢 Scout']));
-  sidebar.tap('🐢 Scout');
-  expect(sidebar.visibleTexts()).toContain('No projects yet.');
-  expect(sidebar.visibleTexts()).not.toContain('acme-app');
-});
-
-run('the agent the sidebar shows lights its chip in its own color; the others stay grey', () => {
-  const sidebar = onProjects({ [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY });
-  expect(sidebar.propsOf('🦉 Nova')).toMatchObject({ color: '#2F7FC1', background: '#2F7FC13d' });
-  expect(sidebar.propsOf('🐢 Scout')).toMatchObject({
-    color: 'secondary',
-    background: '#7f7f7f1f',
-    hoverBackground: '#C7354B3d'
-  });
-  sidebar.tap('🐢 Scout');
-  expect(sidebar.propsOf('🐢 Scout')).toMatchObject({ color: '#C7354B', background: '#C7354B3d' });
-  expect(sidebar.propsOf('🦉 Nova')).toMatchObject({ color: 'secondary' });
-});
-
-run('an entry from before agents had colors lights its chip grey', () => {
-  expect(onProjects({ [NOVA_HOME]: { ...NOVA_ENTRY, colors: undefined } }).propsOf('🦉 Nova')).toMatchObject({
-    color: 'primary',
-    background: '#7f7f7f3d'
-  });
-});
-
-run('with one agent joined, its chip stands beside the tabs where the title was', () => {
-  const texts = onProjects().visibleTexts();
-  expect(texts[0]).toBe('🦉 Nova');
+run('the selected workspace picks the agent every tab shows, with no chips to pick another', () => {
+  const both = { [NOVA_HOME]: NOVA_ENTRY, [SCOUT_HOME]: SCOUT_ENTRY };
+  const onScout = mount(installed(both), selecting('w-code'));
+  onScout.tap('Projects');
+  expect(onScout.visibleTexts()).toContain('No projects yet.');
+  expect(onScout.visibleTexts()).not.toContain('🦉 Nova');
+  const onNova = mount(installed(both), selecting('w-nova'));
+  onNova.tap('Projects');
+  expect(onNova.visibleTexts()).toContain('acme-app');
+  expect(onNova.visibleTexts()).not.toContain('🐢 Scout');
 });
 
 run('an entry from an older plugin asks for its agent to be updated', () => {
@@ -503,9 +495,9 @@ run('an entry from an older plugin asks for its agent to be updated', () => {
 run('the preview draws invented homes and sessions on its own, and its taps go nowhere', () => {
   const preview = mount(previewText({ version: '1.1.0', bundle: readFileSync(DIST, 'utf8') }));
   expect(preview.visibleTexts()).toContain('Support sweep');
-  preview.tap('Agents');
-  expect(preview.visibleTexts()).toContain('acme-app');
   expect(preview.tap('Dashboard')).toBeUndefined();
+  preview.tap('Projects');
+  expect(preview.visibleTexts()).toContain('acme-app');
 });
 
 run('two pins with the same title both show, each opening its own file', () => {
@@ -552,16 +544,24 @@ run('Reports lists the pins, then the newest reports by day, worded against the 
   expect(texts).not.toContain('AT WORK');
 });
 
-run('a report opens as a full tab, and the dashboard icon sits on Projects only', () => {
-  const sidebar = onReports();
-  expect(sidebar.tap('Morning brief — Mon 9 Nov')).toEqual({
+run('a report opens as a full tab', () => {
+  expect(onReports().tap('Morning brief — Mon 9 Nov')).toEqual({
     kind: 'cmux',
     method: 'file.open',
     params: { path: join(NOVA_HOME, 'reports', 'briefings', '2026-11-09-0830-morning.md') }
   });
-  expect(() => sidebar.tap('Dashboard')).toThrow();
-  sidebar.tap('Projects');
+});
+
+run('the Sessions search row ends with the agent’s dashboard, roadmap and folder, and no other tab has them', () => {
+  const sidebar = mount(installed(), CMUX_DATA);
   expect(sidebar.tap('Dashboard')?.params).toEqual({ url: `${NOVA_ENTRY.dashboard}#today` });
+  expect(sidebar.tap('Roadmap')?.params).toEqual({ url: pathToFileURL(join(NOVA_HOME, 'roadmap.html')).href });
+  expect(sidebar.tap('Open in Finder'), 'the home').toEqual({ kind: 'openURL', url: NOVA_ENTRY.folder });
+  ['Projects', 'Reports', 'Recent'].forEach((tab) => {
+    sidebar.tap(tab);
+    expect(() => sidebar.tap('Dashboard'), tab).toThrow();
+    expect(() => sidebar.tap('Open in Finder'), tab).toThrow();
+  });
 });
 
 run('the report search matches titles and kinds, folded days included', () => {
@@ -629,15 +629,6 @@ run('Recent says when nothing changed, and asks an older agent for an update', (
   );
   const { recent: _left, ...older } = NOVA_ENTRY;
   expect(onRecent({ [NOVA_HOME]: older }).visibleTexts()).toContain('Update Nova to see its recent files.');
-});
-
-run('a dozen agents all get a chip', () => {
-  const names = Array.from({ length: 12 }, (_unused, index) => `Agent${index}`);
-  const homes = Object.fromEntries(
-    names.map((name) => [join('/Users', 'ada', 'Documents', 'Agents', name), { ...NOVA_ENTRY, name, emoji: '🤖' }])
-  );
-  const texts = onProjects(homes).visibleTexts();
-  expect(names.every((name) => texts.includes(`🤖 ${name}`))).toBe(true);
 });
 
 run('every report group folds and opens on its own, and times read in twelve hours', () => {
@@ -716,10 +707,12 @@ run('yesterday’s daily goals leave today empty, with the command that sets the
   ]);
 });
 
-run('Goals leaves the dashboard and roadmap icons to Projects, so the section chips keep the row', () => {
+run('Goals keeps the Projects search row, and its switch goes back to the projects', () => {
   const sidebar = onGoals();
-  expect(() => sidebar.tap('Dashboard')).toThrow();
-  expect(() => sidebar.tap('Roadmap')).toThrow();
+  expect(sidebar.visibleTexts()).not.toContain('AT WORK');
+  sidebar.tap('Projects');
+  expect(sidebar.visibleTexts()).toContain('AT WORK');
+  expect(sidebar.visibleTexts()).not.toContain('2026 THEME');
 });
 
 run('the Discuss icon on a task or a goal opens a session about it, and the task row still opens its file', () => {
@@ -810,25 +803,16 @@ run('a note and the proposals share INBOX, newest first, with the same three but
   expect(putOff.visibleTexts(), 'put off until a time still to come').not.toContain(note.title);
 });
 
-run('the Agents tab opens the section’s folder in Finder: projects, reports, and the home for Recent; Goals has none', () => {
-  const sidebar = onProjects();
-  expect(sidebar.tap('Open in Finder')).toEqual({ kind: 'openURL', url: NOVA_ENTRY.folders?.projects });
-  sidebar.tap('Recent');
-  expect(sidebar.tap('Open in Finder')).toEqual({ kind: 'openURL', url: NOVA_ENTRY.folders?.recent });
-  sidebar.tap('Goals');
-  expect(() => sidebar.tap('Open in Finder')).toThrow();
-});
-
-run('a preview can open on any page, while the installed sidebar opens on the Manager', () => {
+run('a preview can open on any page, while the installed sidebar opens on Sessions', () => {
   const own = { version: '1.1.0', bundle: readFileSync(DIST, 'utf8') };
-  const opened = mount(previewText(own, { tab: 'agents', section: 'goals' }), CMUX_DATA).visibleTexts();
+  const opened = mount(previewText(own, { tab: 'projects', goals: true }), CMUX_DATA).visibleTexts();
   expect(opened).toEqual(expect.arrayContaining(['This week', 'This month']));
   expect(mount(installed(), CMUX_DATA).visibleTexts()[0]).toBe('Manager');
 });
 
 run('a preview can open with the Tasks card and a project already unfolded', () => {
   const own = { version: '1.1.0', bundle: readFileSync(DIST, 'utf8') };
-  const page = { tab: 'agents', section: 'projects' } as const;
+  const page = { tab: 'projects' } as const;
   const folded = mount(previewText(own, page)).visibleTexts();
   const unfolded = mount(previewText(own, { ...page, expanded: ['tasks', 'support-desk'] })).visibleTexts();
   expect(folded).not.toContain('IN FLIGHT');

@@ -4,7 +4,6 @@ import { byDay, dayCards, datedRow } from './days';
 import {
   dividedList,
   foldCard,
-  folderButton,
   GREEN,
   GREY,
   hueColor,
@@ -69,7 +68,7 @@ export const reportsBody = (entry: HomeEntry) => {
   const searching = () => query().trim() !== '';
   const [pinsOpen, setPinsOpen] = signal(true);
   return VStack({ spacing: 10 }, [
-    HStack({ spacing: 4 }, [searchField('Search reports…', setQuery), ...folderButton(entry.folders?.reports)]),
+    searchField('Search reports…', setQuery),
     VStack({ spacing: 6 }, [
       when(
         () => shownPins().length > 0,

@@ -6,7 +6,7 @@ import { openNotes } from '@/notes/rules';
 import { EMPTY_LEDGER, readProposalLedger, type ProposalLedger } from '@/proposals/ledger';
 import { proposalCards } from '@/proposals/rules';
 import { reportKind } from '@/reports/kinds';
-import { configuredRepoPaths, FOLDERS, homeLauncher } from '@/config';
+import { configuredRepoPaths, homeLauncher } from '@/config';
 import { pluginName } from '@/shared/naming';
 import { nameHue } from '@/status/html-primitives';
 import type { Work, WorkProject, WorkReport } from '@/work/model';
@@ -64,18 +64,13 @@ export interface HomeState {
   notes: NoteLedger;
   heartbeat: Heartbeat | null;
   recent: RecentFile[];
-  /**
-   * Where the home keeps its projects and reports, which a setting can move out of the home.
-   */
-  folders: { projects: string; reports: string };
 }
 
 export const readHomeState = (): HomeState => ({
   proposals: readProposalLedger(),
   notes: readNotes(),
   heartbeat: readHeartbeat(),
-  recent: readRecentFiles(),
-  folders: { projects: FOLDERS.PROJECTS, reports: FOLDERS.REPORTS }
+  recent: readRecentFiles()
 });
 
 // A row shows a page over its note, and the reports index may name either one.
@@ -112,13 +107,7 @@ const heartbeatPlace = (heartbeat: Heartbeat | null): HeartbeatPlace | null => {
 export const homeEntry = (
   home: string,
   work: Work,
-  {
-    proposals = EMPTY_LEDGER,
-    notes = EMPTY_NOTES,
-    heartbeat = null,
-    recent = [],
-    folders = { projects: join(home, 'projects'), reports: join(home, 'reports') }
-  }: Partial<HomeState> = {}
+  { proposals = EMPTY_LEDGER, notes = EMPTY_NOTES, heartbeat = null, recent = [] }: Partial<HomeState> = {}
 ): HomeEntry => {
   // An index line without a link names a report nothing can open.
   const openable = byLastUpdate(work.reports.filter((report) => report.path !== ''));
@@ -176,11 +165,7 @@ export const homeEntry = (
       folder,
       workspace
     })),
-    folders: {
-      projects: fileUrl(folders.projects),
-      reports: fileUrl(folders.reports),
-      recent: fileUrl(home)
-    },
+    folder: fileUrl(home),
     heartbeat: heartbeatPlace(heartbeat),
     launcher: homeLauncher(home),
     codeFolders: configuredRepoPaths(),

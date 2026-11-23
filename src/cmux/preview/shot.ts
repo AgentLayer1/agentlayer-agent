@@ -15,11 +15,11 @@ import { previewText } from './preview';
 import { inNewWindow, runSteps, writePanel, type Step } from './window';
 
 export const PAGES = {
-  manager: { tab: 'manager' },
-  projects: { tab: 'agents', section: 'projects', expanded: ['tasks', 'support-desk'] },
-  reports: { tab: 'agents', section: 'reports' },
-  recent: { tab: 'agents', section: 'recent' },
-  goals: { tab: 'agents', section: 'goals' }
+  manager: { tab: 'sessions' },
+  projects: { tab: 'projects', expanded: ['tasks', 'support-desk'] },
+  reports: { tab: 'reports' },
+  recent: { tab: 'recent' },
+  goals: { tab: 'projects', goals: true }
 } as const satisfies Record<string, StartPage>;
 
 // cmux redraws a sidebar about a second after it reloads.

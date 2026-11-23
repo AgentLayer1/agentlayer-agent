@@ -15,9 +15,6 @@ interface DemoWorkspace {
   name: string;
   description: string;
   color: string;
-  /**
-   * The group's name, the agent's emoji and name, as in the sidebar's agent chips.
-   */
   group: string;
   /**
    * The agent's folder, `Agents/<name>` with no emoji, which all its workspaces sit in; the sidebar shows its last two

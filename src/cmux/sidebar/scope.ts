@@ -9,14 +9,6 @@ export interface ScopeWorkspace {
 }
 
 /**
- * An agent picked by its chip on Projects, held only while the workspace it was picked in stays selected.
- */
-export interface Pin {
-  home: string;
-  workspaceId: string;
-}
-
-/**
  * The home a path is in, the deepest one when homes nest.
  */
 export const homeOf = (homes: readonly string[], path: string | undefined): string | undefined =>
@@ -38,24 +30,10 @@ export const workspaceHome = (homes: readonly string[], workspaces: readonly Sco
   return homeOf(homes, selected?.directory) ?? newestHome(homes, selected?.agents);
 };
 
-/**
- * Which agent the sidebar shows: the one picked in this workspace, else the workspace's own agent, else whichever agent
- * was active last.
- */
-export const scopedHome = (
-  homes: readonly string[],
-  workspaces: readonly ScopeWorkspace[],
-  pin: Pin | null
-): string | undefined => {
-  const selected = workspaces.find((workspace) => workspace.selected);
-  const picked = pin && selected && pin.workspaceId === selected.id && homes.includes(pin.home) ? pin.home : undefined;
-  return (
-    picked ??
-    workspaceHome(homes, workspaces) ??
-    newestHome(
-      homes,
-      workspaces.flatMap((workspace) => workspace.agents ?? [])
-    ) ??
-    homes[0]
-  );
-};
+export const scopedHome = (homes: readonly string[], workspaces: readonly ScopeWorkspace[]): string | undefined =>
+  workspaceHome(homes, workspaces) ??
+  newestHome(
+    homes,
+    workspaces.flatMap((workspace) => workspace.agents ?? [])
+  ) ??
+  homes[0];

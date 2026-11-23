@@ -22,7 +22,7 @@ test('a path belongs to the home it sits in, the deepest when homes nest, and ne
 
 test('the selected workspace’s own folder decides first', () => {
   const workspaces = [workspace('a', SCOUT, true, [{ directory: NOVA, lastActivityAt: 9 }])];
-  expect(scopedHome(HOMES, workspaces, null)).toBe(SCOUT);
+  expect(scopedHome(HOMES, workspaces)).toBe(SCOUT);
 });
 
 test('then its newest session inside a home', () => {
@@ -33,7 +33,7 @@ test('then its newest session inside a home', () => {
       { directory: NOVA, lastActivityAt: 1 }
     ])
   ];
-  expect(scopedHome(HOMES, workspaces, null)).toBe(SCOUT);
+  expect(scopedHome(HOMES, workspaces)).toBe(SCOUT);
 });
 
 test('then the agent with the newest session anywhere, then the first home', () => {
@@ -44,9 +44,9 @@ test('then the agent with the newest session anywhere, then the first home', () 
       { directory: SCOUT, lastActivityAt: 7 }
     ])
   ];
-  expect(scopedHome(HOMES, workspaces, null)).toBe(SCOUT);
-  expect(scopedHome(HOMES, [workspace('a', '/tmp', true)], null)).toBe(NOVA);
-  expect(scopedHome([], [], null)).toBeUndefined();
+  expect(scopedHome(HOMES, workspaces)).toBe(SCOUT);
+  expect(scopedHome(HOMES, [workspace('a', '/tmp', true)])).toBe(NOVA);
+  expect(scopedHome([], [])).toBeUndefined();
 });
 
 test("a workspace's own agent is its folder's, else its newest session's, and none when neither is in a home", () => {
@@ -59,11 +59,4 @@ test("a workspace's own agent is its folder's, else its newest session's, and no
     workspace('b', NOVA, false, [{ directory: NOVA, lastActivityAt: 9 }])
   ];
   expect(workspaceHome(HOMES, unowned), 'no agent is told, even with one active elsewhere').toBeUndefined();
-});
-
-test('a pick wins only in the workspace it was made in, and only for a home that joined', () => {
-  const workspaces = [workspace('a', NOVA, true), workspace('b', SCOUT, false)];
-  expect(scopedHome(HOMES, workspaces, { home: SCOUT, workspaceId: 'a' })).toBe(SCOUT);
-  expect(scopedHome(HOMES, workspaces, { home: SCOUT, workspaceId: 'b' })).toBe(NOVA);
-  expect(scopedHome(HOMES, workspaces, { home: '/Users/ada/Agents/Gone', workspaceId: 'a' })).toBe(NOVA);
 });

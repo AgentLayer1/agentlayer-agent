@@ -312,8 +312,8 @@ const session = (workspace: string, home: string, spec: ShowcaseSession) => {
 };
 
 /**
- * cmux's data for the preview: every agent's workspaces and sessions, with Agent Oppi's selected, so the Agents tab
- * opens on Oppi. cmux 0.65.2's right sidebar gets no workspace groups, so neither does the preview.
+ * cmux's data for the preview: every agent's workspaces and sessions, with Agent Oppi's selected. cmux 0.65.2's right
+ * sidebar gets no workspace groups, so neither does the preview.
  */
 export const SHOWCASE_CMUX_DATA = {
   workspaces: AGENTS.flatMap(({ home, color, workspaces }) =>

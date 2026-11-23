@@ -2,12 +2,15 @@
  * AgentLayer · cmux sidebar
  * Every agent on this Mac, and the work each one keeps.
  *
- *   Manager   what each agent proposes, then every session, sorted by what needs you (cmux Manager)
- *   Agents    a chip per agent, then the chosen agent's Projects (its tasks and projects by state), Reports (its pins
- *             and newest reports by day), Recent (the files changed lately, by day) and Goals (the year's theme, then
- *             today, this week, this month and this year), with its dashboard and roadmap beside the Projects search
+ * The cmux Manager's header and tallies, then four tabs:
  *
- * The workspace you're in picks the agent; a chip picks another.
+ *   Sessions   what each agent proposes, then every session, sorted by what needs you
+ *   Projects   the agent's tasks and projects by state, or its goals (the year's theme, then today, this week, this
+ *              month and this year)
+ *   Reports    the agent's pins and newest reports by day
+ *   Recent     the files the agent changed lately, by day
+ *
+ * The workspace you're in picks the agent; its dashboard, roadmap and folder end the Sessions search row.
  *
  * Open      cmux right-sidebar set custom agentlayer
  * Check     cmux sidebar validate agentlayer
@@ -17,29 +20,20 @@
 
 import { manager } from 'cmux-custom-manager/manager';
 import type { Card } from 'cmux-custom-manager/model';
-import { agentPage } from './agent';
-import { SCHEMA, type StartPage } from './data';
+import { SCHEMA, type HomeEntry } from './data';
 import { heartbeatRoute, isRunningClaude } from './heartbeat';
 import { messagesSection } from './messages';
-import { scopedHome, workspaceHome, type Pin } from './scope';
-import { tabIcon } from './style';
-
-type Tab = StartPage['tab'];
+import { projectsBody } from './projects';
+import { recentBody } from './recent';
+import { reportsBody } from './reports';
+import { scopedHome, workspaceHome } from './scope';
+import { folderButton, toolIcon } from './style';
+import { scopedPage } from './view';
 
 const app = () => {
   const homes = Object.keys(DATA.homes);
-  const [tab, setTab] = signal<Tab>(DATA.open?.tab ?? 'manager');
-  const [pin, setPin] = signal<Pin | null>(null);
   const workspaces = () => data.workspaces() ?? [];
-  const selectedId = computed(() => workspaces().find((workspace) => workspace.selected)?.id ?? '');
-  // A pick lasts until another workspace is selected.
-  computed(() => {
-    const picked = pin();
-    if (picked && picked.workspaceId !== selectedId()) {
-      setPin(null);
-    }
-  });
-  const current = computed(() => scopedHome(homes, workspaces(), pin()));
+  const current = computed(() => scopedHome(homes, workspaces()));
   const messages = messagesSection(computed(() => workspaceHome(homes, workspaces())));
   const heartbeats = computed(
     () =>
@@ -56,42 +50,35 @@ const app = () => {
     isRunningClaude(card.agent) &&
     card.agent.status !== 'needs_input';
 
-  const pill = () =>
-    HStack({ spacing: 2 }, [
-      tabIcon(
-        'square.grid.2x2',
-        'Manager',
-        () => tab() === 'manager',
-        () => setTab('manager')
-      ),
-      tabIcon(
-        'square.stack.3d.up.fill',
-        'Agents',
-        () => tab() === 'agents',
-        () => setTab('agents')
-      )
-    ])
-      .padding(2)
-      .background('#7f7f7f1f')
-      .cornerRadius(8)
-      .fixedSize();
+  const page = (body: (entry: HomeEntry) => View) => () => scopedPage(current, body);
+  const scoped = computed(() => {
+    const path = current();
+    const entry = path ? DATA.homes[path] : undefined;
+    return path && entry?.schema === SCHEMA ? [{ path, entry }] : [];
+  });
+  // Keyed by home, so the buttons follow the workspace.
+  const sessionTools = () =>
+    ForEach({ items: scoped, key: (item) => item.path }, (item) => {
+      const { dashboard, roadmap, folder } = item().entry;
+      return HStack({ spacing: 4 }, [
+        toolIcon('square.grid.3x3', 'Dashboard', () => cmux('browser.tab.new', { url: `${dashboard}#today` })),
+        ...(roadmap ? [toolIcon('map', 'Roadmap', () => cmux('browser.tab.new', { url: roadmap }))] : []),
+        ...folderButton(folder)
+      ]).fixedSize();
+    });
 
-  // Keyed by tab, so leaving one disposes it and coming back builds it fresh.
   return VStack({ spacing: 8 }, [
-    ForEach({ items: () => [tab()], key: (name) => name }, (name) =>
-      name() === 'manager'
-        ? manager({
-            header: HStack({ spacing: 8 }, [pill(), Text('Manager').font(13).weight('semibold')]).fixedSize(),
-            sections: [messages],
-            exclude: isQuietHeartbeat
-          })
-        : agentPage({
-            pill: pill(),
-            home: current,
-            homes,
-            pick: (home) => setPin({ home, workspaceId: selectedId() })
-          })
-    ),
+    manager({
+      sections: [messages],
+      exclude: isQuietHeartbeat,
+      pages: [
+        { id: 'projects', label: 'Projects', view: page(projectsBody) },
+        { id: 'reports', label: 'Reports', view: page(reportsBody) },
+        { id: 'recent', label: 'Recent', view: page(recentBody) }
+      ],
+      page: DATA.open?.tab,
+      searchTrailing: sessionTools
+    }),
     Spacer()
   ]);
 };

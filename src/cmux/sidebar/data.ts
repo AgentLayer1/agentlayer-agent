@@ -285,9 +285,9 @@ export interface HomeEntry {
    */
   notes?: NoteItem[];
   /**
-   * `file://` URL of the folder each Agents tab section shows, for its Finder button; absent in an older entry.
+   * `file://` URL of the home, for the Finder button on Sessions; absent in an older entry.
    */
-  folders?: Record<'projects' | 'reports' | 'recent', string>;
+  folder?: string;
   heartbeat: HeartbeatPlace | null;
   /**
    * What starts Claude in this home: `agent` when it bills its own subscription, else `claude`.
@@ -301,8 +301,11 @@ export interface HomeEntry {
 }
 
 export interface StartPage {
-  tab: 'manager' | 'agents';
-  section?: 'projects' | 'reports' | 'recent' | 'goals';
+  tab: 'sessions' | 'projects' | 'reports' | 'recent';
+  /**
+   * Projects opens on the goals instead of the projects.
+   */
+  goals?: boolean;
   /**
    * Cards that start open: `tasks` for the Tasks card, or a project's slug.
    */
@@ -315,7 +318,7 @@ export interface SidebarData {
    */
   homes: Record<string, HomeEntry>;
   /**
-   * The page to open on; only a preview sets it, so a screenshot can show any page. Absent, the Manager.
+   * The page to open on; only a preview sets it, so a screenshot can show any page. Absent, Sessions.
    */
   open?: StartPage;
 }
