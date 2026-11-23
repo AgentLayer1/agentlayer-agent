@@ -1,7 +1,7 @@
 /*
  * `bun run cmux:screenshot [--window-demo] [--out <dir>]` retakes the sidebar's screenshots from a terminal inside
- * cmux: the preview on each page, cropped to the panel, and with --window-demo the whole window too, made-up
- * workspaces and groups beside it. All of it happens in a window this opens and closes; no other window is named.
+ * cmux: the preview on each page, cropped to the panel, and with --window-demo the whole window on Sessions and on
+ * Projects too, made-up workspaces and groups beside it. All of it happens in a window this opens and closes; no other window is named.
  */
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -59,10 +59,11 @@ if (import.meta.main) {
   show(PAGES.manager);
   try {
     await inNewWindow('AgentLayer preview', async (window) => {
+      // Sized first: a terminal resized after the demo draws its conversation reflows and scrolls it.
+      await runSteps(setupSteps(window, name));
       if (demo) {
         await buildDemo(window, homes);
       }
-      await runSteps(setupSteps(window, name));
       for (const [page, start] of Object.entries(PAGES)) {
         const full = join(raw, `${page}.png`);
         show(start);
@@ -72,9 +73,12 @@ if (import.meta.main) {
         written.push(panel);
       }
       if (demo) {
-        const whole = join(out, 'cmux-workstation.png');
-        copyFileSync(join(raw, 'projects.png'), whole);
-        written.push(whole);
+        const wholes = { 'cmux-workstation.png': 'projects.png', 'cmux-workstation-manager.png': 'manager.png' };
+        Object.entries(wholes).forEach(([name, page]) => {
+          const whole = join(out, name);
+          copyFileSync(join(raw, page), whole);
+          written.push(whole);
+        });
       }
     });
   } finally {
