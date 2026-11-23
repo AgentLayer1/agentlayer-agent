@@ -56,7 +56,9 @@ The heartbeat sends notes as well as proposals, both land in one INBOX, and each
   heartbeat scouts after each brain refresh, one lens a run, each in an agent of its own so the
   heartbeat's tab is never cleared for it: a home lens (the brain against itself, what waits on you)
   reads the home and reaches no web; a web lens runs in a separate scout on Sonnet that sees only
-  `knowledge/public.md`, the facts you approved for web searches, and no `CLAUDE.md`. No model can
+  `knowledge/public.md`, the facts you approved for web searches, and no `CLAUDE.md`; it reads what
+  is current from each product's own store listing or changelog, so the list needs no update on a
+  release (the code refuses a version number in a fact). No model can
   start either agent, and the scout's searches can't carry an email address or the home's private
   folder names. Scouting is off until you approve that list (`AGENT_NOTES_SCOUT=true`).
 - `note_add`, in the always-on core: refuses past the day's cap, a source noted in the last two

@@ -7,8 +7,9 @@ export const WEB_LENSES = [
   {
     key: 'public-drift',
     lookFor:
-      'a page, store listing, search result or doc about one of the names below that contradicts the facts below: an old version, an old name, a feature called "in progress" that shipped',
-    where: "the sites below, the names' store listings, and a web search for each name"
+      'a page, search result or doc about one of the names below that disagrees with that name\'s own source of truth (its store listing, its release notes or changelog): an old version, an old name, a feature called "in progress" that shipped, or one that contradicts the facts below',
+    where:
+      "first each name's source of truth, among the sites below or its store listing, for what is current; then the other sites below and a web search for each name"
   },
   {
     key: 'opportunities',

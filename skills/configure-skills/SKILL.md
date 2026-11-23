@@ -801,8 +801,8 @@ Turns on the heartbeat's scouting: after each brain refresh it sends at most thr
 **(2) Draft it from the home.** Read the project READMEs (`projects/*/README.md`), the user profile (`knowledge/user/profile.md`, its `## Signal Topics` and location) and the manual's confidentiality rules (`AGENTS.md`, `SOUL.md`). Write bullets under five headings, nothing else:
 
 - `## Names`: companies, products and apps that have a public website.
-- `## Sites`: those websites, each one plain `https://` link with no query (the READMEs' **Website:** and domain lines; the operator's public profile or portfolio site when they keep one).
-- `## Facts`: at most five short facts that are public and true now (a product's current release and where it ships). Never a plan, a date not yet reached, or a former name.
+- `## Sites`: those websites, each one plain `https://` link with no query (the READMEs' **Website:** and domain lines; the operator's public profile or portfolio site when they keep one), and each product's source of truth: its store listing, its changelog or releases page. The scout reads what is current there, so nobody updates this list on a release.
+- `## Facts`: at most five short public facts that stay true across releases (what a product is, where it runs). Never a version number (the code refuses one), a plan, a date not yet reached, or a former name.
 - `## Topics`: the signal topics, each one short line.
 - `## Place`: the city and country.
 
@@ -816,7 +816,7 @@ Leave out everything that isn't already public: people's names (family, colleagu
 bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" notes public
 ```
 
-It prints how many bullets the code keeps under each heading, then a "Left out" line for each bullet it refuses: an email address, a long number, a secret, or a link that isn't plain https. Relay any, and fix them with the operator before going on. It hands out no scouting run, so checking spends no lens's turn.
+It prints how many bullets the code keeps under each heading, then a "Left out" line for each bullet it refuses: an email address, a long number, a secret, a version number in a fact, or a link that isn't plain https. Relay any, and fix them with the operator before going on. It hands out no scouting run, so checking spends no lens's turn.
 
 **(5) Turn scouting on.** Set `AGENT_NOTES_SCOUT` to `true` in `$SETTINGS_FILE`'s `env` (§D.2). The heartbeat reads it at its next tick; no restart. Turned on with no `public.md`, scouting runs the home lenses only.
 

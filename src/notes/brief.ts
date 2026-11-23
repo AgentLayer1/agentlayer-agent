@@ -27,6 +27,8 @@ const LONG_NUMBER = /\d{5,}/;
 // Seven digits apart only by spaces, dashes, dots or brackets read as a phone number.
 const PHONE = /(?:\+?\d[\s\-.()]*){7,}/;
 const MAX_LENGTH = 160;
+// A version in a fact goes stale at the next release; the scout reads the current one from the name's own release page.
+const VERSION = /\bv?\d+\.\d+(\.\d+)*\b/;
 
 const siteRefusal = (text: string): string => {
   const url = /^\S+$/.test(text) ? URL.parse(text) : null;
@@ -47,10 +49,16 @@ const refusal = (text: string, heading: Heading): string => {
   if (EMAIL.test(text)) {
     return 'an email address';
   }
+  // A public link's numbers (a store listing's id) are part of the address, not a phone or a registration number.
+  if (heading === 'sites') {
+    return siteRefusal(text);
+  }
   if (LONG_NUMBER.test(text) || PHONE.test(text)) {
     return 'a long number (a phone, a registration number, a postcode)';
   }
-  return heading === 'sites' ? siteRefusal(text) : '';
+  return heading === 'facts' && VERSION.test(text)
+    ? "a version number, which goes stale at the next release; the scout reads the current one from the name's own release page"
+    : '';
 };
 
 /**

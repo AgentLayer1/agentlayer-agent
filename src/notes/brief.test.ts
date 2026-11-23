@@ -21,9 +21,11 @@ const PUBLIC = [
   '- https://acme.example',
   '- http://acme.example',
   '- https://acme.example/search?q=1',
+  '- https://apps.example/app/id1234567',
   '- https://user:pw@acme.example',
   '## Facts',
   '- Acme Widgets 2.0 is the current release',
+  '- Acme Widgets runs on phones and the web',
   '- Registration No. 202601021416',
   '- Write to ada@acme.example',
   '- Our key is pplx-abcdefghijklmnopqrstuvwx',
@@ -60,8 +62,8 @@ test('the public file keeps only what may leave the machine: no email, long numb
   const { facts, refused } = parsePublic(PUBLIC);
   expect(facts).toEqual({
     names: ['Acme Widgets'],
-    sites: ['https://acme.example'],
-    facts: ['Acme Widgets 2.0 is the current release'],
+    sites: ['https://acme.example', 'https://apps.example/app/id1234567'],
+    facts: ['Acme Widgets runs on phones and the web'],
     topics: [],
     place: ['Springfield, Freedonia']
   });
@@ -70,6 +72,7 @@ test('the public file keeps only what may leave the machine: no email, long numb
     'http://acme.example',
     'https://acme.example/search?q=1',
     'https://user:pw@acme.example',
+    'Acme Widgets 2.0 is the current release',
     'Registration No. 202601021416',
     'Write to ada@acme.example',
     'Our key is pplx-abcdefghijklmnopqrstuvwx',
@@ -152,7 +155,7 @@ test('notes public reports what the code keeps and leaves out, and hands out no 
     writeFileSync(FILES.PUBLIC, PUBLIC);
     expect(runNotesCommand('public', [])).toBe(0);
     const out = said.mock.calls.map(([line]) => String(line)).join('\n');
-    expect(out).toContain('Kept: 1 names, 1 sites, 1 facts, 0 topics, 1 place.');
+    expect(out).toContain('Kept: 1 names, 2 sites, 1 facts, 0 topics, 1 place.');
     expect(out).toContain('Left out: "Write to ada@acme.example" (an email address).');
     expect(readNotesForTest().ranAt ?? {}).toEqual({});
   } finally {
