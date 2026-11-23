@@ -272,18 +272,12 @@ var manager = ({
     setQuery("");
     setPage(id);
   };
-  const [groupFilter, setGroupFilter] = signal("");
   const [collapsed, setCollapsed] = signal(["ended"]);
   const toggleSection = (section) => setCollapsed(collapsed().includes(section) ? collapsed().filter((name) => name !== section) : [...collapsed(), section]);
   const kept = computed(() => exclude ? agentCards().filter((card) => !exclude(card)) : agentCards());
-  const groupChips = computed(() => {
-    const withAgents = new Set(kept().map((card) => card.groupId));
-    return (data.groups() ?? []).filter((group) => withAgents.has(group.id));
-  });
-  const effectiveGroupFilter = computed(() => groupChips().some((group) => group.id === groupFilter()) ? groupFilter() : "");
   const cards = computed(() => {
     const tokens = query().trim().toLowerCase().split(/\s+/).filter(Boolean);
-    return kept().filter((card) => !effectiveGroupFilter() || card.groupId === effectiveGroupFilter()).filter((card) => {
+    return kept().filter((card) => {
       const haystack = [card.title, card.searchText, card.workspaceTitle, card.group, card.folder, card.branch].join(" ").toLowerCase();
       return tokens.every((token) => haystack.includes(token));
     });
@@ -328,14 +322,7 @@ var manager = ({
     }
   };
   const sessions = () => VStack({ spacing: 4 }, [
-    VStack({ spacing: 8 }, [
-      ForEach({ items: () => groupChips().length ? ["chips"] : [], key: (item) => item }, () => HStack({ spacing: 4 }, [
-        chip("All", () => !effectiveGroupFilter(), () => setGroupFilter("")),
-        ForEach({ items: groupChips, key: (group) => group.id }, (group) => chip(() => group().name, () => effectiveGroupFilter() === group().id, () => setGroupFilter(effectiveGroupFilter() === group().id ? "" : group().id))),
-        Spacer()
-      ])),
-      searchTrailing ? HStack({ spacing: 4 }, [searchField("Search sessions…", setQuery), searchTrailing()]) : searchField("Search sessions…", setQuery)
-    ]),
+    searchTrailing ? HStack({ spacing: 4 }, [searchField("Search sessions…", setQuery), searchTrailing()]) : searchField("Search sessions…", setQuery),
     VStack({ spacing: 4 }, [
       ...added.map(({ view }) => view()),
       ForEach({ items: entries, key: (entry) => entry.key }, row)
@@ -344,7 +331,7 @@ var manager = ({
       if (entries().length > 0) {
         return "";
       }
-      if (query().trim() || effectiveGroupFilter()) {
+      if (query().trim()) {
         return cardsShown() ? "" : "No matches.";
       }
       return "No agents running in cmux.";
