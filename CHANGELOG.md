@@ -47,6 +47,68 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.0.10] - 2026-11-23
+
+The heartbeat sends notes as well as proposals, both land in one INBOX, and each host gets the plugin in its own terms.
+
+### Added
+- Notes: short findings the agent checked, each with one next step, at most three a day. The
+  heartbeat scouts after each brain refresh, one lens a run: a home lens (the brain against itself,
+  what waits on you) reads the home and reaches no web; a web lens runs in a separate scout on
+  Sonnet that sees only `knowledge/public.md`, the facts you approved for web searches, and no
+  `CLAUDE.md`. No model can start the scout, and its searches can't carry the home's private names.
+  Scouting is off until you approve that list (`AGENT_NOTES_SCOUT=true`).
+- `note_add`, in the always-on core: refuses a source noted in the last two weeks or a note with no
+  public source. Every note lands in `reports/notes/`; with the heartbeat in a cmux tab it also posts
+  a desktop notification that opens that tab (a plain macOS notification without one).
+- A Notes walk in `configure-skills`, offered by init: drafts `knowledge/public.md` from the home,
+  leaves out anything not already public, writes it on your yes, checks what the code keeps with
+  `notes brief`, then turns scouting on. The compile never writes that file.
+- `/heartbeat scout` runs one scouting pass now, in the heartbeat's tab.
+- The cmux sidebar's INBOX: proposals and notes in one section, scoped to the workspace's agent,
+  folded by default, each card led by a Proposal or Note badge and reading what, why now, limits.
+- A Recent section on the sidebar's Agents tab: the home's 40 newest changed files from the last
+  30 days, by day, with a search; a file this conversation writes shows within seconds. Finder
+  buttons open the home's folders.
+- The CLI's `heartbeat` (`status`, `bind`, `release`, `off`), `messages decide` and `notes list`.
+
+### Changed
+- One `/message <start|later|dismiss> <id>` decides a proposal or a note; Skip is Dismiss everywhere.
+  `messages decide` replaces `proposals decide`, and `heartbeat bind|release|off` replaces
+  `proposals heartbeat`. A heartbeat bound on 1.0.9 carries over on its own.
+- The heartbeat is its own domain and mod (`mods/heartbeat`). Start on any message opens where the
+  work fits, else the focused workspace when it isn't another agent's, else the agent's own.
+- What differs between Claude Code and Codex lives in one adapter per host, with one session start
+  for every host. Codex reads the skills' Claude Code terms (tool names, the question tool,
+  subagents, `/agentlayer:<name>`) through a glossary in its session start, and runs skill scripts
+  from the checkout its hooks run from.
+- `upgrade` flags a Codex copy of the plugin older than the plugin (`stale-copy`), with the commands
+  that refresh it.
+- The tasks summary rides the folded Tasks card; the Discuss sparkles are yellow.
+
+### Fixed
+- A bare `/heartbeat` in the heartbeat's own tab reports its status instead of rebinding at 55m.
+- A `/clear` no longer makes the tab forget it is the heartbeat.
+- The heartbeat's two clocks restart each other when the host ends one, so looks no longer stop
+  overnight in a live session; a look that found nothing draws the quiet mark however its line ends.
+- A prompt that starts with `-` can never become a flag; a note's Start builds its prompt from what
+  the card showed, never from text the scout wrote.
+- A killed or slow capture drain no longer loses or replays the queued captures.
+- Session start no longer prints git's "not a git repository" when the knowledge folder isn't one.
+- A Codex question no longer disappears: Codex asks in chat unless it is in Plan mode.
+- A team plugin's skills under Codex keep their own `${CLAUDE_PLUGIN_ROOT}`.
+- A helpdesk profile's `## Pulse` can post its private notes without asking, as a workflow can.
+
+### Upgrade
+- `settings: mandatory` — add `mcp__plugin_agentlayer_agent__note_add` to `permissions.allow` in
+  `settings.json`.
+- `manual: optional` — Notes stay off until you approve the public facts the web scout may search
+  with: run `/agentlayer:configure-skills` → Notes. Without it the heartbeat keeps proposing as
+  before.
+- `manual: optional` — Renamed: `proposals decide` → `messages decide`, `proposals heartbeat` →
+  `heartbeat bind|release|off`, `/proposal` → `/message`, `skip` → `dismiss`. A heartbeat bound on
+  1.0.9 carries over; only your own scripts or aliases need the new names.
+
 ## [1.0.9] - 2026-11-21
 
 The heartbeat shows what it is doing, keeps the best five proposals instead of stopping at five, and keeps the brain fresh between syncs.
