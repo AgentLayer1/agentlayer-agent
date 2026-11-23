@@ -58,6 +58,7 @@ The gate before any commit is `bun run typecheck && bun test`, chained, never pi
 
 - **Bun only** for scripts and dependencies. Build paths with `node:path`, never by string.
 - **Tests never touch a real home.** `src/test.ts` points `AGENT_HOME` at a temp tree; a suite that needs its own sets `AGENT_HOME` and restores the preload's value afterwards.
+- **Big changes go in a sibling worktree.** A home that loads the plugin from this checkout runs its hooks, server and mods live, so a half-done change to the hook layer, the server or a mod breaks every session on the machine, the one making the change included. Anything beyond a small edit there gets its own worktree (the `setup-worktree` skill), and lands on `main` once its gate passes.
 - **No real names in shipped files**: placeholders (`acme`, `Ada`) in skills, templates, tests and the CHANGELOG. `src/contracts/names.test.ts` also fails on the plugin's former name.
 - **Product docs are host-neutral**: skills named bare, "your host" for the CLI, host-specific steps in per-host tabs.
 - **Frontmatter the plugin writes is flat** (scalars and lists of scalars), so Obsidian shows it as properties.
