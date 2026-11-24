@@ -20,6 +20,14 @@ async function loadProjectEnv(): Promise<void> {
   const { pinHome } = await import('@/shared/settings-env');
   const home = process.argv.find((arg) => arg.startsWith('--home='))?.slice('--home='.length);
   if (home) pinHome(home);
+  // A host that runs its hooks outside the home (Antigravity runs a plugin's in the plugin's folder) names the home
+  // only in the payload, so the hook reads it first and pins the home the same way.
+  if (process.argv.includes('--home-from-payload')) {
+    const { homeInPayload } = await import('@/shared/settings-env');
+    const { hookStdin } = await import('@/hooks/stdin');
+    const fromPayload = homeInPayload(await hookStdin());
+    if (fromPayload) pinHome(fromPayload);
+  }
   await import('@/bootstrap');
   const { agentHomePath } = await import('@/shared/env');
   agentHomePath();
@@ -129,6 +137,10 @@ Hook commands (internal — wired into Claude Code hooks; safe to run manually f
                                     Emit dynamic SessionStart context. Without the flag, prints the structured result for testing.
   session-start|session-capture ... --home=PATH
                                     Pin the agent home from the command line (how the per-home Codex and Antigravity hooks name it)
+  policy --hook-protocol=antigravity --home=PATH
+                                    PreToolUse hook on every tool for a host whose own permission rules can't hold the home's:
+                                    the shell guard, then every deny in the home's Claude settings, and a refusal for every
+                                    call that would ask in Claude Code. Shell runs only under the launcher's policy file.
   guard [--hook-protocol=claude|codex|antigravity]
                                     PreToolUse hook: read the tool call from stdin and exit 2 when a shell command
                                     would write a home tree (knowledge/, projects/, reports/) relative to a cwd outside the home,
@@ -282,7 +294,7 @@ async function run(): Promise<void> {
   // MCP-invoked traffic. Lazy-imported because @/shared/log resolves AGENT_HOME
   // and we want loadProjectEnv() to have run first.
   const { log } = await import('@/shared/log');
-  if (group !== 'guard') {
+  if (group !== 'guard' && group !== 'policy') {
     // guard runs before every shell command; logging each run would drown the file.
     log.with('cli').info(`${group}${command ? ` ${command}` : ''}${args.length ? ` ${args.join(' ')}` : ''}`);
   }
@@ -335,7 +347,7 @@ async function run(): Promise<void> {
   // there would surface as a hook error on every session started outside a home.
   // `worktree` is exempt because it acts on the repo path it's given, not on
   // home state.
-  const HOMELESS_OK = new Set(['session-start', 'session-capture', 'guard', 'worktree']);
+  const HOMELESS_OK = new Set(['session-start', 'session-capture', 'guard', 'policy', 'worktree']);
   if (!isInitialized() && !HOMELESS_OK.has(group)) {
     console.error(
       `${group}: ${FOLDERS.HOME} is not this agent's home (no ${RUNTIME_DIR}/version.json recording ${PLUGIN} there).\n` +
@@ -571,9 +583,14 @@ async function run(): Promise<void> {
     }
   }
 
-  if (group === 'guard' || group === 'session-start' || group === 'session-capture') {
-    const { runGuard, runSessionCapture, runSessionStart } = await import('@/hooks/handlers');
-    const handler = { guard: runGuard, 'session-start': runSessionStart, 'session-capture': runSessionCapture }[group];
+  if (group === 'guard' || group === 'policy' || group === 'session-start' || group === 'session-capture') {
+    const { runGuard, runPolicy, runSessionCapture, runSessionStart } = await import('@/hooks/handlers');
+    const handler = {
+      guard: runGuard,
+      policy: runPolicy,
+      'session-start': runSessionStart,
+      'session-capture': runSessionCapture
+    }[group];
     const code = await handler(flag);
     if (code) {
       process.exit(code);

@@ -1,5 +1,5 @@
 /**
- * The hook verbs behind the CLI (`guard`, `session-start`, `session-capture`): each reads the
+ * The hook verbs behind the CLI (`guard`, `policy`, `session-start`, `session-capture`): each reads the
  * host's payload, calls its core, and writes the reply the host's hook protocol expects. Each
  * returns the process exit code.
  */
@@ -7,17 +7,31 @@ import { FOLDERS, isInitialized } from '@/config';
 import { HOST_NAMES, isHostName, type HookPayload, type HookReply, type HostAdapter } from '@/hosts/contract';
 import { DEFAULT_HOST, hostNamed } from '@/hosts/registry';
 import { CLI_COMMAND } from '@/shared/naming';
+import { pinHome } from '@/shared/settings-env';
+import { hookStdin } from '@/hooks/stdin';
 
 type Flag = (name: string) => string | undefined;
 
 /** The hook payload on stdin, or undefined when there is none or it can't be read. */
 const payloadOf = async (host: HostAdapter): Promise<HookPayload | undefined> => {
-  const raw = await Bun.stdin.text();
+  const raw = await hookStdin();
   try {
     return raw.trim() ? host.readPayload(raw) : undefined;
   } catch {
     return undefined;
   }
+};
+
+/** For a host whose hooks run outside the home: pin the payload's home, or report that the session works in none. */
+const atHome = (host: HostAdapter, payload: HookPayload | undefined): boolean => {
+  if (!host.homeFromPayload) {
+    return true;
+  }
+  if (!payload?.home) {
+    return false;
+  }
+  pinHome(payload.home);
+  return true;
 };
 
 /** A host with no session-end event keeps each of its conversations on the open list for the drain. */
@@ -58,7 +72,7 @@ export const runGuard = async (flag: Flag): Promise<number> => {
     return 0;
   }
   const host = hostNamed(flag('hook-protocol') ?? '') ?? DEFAULT_HOST;
-  const raw = await Bun.stdin.text();
+  const raw = await hookStdin();
   const { call, cwd } = raw.trim() ? host.readPayload(raw) : {};
   if (call?.kind !== 'shell' || !cwd) {
     return 0;
@@ -68,10 +82,45 @@ export const runGuard = async (flag: Flag): Promise<number> => {
   return emit(host.guardReply(refusal || null));
 };
 
+/**
+ * A host's policy hook on every tool call: the shell guard, then the home's rules. Its own failure refuses the call
+ * with the repair named, since a policy that can't be read can't let anything through.
+ */
+export const runPolicy = async (flag: Flag): Promise<number> => {
+  const host = hostOf(flag) ?? DEFAULT_HOST;
+  const payload = await payloadOf(host);
+  const reply = host.policyReply;
+  if (!payload || !reply || !atHome(host, payload) || !isInitialized()) {
+    return 0;
+  }
+  try {
+    await recordFor(host, payload);
+    const { call } = payload;
+    const cwd = payload.cwd ?? FOLDERS.HOME;
+    if (call.kind === 'shell') {
+      const { shellGuard } = await import('@/hooks/guard');
+      const refusal = shellGuard(call.command, cwd, FOLDERS.HOME, host.guard, { launch: host.launchDir() });
+      if (refusal) {
+        return emit(reply({ decision: 'deny', reason: refusal }));
+      }
+    }
+    const { effectiveSettings, policyDecision } = await import('@/hooks/policy');
+    return emit(reply(policyDecision(call, { home: FOLDERS.HOME, cwd, settings: effectiveSettings(FOLDERS.HOME) })));
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    return emit(
+      reply({
+        decision: 'deny',
+        reason: `The agent's policy check failed (${reason}); run ${host.skill('upgrade')} from Claude Code to repair it.`
+      })
+    );
+  }
+};
+
 export const runSessionStart = async (flag: Flag): Promise<number> => {
   const host = hostOf(flag);
   const payload = host ? await payloadOf(host) : undefined;
-  if (payload?.origin === 'child') {
+  if ((host && !atHome(host, payload)) || payload?.origin === 'child') {
     return 0;
   }
   if (host) {
@@ -89,7 +138,10 @@ export const runSessionStart = async (flag: Flag): Promise<number> => {
 };
 
 const sessionFromPayload = async (host: HostAdapter) => {
-  const payload = host.readPayload(await Bun.stdin.text());
+  const payload = host.readPayload(await hookStdin());
+  if (!atHome(host, payload)) {
+    return undefined;
+  }
   await recordFor(host, payload);
   return {
     origin: payload.origin,
@@ -107,8 +159,12 @@ export const runSessionCapture = async (flag: Flag): Promise<number> => {
     );
   }
   const host = hostOf(flag);
-  const { origin, ...session } = host
-    ? await sessionFromPayload(host)
+  const fromPayload = host ? await sessionFromPayload(host) : undefined;
+  if (host && !fromPayload) {
+    return 0;
+  }
+  const { origin, ...session } = fromPayload
+    ? fromPayload
     : {
         origin: 'user',
         transcriptPath: flag('transcript') ?? '',

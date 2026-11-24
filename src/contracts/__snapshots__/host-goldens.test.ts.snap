@@ -721,7 +721,7 @@ exports[`session start, per host and home state Antigravity, initialized home 1`
 {
   "exit": 0,
   "stderr": 
-"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home=<HOME>
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home-from-payload
 <TIMESTAMP> INFO  [🪝 session] [start] hook fired (antigravity)
   🦊 Agent:     Nova · v<VERSION>
   ↑  Upgrade:   Turn on update tracking · run the upgrade skill
@@ -804,35 +804,10 @@ exports[`session start, per host and home state Antigravity, pre-init home 1`] =
 {
   "exit": 0,
   "stderr": 
-"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home=<HOME>
-<TIMESTAMP> INFO  [🪝 session] [start] hook fired (pre-init)
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home-from-payload
 "
 ,
-  "stdout": 
-"{"injectSteps":[{"systemMessage":{"systemMessage":"<!-- session banner: mention its warnings and notices in your first reply, unless the request asks for a set output format -->
-╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗
- ╠═╣ ║ ╦ ║╣  ║║║  ║ 
- ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ 
-===OPPI=== 🐙
-
-→ Not set up yet, run the init skill to get started.
-
-<!-- agentlayer glossary for antigravity: the skills are written in Claude Code's terms; read each one as follows -->
-- \`\${CLAUDE_PLUGIN_ROOT}\` → two folders above the skill's SKILL.md (for agentlayer's skills, \`<ROOT>\`)
-- \`\${CLAUDE_SKILL_DIR}\` → the folder holding the SKILL.md
-- \`mcp__plugin_agentlayer_agent__<tool>\` → \`call_mcp_tool\` with the agent's server as \`ServerName\` (the one ending \`_agent\` that offers \`ping\`) and the tool as \`ToolName\`; another server's \`mcp__<server>__<tool>\` is \`call_mcp_tool\` with that server's name
-- \`AskUserQuestion\` → \`ask_question\`
-- \`Agent, a subagent\` → \`invoke_subagent\`
-- \`/agentlayer:<name> or Skill(agentlayer:<name>)\` → the skill by its name (\\"use the <name> skill\\"); when the body you were given stops before the skill does, read the rest from its SKILL.md in ranges
-- \`WebSearch\` → \`search_web\`
-- \`WebFetch\` → the agent's \`browser_markdown\` tool; \`curl\` only for the home's allowed network domains
-
-The agentlayer plugin is loaded, but \`the init skill\` hasn't been run yet — the Agent home directory and identity files don't exist.
-
-If the user asks you to do anything that requires the agent's data (compile, briefing, task ops, knowledge lookup), suggest they run \`the init skill\` first.
-
-If they ask general questions or want help with something unrelated to the agent, answer normally — you don't need the agent's context to be helpful."}}]}"
-,
+  "stdout": "",
 }
 `;
 
@@ -840,38 +815,10 @@ exports[`session start, per host and home state Antigravity, stranded home 1`] =
 {
   "exit": 0,
   "stderr": 
-"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home=<HOME>
-<TIMESTAMP> WARN  [🪝 session] [start] hook fired (home marker missing at <HOME>)
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home-from-payload
 "
 ,
-  "stdout": 
-"{"injectSteps":[{"systemMessage":{"systemMessage":"<!-- session banner: mention its warnings and notices in your first reply, unless the request asks for a set output format -->
-╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗
- ╠═╣ ║ ╦ ║╣  ║║║  ║ 
- ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ 
-===OPPI=== 🐙
-
-→ <HOME> has a SOUL.md but no .state/version.json recording this agent — see the note below. Do NOT run init.
-
-<!-- agentlayer glossary for antigravity: the skills are written in Claude Code's terms; read each one as follows -->
-- \`\${CLAUDE_PLUGIN_ROOT}\` → two folders above the skill's SKILL.md (for agentlayer's skills, \`<ROOT>\`)
-- \`\${CLAUDE_SKILL_DIR}\` → the folder holding the SKILL.md
-- \`mcp__plugin_agentlayer_agent__<tool>\` → \`call_mcp_tool\` with the agent's server as \`ServerName\` (the one ending \`_agent\` that offers \`ping\`) and the tool as \`ToolName\`; another server's \`mcp__<server>__<tool>\` is \`call_mcp_tool\` with that server's name
-- \`AskUserQuestion\` → \`ask_question\`
-- \`Agent, a subagent\` → \`invoke_subagent\`
-- \`/agentlayer:<name> or Skill(agentlayer:<name>)\` → the skill by its name (\\"use the <name> skill\\"); when the body you were given stops before the skill does, read the rest from its SKILL.md in ranges
-- \`WebSearch\` → \`search_web\`
-- \`WebFetch\` → the agent's \`browser_markdown\` tool; \`curl\` only for the home's allowed network domains
-
-The agentlayer plugin is loaded and \`<HOME>\` looks like an agent home (it has a SOUL.md), but no \`.state/version.json\` records \`agentlayer\`, which is how this agent recognises its own home. Until that's resolved the agent's data is unreachable: sessions won't be captured and its tools will refuse to run.
-
-Help the user work out which cause applies:
-
-1. **This is another agent's home.** Every agent's home has a SOUL.md, only this one's \`.state/version.json\` records \`agentlayer\`. Launch that agent from here instead, and launch this one from its own home.
-2. **This home's \`.state/\` state didn't survive a restore, clone, or sync.** Restore \`.state/version.json\` (upgrade baseline, the file that marks the home) and \`.state/knowledge.json\` (compile cursor) from the backup or the brain repo; both are git-tracked. Without the compile cursor the next compile re-ingests everything.
-
-**Do not suggest \`init\` to fix this.** Its re-run path offers to overwrite SOUL.md, IDENTITY.md, USER.md and the operating manual, which is the operator losing their agent, not repairing it."}}]}"
-,
+  "stdout": "",
 }
 `;
 
@@ -879,7 +826,7 @@ exports[`session start, per host and home state an Antigravity subagent's start 
 {
   "exit": 0,
   "stderr": 
-"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home=<HOME>
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home-from-payload
 "
 ,
   "stdout": "",
@@ -945,7 +892,7 @@ exports[`session capture, per host Antigravity, session-end 1`] = `
 ,
   "exit": 0,
   "stderr": 
-"<TIMESTAMP> INFO  [🤖 system] [cli] session-capture --mode=session-end --hook-protocol=antigravity --home=<HOME>
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-capture --mode=session-end --hook-protocol=antigravity --home-from-payload
 <TIMESTAMP> INFO  [🪝 session] [capture] saved turns 1–6 → <DATE>.md (session-end)
 "
 ,
@@ -958,5 +905,46 @@ exports[`session capture, per host Antigravity, session-end 1`] = `
 }
 "
 ,
+}
+`;
+
+exports[`Antigravity's policy hook the guard runs first, then the home decides: a deny, an ask through the host prompt, or the host decides 1`] = `
+{
+  "asked": {
+    "exit": 0,
+    "stderr": "",
+    "stdout": "{"decision":"force_ask","reason":"Claude Code asks before this: \`git push origin main\`."}",
+  },
+  "guarded": {
+    "exit": 0,
+    "stderr": "",
+    "stdout": "{"decision":"deny","reason":"Blocked: git commit --amend rewrites or hides history, and git here is forward-only (AGENTS.md, Workflow): fix a commit with a new commit on top, and merge without discarding the other side. The one exception, scrubbing a confidentiality leak from an unpushed commit, is the operator's to run with !."}",
+  },
+  "hostDecides": {
+    "exit": 0,
+    "stderr": "",
+    "stdout": "",
+  },
+  "secretFile": {
+    "exit": 0,
+    "stderr": "",
+    "stdout": "{"decision":"deny","reason":"\`.env\` is a file this home denies reading."}",
+  },
+}
+`;
+
+exports[`Antigravity's policy hook outside a home the plugin leaves every call to the host 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`Antigravity's policy hook a payload the hook cannot read leaves the call to the host 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "",
 }
 `;

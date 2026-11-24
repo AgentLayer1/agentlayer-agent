@@ -42,7 +42,11 @@ export interface InjectDelivery {
 /**
  * A tool call as the hook layer sees it, whatever the host calls the tool and its arguments.
  */
-export type ToolCall = { kind: 'shell'; command: string } | { kind: 'other' };
+export type ToolCall =
+  | { kind: 'shell'; command: string; /** The call asks to run outside the host's sandbox. */ bypass?: boolean }
+  | { kind: 'read' | 'write' | 'search'; path: string }
+  | { kind: 'mcp'; server: string; tool: string }
+  | { kind: 'other' };
 
 /**
  * A hook payload in the host-neutral shape the hook verbs read.
@@ -53,8 +57,15 @@ export interface HookPayload {
   cwd?: string;
   /** `child` for a subagent's conversation, which gets no context and no capture of its own. */
   origin: 'user' | 'child';
-  call?: ToolCall;
+  call: ToolCall;
+  /** The agent home the session works in, for a host whose hooks run outside it; absent when it works in none. */
+  home?: string;
 }
+
+/**
+ * What a home's rules decide for a tool call, in a host that can ask: null leaves the call to the host's own rules.
+ */
+export type PolicyDecision = { decision: 'deny' | 'force_ask'; reason: string } | { decision: 'auto_approve' } | null;
 
 /**
  * What a hook verb writes and the code it exits with.
@@ -87,6 +98,14 @@ export interface HostAdapter {
    * The guard's answer: `null` lets the call through.
    */
   guardReply: (refusal: string | null) => HookReply;
+  /**
+   * The policy hook's answer, for a host that runs it on every tool call.
+   */
+  policyReply?: (decision: PolicyDecision) => HookReply;
+  /**
+   * The hooks run outside the home, so each verb takes the home from the payload and does nothing without one.
+   */
+  homeFromPayload?: true;
   sessionStartReply: (result: SessionStartResult) => HookReply;
   /**
    * The folder the session was launched from, where the hook's cwd can drift away from it.

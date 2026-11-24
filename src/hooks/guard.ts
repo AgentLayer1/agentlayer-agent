@@ -281,12 +281,12 @@ const subcommandAt = (texts: string[], index: number): number =>
     : index;
 
 /** The command's words from its name on, redirections and their targets dropped. */
-const plainTexts = (command: ShellCommand): string[] => {
+export const plainTexts = (command: ShellCommand): string[] => {
   const words = commandWords(command);
   return words.filter((word, index) => !word.operator && !words[index - 1]?.operator).map((word) => word.text);
 };
 
-const gitParts = (command: ShellCommand): { sub: string | undefined; args: string[] } => {
+export const gitParts = (command: ShellCommand): { sub: string | undefined; args: string[] } => {
   const texts = plainTexts(command);
   if (texts[0] !== 'git') {
     return { sub: undefined, args: [] };

@@ -1,9 +1,10 @@
 import { FILES, staticContextFiles } from '@/config';
-import type { HookPayload, HostAdapter } from '@/hosts/contract';
+import type { HookPayload, HostAdapter, ToolCall } from '@/hosts/contract';
 import { PLUGIN_SOURCE_ROOT, pluginName } from '@/shared/naming';
+import { homeInPayload } from '@/shared/settings-env';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 
 /** Antigravity keeps about 48,900 bytes of one injected message; each piece stays well under that. */
 export const PIECE_BYTES = 45_000;
@@ -47,14 +48,52 @@ interface AntigravityPayload {
   conversationId?: string;
   transcriptPath?: string;
   cwd?: string;
+  workspacePaths?: string[];
   hookEventName?: string;
   lastUserInput?: string;
   toolCall?: { name?: string; args?: Record<string, unknown> };
 }
 
+/** Each file tool and the argument naming its path: the CLI's names (probe round 4) and the docs' [hooks § Supported tools]. */
+const FILE_TOOLS: Record<string, { kind: 'read' | 'write' | 'search'; arg: string }> = {
+  read_file: { kind: 'read', arg: 'Path' },
+  view_file: { kind: 'read', arg: 'AbsolutePath' },
+  list_dir: { kind: 'read', arg: 'DirectoryPath' },
+  write_file: { kind: 'write', arg: 'Path' },
+  edit_file: { kind: 'write', arg: 'Path' },
+  write_to_file: { kind: 'write', arg: 'TargetFile' },
+  replace_file_content: { kind: 'write', arg: 'TargetFile' },
+  multi_replace_file_content: { kind: 'write', arg: 'TargetFile' },
+  grep_search: { kind: 'search', arg: 'SearchPath' },
+  find_by_name: { kind: 'search', arg: 'SearchDirectory' }
+};
+
+/** The agent's own server runs as `<plugin folder>_agent` (named after the checkout's folder, probe R5-3), read as the plugin's. */
+const ownServer = (server: string): string =>
+  server === `${pluginName()}_agent` || server === `${basename(PLUGIN_SOURCE_ROOT)}_agent` ? pluginName() : server;
+
+const toolCallOf = (parsed: AntigravityPayload): ToolCall => {
+  const name = parsed.toolCall?.name ?? '';
+  const args = parsed.toolCall?.args ?? {};
+  const text = (key: string): string | undefined => (typeof args[key] === 'string' ? args[key] : undefined);
+  const command = text('CommandLine');
+  if (name === 'run_command' && command !== undefined) {
+    return { kind: 'shell', command, bypass: args.BypassSandbox === true };
+  }
+  const file = FILE_TOOLS[name];
+  const path = file ? text(file.arg) : undefined;
+  if (file && (path !== undefined || file.kind === 'search')) {
+    return { kind: file.kind, path: path ?? parsed.cwd ?? '.' };
+  }
+  const server = text('ServerName');
+  const tool = text('ToolName');
+  return name === 'call_mcp_tool' && server !== undefined && tool !== undefined
+    ? { kind: 'mcp', server: ownServer(server), tool }
+    : { kind: 'other' };
+};
+
 const readPayload = (raw: string): HookPayload => {
   const parsed = JSON.parse(raw) as AntigravityPayload;
-  const command = parsed.toolCall?.name === 'run_command' ? parsed.toolCall.args?.CommandLine : undefined;
   // A subagent's hooks carry no user input, and at its start its transcript doesn't exist yet.
   const child =
     parsed.lastUserInput === '' &&
@@ -62,34 +101,40 @@ const readPayload = (raw: string): HookPayload => {
   return {
     sessionId: parsed.conversationId,
     transcriptPath: parsed.transcriptPath,
-    cwd: parsed.cwd,
+    // A command's own folder: a `cd` in an earlier command does not carry over.
+    cwd:
+      (parsed.toolCall?.name === 'run_command' && typeof parsed.toolCall.args?.Cwd === 'string'
+        ? parsed.toolCall.args.Cwd
+        : undefined) ?? parsed.cwd,
     origin: child ? 'child' : 'user',
-    call: typeof command === 'string' ? { kind: 'shell', command } : { kind: 'other' }
+    call: toolCallOf(parsed),
+    home: homeInPayload(raw)
   };
 };
 
-/** A line cut into runs of at most `max` UTF-8 bytes, never inside a character. */
-const cutLine = (line: string, max: number): string[] =>
-  [...line].reduce<string[]>(
-    (runs, char) => {
-      const last = runs.at(-1) ?? '';
-      return Buffer.byteLength(last + char) > max ? [...runs, char] : [...runs.slice(0, -1), last + char];
-    },
-    ['']
-  );
+/** UTF-8 bytes cut into runs of at most `max`, each ending on a character boundary. */
+const cutBytes = (bytes: Buffer, max: number): Buffer[] => {
+  if (bytes.length <= max) {
+    return bytes.length > 0 ? [bytes] : [];
+  }
+  // A continuation byte (10xxxxxx) sits inside a character, so the cut steps back to the byte that starts one.
+  const end = [...Array(max).keys()].map((back) => max - back).find((at) => ((bytes[at] ?? 0) & 0xc0) !== 0x80) ?? max;
+  return [bytes.subarray(0, end), ...cutBytes(bytes.subarray(end), max)];
+};
 
 /** Text split into pieces of at most `max` UTF-8 bytes, at line breaks where it can; joining them restores it. */
 export const splitPieces = (text: string, max: number = PIECE_BYTES): string[] =>
   text
     .split(/(?<=\n)/)
-    .flatMap((line) => (Buffer.byteLength(line) > max ? cutLine(line, max) : [line]))
-    .reduce<string[]>((pieces, line) => {
+    .flatMap((line) => cutBytes(Buffer.from(line), max))
+    .reduce<Buffer[][]>((pieces, line) => {
       const last = pieces.at(-1);
-      return last !== undefined && Buffer.byteLength(last + line) <= max
-        ? [...pieces.slice(0, -1), last + line]
-        : [...pieces, line];
+      const size = last?.reduce((total, part) => total + part.length, 0) ?? Infinity;
+      return last !== undefined && size + line.length <= max
+        ? [...pieces.slice(0, -1), [...last, line]]
+        : [...pieces, [line]];
     }, [])
-    .filter((piece) => piece.length > 0);
+    .map((parts) => Buffer.concat(parts).toString('utf-8'));
 
 const injectSteps = (pieces: string[]): string =>
   JSON.stringify({ injectSteps: pieces.map((piece) => ({ systemMessage: { systemMessage: piece } })) });
@@ -97,6 +142,8 @@ const injectSteps = (pieces: string[]): string =>
 export const antigravityHost = {
   name: 'antigravity',
   readPayload,
+  homeFromPayload: true,
+  policyReply: (decision) => (decision === null ? { code: 0 } : { stdout: JSON.stringify(decision), code: 0 }),
   // Antigravity reads a JSON reply on exit 0; `{}` would refuse the call, so a pass writes nothing.
   guardReply: (refusal) =>
     refusal === null ? { code: 0 } : { stdout: JSON.stringify({ decision: 'deny', reason: refusal }), code: 0 },

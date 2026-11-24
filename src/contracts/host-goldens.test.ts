@@ -104,18 +104,24 @@ interface Run {
 const cli = (
   home: string,
   args: string[],
-  { stdin = '', env = {}, preload = [] }: { stdin?: string; env?: Record<string, string>; preload?: string[] } = {}
+  {
+    stdin = '',
+    env = {},
+    preload = [],
+    asPlugin = false
+  }: { stdin?: string; env?: Record<string, string>; preload?: string[]; asPlugin?: boolean } = {}
 ): Run => {
+  // As an Antigravity plugin hook runs: from the checkout, with the home only in the payload.
+  const { AGENT_HOME: _home, ...pluginEnv } = { AGENT_HOME: home, ...env };
   const result = Bun.spawnSync(['bun', ...preload.flatMap((file) => ['--preload', file]), CLI_PATH, ...args], {
-    cwd: home,
+    cwd: asPlugin ? PLUGIN_SOURCE_ROOT : home,
     stdin: new TextEncoder().encode(stdin),
     env: {
       PATH: [FAKE_BIN, dirname(process.execPath), '/usr/bin', '/bin'].join(':'),
       HOME: USER_HOME,
       TZ: 'UTC',
       AGENT_TIMEZONE: 'UTC',
-      AGENT_HOME: home,
-      ...env
+      ...(asPlugin ? pluginEnv : { AGENT_HOME: home, ...env })
     }
   });
   return {
@@ -232,14 +238,19 @@ describe.skipIf(!POSIX_GIT)('session start, per host and home state', () => {
     const home = makeHome(kind);
     antigravityTranscript(home, 1);
     expect(
-      cli(home, ['session-start', '--hook-protocol=antigravity', `--home=${home}`], { stdin: antigravityPayload(home) })
+      cli(home, ['session-start', '--hook-protocol=antigravity', '--home-from-payload'], {
+        stdin: antigravityPayload(home),
+        asPlugin: true
+      })
     ).toMatchSnapshot();
   });
 
   test("an Antigravity subagent's start gets no context", () => {
     const home = makeHome('initialized');
     const stdin = antigravityPayload(home, { lastUserInput: '', transcriptPath: resolve(home, 'not-yet.jsonl') });
-    expect(cli(home, ['session-start', '--hook-protocol=antigravity', `--home=${home}`], { stdin })).toMatchSnapshot();
+    expect(
+      cli(home, ['session-start', '--hook-protocol=antigravity', '--home-from-payload'], { stdin, asPlugin: true })
+    ).toMatchSnapshot();
   });
 
   test("an Antigravity session start records its conversation for the drain, and a subagent's does not", () => {
@@ -251,8 +262,14 @@ describe.skipIf(!POSIX_GIT)('session start, per host and home state', () => {
       lastUserInput: '',
       transcriptPath: resolve(home, 'not-yet.jsonl')
     });
-    cli(home, ['session-start', '--hook-protocol=antigravity', `--home=${home}`], { stdin: child });
-    cli(home, ['session-start', '--hook-protocol=antigravity', `--home=${home}`], { stdin: antigravityPayload(home) });
+    cli(home, ['session-start', '--hook-protocol=antigravity', '--home-from-payload'], {
+      stdin: child,
+      asPlugin: true
+    });
+    cli(home, ['session-start', '--hook-protocol=antigravity', '--home-from-payload'], {
+      stdin: antigravityPayload(home),
+      asPlugin: true
+    });
     expect(Object.keys(JSON.parse(readFileSync(open, 'utf-8')) as object)).toEqual([SESSION_ID]);
   });
 
@@ -365,6 +382,46 @@ describe.skipIf(!POSIX_GIT)('the shell guard, per host', () => {
   });
 });
 
+describe.skipIf(!POSIX_GIT)("Antigravity's policy hook", () => {
+  const policy = (home: string, toolCall: unknown, extra: Record<string, unknown> = {}) =>
+    cli(home, ['policy', '--hook-protocol=antigravity', '--home-from-payload'], {
+      stdin: antigravityPayload(home, { hookEventName: 'PreToolUse', toolCall, ...extra }),
+      asPlugin: true
+    });
+  const run = (command: string) => ({ id: '1', name: 'run_command', args: { CommandLine: command } });
+
+  test('the guard runs first, then the home decides: a deny, an ask through the host prompt, or the host decides', () => {
+    const home = makeHome('initialized');
+    writeFileSync(resolve(home, '.env'), 'X=1\n');
+    mkdirSync(resolve(home, '.claude'), { recursive: true });
+    writeFileSync(
+      resolve(home, '.claude', 'settings.json'),
+      JSON.stringify({ permissions: { ask: ['Bash(git push *)'], deny: ['Read(**/.env)'] } })
+    );
+    expect({
+      guarded: policy(home, run('git commit --amend')),
+      asked: policy(home, run('git push origin main')),
+      secretFile: policy(home, run('cat .env')),
+      hostDecides: policy(home, run('ls -la'))
+    }).toMatchSnapshot();
+  });
+
+  test('outside a home the plugin leaves every call to the host', () => {
+    const home = makeHome('pre-init');
+    expect(policy(home, run('git push origin main'))).toMatchSnapshot();
+  });
+
+  test('a payload the hook cannot read leaves the call to the host', () => {
+    const home = makeHome('initialized');
+    expect(
+      cli(home, ['policy', '--hook-protocol=antigravity', '--home-from-payload'], {
+        stdin: '{not json',
+        asPlugin: true
+      })
+    ).toMatchSnapshot();
+  });
+});
+
 describe.skipIf(!POSIX_GIT)('session capture, per host', () => {
   const hookPayload = (transcript: string, cwd: string) =>
     JSON.stringify({ session_id: SESSION_ID, transcript_path: transcript, cwd });
@@ -389,9 +446,14 @@ describe.skipIf(!POSIX_GIT)('session capture, per host', () => {
   test('Antigravity, session-end', () => {
     const home = makeHome('initialized');
     const stdin = antigravityPayload(home, { hookEventName: 'Stop', transcriptPath: antigravityTranscript(home, 6) });
-    const run = cli(home, ['session-capture', '--mode=session-end', '--hook-protocol=antigravity', `--home=${home}`], {
-      stdin
-    });
+    const run = cli(
+      home,
+      ['session-capture', '--mode=session-end', '--hook-protocol=antigravity', '--home-from-payload'],
+      {
+        stdin,
+        asPlugin: true
+      }
+    );
     expect({ ...run, days: dayFiles(home) }).toMatchSnapshot();
   });
 

@@ -1,7 +1,8 @@
 import { RUNTIME_DIR, TEST_HOME_VAR, ownDataDir, resolveEnv } from '@/shared/naming';
 import { existingTarget, expandTilde, isInside } from '@/shared/paths';
+import { homeAbove } from '@/shared/settings-env';
 import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { resolve } from 'node:path';
 
 /**
  * The env gate: `shared/naming.ts` plus the home's secret store.
@@ -80,21 +81,6 @@ export function agentHomePath(): string {
   process.env.AGENT_HOME = home;
   return home;
 }
-
-/** Nearest ancestor of `start` (inclusive) that is this agent's home, or undefined. */
-const homeAbove = (start: string): string | undefined => {
-  let dir = resolve(start);
-  for (;;) {
-    if (isAgentHome(dir)) {
-      return dir;
-    }
-    const parent = dirname(dir);
-    if (parent === dir) {
-      return undefined;
-    }
-    dir = parent;
-  }
-};
 
 /**
  * True when `path` is this agent's scaffolded home — marked by a

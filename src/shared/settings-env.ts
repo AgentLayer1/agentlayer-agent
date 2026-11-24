@@ -1,3 +1,4 @@
+import { ownDataDir } from '@/shared/naming';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
@@ -33,4 +34,26 @@ export function loadSettingsEnv(start: string): void {
 /** Pins the home a caller named on its own command line, ahead of anything a settings file says. */
 export const pinHome = (home: string): void => {
   process.env.AGENT_HOME = home;
+};
+
+/** The nearest folder at or above `start` that is this agent's home, read from its marker alone. */
+export const homeAbove = (start: string): string | undefined => {
+  const dir = resolve(start);
+  const parent = dirname(dir);
+  return ownDataDir(dir) ? dir : parent === dir ? undefined : homeAbove(parent);
+};
+
+/** The home a hook payload's session works in: the first of its workspace folders, then its cwd, that sits in one. */
+export const homeInPayload = (raw: string): string | undefined => {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    const payload = typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : {};
+    const folders = [...(Array.isArray(payload.workspacePaths) ? payload.workspacePaths : []), payload.cwd];
+    return folders
+      .filter((folder): folder is string => typeof folder === 'string' && folder !== '')
+      .map(homeAbove)
+      .find((home) => home !== undefined);
+  } catch {
+    return undefined;
+  }
 };
