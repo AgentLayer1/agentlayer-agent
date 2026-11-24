@@ -89,7 +89,7 @@ Everything else is out of scope here: structural changes (a new lane or mileston
 
 ### 6. Identify cross-cutting opportunities
 
-As you work, watch for patterns that span 2+ projects (e.g., the same library helps two projects, a decision in one affects another). When you find one, draft a `<HOME>/knowledge/concepts/<slug>.md` capturing it and add its bullet to `knowledge/index.md` → `## Concepts`. Don't force this — only do it when the connection is real.
+As you work, watch for patterns that span 2+ projects (e.g., the same library helps two projects, a decision in one affects another). When you find one, draft a `<HOME>/knowledge/concepts/<slug>.md` capturing it and add its bullet to `knowledge/index.md` → `## Concepts`, one line of at most 200 characters. Don't force this — only do it when the connection is real.
 
 ### 7. Capture decisions
 

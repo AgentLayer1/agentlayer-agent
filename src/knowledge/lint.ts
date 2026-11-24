@@ -55,6 +55,10 @@ const MEMORY_SECTION_BUDGETS = [
   { name: 'Pending', maxBytes: 2_000 }
 ] satisfies ReadonlyArray<{ name: string; maxBytes: number; maxBullets?: number; maxBulletChars?: number }>;
 
+// The knowledge index loads into every session too: one line per article, the detail in the article.
+const KNOWLEDGE_INDEX_PATH = 'index.md';
+const INDEX_ENTRY_MAX_CHARS = 200;
+
 interface LintIssue {
   check: string;
   severity: 'error' | 'warning' | 'suggestion';
@@ -337,6 +341,37 @@ async function checkMemoryBudget(articles: Map<string, string>): Promise<LintIss
   return issues;
 }
 
+/**
+ * The knowledge index against the articles it lists: an entry longer than one line's worth, and a permanent
+ * article it never names, which every later compile would then miss.
+ */
+async function checkKnowledgeIndex(articles: Map<string, string>): Promise<LintIssue[]> {
+  const index = await readWikiIndex();
+  const long = index.split('\n').filter((line) => line.startsWith('- [[') && line.length > INDEX_ENTRY_MAX_CHARS);
+  const listed = new Set(extractWikilinks(index));
+  const unlisted = [...articles.keys()]
+    .filter((relPath) => PERMANENT_DIRS.some((dir) => relPath.startsWith(dir)))
+    .filter((relPath) => !listed.has(relPath.replace(/\.md$/, '')));
+  return [
+    ...(long.length > 0
+      ? [
+          {
+            check: 'Knowledge index',
+            severity: 'warning' as const,
+            message: `${KNOWLEDGE_INDEX_PATH} has ${long.length} entr${long.length === 1 ? 'y' : 'ies'} over ${INDEX_ENTRY_MAX_CHARS} chars (longest: ${Math.max(...long.map((line) => line.length))}). An entry is one line: move what the article lacks into the article, then cut the entry.`,
+            file: KNOWLEDGE_INDEX_PATH
+          }
+        ]
+      : []),
+    ...unlisted.map((relPath) => ({
+      check: 'Knowledge index',
+      severity: 'warning' as const,
+      message: `${relPath} is not listed in ${KNOWLEDGE_INDEX_PATH}`,
+      file: relPath
+    }))
+  ];
+}
+
 // ── Helpers (exported for tests) ──────────────────────────────────────
 
 /**
@@ -536,12 +571,13 @@ export async function run(opts: LintOptions = {}): Promise<LintSummary> {
       checkSparseArticles(articles),
       checkTransientMemoryRefs(articles),
       checkInvalidFrontmatter(articles),
-      checkMemoryBudget(articles)
+      checkMemoryBudget(articles),
+      checkKnowledgeIndex(articles)
     ]);
     const allIssues = checks.flat();
 
     log.info(
-      `Structural checks: ${checks[0].length} broken, ${checks[1].length} orphan pages, ${checks[2].length} orphan sources, ${checks[3].length} missing backlinks, ${checks[4].length} sparse, ${checks[5].length} transient refs, ${checks[6].length} invalid frontmatter, ${checks[7].length} memory budget`
+      `Structural checks: ${checks[0].length} broken, ${checks[1].length} orphan pages, ${checks[2].length} orphan sources, ${checks[3].length} missing backlinks, ${checks[4].length} sparse, ${checks[5].length} transient refs, ${checks[6].length} invalid frontmatter, ${checks[7].length} memory budget, ${checks[8].length} knowledge index`
     );
 
     // Auto-fix

@@ -46,7 +46,7 @@ updated: <YYYY-MM-DD>
 5. **Encyclopedia tone** — factual, self-contained, scannable. Use
    `[[concepts/<slug>]]` wikilinks for
    cross-references.
-6. **Keep the manifest current.** If you create a new concept, add a bullet to the `## Concepts` section of `{{knowledgeDir}}/index.md` with a wikilink and a one-line description. The index IS the manifest — every future compile uses it as the canonical pointer list, so any article missing from the index is invisible to the next pass.
+6. **Keep the manifest current.** If you create a new concept, add a bullet to the `## Concepts` section of `{{knowledgeDir}}/index.md` with a wikilink and a one-line description of at most 200 characters (what the article is about, never what it says). The index IS the manifest — every future compile uses it as the canonical pointer list, so any article missing from the index is invisible to the next pass.
 7. **If nothing distillable emerges** — no durable pattern, no cross-cutting
    principle, nothing non-obvious — write no articles. Respond with a short
    explanation of why. The raw file will be consumed either way; a clean

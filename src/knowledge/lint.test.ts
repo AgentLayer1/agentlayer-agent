@@ -54,3 +54,18 @@ describe('lint backlinks', () => {
     expect(target.match(/## See Also/g)).toHaveLength(1);
   });
 });
+
+describe('lint knowledge index', () => {
+  test('flags an entry over one line and a permanent article the index never names', async () => {
+    article('acme-listed', 'title: Acme listed');
+    article('acme-unlisted', 'title: Acme unlisted');
+    writeFileSync(
+      join(FOLDERS.KNOWLEDGE, 'index.md'),
+      `# Knowledge Index\n\n## Concepts\n\n- [[concepts/acme-listed]] — ${'a long recap '.repeat(30)}\n- [[concepts/acme-flat]] — short\n`
+    );
+    const report = readFileSync((await run()).reportPath, 'utf-8');
+    expect(report).toContain('index.md has 1 entry over 200 chars');
+    expect(report).toContain('concepts/acme-unlisted.md is not listed in index.md');
+    expect(report).not.toContain('concepts/acme-listed.md is not listed');
+  });
+});

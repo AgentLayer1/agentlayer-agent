@@ -44,6 +44,8 @@ Format each as one line: `- **[stale|contradiction|missing]** <the gap — and w
 
 Those three kinds are the only ones. A gap that got filled drops off the list; never carry it forward as `[resolved]`.
 
+Then the index itself: for up to ten entries of `<HOME>/knowledge/index.md` that run over 200 characters, longest first, read the article, add to it any clause of the entry it lacks, and cut the entry to one line saying what the article is about. Nothing is dropped: what the entry said now lives in the article.
+
 Do **not** invent gaps to hit a quota. Most runs surface 0–3. This is a judgment pass, not a checklist. Because `memory/index.md` is auto-loaded every session, the list becomes ambient context — no briefing wiring needed.
 
 ## Boundaries
