@@ -312,6 +312,19 @@ describe('healFromDayFiles', () => {
   test('ignores a block past the end of the transcript, which a rewritten transcript cannot vouch for', () => {
     const turns = transcript(2);
     const behind = indexAt(turns, 1);
-    expect(healFromDayFiles(behind, sessionId, turns, [header(1, 5)], 'stub')).toBe(behind);
+    expect(healFromDayFiles(behind, sessionId, turns, [header(2, 5)], 'stub')).toBe(behind);
+  });
+
+  test('trusts only the newest block, so an older, longer one from before a re-anchor never skips new turns', () => {
+    const regrown = transcript(5);
+    const afterReanchor = indexAt(regrown, 2);
+    expect(healFromDayFiles(afterReanchor, sessionId, regrown, [header(1, 5), header(1, 2)], 'stub')).toBe(
+      afterReanchor
+    );
+    const longer = transcript(45);
+    const caughtUp = indexAt(longer, 32);
+    expect(
+      healFromDayFiles(caughtUp, sessionId, longer, [header(1, 40), header(1, 30), header(31, 32)], 'stub')
+    ).toBe(caughtUp);
   });
 });

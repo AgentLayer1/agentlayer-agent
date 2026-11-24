@@ -121,8 +121,9 @@ export function recordCapture(index: SessionIndex, ev: CaptureEvent): SessionInd
 }
 
 /**
- * The index with a session's cursor moved up to the last turn its day-file blocks already hold, so a capture that
- * stopped after its append and before its index save is not written a second time.
+ * The index with a session's cursor moved past its newest day-file block when that block is the one the index never
+ * recorded (it starts right after the cursor), so a capture that stopped after its append and before its index save
+ * is not written a second time. `headers` are in file order, oldest first.
  */
 export function healFromDayFiles(
   index: SessionIndex,
@@ -131,11 +132,9 @@ export function healFromDayFiles(
   headers: ParsedEntryHeader[],
   briefingStub: string
 ): SessionIndex {
-  const last = headers
-    .filter((header) => header.sessionId === sessionId)
-    .reduce<ParsedEntryHeader | null>((best, header) => (best && best.to >= header.to ? best : header), null);
+  const last = headers.findLast((header) => header.sessionId === sessionId);
   const cursor = index.sessions[sessionId]?.captured_turns ?? 0;
-  if (!last || last.to <= cursor || last.to > turns.length) {
+  if (!last || last.from !== cursor + 1 || last.to > turns.length) {
     return index;
   }
   return recordCapture(index, {
