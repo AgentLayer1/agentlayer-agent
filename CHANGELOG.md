@@ -47,6 +47,72 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.1.0] - 2026-11-24
+
+Less loads into every session, and the brain's upkeep is measured instead of guessed.
+
+### Added
+- The session banner gives how much loads into every session for the host it runs on ("121.1KB of
+  home files, and 7.7KB added today"), against a 100 KB budget; over it, the log names the three
+  largest files. The status screen and the dashboard weigh the same total.
+- The compile records the operator's corrections from the session logs: each quoted with one line
+  of scope, keyed on its session, and never appended twice.
+- Self-review scripts: `rule-compliance.ts` counts corrections per 1,000 replies and two shell
+  habits per week from a home's transcripts; `replay.ts` asks one prompt of the manual at two git
+  refs and scores the answers blind; `feedback-digest.ts` reads the feedback log by code, so a
+  rules pass reads a few KB of it instead of all of it.
+- The brain audit reads every file a session loads and finds lines said twice, lines naming only
+  closed tasks, and rules buried in their incidents.
+
+### Changed
+- The manual is 28,810 bytes, down from 35,363. "Engineering the Codebase" (the plugin's own
+  contributor rules) is gone, and the folder tree, the principles and the worktree section are
+  shorter. On a correction the agent fixes the work and writes no lesson mid-task; the compile
+  records the correction.
+- The always-on Xcode rule is 5,462 bytes, down from 13,253. It keeps the toolchain routing,
+  headless recovery and the ground rules; previews, the oldest-OS launch check, what to do after an
+  Xcode update and Apple's skills move to `xcode-project.md`, now scoped to Swift sources too.
+- TASKS.md lists the P0 and P1 tasks, what is blocked or overdue, and one line of counts per
+  project; the full Active list, the stale ids and Recently Closed leave it (30.6 KB to 10.7 KB on a
+  home with 96 open tasks). The flywheel takes its queue from `task_query`.
+- Memory budgets: Recent Decisions covers a week (15 one-line bullets, 5 KB); a new Learning is one
+  line of at most 250 characters, and a longer one is kept word for word until self-review splits
+  it; a knowledge index entry is one line of at most 200 characters, and the compile shortens up
+  to ten long ones a run after moving what they say into the article. Lint checks every memory
+  section and the index.
+- Self-review's rules pass ranks what it prunes by harm (wrong, said twice, narrative, low value,
+  then size), takes one yes for the items its scripts settled, proposes up to three retirements a
+  sitting, holds additions to the budget, and opens its report with a scorecard. Sync offers it
+  seven days after the last one when the brain audit finds 5 or more such lines or the home is over
+  its budget.
+- Codex: a home's `.codex/config.toml` gets `project_doc_max_bytes = 65536` when the key is absent,
+  since Codex reads only the first 32,768 bytes of `AGENTS.md` by default. Whether Codex honours the
+  key from a home's own config is not yet confirmed.
+- A release entry gives the before and after size of an always-loaded template it changes.
+
+### Fixed
+- Heartbeat: a look that starts late (a timer firing in a brief wake of a sleeping Mac) waits two
+  minutes for the machine to stay awake, and a re-arm in that wait no longer drops it; an idle home
+  gets no wake, a due brain refresh included; a brain refresh that never finished is retried once
+  at the next look, and a `/clear` no longer resets that. A late look is marked in the CLI log.
+- Capture: one stopped between its append and its index save is not written twice. A capture now
+  saves its block as pending before appending, and a block cut short mid-append is trimmed before
+  it is written again.
+- Feedback: two copies of one keyed entry captured at once are appended once; a reply quoting a
+  role label at the start of a line no longer reads as an operator turn; a capture cut inside a
+  multi-byte character of its header is trimmed.
+- An `@-import` naming a folder no longer aborts the banner's weight and the dashboard rebuild.
+
+### Upgrade
+- `script: required` — run skills/upgrade/scripts/1.1.0.ts: removes "Engineering the Codebase" from
+  `AGENTS.md` when unedited, and replaces the Xcode pack's two rule files together when both are
+  the shipped copies. Anything you edited is left as it is and put to you.
+- `template/AGENTS.md: mandatory` — the trimmed manual and the new correction rule.
+- `manual: optional` — Xcode pack only: if the upgrade reports your `xcode.md` or
+  `xcode-project.md` as edited, merge them with the plugin's `templates/rules/` copies by hand.
+- `manual: optional` — If a session is your heartbeat, restart it and run `/heartbeat` there: the
+  late-look and retry fixes run only in a session started on 1.1.0.
+
 ## [1.0.11] - 2026-11-23
 
 The cmux sidebar is one page, and a heartbeat look that changed nothing stays quiet.
