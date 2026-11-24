@@ -176,6 +176,23 @@ describe('a capture replayed after an interrupted write', () => {
     expect(ranges).toEqual(['1-2', '3-3']);
   });
 
+  test("a heartbeat tab's looks are never written; the operator's own turns in that tab are", async () => {
+    const sessionId = '1a2b3c4d-0000-4000-8000-000000002222';
+    const look = [
+      { role: 'user', content: '<command-message>agentlayer:proposals</command-message>\n<command-name>/agentlayer:proposals</command-name>' },
+      { role: 'user', content: 'Base directory for this skill: /plugin/skills/proposals\n\n# Heartbeat: keep Proposals full' },
+      { role: 'assistant', content: 'heartbeat-look: nothing new worth proposing.' }
+    ];
+    const write = (messages: { role: string; content: string }[]) =>
+      writeFileSync(transcriptPath, messages.map((message) => JSON.stringify({ message })).join('\n'), 'utf-8');
+    write(look);
+    expect(await capture(sessionId)).toMatchObject({ saved: false, reason: 'heartbeat-only' });
+    write([...look, { role: 'user', content: 'heartbeat-tab ask: what is due today?' }, { role: 'assistant', content: 'Two tasks.' }]);
+    expect(await capture(sessionId)).toMatchObject({ saved: true });
+    expect(occurrences('heartbeat-tab ask: what is due today?')).toBe(1);
+    expect(occurrences('heartbeat-look: nothing new worth proposing.')).toBe(0);
+  });
+
   test('a turn rewritten before the replay is written in its new form', async () => {
     const sessionId = '1a2b3c4d-0000-4000-8000-00000000dddd';
     writeTranscript(messages(2, 'revised'));

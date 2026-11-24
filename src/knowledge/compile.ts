@@ -8,7 +8,7 @@
 import { FILES, FOLDERS, KNOWLEDGE } from '@/config';
 import { chunkSessionLog } from '@/knowledge/chunk';
 import { operatorTurns, renderOperatorTurns } from '@/knowledge/operator-turns';
-import { ENTRY_HEADER_RE } from '@/knowledge/session-format';
+import { ENTRY_HEADER_RE, withoutHeartbeat } from '@/knowledge/session-format';
 import { loadState, saveState } from '@/knowledge/state';
 import { hashBuffer, listInboxFiles, listRawFiles, loadScriptTemplate, renderTemplate } from '@/knowledge/utils';
 import type { CompileState, IngestedEntry, PartialEntry } from '@/knowledge/types';
@@ -262,7 +262,7 @@ export async function pickNext(): Promise<CompileWorkItem | null> {
       cost_usd: costSoFar
     };
     state.in_flight = fileName;
-    const prompt = await buildSessionPrompt(fileName, chunks[chunkIndex]);
+    const prompt = await buildSessionPrompt(fileName, withoutHeartbeat(chunks[chunkIndex]));
     await saveState(state);
     return {
       itemId: `session:${fileName}:${chunkIndex}`,

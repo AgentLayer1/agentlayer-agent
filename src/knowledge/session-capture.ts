@@ -13,7 +13,7 @@
  */
 import { FOLDERS, KNOWLEDGE, PLUGIN_NAME, isInitialized } from '@/config';
 import type { HostName } from '@/hosts/contract';
-import { ENTRY_SEPARATOR, escapeTurnMarkers, formatEntryHeader } from '@/knowledge/session-format';
+import { dropHeartbeatTurns, ENTRY_SEPARATOR, escapeTurnMarkers, formatEntryHeader } from '@/knowledge/session-format';
 import {
   adoptLegacyKey,
   diffTurns,
@@ -288,6 +288,7 @@ export type CaptureSessionReason =
   | 'no-new-turns'
   | 'too-few-turns'
   | 'empty-after-redaction'
+  | 'heartbeat-only'
   | 'deferred';
 
 export type CaptureSessionResult =
@@ -434,7 +435,14 @@ async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessio
       );
     }
 
-    const redacted = redactSecrets(formatTurnList(diff.newTurns));
+    // Like any skip, this leaves the cursor where it was: a later capture re-reads these turns and drops them again.
+    const kept = dropHeartbeatTurns(diff.newTurns);
+    if (kept.length === 0) {
+      log.info(`skip (${mode}) — only the heartbeat's own turns`);
+      return { saved: false, reason: 'heartbeat-only', turns: diff.newTurns.length };
+    }
+
+    const redacted = redactSecrets(formatTurnList(kept));
     if (!redacted.trim()) {
       log.info(`skip (${mode}) — empty after redaction`);
       return { saved: false, reason: 'empty-after-redaction', turns: diff.newTurns.length };
@@ -450,7 +458,7 @@ async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessio
     }
 
     const source = homeRelative(opts.cwd);
-    const models = new Set(diff.newTurns.flatMap((turn) => (turn.model ? [turn.model] : [])));
+    const models = new Set(kept.flatMap((turn) => (turn.model ? [turn.model] : [])));
     const header = formatEntryHeader({
       heading: cfg.heading,
       time: nowTime(),
@@ -472,7 +480,7 @@ async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessio
       from: diff.from,
       to: diff.to,
       lastTurnFp: fingerprintTurn(turns[turns.length - 1]),
-      briefingStub: briefingStub(diff.newTurns)
+      briefingStub: briefingStub(kept)
     };
     await saveIndex({
       ...index,

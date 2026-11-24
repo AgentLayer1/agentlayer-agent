@@ -42,7 +42,13 @@ import { getUpgradeStatus, readMigratedFrom } from '@/upgrade/version';
 import { execSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { basename, relative, resolve, sep } from 'node:path';
-import { FIRST_SESSION_HEADER_RE, SESSION_BLOCK_SEPARATOR_RE, TRAILING_SEPARATOR_RE, TURN_MARKER } from '@/knowledge/session-format';
+import {
+  FIRST_SESSION_HEADER_RE,
+  SESSION_BLOCK_SEPARATOR_RE,
+  TRAILING_SEPARATOR_RE,
+  TURN_MARKER,
+  withoutHeartbeat
+} from '@/knowledge/session-format';
 
 const log = baseLog.session.with('context');
 
@@ -137,7 +143,7 @@ async function lastSessionTail(maxBytes: number): Promise<TailResult> {
     const filename = `${dateStr}.md`;
     const logPath = resolve(FOLDERS.SESSIONS, filename);
     try {
-      const content = await readFile(logPath, 'utf-8');
+      const content = withoutHeartbeat(await readFile(logPath, 'utf-8'));
       const start = findLastSessionBlockStart(content);
       if (start === -1) continue;
       const block = content.slice(start).replace(TRAILING_SEPARATOR_RE, '').replace(CAVEAT_BLOCK_RE, '');
