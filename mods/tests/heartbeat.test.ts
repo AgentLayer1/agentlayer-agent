@@ -499,8 +499,10 @@ describe('heartbeat band', () => {
     host.hanging.length = 0;
     expect(host.commands).toEqual([]);
     await host.clock.advance(3 * MINUTE);
-    expect(host.commands, 'the redraw found the look overdue and looked at once').toEqual([WAKE]);
+    expect(host.commands, 'the redraw found the look overdue, and waits to see the machine stay awake').toEqual([]);
     expect(await drawn($)).toContain('the look due 09:55 never came; the clock restarted');
+    await host.clock.advance(2 * MINUTE);
+    expect(host.commands, 'two minutes on and still awake, it looks').toEqual([WAKE]);
     expect(
       host.argv.map((argv) => argv.slice(2).join(' ')),
       'the late start is in the CLI log, which outlives the band'
@@ -522,6 +524,8 @@ describe('heartbeat band', () => {
     expect(host.commands).toEqual([]);
     await run($, 'heartbeat', 'status');
     await host.clock.settle();
+    expect(host.commands, 'restarted, and waiting out the settle time').toEqual([]);
+    await host.clock.advance(2 * MINUTE);
     expect(host.commands).toEqual([WAKE]);
   });
 

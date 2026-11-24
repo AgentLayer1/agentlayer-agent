@@ -70,16 +70,40 @@ const redrawn = atom({ plugin: 'agentlayer', key: 'heartbeatRedraw' } as const, 
 // The wake clock and the band's redraw, armed only in the session that is the home's heartbeat.
 let ticker: { cancel: () => void } | undefined;
 let redraw: { cancel: () => void } | undefined;
+let settling: { cancel: () => void } | undefined;
 
 const stopClocks = (): void => {
   ticker?.cancel();
   redraw?.cancel();
+  settling?.cancel();
   ticker = undefined;
   redraw = undefined;
+  settling = undefined;
 };
 
 // A look overdue by more than this means its clock stopped, not that it is running a little late.
 const STALL_MS = 2 * MINUTE_MS;
+
+// macOS runs timers in the brief wakes of a sleeping machine, and a turn started in one dies mid-response when the
+// machine sleeps again; the host's own sleep assertion doesn't hold through those wakes or a closed lid. A wait that
+// ends on time is the sign the machine stayed awake.
+const SETTLE_MS = 2 * MINUTE_MS;
+
+function tickOnceSettled($: EngineInterface, from: number): void {
+  if (settling) {
+    return;
+  }
+  const dueAt = from + SETTLE_MS;
+  settling = $.clock.after(SETTLE_MS, async () => {
+    settling = undefined;
+    const now = await $.clock.now();
+    if (isLate(dueAt, now)) {
+      tickOnceSettled($, now);
+      return;
+    }
+    await tick($);
+  });
+}
 
 // Claude Code ends an interval for good, and says nothing, when one period's dispatch is refused. So the two clocks
 // keep each other alive: every look starts the redraw afresh, and every redraw restarts a look clock it finds stopped.
@@ -394,18 +418,19 @@ async function tick($: EngineInterface, revivedLateMs = 0): Promise<void> {
   const absorbs = used === null || used > refreshedMs(status);
   const lastTryUnfinished = refreshTriedAt > refreshedMs(status);
   const mayTry = !insideRetryWindow(refreshTriedAt, now) || (lastTryUnfinished && !refreshRetried);
-  if (status.refreshDue && absorbs && mayTry) {
-    await ticked($, status, now);
-    await wake($, now, status, true);
-    return;
-  }
+  const refreshes = status.refreshDue && absorbs && mayTry;
   // A home it can't see is treated as in use, since skipping would stop the heartbeat for good.
-  if (used !== null && now - used >= status.heartbeat.everyMinutes * MINUTE_MS) {
+  if (!refreshes && used !== null && now - used >= status.heartbeat.everyMinutes * MINUTE_MS) {
     await ticked($, status, now, 'home idle');
     return;
   }
+  if (lateMs > 0) {
+    await ticked($, status, now, 'started late; looking once the machine stays awake');
+    tickOnceSettled($, now);
+    return;
+  }
   await ticked($, status, now);
-  await wake($, now, status);
+  await wake($, now, status, refreshes);
 }
 
 // Only a process that ran /heartbeat holds a token, so every other session starts without reading its status.
