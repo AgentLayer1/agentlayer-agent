@@ -11,6 +11,7 @@ export const codexHost = {
   launchDir: () => undefined,
   terminal: () => false,
   captureReply: 'json',
+  recordsConversations: false,
   guard: { cdCarries: false, powershellOn: (platform) => platform === 'win32' },
   floor: {
     version: '0.154.0',

@@ -17,7 +17,7 @@ import { assembleContext } from '@/hooks/context';
 import type { HostAdapter, SkillCommand } from '@/hosts/contract';
 import { renderGlossary } from '@/hosts/dialect';
 import { DEFAULT_HOST } from '@/hosts/registry';
-import { drainDeferredCaptures } from '@/knowledge/session-capture';
+import { drainDeferredCaptures, drainOpenConversations } from '@/knowledge/session-capture';
 import { BANNER, BANNER_LINES, BANNER_TAG } from '@/hooks/banner';
 import { stripAnsi } from '@/shared/ansi';
 import { log as baseLog } from '@/shared/log';
@@ -108,6 +108,7 @@ export async function sessionStart({
       };
     }
     await drainDeferredCaptures().catch((err: unknown) => log.error('deferred captures not drained', err));
+    await drainOpenConversations().catch((err: unknown) => log.error('open conversations not drained', err));
     const lane = await assembleContext({ promptRow, host }).catch((err: unknown) => {
       log.error(`hook failed (${host.name}): dynamic lane skipped`, err);
       const message = err instanceof Error ? err.message : String(err);

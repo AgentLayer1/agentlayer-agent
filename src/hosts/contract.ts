@@ -104,6 +104,10 @@ export interface HostAdapter {
    * How a session capture answers the hook: a host envelope, or the raw result as JSON.
    */
   captureReply: 'envelope' | 'json';
+  /**
+   * The host has no session-end event, so its hooks record each conversation for the drain to save.
+   */
+  recordsConversations: boolean;
   guard: GuardPolicy;
   floor: HostFloor;
   /**

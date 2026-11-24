@@ -242,6 +242,20 @@ describe.skipIf(!POSIX_GIT)('session start, per host and home state', () => {
     expect(cli(home, ['session-start', '--hook-protocol=antigravity', `--home=${home}`], { stdin })).toMatchSnapshot();
   });
 
+  test("an Antigravity session start records its conversation for the drain, and a subagent's does not", () => {
+    const home = makeHome('initialized');
+    antigravityTranscript(home, 1);
+    const open = resolve(home, RUNTIME_DIR, 'conversations', 'open.json');
+    const child = antigravityPayload(home, {
+      conversationId: 'child-0000',
+      lastUserInput: '',
+      transcriptPath: resolve(home, 'not-yet.jsonl')
+    });
+    cli(home, ['session-start', '--hook-protocol=antigravity', `--home=${home}`], { stdin: child });
+    cli(home, ['session-start', '--hook-protocol=antigravity', `--home=${home}`], { stdin: antigravityPayload(home) });
+    expect(Object.keys(JSON.parse(readFileSync(open, 'utf-8')) as object)).toEqual([SESSION_ID]);
+  });
+
   test('no protocol, initialized home', () => {
     const home = makeHome('initialized');
     expect(cli(home, ['session-start'])).toMatchSnapshot();

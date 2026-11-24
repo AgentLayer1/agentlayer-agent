@@ -21,6 +21,7 @@ export const claudeHost: HostAdapter = {
   delivery: { kind: 'import' },
   terminal: () => env('CLAUDE_CODE_ENTRYPOINT') === 'cli',
   captureReply: 'envelope',
+  recordsConversations: false,
   guard: { cdCarries: true, powershellOn: () => false },
   floor: {
     version: '2.1.314',

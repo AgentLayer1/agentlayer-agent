@@ -10,13 +10,21 @@ import { CLI_COMMAND } from '@/shared/naming';
 
 type Flag = (name: string) => string | undefined;
 
-/** Who started this conversation, read from the hook payload; one that can't be read counts as the user's. */
-const originOf = async (host: HostAdapter): Promise<HookPayload['origin']> => {
+/** The hook payload on stdin, or undefined when there is none or it can't be read. */
+const payloadOf = async (host: HostAdapter): Promise<HookPayload | undefined> => {
   const raw = await Bun.stdin.text();
   try {
-    return raw.trim() ? host.readPayload(raw).origin : 'user';
+    return raw.trim() ? host.readPayload(raw) : undefined;
   } catch {
-    return 'user';
+    return undefined;
+  }
+};
+
+/** A host with no session-end event keeps each of its conversations on the open list for the drain. */
+const recordFor = async (host: HostAdapter, payload: HookPayload | undefined): Promise<void> => {
+  if (host.recordsConversations && payload?.origin === 'user') {
+    const { recordConversation } = await import('@/knowledge/session-capture');
+    await recordConversation(payload, host.name);
   }
 };
 
@@ -62,8 +70,12 @@ export const runGuard = async (flag: Flag): Promise<number> => {
 
 export const runSessionStart = async (flag: Flag): Promise<number> => {
   const host = hostOf(flag);
-  if (host && (await originOf(host)) === 'child') {
+  const payload = host ? await payloadOf(host) : undefined;
+  if (payload?.origin === 'child') {
     return 0;
+  }
+  if (host) {
+    await recordFor(host, payload);
   }
   const { sessionStart } = await import('@/hooks/session-start');
   const isTerminal = host?.terminal() ?? false;
@@ -78,7 +90,9 @@ export const runSessionStart = async (flag: Flag): Promise<number> => {
 
 const sessionFromPayload = async (host: HostAdapter) => {
   const payload = host.readPayload(await Bun.stdin.text());
+  await recordFor(host, payload);
   return {
+    origin: payload.origin,
     transcriptPath: payload.transcriptPath ?? '',
     cwd: host.launchDir() ?? payload.cwd ?? '',
     sessionId: payload.sessionId ?? 'unknown'
@@ -87,15 +101,23 @@ const sessionFromPayload = async (host: HostAdapter) => {
 
 export const runSessionCapture = async (flag: Flag): Promise<number> => {
   const mode = flag('mode');
-  if (mode !== 'session-end' && mode !== 'pre-compact') {
+  if (mode !== 'session-end' && mode !== 'pre-compact' && mode !== 'turn-end') {
     throw new Error(
-      `Usage: ${CLI_COMMAND} session-capture --mode=session-end|pre-compact [--hook-protocol=${HOST_NAMES.join('|')}] [--transcript=PATH --cwd=PATH --session-id=X] [--format=${HOST_NAMES.join('|')}]`
+      `Usage: ${CLI_COMMAND} session-capture --mode=session-end|pre-compact|turn-end [--hook-protocol=${HOST_NAMES.join('|')}] [--transcript=PATH --cwd=PATH --session-id=X] [--format=${HOST_NAMES.join('|')}]`
     );
   }
   const host = hostOf(flag);
-  const session = host
+  const { origin, ...session } = host
     ? await sessionFromPayload(host)
-    : { transcriptPath: flag('transcript') ?? '', cwd: flag('cwd') ?? process.cwd(), sessionId: flag('session-id') ?? 'cli' };
+    : {
+        origin: 'user',
+        transcriptPath: flag('transcript') ?? '',
+        cwd: flag('cwd') ?? process.cwd(),
+        sessionId: flag('session-id') ?? 'cli'
+      };
+  if (origin === 'child') {
+    return 0;
+  }
   const format = flag('format') ?? host?.name;
   if (format !== undefined && !isHostName(format)) {
     throw new Error(`Unknown --format: ${format} (supported: ${HOST_NAMES.join(', ')})`);

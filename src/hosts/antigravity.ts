@@ -116,6 +116,7 @@ export const antigravityHost = {
   launchDir: () => undefined,
   terminal: () => false,
   captureReply: 'json',
+  recordsConversations: true,
   guard: { cdCarries: false, powershellOn: (platform) => platform === 'win32' },
   floor: {
     binary: 'agy',

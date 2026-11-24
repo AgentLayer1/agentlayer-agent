@@ -119,7 +119,7 @@ Capture commands:
   capture ... --title=X --label=Y   Optional metadata (slug source + frontmatter label)
 
 Hook commands (internal — wired into Claude Code hooks; safe to run manually for testing):
-  session-capture --mode=session-end|pre-compact --hook-protocol=claude
+  session-capture --mode=session-end|pre-compact|turn-end --hook-protocol=claude
                                     Read hook JSON from stdin and append the transcript to raw/sessions/.
   session-capture --mode=... --transcript=PATH --cwd=PATH --session-id=X
                                     Plain-CLI mode — same logic without the hook envelope. Useful for testing.
