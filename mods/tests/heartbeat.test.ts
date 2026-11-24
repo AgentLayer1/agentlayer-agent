@@ -534,6 +534,24 @@ describe('heartbeat band', () => {
     expect(host.commands, 'the restarted clock keeps its interval').toEqual([WAKE]);
   });
 
+  test('a look whose clock fires late waits to see the machine stay awake', async ($, on) => {
+    const state = heartbeatState(on);
+    const { host } = await bound($, on);
+    await ended($, 'Nothing new worth proposing.');
+    await host.clock.advance(53 * MINUTE);
+    // The mock clock fires every timer on time, so the look is made late by moving when it was due.
+    state.patch({ nextAt: host.clock.now() + MINUTE / 2 });
+    await host.clock.advance(2 * MINUTE);
+    expect(host.commands, 'due 90 seconds before its clock fired').toEqual([]);
+    expect(cliCalls(host)).toContain('heartbeat status --json --late=2m');
+    expect(await drawn($)).toContain('started late; looking once the machine stays awake');
+    // A failed /heartbeat off arms the clocks again, as the session start after a /clear does; the look is still owed.
+    host.failing.push('heartbeat off');
+    await run($, 'heartbeat', 'off');
+    await host.clock.advance(2 * MINUTE);
+    expect(host.commands, 'two minutes on and still awake, it looks').toEqual([WAKE]);
+  });
+
   test('/heartbeat status finds a look clock that stopped, and looks', async ($, on) => {
     const { host } = await bound($, on);
     await ended($, 'Nothing new worth proposing.');

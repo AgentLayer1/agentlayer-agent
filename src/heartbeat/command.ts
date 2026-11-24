@@ -14,7 +14,7 @@ import { DEFAULT_EVERY_MINUTES, lastRefreshed, parseEvery, refreshDue, released 
 
 const USAGE = [
   `Usage: ${CLI_COMMAND} heartbeat <command>`,
-  `  status [--json] [--late=<minutes>m]        Who the heartbeat is, the brain's last refresh, and the room for proposals and notes (--late only marks this call in the log)`,
+  `  status [--json]                            Who the heartbeat is, the brain's last refresh, and the room for proposals and notes`,
   `  bind --owner=<token> [--every=<duration>]  Make that session the heartbeat (every 55m unless set)`,
   `  release --owner=<token>                    End that session's heartbeat, if it still holds it`,
   `  off                                        No heartbeat`

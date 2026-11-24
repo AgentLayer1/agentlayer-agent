@@ -75,18 +75,16 @@ let settling: { cancel: () => void } | undefined;
 const stopClocks = (): void => {
   ticker?.cancel();
   redraw?.cancel();
-  settling?.cancel();
   ticker = undefined;
   redraw = undefined;
-  settling = undefined;
 };
 
 // A look overdue by more than this means its clock stopped, not that it is running a little late.
 const STALL_MS = 2 * MINUTE_MS;
 
 // macOS runs timers in the brief wakes of a sleeping machine, and a turn started in one dies mid-response when the
-// machine sleeps again; the host's own sleep assertion doesn't hold through those wakes or a closed lid. A wait that
-// ends on time is the sign the machine stayed awake.
+// machine sleeps again. A wait that ends on time is the sign the machine stayed awake. Re-arming the clocks leaves the
+// wait alone, and one left behind by a heartbeat that was given up ends at its tick, which finds the job gone.
 const SETTLE_MS = 2 * MINUTE_MS;
 
 function tickOnceSettled($: EngineInterface, from: number): void {
@@ -171,6 +169,7 @@ async function said($: EngineInterface, args: readonly string[]): Promise<string
   return runCli($, args).then((stdout) => stdout.trim(), errorText);
 }
 
+// The CLI logs its arguments and ignores this one, so how late a look started is on disk after the band's notes are gone.
 async function statusOrWhy($: EngineInterface, lateMs = 0): Promise<HeartbeatStatus | string> {
   const late = lateMs > 0 ? [`--late=${Math.round(lateMs / MINUTE_MS)}m`] : [];
   return runCli($, ['heartbeat', 'status', '--json', ...late]).then(
@@ -218,6 +217,9 @@ async function expectTurn($: EngineInterface, kind: string): Promise<void> {
 }
 
 async function look($: EngineInterface): Promise<void> {
+  // Whatever started this look, it is the one a late tick was waiting to make.
+  settling?.cancel();
+  settling = undefined;
   const titles = await workspacesNow($);
   await expectTurn($, 'look');
   await $.command.run({
@@ -383,12 +385,11 @@ async function lastUse($: EngineInterface): Promise<number | null> {
 }
 
 async function tick($: EngineInterface, revivedLateMs = 0): Promise<void> {
-  const [{ everyMinutes = 55, nextAt: dueAt }, startedAt] = await Promise.all([read($, beat), $.clock.now()]);
-  const lateMs = revivedLateMs || (dueAt !== undefined && isLate(dueAt, startedAt) ? startedAt - dueAt : 0);
+  const [{ everyMinutes = 55, nextAt: dueAt }, now] = await Promise.all([read($, beat), $.clock.now()]);
+  const lateMs = revivedLateMs || (dueAt !== undefined && isLate(dueAt, now) ? now - dueAt : 0);
   const [status, { isBusy }, owner] = await Promise.all([statusOrWhy($, lateMs), read($, queue), heldToken($)]);
   if (typeof status === 'string') {
     // A status that won't read is a skip with its reason, and the next look keeps its interval.
-    const now = await $.clock.now();
     await update($, beat, (current) => ({ ...current, nextAt: now + everyMinutes * MINUTE_MS }));
     await note($, { at: now, kind: 'skip', text: status });
     return;
@@ -407,7 +408,6 @@ async function tick($: EngineInterface, revivedLateMs = 0): Promise<void> {
     return;
   }
   startRedraw($);
-  const now = await $.clock.now();
   if (isBusy) {
     await ticked($, status, now, 'a turn was running');
     return;
