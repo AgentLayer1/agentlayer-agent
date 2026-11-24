@@ -328,7 +328,8 @@ bun "$PLUGIN_ROOT/skills/init/scripts/codex-setup.ts" --home "$HOME_DIR" --write
 ```
 
 The generator also fills missing home-level `model` and `model_reasoning_effort` keys with
-`gpt-6.2-sol` and `high`. Each existing home-level value is preserved (a home still on the
+`gpt-6.2-sol` and `high`, and a missing `project_doc_max_bytes` with `65536`, so a manual past
+Codex's default 32,768-byte read is not cut. Each existing home-level value is preserved (a home still on the
 old default `gpt-6.1-sol` is moved by the 1.0.3 migration script, once). This applies to previously
 wired homes as well as new ones and takes precedence over the user's global Codex defaults;
 report the resulting pair in Step 6. The user-global paste note no longer recommends a reasoning
