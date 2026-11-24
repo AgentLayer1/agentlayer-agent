@@ -68,7 +68,8 @@ const fmtMeta = (task: WorkTask, fields: MetaField[]): string => {
   const parts = fields.flatMap((field) => {
     const entry = task[field];
     const empty = Array.isArray(entry) ? entry.length === 0 : !entry;
-    return empty ? [] : [`${META_LABEL[field] ?? field}: ${Array.isArray(entry) ? entry.join(', ') : cut(String(entry))}`];
+    const shown = Array.isArray(entry) ? entry.join(', ') : cut(String(entry));
+    return empty ? [] : [`${META_LABEL[field] ?? field}: ${shown}`];
   });
   return parts.length === 0 ? '' : ` _(${parts.join(' · ')})_`;
 };
@@ -99,7 +100,8 @@ const renderProjects = (open: WorkTask[], blocked: WorkTask[]): string =>
         .filter(({ count }) => count > 0)
         .map(({ priority, count }) => `${priority} ${count}`);
       const waiting = list.length - mine.length;
-      return `- **${project}**: ${[`${mine.length} open`, ...byPriority, ...(waiting > 0 ? [`${waiting} blocked`] : [])].join(' · ')}`;
+      const counts = [`${mine.length} open`, ...byPriority, ...(waiting > 0 ? [`${waiting} blocked`] : [])];
+      return `- **${project}**: ${counts.join(' · ')}`;
     })
   );
 
@@ -139,6 +141,7 @@ export const formatDashboard = (
   ].join('\n\n');
   const overdueBody = sectionBody(sections.overdue.map((t) => taskLine(t, ['project', 'priority', 'due', 'status'])));
   const rest = `_${sections.stale.length} stale · ${sections.closedRecent.length} closed in the last 14 days._`;
+  const byProject = renderProjects(sections.active, sections.blocked);
 
   return [
     header,
@@ -148,7 +151,7 @@ export const formatDashboard = (
     `## Priorities (${priorities.length})\n\n${renderActive(priorities)}\n`,
     `## Blocked (${sections.blocked.length})\n\n${blockedBody}\n`,
     `## Overdue (${sections.overdue.length})\n\n${overdueBody}\n`,
-    `## Open by Project (${sections.active.length})\n\n${renderProjects(sections.active, sections.blocked)}\n\n${rest}\n`
+    `## Open by Project (${sections.active.length})\n\n${byProject}\n\n${rest}\n`
   ].join('\n');
 };
 
