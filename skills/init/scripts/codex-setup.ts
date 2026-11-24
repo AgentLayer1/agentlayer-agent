@@ -31,10 +31,22 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { CLI_FILE, PLUGIN_SOURCE_ROOT, RUNTIME_DIR } from '../../../src/shared/naming';
 import { readTextIfExists } from '../../../src/shared/text';
 import { CODEX_EFFORT, CODEX_MODEL } from './codex-model';
+import {
+  denyGlobs,
+  expandTilde,
+  isRecord,
+  quote,
+  readHomeServers,
+  readHomeSettings,
+  readManifest,
+  readUserDenies,
+  shellPrefixes,
+  workspaceRootsOf
+} from './wiring';
 
 interface HookItem {
   type: string;
@@ -70,167 +82,27 @@ const userConfigPath = flag('codex-user-config') ?? resolve(homedir(), '.codex',
 const hooksPath = resolve(homeDir, '.codex', 'hooks.json');
 const configPath = resolve(homeDir, '.codex', 'config.toml');
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
-const readJson = (path: string): Record<string, unknown> => {
-  if (!existsSync(path)) return {};
-  try {
-    const parsed: unknown = JSON.parse(readFileSync(path, 'utf-8'));
-    return isRecord(parsed) ? parsed : {};
-  } catch (err) {
-    throw new Error(`${path} is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
-  }
-};
-const expandTilde = (path: string): string => path.replace(/^~(?=$|\/)/, homedir());
-
-/** The agent's names, from the manifest of the checkout being wired, else this one. */
-const manifestPath = [pluginRoot, PLUGIN_SOURCE_ROOT]
-  .map((root) => resolve(root, '.claude-plugin', 'plugin.json'))
-  .find((path) => existsSync(path));
-const manifest = readJson(String(manifestPath));
-/** Codex knows the agent by the plugin's name: its tables share one namespace with the operator's own. */
-const pluginName = String(manifest.name ?? '');
-/** The server key Claude Code namespaces under the plugin, needed only to read Claude's ask rules. */
-const claudeServer = Object.keys(isRecord(manifest.mcpServers) ? manifest.mcpServers : {})[0] ?? '';
-if (!pluginName || !claudeServer) {
-  throw new Error(`${manifestPath}: the plugin manifest names no plugin or no MCP server`);
-}
+const { pluginName, claudeServer } = readManifest(pluginRoot);
 const rulesPath = resolve(homeDir, '.codex', 'rules', `${pluginName}.rules`);
 
 // ── The home's Claude settings: the posture's source of truth ─────────────────
-interface ClaudeSettings {
-  env?: Record<string, unknown>;
-  permissions?: { ask?: unknown; deny?: unknown; additionalDirectories?: unknown };
-  enabledMcpjsonServers?: unknown;
-  disabledMcpjsonServers?: unknown;
-  enableAllProjectMcpServers?: unknown;
-}
-const claudeSettings = ['settings.json', 'settings.local.json'].map(
-  (file) => readJson(resolve(homeDir, '.claude', file)) as ClaudeSettings
-);
-const settingsEnv: Record<string, string> = Object.fromEntries(
-  claudeSettings.flatMap((settings) =>
-    Object.entries(settings.env ?? {}).filter((pair): pair is [string, string] => typeof pair[1] === 'string')
-  )
-);
-const settingValue = (key: string): string | undefined => settingsEnv[`AGENT_${key}`];
-const settingList = (key: keyof NonNullable<ClaudeSettings['permissions']>): string[] =>
-  claudeSettings.flatMap((settings) => {
-    const list = settings.permissions?.[key];
-    return Array.isArray(list) ? list.filter((item): item is string => typeof item === 'string') : [];
-  });
-
-/** Directories the agent works in outside the home, in the order the settings name them. */
-const insideHome = (path: string): boolean => {
-  const fromHome = relative(homeDir, path);
-  return fromHome === '' || (!fromHome.startsWith('..') && !isAbsolute(fromHome));
-};
-const workspaceRoots = [
-  ...new Set(
-    [
-      settingValue('CODE_PATH') ?? '',
-      ...(settingValue('GIT_REPOS') ?? '').split(','),
-      ...settingList('additionalDirectories'),
-      ...['KNOWLEDGE', 'PROJECTS', 'REPORTS'].map((key) => settingValue(key) ?? '')
-    ]
-      .map((path) => path.trim())
-      .filter(Boolean)
-      .map((path) => resolve(homeDir, expandTilde(path)))
-  )
-].filter((path) => !insideHome(path));
-
-/** Claude `Read(…)` denies as Codex deny globs: `//x` is filesystem-absolute, `~/x` the user's home, anything else a workspace-relative pattern. */
-const denyGlobs = (patterns: string[]): string[] => [
-  ...new Set(
-    patterns
-      .map((pattern) => /^Read\((.+)\)$/.exec(pattern)?.[1] ?? '')
-      .filter(Boolean)
-      .map((glob) => (glob.startsWith('//') ? glob.slice(1) : glob.startsWith('~/') ? expandTilde(glob) : glob))
-  )
-];
+const settings = readHomeSettings(homeDir);
+const { settingList, env: settingsEnv } = settings;
+const workspaceRoots = workspaceRootsOf(homeDir, settings);
 const readDenies = denyGlobs(settingList('deny'));
-
-/** Shell patterns as rule prefixes: `Bash(git push *)` → `git push`. MCP tool rules and mid-pattern globs have no rule form. */
-const shellPrefixes = (patterns: string[]): string[] => [
-  ...new Set(
-    patterns
-      .map((pattern) => /^Bash\((.+)\)$/.exec(pattern)?.[1] ?? '')
-      .map((body) => body.replace(/\s*:?\*$/, '').trim())
-      .filter((body) => body && !/[*?[\]{}]/.test(body))
-  )
-];
 const askPrefixes = shellPrefixes(settingList('ask'));
 const denyPrefixes = shellPrefixes(settingList('deny'));
 
 // ── MCP servers: what the home registered in .mcp.json ─────────────────────────
-/** The MCP servers the plugin's packs register in `<home>/.mcp.json`; Codex gets a copy of each, owned like the agent's own. */
-const PACK_SERVERS = ['xcode'];
-const serverList = (key: 'enabledMcpjsonServers' | 'disabledMcpjsonServers'): string[] =>
-  claudeSettings.flatMap((settings) => {
-    const list = settings[key];
-    return Array.isArray(list) ? list.filter((item): item is string => typeof item === 'string') : [];
-  });
-const approvesAll = claudeSettings.some((settings) => settings.enableAllProjectMcpServers === true);
-/** A home's own server reaches Codex once Claude has approved it, so both hosts run the same set. */
-const approvedByClaude = (name: string): boolean =>
-  (approvesAll || serverList('enabledMcpjsonServers').includes(name)) &&
-  !serverList('disabledMcpjsonServers').includes(name);
-interface McpRegistration {
-  command: string;
-  args: string[];
-  env: Record<string, string>;
-}
-const registered = readJson(resolve(homeDir, '.mcp.json')).mcpServers;
-const mcpRegistrations = isRecord(registered) ? registered : {};
-const isStdio = (server: unknown): server is Record<string, unknown> & { command: string } =>
-  isRecord(server) && typeof server.command === 'string';
-/**
- * Every stdio server the home registers in `.mcp.json`, approved or not, so a server Claude stops
- * running loses its Codex table too. An http server's own hand-written table is left alone.
- */
-const OWNED_SERVERS = [
-  ...new Set([
-    ...PACK_SERVERS,
-    ...Object.keys(mcpRegistrations).filter(
-      (name) => /^[A-Za-z0-9_-]+$/.test(name) && name !== pluginName && isStdio(mcpRegistrations[name])
-    )
-  ])
-];
-/** Claude fills `${VAR}` into `.mcp.json` entries; Codex would pass the text through, so such a server stays out. */
-const interpolatingServers = OWNED_SERVERS.filter((name) =>
-  JSON.stringify(mcpRegistrations[name] ?? {}).includes('${')
-);
-const mirroredServers = Object.fromEntries(
-  OWNED_SERVERS.flatMap((name): [string, McpRegistration][] => {
-    const server = mcpRegistrations[name];
-    if (
-      !isStdio(server) ||
-      interpolatingServers.includes(name) ||
-      !(PACK_SERVERS.includes(name) || approvedByClaude(name))
-    ) {
-      return [];
-    }
-    const args = Array.isArray(server.args)
-      ? server.args.filter((item): item is string => typeof item === 'string')
-      : [];
-    const env = Object.fromEntries(
-      Object.entries(isRecord(server.env) ? server.env : {}).filter(
-        (pair): pair is [string, string] => typeof pair[1] === 'string'
-      )
-    );
-    return [[name, { command: server.command, args, env }]];
-  })
-);
+const {
+  owned: OWNED_SERVERS,
+  interpolating: interpolatingServers,
+  mirrored: mirroredServers
+} = readHomeServers(homeDir, settings, pluginName);
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
 /** A hook command of ours, whichever checkout (quoted or not) it points at. */
 const AGENT_COMMAND = /src[\\/]cli\.ts["']? (session-(start|capture)|guard) .*--hook-protocol=codex/;
-/** Double quotes are the one quoting sh and PowerShell agree on; a path either shell would expand inside them is refused. */
-const quote = (value: string): string => {
-  if (/["$`]/.test(value)) {
-    throw new Error(`${value}: a path in a hook command may not contain ", $, or a backtick`);
-  }
-  return `"${value}"`;
-};
 const command = (rest: string): string =>
   `bun ${quote(resolve(pluginRoot, CLI_FILE))} ${rest} --home=${quote(homeDir)}`;
 const entry = (commandLine: string, timeout: number, extra: Partial<HookItem> = {}, matcher = ''): HookGroup => ({
@@ -386,11 +258,7 @@ const userDenied = new Set(
     .filter(([, access]) => access === 'deny')
     .map(([glob]) => expandTilde(glob))
 );
-const userClaude = readJson(claudeUserSettingsPath) as ClaudeSettings;
-const userClaudeDenyList = Array.isArray(userClaude.permissions?.deny)
-  ? userClaude.permissions.deny.filter((item): item is string => typeof item === 'string')
-  : [];
-const inheritedDenies = denyGlobs(userClaudeDenyList).filter((glob) => !userDenied.has(glob));
+const inheritedDenies = denyGlobs(readUserDenies(claudeUserSettingsPath)).filter((glob) => !userDenied.has(glob));
 const absoluteDenies = [...new Set([...readDenies, ...inheritedDenies])].filter((glob) => glob.startsWith('/'));
 const relativeDenies = [...new Set([...readDenies, ...inheritedDenies])].filter((glob) => !glob.startsWith('/'));
 const existingConfig = readTextIfExists(configPath);
