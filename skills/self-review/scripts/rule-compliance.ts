@@ -2,12 +2,14 @@
 /**
  * How well a home's sessions followed two rules that can be counted, week by week, from its Claude Code
  * transcripts: commit messages passed with `-F`, and shell calls that open with a bare `cd`. Also the median
- * tokens a session started with. A week with enough calls that falls outside a threshold is listed as a
+ * tokens a session started with, and the operator's corrections per 1,000 replies, counted from the dated,
+ * keyed entries the compile records in the feedback log. A week with enough calls that falls outside a threshold is listed as a
  * regression, so a change to the manual can be checked against the weeks before it. Read-only, and it reads
  * only a record's timestamp, model, token usage, tool name and shell command.
  *
- * Usage: rule-compliance.ts [--home <dir>] [--transcripts <dir>] [--since YYYY-MM-DD]
- *        (--home: else the agent's home variable, else the cwd; --since: else eight weeks ago)
+ * Usage: rule-compliance.ts [--home <dir>] [--transcripts <dir>] [--feedback <file>] [--since YYYY-MM-DD]
+ *        (--home: else the agent's home variable, else the cwd; --since: else eight weeks ago;
+ *         --transcripts without --feedback counts no corrections)
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -37,7 +39,11 @@ const transcriptsFor = async (): Promise<string> => {
   return join(homedir(), '.claude', 'projects', home.replace(/[^A-Za-z0-9-]/g, '-'));
 };
 
+const feedbackFor = async (): Promise<string | null> =>
+  flag('transcripts') ? null : (await import('../../../src/config')).FILES.FEEDBACK;
+
 const transcripts = flag('transcripts') ? resolve(flag('transcripts') ?? '') : await transcriptsFor();
+const feedback = flag('feedback') ? resolve(flag('feedback') ?? '') : await feedbackFor();
 const since = flag('since') ?? new Date(Date.now() - 8 * WEEK_MS).toISOString().slice(0, 10);
 
 interface Usage {
@@ -55,7 +61,7 @@ interface Row {
   type?: string;
   isSidechain?: boolean;
   timestamp?: string;
-  message?: { model?: string; usage?: Usage; content?: Block[] };
+  message?: { id?: string; model?: string; usage?: Usage; content?: Block[] };
 }
 interface Week {
   sessions: Set<string>;
@@ -64,6 +70,8 @@ interface Week {
   commits: number;
   commitsWithFile: number;
   firstTurns: number[];
+  replies: Set<string>;
+  corrections: number;
 }
 
 const mondayOf = (stamp: string): string => {
@@ -99,7 +107,9 @@ const weekFor = (stamp: string): Week => {
     leadingCd: 0,
     commits: 0,
     commitsWithFile: 0,
-    firstTurns: []
+    firstTurns: [],
+    replies: new Set(),
+    corrections: 0
   };
   weeks.set(key, made);
   return made;
@@ -125,6 +135,9 @@ files.forEach((name) => {
 
   rows.forEach((row) => {
     const week = weekFor(row.timestamp ?? '');
+    if (row.message?.id && row.message.model !== '<synthetic>') {
+      week.replies.add(row.message.id);
+    }
     (row.message?.content ?? [])
       .filter((block) => block.type === 'tool_use' && block.name === 'Bash' && typeof block.id === 'string')
       .filter((block) => !seenCalls.has(block.id ?? ''))
@@ -140,6 +153,20 @@ files.forEach((name) => {
   });
 });
 
+// A correction the compile recorded: dated by its session, keyed on the session and the operator's words.
+const CORRECTION_HEADER_RE = /^## (\d{4}-\d{2}-\d{2}) — correction \[[0-9a-fA-F-]+:[0-9a-f]{16}\]$/gm;
+const recorded =
+  feedback && existsSync(feedback)
+    ? [...readFileSync(feedback, 'utf-8').matchAll(CORRECTION_HEADER_RE)].map((match) => match[1])
+    : [];
+// A log with no keyed entry yet has not been counted, which is not the same as a week with none.
+const counted = recorded.length > 0;
+recorded
+  .filter((day) => day >= since)
+  .forEach((day) => {
+    weekFor(day).corrections += 1;
+  });
+
 const median = (values: number[]): number | null =>
   values.length === 0 ? null : [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
 
@@ -154,7 +181,11 @@ const report = [...weeks.entries()]
     commits: tally.commits,
     commitsWithFile: tally.commitsWithFile,
     fileShare: tally.commits === 0 ? null : Math.round((tally.commitsWithFile / tally.commits) * 100) / 100,
-    firstTurnMedian: median(tally.firstTurns)
+    firstTurnMedian: median(tally.firstTurns),
+    replies: tally.replies.size,
+    corrections: counted ? tally.corrections : null,
+    correctionsPer1000:
+      counted && tally.replies.size > 0 ? Math.round((tally.corrections / tally.replies.size) * 10_000) / 10 : null
   }));
 
 const regressions = report.flatMap((week) => [

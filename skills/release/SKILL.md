@@ -194,6 +194,11 @@ Prepend a new entry **below** the `<!-- Add new releases below this line -->` ma
 - `template/AGENTS.md: mandatory` — new "X" section.
 ```
 
+When `templates/AGENTS.md` or a rule under `templates/rules/` with no `paths:` scope changed, add a line under
+Changed giving its size before and after (`git cat-file -s v<last>:<path>` against `wc -c`), since those load
+into every session of every home: `- The manual is 28,810 bytes, down from 35,363.` A file that grew past its
+budget fails `src/contracts/templates.test.ts` in the gate; one that shrank gets its budget lowered to match.
+
 Use today's date (`date +%Y-%m-%d`). Omit empty Added/Changed/Fixed groups. The Upgrade
 block must list **every** action from Step 2 (or the code-only sentinel). This is the
 exact text `/agentlayer:upgrade` parses, so keep the backticked tags well-formed.

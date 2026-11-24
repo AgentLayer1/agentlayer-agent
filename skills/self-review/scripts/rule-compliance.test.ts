@@ -15,7 +15,12 @@ const shell = (id: string, command: string, at: string, extra: Record<string, un
   JSON.stringify({
     type: 'assistant',
     timestamp: at,
-    message: { model: 'model-a', usage, content: [{ type: 'tool_use', id, name: 'Bash', input: { command } }] },
+    message: {
+      id: `msg-${id}`,
+      model: 'model-a',
+      usage,
+      content: [{ type: 'tool_use', id, name: 'Bash', input: { command } }]
+    },
     ...extra
   });
 
@@ -48,7 +53,10 @@ describe('rule-compliance', () => {
         commits: 2,
         commitsWithFile: 1,
         fileShare: 0.5,
-        firstTurnMedian: 40_010
+        firstTurnMedian: 40_010,
+        replies: 4,
+        corrections: null,
+        correctionsPer1000: null
       },
       {
         week: '2026-03-09',
@@ -59,7 +67,10 @@ describe('rule-compliance', () => {
         commits: 0,
         commitsWithFile: 0,
         fileShare: null,
-        firstTurnMedian: null
+        firstTurnMedian: null,
+        replies: 1,
+        corrections: null,
+        correctionsPer1000: null
       }
     ]);
   });
@@ -91,4 +102,29 @@ describe('rule-compliance', () => {
     });
     expect(regressions).toEqual([{ week: '2026-03-02', rule: 'commit -F', value: 0.5 }]);
   });
+});
+
+test('corrections are counted from the keyed entries the compile recorded, per 1,000 replies', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'rule-compliance-'));
+  dirs.push(dir);
+  writeFileSync(
+    join(dir, 'one.jsonl'),
+    `${[shell('a', 'ls', '2026-03-02T10:00:00Z'), shell('b', 'ls', '2026-03-03T10:00:00Z')].join('\n')}\n`
+  );
+  const key = '11111111-aaaa-bbbb-cccc-000000000001:0123456789abcdef';
+  writeFileSync(
+    join(dir, 'feedback.md'),
+    `# Feedback\n\n---\n\n## 2026-03-03 — correction [${key}]\n\n> no\n\nScope.\n\n---\n\n## 2026-03-03T10:00:00+08:00 — a rule written live\n\nAlways preview.\n`
+  );
+  const proc = spawnSync(process.execPath, [
+    SCRIPT,
+    '--transcripts',
+    dir,
+    '--feedback',
+    join(dir, 'feedback.md'),
+    '--since',
+    '2026-01-01'
+  ]);
+  const [week] = JSON.parse(proc.stdout.toString()).weeks;
+  expect(week).toMatchObject({ replies: 2, corrections: 1, correctionsPer1000: 500 });
 });
