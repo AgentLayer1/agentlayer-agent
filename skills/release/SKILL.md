@@ -126,6 +126,11 @@ can be automated and verified.
 re-auth, a decision only they can make) → `` `manual: none` `` with clear instructions.
 If a migration can be scripted, use `script`, not `manual`.
 
+**Skill** — work a plugin skill does with the operator, that the home needs once after this
+release and before its first sync (a self-review that clears what the release stops writing)
+→ `` `skill: required` `` naming the skill and why. The upgrade runs it, or, when it ends on a
+restart, names it to run first after the restart.
+
 If none of the above apply, the Upgrade block is the single line:
 `None — code-only, no bun install or HOME changes.`
 

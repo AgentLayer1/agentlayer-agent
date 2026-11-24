@@ -24,7 +24,7 @@ backticked tag plus a human note:
 - `<kind>: <severity>` — <note>
 ```
 
-- **kind** — `deps` · `settings` · `template/<file>` · `file` · `script` · `manual`
+- **kind** — `deps` · `settings` · `template/<file>` · `file` · `script` · `skill` · `manual`
 - **severity** — `required` (deps/script) · `mandatory` (auto-applied) · `optional`
   (the upgrade asks first, with a diff) · `additive` (copy if absent) · `none`
 
@@ -36,6 +36,11 @@ report; it carries no permanent footprint in the server and may be pruned once t
 minimum supported baseline passes it (a `script:` whose file is absent is treated as
 already-applied). Use it for heavy data moves; use `manual` for steps a human must do
 by hand.
+
+A `skill: required` line names a plugin skill the upgrade runs once the home is migrated and
+before its closing sync, for work that needs the operator in the room, such as a self-review
+that clears what the release stops writing. When the upgrade must end with a restart, it names
+the skill to run right after the restart, before the sync.
 
 A code-only release writes a single line: `None — code-only, no bun install or HOME changes.`
 
