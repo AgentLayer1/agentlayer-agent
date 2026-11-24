@@ -1,13 +1,14 @@
 #!/usr/bin/env bun
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { FILES, FOLDERS } from "../../../src/config";
+import { CONTEXT, FILES, FOLDERS } from "../../../src/config";
 import { todayDate } from "../../../src/shared/date";
 import { dataDirOf } from "../../../src/shared/naming";
 import { agentHomePath, isAgentHome } from "../../../src/shared/env";
 import { routinesDue } from "../../helpdesk/scripts/profiles";
 import { loadEntities, pendingCloses } from "../../tax/scripts/calendar";
-import { type ReviewWatermark, selfReviewDue } from "./self-review-due";
+import { importedStack } from "../../../src/shared/weight";
+import { type BrainQuality, type ReviewWatermark, selfReviewDue } from "./self-review-due";
 
 /**
  * Read-only cadence detector for sync and a bare `/goals`. Prints a JSON array of
@@ -26,6 +27,19 @@ if (!isAgentHome(home)) {
 const readJson = <T>(path: string): T | null => {
   try {
     return JSON.parse(readFileSync(path, "utf8")) as T;
+  } catch {
+    return null;
+  }
+};
+
+const readCounts = (stdout: string): { duplicates: number; closedRefs: number; narrative: number } | null => {
+  try {
+    const { counts } = JSON.parse(stdout) as { counts?: Record<string, unknown> };
+    const number = (key: string): number => {
+      const value = counts?.[key];
+      return typeof value === "number" ? value : 0;
+    };
+    return { duplicates: number("duplicates"), closedRefs: number("closedRefs"), narrative: number("narrative") };
   } catch {
     return null;
   }
@@ -91,7 +105,14 @@ const oldestSessionDay =
     .map((name) => name.match(/^(\d{4}-\d{2}-\d{2})\.md$/)?.[1])
     .filter((day): day is string => day !== undefined)
     .sort()[0] ?? null;
-const review = selfReviewDue(selfReview, todayDate(), feedbackChangedOn, oldestSessionDay);
+// The audit is read-only and sync runs it anyway for its brain line; a failed run only loses this one signal.
+const brainQuality = ((): BrainQuality => {
+  const overBudget = importedStack().total > CONTEXT.ALWAYS_LOADED_BUDGET;
+  const audit = Bun.spawnSync([process.execPath, join(import.meta.dir, "../../self-review/scripts/brain-audit.ts"), "--home", home]);
+  const counts = audit.exitCode === 0 ? readCounts(audit.stdout.toString()) : null;
+  return { findings: counts ? counts.duplicates + counts.closedRefs + counts.narrative : 0, overBudget };
+})();
+const review = selfReviewDue(selfReview, todayDate(), feedbackChangedOn, oldestSessionDay, brainQuality);
 if (review) due.push(review);
 
 // The close records are the watermark: an entity is due when last month's record is missing. A

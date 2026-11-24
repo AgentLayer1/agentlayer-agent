@@ -31,6 +31,22 @@ describe('selfReviewDue', () => {
     );
   });
 
+  test('the rules pass is also due a week after its last run when the loaded files slip, and says why', () => {
+    const recent = { brainLastRun: TODAY, lastRun: '2026-10-24' };
+    const slipped = { findings: 5, overBudget: false };
+    expect(selfReviewDue(recent, TODAY, null, null, slipped)).toEqual({
+      invoke: 'self-review rules',
+      label: 'Self-review (rules pass): 5 lines duplicated, out of date or buried in detail',
+      lastRun: '2026-10-24'
+    });
+    expect(selfReviewDue(recent, TODAY, null, null, { findings: 0, overBudget: true })?.label).toBe(
+      'Self-review (rules pass): the brain is over its budget'
+    );
+    expect(selfReviewDue(recent, TODAY, null, null, { findings: 4, overBudget: false }), 'below the threshold').toBeNull();
+    expect(selfReviewDue({ ...recent, lastRun: '2026-10-25' }, TODAY, null, null, slipped), 'inside the week').toBeNull();
+    expect(selfReviewDue({ ...recent, snoozeUntil: '2026-11-01' }, TODAY, null, null, slipped), 'snoozed').toBeNull();
+  });
+
   test('tomorrow holds it off for a day, a skip for a month, and two skips in a row show in the label', () => {
     const overdue = { brainLastRun: '2026-08-01' };
     expect(selfReviewDue({ ...overdue, snoozeUntil: '2026-11-01' }, TODAY, null, null)).toBeNull();
