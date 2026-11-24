@@ -1,6 +1,6 @@
 # agentlayer-agent — Agent Guide
 
-The `agentlayer` plugin: an MCP server, hook handlers, a CLI, skills and mods that turn an agent CLI (Claude Code, Codex) into a personal agent with a markdown brain in its home directory. [CONTRIBUTING.md](CONTRIBUTING.md) has the contributor how-tos (adding a skill or a tool, local plugin testing, the demo dashboard); this file is what to know before changing code.
+The `agentlayer` plugin: an MCP server, hook handlers, a CLI, skills and mods that turn an agent CLI (Claude Code, Codex, Antigravity) into a personal agent with a markdown brain in its home directory. [CONTRIBUTING.md](CONTRIBUTING.md) has the contributor how-tos (adding a skill or a tool, local plugin testing, the demo dashboard); this file is what to know before changing code.
 
 ## Layout
 
