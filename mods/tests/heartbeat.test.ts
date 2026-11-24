@@ -501,6 +501,10 @@ describe('heartbeat band', () => {
     await host.clock.advance(3 * MINUTE);
     expect(host.commands, 'the redraw found the look overdue and looked at once').toEqual([WAKE]);
     expect(await drawn($)).toContain('the look due 09:55 never came; the clock restarted');
+    expect(
+      host.argv.map((argv) => argv.slice(2).join(' ')),
+      'the late start is in the CLI log, which outlives the band'
+    ).toContain('heartbeat status --late=3m --revived');
     await ended($, 'Nothing new worth proposing.', 't2');
     host.commands.length = 0;
     await host.clock.advance(55 * MINUTE);

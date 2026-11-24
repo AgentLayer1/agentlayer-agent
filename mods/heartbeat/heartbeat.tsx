@@ -123,6 +123,7 @@ async function revive($: EngineInterface): Promise<void> {
     if (!isHeartbeat || nextAt === undefined || everyMinutes === undefined || now - nextAt <= STALL_MS) {
       return;
     }
+    logLate($, nextAt, now, 'revived');
     startLooks($, everyMinutes);
     await update($, beat, (current) => ({ ...current, nextAt: now + everyMinutes * MINUTE_MS }));
     await note($, { at: now, kind: 'stopped', text: `the look due ${clockIn(nextAt, zone)} never came; the clock restarted` });
@@ -145,6 +146,12 @@ async function runCli($: EngineInterface, args: readonly string[]): Promise<stri
 
 async function said($: EngineInterface, args: readonly string[]): Promise<string> {
   return runCli($, args).then((stdout) => stdout.trim(), errorText);
+}
+
+// The band's notes die with this process, and the CLI logs every call with its arguments, so a late start goes
+// through it: a look cut short by sleep can then be traced to one that began late.
+function logLate($: EngineInterface, dueAt: number, now: number, how: 'tick' | 'revived'): void {
+  void said($, ['heartbeat', 'status', `--late=${Math.round((now - dueAt) / MINUTE_MS)}m`, `--${how}`]);
 }
 
 async function statusOrWhy($: EngineInterface): Promise<HeartbeatStatus | string> {
@@ -361,6 +368,10 @@ async function lastUse($: EngineInterface): Promise<number | null> {
 }
 
 async function tick($: EngineInterface): Promise<void> {
+  const [{ nextAt: dueAt }, startedAt] = await Promise.all([read($, beat), $.clock.now()]);
+  if (dueAt !== undefined && isLate(dueAt, startedAt)) {
+    logLate($, dueAt, startedAt, 'tick');
+  }
   const [status, { isBusy }, { everyMinutes = 55 }, owner] = await Promise.all([
     statusOrWhy($),
     read($, queue),
