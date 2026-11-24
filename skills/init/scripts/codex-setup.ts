@@ -390,9 +390,7 @@ for (const owned of OWNED_TABLES) {
 }
 const missingKeys = Object.entries(OWNED_KEYS).filter(([key]) => !(key in existingTables));
 // Top-level keys must precede the first table, or TOML files them under whatever table came last.
-const topKeys = missingKeys
-  .map(([key, value]) => `${key} = ${typeof value === 'number' ? value : tomlString(value)}`)
-  .join('\n');
+const topKeys = missingKeys.map(([key, value]) => tomlScalar(key, value)).join('\n');
 // Missing keys go inside an existing `[table]` header, since TOML refuses a second one. A table
 // that only holds sub-tables (`[tui.keymap]`, `[[skills.config]]`) gets its own header appended,
 // which TOML allows after the sub-tables; one written another way (inline table, dotted keys) is
