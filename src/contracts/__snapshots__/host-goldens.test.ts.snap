@@ -630,3 +630,89 @@ exports[`session capture, per host a queued Codex capture keeps its format throu
 
 "
 `;
+
+exports[`session start, per host and home state a session start that fails answers an empty reply and exits 1, on either host 1`] = `
+{
+  "claude": {
+    "exit": 1,
+    "stdout": "{"systemMessage":"","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":""}}",
+  },
+  "codex": {
+    "exit": 1,
+    "stdout": "{"systemMessage":"","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":""}}",
+  },
+}
+`;
+
+exports[`the shell guard, per host a payload with unescaped backslashes is repaired and still guarded 1`] = `
+{
+  "exit": 2,
+  "stderr": 
+"Blocked: git commit --amend rewrites or hides history, and git here is forward-only (AGENTS.md, Workflow): fix a commit with a new commit on top, and merge without discarding the other side. The one exception, scrubbing a confidentiality leak from an unpushed commit, is the operator's to run with !.
+"
+,
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host a call with no command, no cwd or no payload is let through 1`] = `
+[
+  {
+    "exit": 0,
+    "stderr": "",
+    "stdout": "",
+  },
+  {
+    "exit": 0,
+    "stderr": "",
+    "stdout": "",
+  },
+  {
+    "exit": 0,
+    "stderr": "",
+    "stdout": "",
+  },
+]
+`;
+
+exports[`the shell guard, per host an unknown protocol falls back to Claude Code's guard 1`] = `
+{
+  "exit": 2,
+  "stderr": 
+"Blocked: git commit --amend rewrites or hides history, and git here is forward-only (AGENTS.md, Workflow): fix a commit with a new commit on top, and merge without discarding the other side. The one exception, scrubbing a confidentiality leak from an unpushed commit, is the operator's to run with !.
+"
+,
+  "stdout": "",
+}
+`;
+
+exports[`session capture, per host Claude Code's launch folder wins over the payload's cwd 1`] = `
+{
+  "days": 
+"--- <DATE>.md
+# Session Log: <DATE>
+
+### Session (<TIME>) [0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6] · <DATE> · <HOME> · turns 1–4 · claude
+
+**User:** claude turn 1
+
+**Assistant:** claude turn 2
+
+**User:** claude turn 3
+
+**Assistant:** claude turn 4
+
+
+---
+
+"
+,
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-capture --mode=session-end --hook-protocol=claude
+<TIMESTAMP> INFO  [🪝 session] [capture] saved turns 1–4 → <DATE>.md (session-end)
+"
+,
+  "stdout": "",
+}
+`;
