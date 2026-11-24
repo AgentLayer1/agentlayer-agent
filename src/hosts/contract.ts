@@ -19,6 +19,10 @@ export interface GuardPolicy {
 }
 
 export interface HostFloor {
+  /**
+   * The command that runs the host, when it differs from the host's name.
+   */
+  binary?: string;
   version: string;
   why: string;
   update: string;
@@ -33,12 +37,61 @@ export interface InjectDelivery {
 }
 
 /**
+ * A tool call as the hook layer sees it, whatever the host calls the tool and its arguments.
+ */
+export interface ToolCall {
+  kind: 'shell' | 'other';
+  command?: string;
+}
+
+/**
+ * A hook payload in the host-neutral shape the hook verbs read.
+ */
+export interface HookPayload {
+  sessionId?: string;
+  transcriptPath?: string;
+  cwd?: string;
+  call?: ToolCall;
+}
+
+/**
+ * What a hook verb writes and the code it exits with.
+ */
+export interface HookReply {
+  stdout?: string;
+  stderr?: string;
+  code: number;
+}
+
+export interface SessionStartReply {
+  systemMessage: string;
+  additionalContext: string;
+  error?: string;
+}
+
+/**
+ * A problem with how this session was started: the banner's label and line, and the context section that has the
+ * agent report it.
+ */
+export interface LaunchIssue {
+  label: string;
+  banner: string;
+  section: string;
+}
+
+/**
  * How the operator runs the named skill on a host: what the plugin writes wherever its own text names one.
  */
 export type SkillCommand = (name: string) => string;
 
 export interface HostAdapter {
   name: HostName;
+  readPayload: (raw: string) => HookPayload;
+  /**
+   * The guard's answer: `null` lets the call through.
+   */
+  guardReply: (refusal: string | null) => HookReply;
+  sessionStartReply: (result: SessionStartReply) => HookReply;
   /**
    * The folder the session was launched from, where the hook's cwd can drift away from it.
    */
@@ -67,7 +120,7 @@ export interface HostAdapter {
    */
   homeIssues: (home: string, skill: SkillCommand) => string[];
   /**
-   * This session bills the wrong account: the banner's line, and the context section that has the agent report it.
+   * Checked for the session's own host only, unlike `homeIssues`.
    */
-  billing: () => { banner: string; section: string } | null;
+  launchIssue: () => LaunchIssue | null;
 }
