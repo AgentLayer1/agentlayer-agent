@@ -1675,6 +1675,18 @@ bun "$PLUGIN_ROOT/skills/init/scripts/codex-user-config.ts" --home "$HOME_DIR" -
 
 **Trust is the operator's step.** Codex reads a project's `.codex/config.toml` only for a trusted folder (it asks on first launch), and trusts hooks per command by content hash: an untrusted hook does not run at all (silently, under `codex exec`). Note for Step 9: the operator must trust the folder, then run `/hooks` in their next Codex session from this home and trust all four entries, or Codex sessions start without the agent's context and are never captured.
 
+## Step 7d — Antigravity (when the operator also runs Antigravity here)
+
+Skip this step silently unless `command -v agy` finds Google's Antigravity CLI. On native Windows (`$AGENT_PLATFORM=windows`) skip it with one line in Step 9 saying Antigravity support is macOS-only for now. Otherwise ask once with `AskUserQuestion`: "Do you also run Google Antigravity (`agy`) from this home?" (options: "Yes, set it up" / "No, Claude Code only"). A no writes nothing; the upgrade skill offers it again whenever `agy` is installed.
+
+Antigravity loads this plugin as a plugin of its own, in place from this checkout: its skills, an always-on rule with the glossary for them, the hooks (context at session start, the home's rules on every tool, a capture at each turn's end) and the MCP server, which finds the home from the session's folder. Nothing is written into the home. What it needs lives in two user-level files the plugin never edits, so a yes generates a paste-ready note:
+
+```bash
+bun "$PLUGIN_ROOT/skills/init/scripts/antigravity-user-config.ts" --home "$HOME_DIR" --out "$HOME_DIR/.state/updates/antigravity-user-config.md"
+```
+
+The note holds the `~/.gemini/config/plugins.json` entry naming this checkout, and the keys for `~/.gemini/antigravity-cli/settings.json`: the terminal sandbox on, the user-level Claude denies and this home's `.state/secrets` as path rules, write access to the code folders, and the allowed domains. Quote it in Step 9 verbatim, with three facts the operator needs: the plugin loads in every folder but stays silent outside an agent home; anything that asks in Claude Code asks through Antigravity's own approval prompt; and a wildcard deny such as `**/.env` is refused by the agent inside an agent home only.
+
 ## Step 8 — Optional: configure skill packs
 
 The scaffold is done. Before showing the final confirmation, offer to wire up API keys + MCP servers + permissions for the optional packs. This is exactly what `/agentlayer:configure-skills` does — invoking inline so the user doesn't have to run it as a separate command after relaunch.
@@ -1748,6 +1760,7 @@ Blank line, then the status block as plain prose (one row per line, two-space gu
 > ✅ Plugin reg    .claude/settings.local.json (auto-loads agentlayer next launch — no `--plugin-dir` needed)
 > ✅ Status line   .claude/settings.local.json → `src/cli.ts statusline` (model · folder · branch / context · cost · time · rate limits; shows on relaunch)
 > `<CODEX_HOOKS_ROW>`
+> `<ANTIGRAVITY_ROW>`
 > ✅ Knowledge     `<FACET_FILES_FILLED>/5` facets populated `<from blog · LinkedIn · GitHub, if Step 5 ran>`
 > `<WORLD_ROW>`
 > ✅ Indexes       knowledge/index.md · knowledge/memory/index.md · projects/TASKS.md
@@ -1760,6 +1773,8 @@ Blank line, then the status block as plain prose (one row per line, two-space gu
 > ⏳ Custom skills none — author with `/agentlayer:configure-skills`
 
 For `<CODEX_HOOKS_ROW>`: if Step 7c ran → `✅ Codex wiring  .codex/hooks.json (4 entries; trust them via /hooks) + .codex/config.toml (agentlayer MCP server, permission profile, status line, skills budget) + .codex/rules/agentlayer.rules (<n> prompt rules, <m> forbidden rules) · user-level keys: .state/updates/codex-user-config.md`; otherwise omit the row.
+
+For `<ANTIGRAVITY_ROW>`: if Step 7d ran → `⏳ Antigravity   paste .state/updates/antigravity-user-config.md (plugins.json + settings.json), then start agy from this home`; otherwise omit the row.
 
 For `<WORLD_ROW>`, from Step 5d: what landed, e.g. `✅ Your world    3 projects · roadmap draft · company profile · 4 documents in the inbox`; when every part was skipped → `⏳ Your world    nothing yet — drop documents into <KNOWLEDGE>/raw/inbox/ any time and run /agentlayer:knowledge-compile`.
 
