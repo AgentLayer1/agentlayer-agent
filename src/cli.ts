@@ -89,6 +89,7 @@ Groups:
                                     Show the color pairs an agent can take, each in its own colors; --line prints a choice's
                                     IDENTITY.md Colors value (exit 2 when it isn't a pair number or two codes). Read-only
   hosts                             Check the installed Claude Code / Codex CLIs against the plugin's version floors (--codex: require Codex); exit 1 below a floor
+  hosts status                      Every host the plugin runs in: what each can do, how its wiring stands, and what's left to finish it
   capture                           Capture text / a file / stdin into raw/inbox/ (or feedback.md) for the next compile
   session-capture                   Ingest a session transcript into raw/sessions/<today>.md (called by Claude Code hooks)
   session-start                     Emit dynamic context (today / last session tail / git activity) for the host's SessionStart hook
@@ -325,6 +326,18 @@ async function run(): Promise<void> {
   }
 
   // Runs before a home exists: init gates on it before scaffolding anything.
+  if (group === 'hosts' && command === 'status') {
+    const [{ PLUGIN_VERSION, isInitialized, FOLDERS }, { gatherHosts }, { renderHosts }, { env }] = await Promise.all([
+      import('@/config'),
+      import('@/hosts/status'),
+      import('@/hosts/status-render'),
+      import('@/shared/env')
+    ]);
+    const overview = gatherHosts(isInitialized() ? FOLDERS.HOME : undefined);
+    const color = process.stdout.isTTY && !env('NO_COLOR');
+    console.log(renderHosts(overview, { version: PLUGIN_VERSION, width: process.stdout.columns ?? 80, color }));
+    return;
+  }
   if (group === 'hosts') {
     const { checkHosts, requiredHosts } = await import('@/upgrade/hosts');
     const report = checkHosts(requiredHosts(FOLDERS.HOME, bool('codex') ? ['codex'] : []));

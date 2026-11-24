@@ -1,5 +1,6 @@
 import { FILES, staticContextFiles } from '@/config';
-import type { HookPayload, HostAdapter, ToolCall } from '@/hosts/contract';
+import { CLAUDE_CODE_ONLY, type HookPayload, type HostAdapter, type ToolCall } from '@/hosts/contract';
+import { SKILL_PREFIX } from '@/hosts/dialect';
 import { isRecord } from '@/shared/json-block';
 import { PLUGIN_SOURCE_ROOT, pluginName } from '@/shared/naming';
 import { resolvedPath } from '@/shared/paths';
@@ -153,6 +154,23 @@ const injectSteps = (pieces: string[]): string =>
 
 export const antigravityHost = {
   name: 'antigravity',
+  title: 'Antigravity',
+  column: 'Agy',
+  capabilities: {
+    manual: {
+      level: 'partial',
+      note: 'Antigravity reads the first 24 KB itself; the session-start hook sends the rest'
+    },
+    context: { level: 'yes' },
+    capture: { level: 'yes' },
+    guard: { level: 'yes' },
+    rules: { level: 'yes' },
+    tools: { level: 'yes' },
+    skills: { level: 'partial', note: 'a skill over 24 KB is read on from its file' },
+    setup: { level: 'no', note: 'run init and upgrade from Claude Code' },
+    ...CLAUDE_CODE_ONLY
+  },
+  setup: `Run ${SKILL_PREFIX}upgrade from Claude Code, then paste the note it writes (.state/updates/antigravity-user-config.md) into your two Antigravity files`,
   readPayload,
   homeFromPayload: true,
   policyReply,
@@ -185,6 +203,12 @@ export const antigravityHost = {
   skill: (name) => `the ${name} skill`,
   usedBy: () => manifestLoads(personalManifest(), PLUGIN_SOURCE_ROOT),
   homeIssues: () => [],
+  machineIssues: () =>
+    sandboxOnIn(cliSettings())
+      ? []
+      : [
+          `Antigravity's terminal sandbox is off for this machine. Paste the settings from .state/updates/antigravity-user-config.md into ${cliSettings()}, then restart Antigravity`
+        ],
   launchIssue: () =>
     sandboxOnIn(cliSettings())
       ? null

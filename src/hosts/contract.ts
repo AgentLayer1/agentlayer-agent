@@ -11,6 +11,35 @@ export type HostName = (typeof HOST_NAMES)[number];
 
 export const isHostName = (value: string): value is HostName => HOST_NAMES.some((name) => name === value);
 
+/**
+ * What the agent can do on a host, in the order `hosts status` lists them, with each row's short label.
+ */
+export const CAPABILITIES = [
+  { id: 'manual', label: 'Manual' },
+  { id: 'context', label: 'Session context' },
+  { id: 'capture', label: 'Capture' },
+  { id: 'guard', label: 'Shell guard' },
+  { id: 'rules', label: 'Home rules' },
+  { id: 'tools', label: 'Agent tools' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'setup', label: 'Setup, upgrade' },
+  { id: 'mods', label: 'Mods' },
+  { id: 'radar', label: 'Session radar' }
+] as const;
+
+export type Capability = (typeof CAPABILITIES)[number]['id'];
+
+export type Support = { level: 'yes' } | { level: 'partial' | 'no'; note: string };
+
+/** What only Claude Code can do, for every other host's capability table. */
+export const CLAUDE_CODE_ONLY = {
+  mods: {
+    level: 'no',
+    note: 'instant commands, the heartbeat, bands and notices are mods, which only Claude Code runs'
+  },
+  radar: { level: 'no', note: 'the radar and find-session read Claude Code transcripts only' }
+} as const satisfies Partial<Record<Capability, Support>>;
+
 export interface GuardPolicy {
   /**
    * A shell `cd` carries over to the host's next command.
@@ -95,6 +124,12 @@ export type SkillCommand = (name: string) => string;
 
 export interface HostAdapter {
   name: HostName;
+  title: string;
+  /** The title in a narrow table column. */
+  column: string;
+  capabilities: Record<Capability, Support>;
+  /** How the operator wires a home for this host, for a home that isn't. */
+  setup: string;
   readPayload: (raw: string) => HookPayload;
   /**
    * The guard's answer: `null` lets the call through.
@@ -140,6 +175,10 @@ export interface HostAdapter {
    * Problems in the home's wiring for this host, one line each, naming skills the session host's way.
    */
   homeIssues: (home: string, skill: SkillCommand) => string[];
+  /**
+   * Problems in this machine's own setup for the host, whatever session is asking, one line each.
+   */
+  machineIssues: () => string[];
   /**
    * Checked for the session's own host only, unlike `homeIssues`.
    */

@@ -1,12 +1,27 @@
 import { claudeProtocol } from '@/hosts/claude-protocol';
 import { staticContextFiles } from '@/config';
-import type { HostAdapter } from '@/hosts/contract';
+import { CLAUDE_CODE_ONLY, type HostAdapter } from '@/hosts/contract';
 import { PLUGIN_SOURCE_ROOT, pluginName } from '@/shared/naming';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 export const codexHost = {
   name: 'codex',
+  title: 'Codex',
+  column: 'Codex',
+  capabilities: {
+    manual: { level: 'yes' },
+    context: { level: 'yes' },
+    capture: { level: 'yes' },
+    guard: { level: 'yes' },
+    rules: { level: 'yes' },
+    tools: { level: 'yes' },
+    skills: { level: 'partial', note: 'Codex runs its own copy, which lags the plugin until it is re-added' },
+    setup: { level: 'yes' },
+    ...CLAUDE_CODE_ONLY
+  },
+  setup: 'Start codex from this home and run $upgrade, which wires the home',
+  machineIssues: () => [],
   ...claudeProtocol,
   launchDir: () => undefined,
   terminal: () => false,
