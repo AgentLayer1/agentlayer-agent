@@ -87,7 +87,7 @@ export async function sessionStart({
   color = false
 }: { host?: HostAdapter; promptRow?: boolean; color?: boolean } = {}): Promise<SessionStartResult> {
   const inject = host.delivery.kind === 'inject' ? host.delivery : undefined;
-  const glossary = inject ? [renderGlossary(host.name, inject.glossary)] : [];
+  const glossary = inject?.glossaryIn === 'context' ? [renderGlossary(host.name, inject.glossary)] : [];
   try {
     if (!isInitialized()) {
       // A SOUL.md with no data dir isn't a fresh directory — it's a scaffolded

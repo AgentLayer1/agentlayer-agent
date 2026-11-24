@@ -37,6 +37,8 @@ export interface InjectDelivery {
   /** The files the hook sends, in order. */
   files: () => string[];
   glossary: Record<DialectTerm, string>;
+  /** Where the glossary reaches the session: the injected context, or an always-on rule the plugin ships. */
+  glossaryIn: 'context' | 'rule';
 }
 
 /**

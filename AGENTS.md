@@ -21,6 +21,7 @@ The `agentlayer` plugin: an MCP server, hook handlers, a CLI, skills and mods th
 | `mods/` | In-process Claude Code mods; tested with `claude plugin test mods`, not `bun test` |
 | `templates/` | Files scaffolded into a new home |
 | `hooks/claude.json`, `.claude-plugin/`, `.codex-plugin/`, `.agents/plugins/` | Host manifests and marketplaces |
+| `.antigravity-plugin/`, `hooks.json`, `mcp_config.json`, `rules/` | The Antigravity plugin: Antigravity loads the checkout in place, from the plugin root. `rules/antigravity.md` is generated (`bun src/hosts/antigravity-rule.ts sync`) |
 
 ## Tools
 

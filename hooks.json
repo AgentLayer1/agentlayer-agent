@@ -1,0 +1,30 @@
+{
+  "agentlayer": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "bun ./src/cli.ts session-start --hook-protocol=antigravity --home-from-payload",
+        "timeout": 30
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun ./src/cli.ts policy --hook-protocol=antigravity --home-from-payload",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "bun ./src/cli.ts session-capture --mode=turn-end --hook-protocol=antigravity --home-from-payload",
+        "timeout": 30
+      }
+    ]
+  }
+}

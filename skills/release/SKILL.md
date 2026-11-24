@@ -162,9 +162,9 @@ concrete target — e.g. if `plugin.json` is `0.2.2`, the options read `patch �
 Recommend the bump that matches the change magnitude from Steps 1–2 (put it first, label
 it "(Recommended)"), but the maintainer's choice wins.
 
-Then bump `version` in both manifests, `.claude-plugin/plugin.json` and
-`.codex-plugin/plugin.json`, to the chosen (or determined) value (edit that one field in
-each; `src/contracts/manifests.test.ts` fails when they drift). Set `RELEASE` in
+Then bump `version` in the three manifests, `.claude-plugin/plugin.json`,
+`.codex-plugin/plugin.json` and `.antigravity-plugin/plugin.json`, to the chosen (or
+determined) value (edit that one field in each; `src/contracts/manifests.test.ts` fails when they drift). Set `RELEASE` in
 `install.sh` and `$release` in `install.ps1` to `vX.Y.Z` too; the setup guides download from
 that tag, and the same test fails when either lags.
 
@@ -209,7 +209,7 @@ The version + CHANGELOG edits are made, but **nothing in git has run yet**. Show
 maintainer the full diff to be committed:
 
 ```bash
-git -C "${CLAUDE_PLUGIN_ROOT}" --no-pager diff -- .claude-plugin/plugin.json .codex-plugin/plugin.json CHANGELOG.md
+git -C "${CLAUDE_PLUGIN_ROOT}" --no-pager diff -- .claude-plugin/plugin.json .codex-plugin/plugin.json .antigravity-plugin/plugin.json CHANGELOG.md
 git -C "${CLAUDE_PLUGIN_ROOT}" status --short
 ```
 
@@ -223,7 +223,7 @@ rule). Offer exactly these options, and never a push:
 ("Other" lets the maintainer abort or hand-tune.) Then run **only** the chosen subset:
 
 ```bash
-git -C "${CLAUDE_PLUGIN_ROOT}" add .claude-plugin/plugin.json .codex-plugin/plugin.json CHANGELOG.md   # + any release-scoped files
+git -C "${CLAUDE_PLUGIN_ROOT}" add .claude-plugin/plugin.json .codex-plugin/plugin.json .antigravity-plugin/plugin.json CHANGELOG.md   # + any release-scoped files
 git -C "${CLAUDE_PLUGIN_ROOT}" commit -m "Release vX.Y.Z"
 git -C "${CLAUDE_PLUGIN_ROOT}" tag -a vX.Y.Z -m "vX.Y.Z"                   # commit+tag only
 ```

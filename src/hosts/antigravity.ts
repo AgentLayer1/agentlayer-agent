@@ -178,8 +178,9 @@ export const antigravityHost = {
   delivery: {
     kind: 'inject',
     files: () => [FILES.AGENTS, ...staticContextFiles()],
+    glossaryIn: 'rule',
     glossary: {
-      pluginRoot: `two folders above the skill's SKILL.md (for ${pluginName()}'s skills, \`${PLUGIN_SOURCE_ROOT}\`)`,
+      pluginRoot: "two folders above the skill's SKILL.md",
       skillDir: 'the folder holding the SKILL.md',
       toolPrefix: `\`call_mcp_tool\` with the agent's server as \`ServerName\` (the one ending \`_agent\` that offers \`ping\`) and the tool as \`ToolName\`; another server's \`mcp__<server>__<tool>\` is \`call_mcp_tool\` with that server's name`,
       askUser: '`ask_question`',
@@ -187,7 +188,7 @@ export const antigravityHost = {
       skill:
         'the skill by its name ("use the <name> skill"); when the body you were given stops before the skill does, read the rest from its SKILL.md in ranges',
       webSearch: '`search_web`',
-      webFetch: "the agent's `browser_markdown` tool; `curl` only for the home's allowed network domains"
+      webFetch: '`read_url_content`'
     }
   }
 } satisfies HostAdapter;
