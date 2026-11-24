@@ -27,6 +27,7 @@ const settings = {
       'Read(//**/.state/secrets/**)',
       'Read(**/.env)',
       'Read(./private/notes.md)',
+      'Read(~/.acme-policy-test-key)',
       'Edit(./reports/locked.md)',
       'Bash(gh *)',
       'Bash(uv pip install*--system*)',
@@ -74,6 +75,20 @@ describe('shell', () => {
     expect(verdict(shell('cat .state/secrets/token'))).toBe('deny');
     expect(verdict(shell('cat ../.env', false), { cwd: join(HOME, 'projects') })).toBe('deny');
     expect(verdict(shell('cat projects/acme/README.md'))).toBe('host decides');
+  });
+
+  test('a deny holds through sudo, xargs, command, exec, time, and a shell flag cluster', () => {
+    expect(verdict(shell('sudo gh pr list'))).toBe('deny');
+    expect(verdict(shell('echo 1 | xargs gh pr view'))).toBe('deny');
+    expect(verdict(shell('command gh pr list'))).toBe('deny');
+    expect(verdict(shell("bash -lc 'gh pr list'"))).toBe('deny');
+    expect(verdict(shell("zsh -ec 'cat .env'"))).toBe('deny');
+  });
+
+  test('a path from the user home is read as the path it names', () => {
+    expect(verdict(shell('cat ~/.acme-policy-test-key'))).toBe('deny');
+    expect(verdict(shell('cat $HOME/.acme-policy-test-key'))).toBe('deny');
+    expect(verdict(shell('cat ${HOME}/.acme-policy-test-key'))).toBe('deny');
   });
 
   test('a sandbox bypass asks, unless it is one excluded command', () => {

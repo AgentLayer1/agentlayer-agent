@@ -64,6 +64,9 @@ describe('the CLI settings', () => {
     expect(deny).not.toContain(`read_file(${join(VAULT, 'keys.txt')})`);
     expect(deny).toContain(`read_file(${join(SCRATCH, 'wallets')})`);
     expect(deny).toContain(`write_file(${join(SCRATCH, 'profile.sh')})`);
+    ['.agents', '.claude', '.codex', '.mcp.json'].forEach((name) =>
+      expect(deny).toContain(`write_file(${join(HOME, name)})`)
+    );
     expect(deny).not.toContain(`write_file(${join(VAULT, 'notes.txt')})`);
     expect(deny).toEqual(expect.arrayContaining(['command(sudo)', 'command(git push --force)']));
   });

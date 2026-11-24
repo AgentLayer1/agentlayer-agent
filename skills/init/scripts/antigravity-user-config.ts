@@ -17,6 +17,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { readMergedSettings } from '../../../src/home/settings-scope';
+import { WIRING } from '../../../src/hooks/policy';
 import { PLUGIN_SOURCE_ROOT, RUNTIME_DIR } from '../../../src/shared/naming';
 import { isInside, resolvedPath } from '../../../src/shared/paths';
 import { denyGlobs, expandTilde, isRecord, readHomeSettings, shellPrefixes, workspaceRootsOf } from './wiring';
@@ -106,9 +107,11 @@ export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
     ...readTargets.filter((path): path is string => path !== undefined)
   ]);
   // A read deny already denies writing there.
-  const unwritten = outermost(editTargets.filter((path): path is string => path !== undefined)).filter(
-    (path) => !unread.some((folder) => isInside(path, folder))
-  );
+  // The rules and the wiring stay unwritable to every program the sandbox runs, not just the file tools the hook sees.
+  const unwritten = outermost([
+    ...WIRING.map((name) => join(home, name)),
+    ...editTargets.filter((path): path is string => path !== undefined)
+  ]).filter((path) => !unread.some((folder) => isInside(path, folder)));
   const wanted = {
     deny: [
       ...unread.map((path) => `read_file(${path})`),

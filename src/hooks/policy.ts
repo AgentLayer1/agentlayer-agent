@@ -25,12 +25,21 @@ export interface PolicyContext {
 }
 
 /** What a home holds that the host's tools never write: the rules, and every host's wiring. */
-const WIRING = ['.agents', '.claude', '.codex', '.mcp.json'];
+export const WIRING = ['.agents', '.claude', '.codex', '.mcp.json'];
 const FROM_CLAUDE = 'Claude Code asks before this';
-const WRAPPERS = new Set(['env', 'nohup', 'nice', 'timeout']);
+const WRAPPERS = new Set(['command', 'env', 'exec', 'nice', 'nohup', 'sudo', 'time', 'timeout', 'xargs']);
 const SHELLS = new Set(['sh', 'bash', 'zsh']);
 /** A wrapper's own flags, assignments and numbers (`env A=1`, `nice -n 5`, `timeout 10`) come before the command it runs. */
 const WRAPPER_ARGUMENT = /^-|=|^\d+[a-z]?$/;
+/** A shell's flag that runs its next word as a script: `-c`, or one in a cluster (`-lc`, `-ec`). */
+const SCRIPT_FLAG = /^-[a-z]*c[a-z]*$/;
+
+/** The script a shell runs (`sh -c 'gh pr list'`, `bash -lc …`), when the words are one. */
+const innerScript = (words: string[]): string | undefined =>
+  SHELLS.has(words[0] ?? '') && SCRIPT_FLAG.test(words[1] ?? '') ? words[2] : undefined;
+
+/** A word naming a path from the user's home (`~/x`, `$HOME/x`) as the path it names. */
+const fromUserHome = (word: string): string => word.replace(/^(?:~|\$HOME|\$\{HOME\})(?=$|\/)/, homedir());
 
 const isObject = (value: unknown): value is Json =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -100,8 +109,9 @@ const commandText = (words: string[]): string[] => {
 const normalized = (commands: ShellCommand[]): string[] =>
   commands.flatMap((command) => {
     const words = commandText(plainTexts(command));
-    if (SHELLS.has(words[0] ?? '') && words[1] === '-c' && words[2] !== undefined) {
-      return normalized(scanShell(words[2]));
+    const script = innerScript(words);
+    if (script !== undefined) {
+      return normalized(scanShell(script));
     }
     const { sub, args } = gitParts(command);
     return [(sub === undefined ? words : ['git', sub, ...args]).join(' ')];
@@ -124,11 +134,14 @@ const matchesCommand = (body: string, command: string): boolean => {
 
 /** Every word of every command, redirection targets included: the paths a shell command could read. */
 const pathWords = (commands: ShellCommand[]): string[] =>
-  commands.flatMap((command) =>
-    commandWords(command)
-      .filter((word) => !word.operator)
-      .map((word) => word.text)
-  );
+  commands.flatMap((command) => {
+    const script = innerScript(commandText(plainTexts(command)));
+    return script !== undefined
+      ? pathWords(scanShell(script))
+      : commandWords(command)
+          .filter((word) => !word.operator)
+          .map((word) => fromUserHome(word.text));
+  });
 
 const shellDecision = (command: string, bypass: boolean, context: PolicyContext): PolicyDecision => {
   const commands = scanShell(command);
