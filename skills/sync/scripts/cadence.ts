@@ -8,7 +8,7 @@ import { agentHomePath, isAgentHome } from "../../../src/shared/env";
 import { routinesDue } from "../../helpdesk/scripts/profiles";
 import { loadEntities, pendingCloses } from "../../tax/scripts/calendar";
 import { importedStack, injectedStack, isOverBudget } from "../../../src/shared/weight";
-import { keptQuietIn, loadedDocs, qualityOf, taskIds } from "../../self-review/scripts/quality";
+import { dailyMemoryDocs, keptQuietIn, loadedDocs, qualityOf, taskIds } from "../../self-review/scripts/quality";
 import { type BrainQuality, type ReviewWatermark, selfReviewDue } from "./self-review-due";
 
 /**
@@ -95,9 +95,9 @@ const oldestSessionDay =
     .sort()[0] ?? null;
 // The loaded files only, not the brain audit's 90 days of sessions; leads the operator kept are left out.
 const brainQuality = ((): BrainQuality => {
-  const found = qualityOf(loadedDocs(), taskIds(), keptQuietIn(selfReview.asked ?? {}, todayDate()));
+  const found = qualityOf(loadedDocs(), taskIds(), keptQuietIn(selfReview.asked ?? {}, todayDate()), dailyMemoryDocs());
   return {
-    findings: found.duplicates.length + found.closedRefs.length + found.narrative.length,
+    findings: Object.values(found).reduce((sum, rows) => sum + rows.length, 0),
     overBudget: isOverBudget(importedStack()) || isOverBudget(injectedStack())
   };
 })();

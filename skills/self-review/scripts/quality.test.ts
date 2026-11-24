@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { findClosedRefs, findDuplicates, findNarrative, listItems, sentences } from './quality';
+import { findClosedRefs, findDuplicates, findHeartbeatNoise, findNarrative, listItems, sentences } from './quality';
 
 describe('quality findings', () => {
   test('a sentence said in two files is a duplicate; the same sentence twice in one file, or a loose echo, is not', () => {
@@ -31,6 +31,18 @@ describe('quality findings', () => {
     const known = new Set(['ac-001', 'ac-002']);
     const found = findClosedRefs(items, known, new Set(['ac-001']));
     expect(found.map((row) => row.line)).toEqual([1]);
+  });
+
+  test("a memory line reporting a heartbeat look or refresh is noise; one about the heartbeat's design is not", () => {
+    const items = listItems({
+      file: 'knowledge/memory/2026-11-24.md',
+      text: [
+        '- 09:43 and 10:38 proposal looks: nothing new worth proposing.',
+        '- 05:18 brain refresh: compiled 2, lint fixed 0.',
+        '- The heartbeat skips an idle home, so it never holds a sleeping Mac awake.'
+      ].join('\n')
+    });
+    expect(findHeartbeatNoise(items).map((row) => row.line)).toEqual([1, 2]);
   });
 
   test('a bullet telling incidents is narrative; a rule with its required evidence clause is not', () => {

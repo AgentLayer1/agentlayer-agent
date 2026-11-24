@@ -1,4 +1,5 @@
-import { relative, resolve, sep } from 'node:path';
+import { existsSync, readdirSync } from 'node:fs';
+import { join, relative, resolve, sep } from 'node:path';
 import { FILES, FOLDERS } from '../../../src/config';
 import { contentWords } from '../../../src/knowledge/feedback-keys';
 import { hashBuffer } from '../../../src/knowledge/utils';
@@ -150,6 +151,21 @@ export const findNarrative = (items: readonly Item[]): Narrative[] =>
     return markers >= NARRATIVE_MARKERS ? [{ ...row('narrative', item), markers, chars: item.text.length }] : [];
   });
 
+// A look or a brain refresh reported as news: what the heartbeat's own runs left in memory before 1.1.0 kept them out.
+const HEARTBEAT_OUTCOME = [
+  /nothing new worth proposing/i,
+  /\bproposals? looks?\b/i,
+  /\bbrain refresh(?:ed)?\b[^.]*\bcompiled \d+/i
+];
+
+export type HeartbeatNoise = Row;
+
+/** Memory lines that report what a heartbeat look or refresh found, which says nothing the brain needs. */
+export const findHeartbeatNoise = (items: readonly Item[]): HeartbeatNoise[] =>
+  items.flatMap((item) =>
+    HEARTBEAT_OUTCOME.some((pattern) => pattern.test(item.text)) ? [row('heartbeat', item)] : []
+  );
+
 const homeRelative = (path: string): string => relative(FOLDERS.HOME, path).split(sep).join('/');
 
 /**
@@ -160,6 +176,14 @@ export const loadedDocs = (): Doc[] =>
   [...new Set([...importedStack().files, ...injectedStack().files].map((file) => file.path))]
     .filter((path) => path !== FILES.CLAUDE && path !== resolve(FOLDERS.PROJECTS, 'TASKS.md'))
     .toSorted()
+    .map((path) => ({ file: homeRelative(path), text: readTextIfExists(path) }));
+
+/** The daily memory files, which a session reads on demand rather than at start. */
+export const dailyMemoryDocs = (): Doc[] =>
+  (existsSync(FOLDERS.MEMORY) ? readdirSync(FOLDERS.MEMORY) : [])
+    .filter((name) => /^\d{4}-\d{2}-\d{2}\.md$/.test(name))
+    .toSorted()
+    .map((name) => join(FOLDERS.MEMORY, name))
     .map((path) => ({ file: homeRelative(path), text: readTextIfExists(path) }));
 
 /** Every task id the home has had, and which of them are done or cancelled. */
@@ -190,12 +214,14 @@ export const keptQuietIn =
 /**
  * What is wrong or worn in what a session loads: sentences said twice, lines naming only closed tasks (the memory
  * index's live sections have their own buckets), and rule bullets told as incidents (Learnings, AGENTS.md,
- * SOUL.md). Leads the operator kept are left out.
+ * SOUL.md). Leads the operator kept are left out. Heartbeat noise is looked for in the memory index and the daily
+ * memory files.
  */
 export const qualityOf = (
   docs: readonly Doc[],
   { known, closed }: { known: ReadonlySet<string>; closed: ReadonlySet<string> },
-  keptQuiet: (key: string, hash: string) => boolean
+  keptQuiet: (key: string, hash: string) => boolean,
+  daily: readonly Doc[] = []
 ) => {
   const memoryIndex = homeRelative(FILES.MEMORY);
   const items = docs.flatMap(listItems);
@@ -212,6 +238,9 @@ export const qualityOf = (
         closed
       )
     ),
-    narrative: fresh(findNarrative(items.filter(ruleBullet)))
+    narrative: fresh(findNarrative(items.filter(ruleBullet))),
+    heartbeatNoise: fresh(
+      findHeartbeatNoise([...items.filter((item) => item.file === memoryIndex), ...daily.flatMap(listItems)])
+    )
   };
 };
