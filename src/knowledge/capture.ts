@@ -31,6 +31,15 @@ export interface CaptureOpts {
   kind?: CaptureKind;
   title?: string;
   label?: string;
+  /**
+   * Feedback only: the operator's own words. Keys the entry, so one statement is recorded once.
+   */
+  quote?: string;
+  /**
+   * Feedback only, with `quote`: the session the words were said in, and that session's date.
+   */
+  session?: string;
+  date?: string;
 }
 
 export interface CaptureResult {
@@ -171,12 +180,76 @@ async function captureToInbox(opts: CaptureOpts, content: string, sourceHint: st
   };
 }
 
+const NO_SESSION = '-';
+const KEYED_HEADER_RE = /^## (\d{4}-\d{2}-\d{2})\b[^\n]*\[([0-9a-fA-F-]+):([0-9a-f]{16})\]$/gm;
+
+interface StatementKey {
+  day: string;
+  session: string;
+  hash: string;
+}
+
+const statementKey = (opts: CaptureOpts, quote: string): StatementKey => {
+  if (opts.session !== undefined && !/^[0-9a-fA-F-]{8,}$/.test(opts.session)) {
+    throw new Error(`Not a session id: ${opts.session}`);
+  }
+  if (opts.date !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(opts.date)) {
+    throw new Error(`Not a YYYY-MM-DD date: ${opts.date}`);
+  }
+  return {
+    day: opts.date ?? todayDate(),
+    session: opts.session ?? NO_SESSION,
+    // Case, spacing and punctuation differ between a quote typed live and one copied from a log.
+    hash: hashBuffer(
+      quote
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
+        .trim()
+    )
+  };
+};
+
+/**
+ * Two keys name one statement when the words match and the session does. An entry written live has no session, so
+ * it matches by words and day instead: the same sentence on another day is a second statement.
+ */
+const sameStatement = (a: StatementKey, b: StatementKey): boolean =>
+  a.hash === b.hash &&
+  (a.session !== NO_SESSION && b.session !== NO_SESSION ? a.session === b.session : a.day === b.day);
+
+const recordedKeys = async (): Promise<StatementKey[]> =>
+  existsSync(FILES.FEEDBACK)
+    ? [...(await readFile(FILES.FEEDBACK, 'utf-8')).matchAll(KEYED_HEADER_RE)].map(([, day, session, hash]) => ({
+        day,
+        session,
+        hash
+      }))
+    : [];
+
 async function captureToFeedback(opts: CaptureOpts, content: string): Promise<CaptureResult> {
   const redacted = redactSecrets(content).trim();
   if (!redacted) throw new Error('Empty feedback content after redaction');
+  const quote = opts.quote ? redactSecrets(opts.quote).trim() : '';
+  if (!quote && (opts.session !== undefined || opts.date !== undefined)) {
+    throw new Error("session and date key a quote: pass the operator's words in quote");
+  }
 
-  const header = opts.label ? `## ${nowISO()} — ${opts.label}` : `## ${nowISO()}`;
-  const entry = `\n\n---\n\n${header}\n\n${redacted}\n`;
+  const key = quote ? statementKey(opts, quote) : null;
+  if (key && (await recordedKeys()).some((recorded) => sameStatement(recorded, key))) {
+    return {
+      ok: true,
+      kind: 'feedback',
+      path: FILES.FEEDBACK,
+      relPath: homeRelative(FILES.FEEDBACK),
+      bytes: 0,
+      duplicate: true
+    };
+  }
+
+  const label = opts.label ? ` — ${opts.label}` : '';
+  const header = key ? `## ${key.day}${label} [${key.session}:${key.hash}]` : `## ${nowISO()}${label}`;
+  const quoted = quote ? `${quote.replace(/^/gm, '> ')}\n\n` : '';
+  const entry = `\n\n---\n\n${header}\n\n${quoted}${redacted}\n`;
 
   await mkdir(FOLDERS.USER_RAW, { recursive: true });
   if (!existsSync(FILES.FEEDBACK)) {

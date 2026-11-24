@@ -75,6 +75,12 @@ Per-section budgets:
 
 **IMPORTANT: When updating, READ the current index first, then enforce the budgets above.** If a section is over budget, compress: collapse multi-sentence entries to one line, demote bloated entries to the linked task/daily memory, or drop the lowest-value items. After your edits, the rendered file MUST satisfy: total ≤ 30KB, no entry > 250 chars in Active Threads / Recent Decisions / Pending. If you can't get under budget without losing load-bearing information, that information probably belongs in a permanent article (`concepts/`) — promote it.
 
+**5. Corrections** — what the operator corrected, recorded for the feedback step. These are the turns in this chunk the operator typed; every other `**User:**` turn is a skill body, a command message or a notification:
+
+{{operatorTurns}}
+
+For each of those turns in which the operator corrects {{agentName}} (says something it did or said was wrong, redirects it, or says how they want it done instead), find the full turn in the raw input and call `capture` once with `kind: "feedback"`, `label: "correction"`, `session` and `date` copied from the turn's line above, `quote` holding the operator's correcting sentences word for word, and `text` holding one line of scope: what was being done, and exactly what was corrected. Record what was said, never a lesson or a rule drawn from it: the feedback step decides what becomes a Learning. A turn that only answers a question, approves, or gives a new instruction is not a correction. `capture` answers `duplicate: true` for a statement already recorded; move on. No turns listed, or no corrections among them: record nothing.
+
 ### Rules:
 1. Prefer updating existing articles over creating new ones.
 2. Use `[[path/to/article]]` wikilinks for cross-references (no .md extension).

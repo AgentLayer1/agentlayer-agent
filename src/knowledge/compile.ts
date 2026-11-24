@@ -7,6 +7,7 @@
  */
 import { FILES, FOLDERS, KNOWLEDGE } from '@/config';
 import { chunkSessionLog } from '@/knowledge/chunk';
+import { operatorTurns, renderOperatorTurns } from '@/knowledge/operator-turns';
 import { ENTRY_HEADER_RE } from '@/knowledge/session-format';
 import { loadState, saveState } from '@/knowledge/state';
 import { hashBuffer, listInboxFiles, listRawFiles, loadScriptTemplate, renderTemplate } from '@/knowledge/utils';
@@ -170,6 +171,7 @@ function buildSessionPrompt(fileName: string, chunkContent: string): string {
     ...agentVars(),
     fileName,
     logContent: chunkContent,
+    operatorTurns: renderOperatorTurns(operatorTurns(chunkContent)),
     userKnowledgeDir: FOLDERS.USER_KNOWLEDGE,
     memoryDir: FOLDERS.MEMORY,
     memoryIndex: FILES.MEMORY,

@@ -45,7 +45,23 @@ export const tools: ToolDef[] = [
       label: z
         .string()
         .optional()
-        .describe('Optional label stored in frontmatter (inbox) or in the feedback entry header.')
+        .describe('Optional label stored in frontmatter (inbox) or in the feedback entry header.'),
+      quote: z
+        .string()
+        .optional()
+        .describe(
+          "Feedback only: the operator's own words, verbatim. The entry is keyed on them, so the same statement is recorded once (duplicate: true on a repeat)."
+        ),
+      session: z
+        .string()
+        .optional()
+        .describe(
+          'Feedback only, with quote: the id of the session the words were said in, from its session-log block header.'
+        ),
+      date: z
+        .string()
+        .optional()
+        .describe('Feedback only, with quote: that session block\'s date, YYYY-MM-DD. Defaults to today.')
     },
     handler: async (args) => {
       const result = await capture(args);

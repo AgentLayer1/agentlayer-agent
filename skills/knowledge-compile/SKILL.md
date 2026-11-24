@@ -1,7 +1,7 @@
 ---
 name: knowledge-compile
 description: Compile raw session logs, feedback, and inbox items into structured wiki articles. Orchestrated in this session — MCP returns work items, Claude synthesizes, MCP confirms. Triggers on "compile my knowledge", "process the inbox", "absorb today's sessions", or /knowledge-compile.
-allowed-tools: mcp__plugin_agentlayer_agent__compile_status, mcp__plugin_agentlayer_agent__compile_next, mcp__plugin_agentlayer_agent__compile_write, Read, Write, Edit, Glob, Grep
+allowed-tools: mcp__plugin_agentlayer_agent__compile_status, mcp__plugin_agentlayer_agent__compile_next, mcp__plugin_agentlayer_agent__compile_write, mcp__plugin_agentlayer_agent__capture, Read, Write, Edit, Glob, Grep
 ---
 
 # Compile
@@ -48,7 +48,7 @@ Do **not** invent gaps to hit a quota. Most runs surface 0–3. This is a judgme
 
 ## Boundaries
 
-- **Do not modify the raw source file.** The session log, feedback log, or inbox item under `raw/` is the input; never edit it. Compilation produces *new or updated wiki articles* and (for inbox items) archives the source via `compile_write`.
+- **Do not modify the raw source file.** The session log, feedback log, or inbox item under `raw/` is the input; never edit it. The one write under `raw/` is the `capture` call a session item's prompt asks for, which appends an operator's correction to the feedback log. Compilation produces *new or updated wiki articles* and (for inbox items) archives the source via `compile_write`.
 - **Never write `knowledge/public.md`.** It is the operator's list of what may leave the machine in a web search, and only they add to it.
 - **One itemId at a time.** Sessions may chunk: `meta.totalChunks > 1` means multiple `compile_next` calls for the same file. The prompt already contains only the current chunk's content — synthesize only what's in this chunk.
 - **Idempotency is enforced by hash.** If the source hasn't changed since the last successful compile, `compile_next` won't return it again.
