@@ -4,6 +4,8 @@ export interface TranscriptTurn {
   text: string;
   /** Model that produced an assistant turn, when the transcript records it. */
   model?: string;
+  /** Part of one of this plugin's background runs (a heartbeat look or refresh), which capture never writes. */
+  background?: boolean;
 }
 
 /**

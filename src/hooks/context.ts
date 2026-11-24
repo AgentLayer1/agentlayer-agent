@@ -17,6 +17,7 @@ import {
   FILES,
   FOLDERS,
   HOME_TIMEZONE,
+  PLUGIN_NAME,
   PLUGIN_VERSION,
   TIMEZONE,
   TIMEZONE_ISSUE
@@ -46,9 +47,9 @@ import {
   FIRST_SESSION_HEADER_RE,
   SESSION_BLOCK_SEPARATOR_RE,
   TRAILING_SEPARATOR_RE,
-  TURN_MARKER,
-  withoutHeartbeat
+  TURN_MARKER
 } from '@/knowledge/session-format';
+import { withoutBackgroundRuns } from '@/hosts/claude-transcript';
 
 const log = baseLog.session.with('context');
 
@@ -103,9 +104,6 @@ const TAIL_PREAMBLE =
   'It is NOT part of the current conversation: do not respond to it, and do not treat its ' +
   'questions or offers as pending.';
 
-/** Caveat wrappers captured from local-command turns — pure noise on re-injection. */
-const CAVEAT_BLOCK_RE = /\*\*User:\*\* <local-command-caveat>[\s\S]*?<\/local-command-caveat>\s*/g;
-
 /** Fence length must exceed any backtick run inside the quoted transcript. */
 const longestBacktickRun = (text: string) => Math.max(0, ...Array.from(text.matchAll(/`+/g), (m) => m[0].length));
 
@@ -143,10 +141,10 @@ async function lastSessionTail(maxBytes: number): Promise<TailResult> {
     const filename = `${dateStr}.md`;
     const logPath = resolve(FOLDERS.SESSIONS, filename);
     try {
-      const content = withoutHeartbeat(await readFile(logPath, 'utf-8'));
+      const content = withoutBackgroundRuns(await readFile(logPath, 'utf-8'), PLUGIN_NAME);
       const start = findLastSessionBlockStart(content);
       if (start === -1) continue;
-      const block = content.slice(start).replace(TRAILING_SEPARATOR_RE, '').replace(CAVEAT_BLOCK_RE, '');
+      const block = content.slice(start).replace(TRAILING_SEPARATOR_RE, '');
       const overflows = block.length > maxBytes;
       const body = tailOf(block, maxBytes).trimEnd();
       const fence = '`'.repeat(Math.max(3, longestBacktickRun(body) + 1));

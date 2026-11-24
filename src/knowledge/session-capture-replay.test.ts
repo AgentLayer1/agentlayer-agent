@@ -186,11 +186,46 @@ describe('a capture replayed after an interrupted write', () => {
     const write = (messages: { role: string; content: string }[]) =>
       writeFileSync(transcriptPath, messages.map((message) => JSON.stringify({ message })).join('\n'), 'utf-8');
     write(look);
-    expect(await capture(sessionId)).toMatchObject({ saved: false, reason: 'heartbeat-only' });
+    expect(await capture(sessionId)).toMatchObject({ saved: false, reason: 'background-only' });
     write([...look, { role: 'user', content: 'heartbeat-tab ask: what is due today?' }, { role: 'assistant', content: 'Two tasks.' }]);
     expect(await capture(sessionId)).toMatchObject({ saved: true });
     expect(occurrences('heartbeat-tab ask: what is due today?')).toBe(1);
     expect(occurrences('heartbeat-look: nothing new worth proposing.')).toBe(0);
+  });
+
+  test("a background run is known by the host's record of who started its prompt, so only it is dropped", async () => {
+    const sessionId = '1a2b3c4d-0000-4000-8000-000000003333';
+    const plugin = { kind: 'plugin', name: pluginName() };
+    const look = '<command-message>' + pluginName() + ':proposals</command-message>\n<command-name>/x</command-name>';
+    const upgrade = '<command-message>' + pluginName() + ':upgrade</command-message>\n<command-name>/x</command-name>';
+    const records = [
+      { origin: plugin, turnOrigin: 'system', message: { role: 'user', content: look } },
+      { origin: plugin, isMeta: true, message: { role: 'user', content: 'Base directory for this skill: /plugin/skills/proposals' } },
+      { message: { role: 'assistant', content: 'look-run: a reply worded any way at all.' } },
+      { origin: { ...plugin, asUser: true }, turnOrigin: 'system', message: { role: 'user', content: 'queued-ask: merge main in.' } },
+      { message: { role: 'assistant', content: 'queued-ask: merged.' } },
+      { origin: plugin, turnOrigin: 'system', message: { role: 'user', content: upgrade } },
+      { message: { role: 'assistant', content: 'upgrade-run: one migration applied.' } },
+      { origin: { kind: 'human' }, turnOrigin: 'human', message: { role: 'user', content: 'human-ask: what is due today?' } },
+      { message: { role: 'assistant', content: 'human-ask: two tasks.' } }
+    ];
+    writeFileSync(transcriptPath, records.map((record) => JSON.stringify(record)).join('\n'), 'utf-8');
+    expect(await capture(sessionId)).toMatchObject({ saved: true });
+    expect(occurrences('look-run:')).toBe(0);
+    expect(occurrences('Base directory for this skill')).toBe(0);
+    expect(occurrences('queued-ask:'), 'a prompt queued as the operator\'s own words').toBe(2);
+    expect(occurrences('upgrade-run:'), 'a run started by a button the operator pressed').toBe(1);
+    expect(occurrences('human-ask:')).toBe(2);
+  });
+
+  test("Claude Code 2.1.331's own record of a heartbeat look is recognised, so a change in its format fails here", async () => {
+    // Every field as that version wrote it; only the content is invented.
+    const fixture = readFileSync(resolve(import.meta.dir, '..', 'hosts', 'fixtures', 'claude-code-2.1.331-heartbeat-look.jsonl'), 'utf-8');
+    writeFileSync(transcriptPath, fixture.replaceAll('agentlayer', pluginName()), 'utf-8');
+    expect(await capture('1a2b3c4d-0000-4000-8000-000000004444')).toMatchObject({ saved: true });
+    expect(occurrences('fixture-look:')).toBe(0);
+    expect(occurrences('fixture-ask: what is due today?')).toBe(1);
+    expect(occurrences('fixture-answer: two tasks.')).toBe(1);
   });
 
   test('a turn rewritten before the replay is written in its new form', async () => {

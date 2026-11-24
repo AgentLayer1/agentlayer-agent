@@ -26,7 +26,7 @@ const { daysBetween, todayDate } = await import('../../../src/shared/date');
 const { hashBuffer, splitFrontmatter } = await import('../../../src/knowledge/utils');
 const { discoverProjects, scanAllTasks, scanArchivedTasks } = await import('../../../src/tasks/scan');
 const { projectPins, readPins, surfaceFiles } = await import('../../../src/status/surfaces');
-const { dailyMemoryDocs, keptQuietIn, loadedDocs, namedIds, qualityOf } = await import('./quality');
+const { keptQuietIn, loadedDocs, namedIds, qualityOf } = await import('./quality');
 
 if (!isAgentHome(agentHomePath())) {
   console.error(`not an agent home: ${agentHomePath()}`);
@@ -316,7 +316,7 @@ const staleSurfaces = [
   .filter((row) => !keptQuiet(row.key, row.hash))
   .toSorted((left, right) => left.modified.localeCompare(right.modified));
 
-const quality = qualityOf(loadedDocs(), { known: knownIds, closed: closedIds }, keptQuiet, dailyMemoryDocs());
+const quality = qualityOf(loadedDocs(), { known: knownIds, closed: closedIds }, keptQuiet);
 
 const memory = {
   threads: memoryLines('Active Threads'),

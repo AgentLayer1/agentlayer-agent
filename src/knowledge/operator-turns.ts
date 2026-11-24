@@ -1,4 +1,4 @@
-import { ENTRY_SPLIT_RE, parseEntryHeaders, TURN_MARKER } from '@/knowledge/session-format';
+import { ENTRY_SPLIT_RE, parseEntryHeaders, TURN_SPLIT_RE, USER_LABEL } from '@/knowledge/session-format';
 import { truncate } from '@/status/format';
 import { isConversationUserText } from '@/status/radar-refs';
 
@@ -8,8 +8,6 @@ export interface OperatorTurn {
   text: string;
 }
 
-const TURN_SPLIT_RE = new RegExp(`\\n\\n(?=${TURN_MARKER})`);
-const USER_LABEL = '**User:**';
 const EXCERPT_CHARS = 200;
 // The host writes a compaction summary as a user turn; whatever it quotes was said in a turn already listed.
 const COMPACTION_SUMMARY = 'This session is being continued';

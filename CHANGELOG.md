@@ -106,9 +106,11 @@ Less loads into every session, and the brain's upkeep is measured instead of gue
 - The heartbeat's own runs no longer reach the brain. Every look and brain refresh was captured like
   a working session (each with the whole proposals skill), compiled into daily memory as "proposal
   looks: nothing new worth proposing", and, when the heartbeat ran last, injected into the next
-  session as its last-session memory. Capture now skips them, the compile filters them out of
-  session logs already on disk, and the session tail takes the newest block with the operator's own
-  work. An operator's own full sync is kept.
+  session as its last-session memory. Capture now knows them from Claude Code's own record of who
+  started each prompt and what it ran, whatever the run's wording, and drops them; a prompt
+  queued as the operator's words or a button they pressed is kept. Which runs are background is one
+  list the heartbeat also issues them from. Session logs already on disk are filtered by the same
+  list before the compile and the session tail read them.
 - Heartbeat: a look that starts late (a timer firing in a brief wake of a sleeping Mac) waits two
   minutes for the machine to stay awake, and a re-arm in that wait no longer drops it; an idle home
   gets no wake, a due brain refresh included; a brain refresh that never finished is retried once
