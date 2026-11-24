@@ -55,6 +55,15 @@ describe('keyed feedback entries', () => {
     expect(entries()).toBe(1);
   });
 
+  test('two copies of one statement captured at once append one entry', async () => {
+    const both = await Promise.all([
+      record({ session: SESSION, date: '2026-03-02', quote: QUOTE }),
+      record({ session: SESSION, date: '2026-03-02', quote: QUOTE })
+    ]);
+    expect(both.map((result) => result.duplicate).sort()).toEqual([false, true]);
+    expect(entries()).toBe(1);
+  });
+
   test('the same words in another session are a second statement', async () => {
     await record({ session: SESSION, date: '2026-03-02', quote: 'no' });
     expect((await record({ session: OTHER, date: '2026-03-02', quote: 'no' })).duplicate).toBe(false);

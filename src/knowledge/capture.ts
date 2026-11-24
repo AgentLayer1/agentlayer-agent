@@ -253,9 +253,19 @@ async function captureToFeedback(opts: CaptureOpts, content: string): Promise<Ca
   };
 }
 
+// Parallel tool calls reach the server together, so feedback is written one entry at a time: a second copy of a
+// keyed statement must find the first before it looks for a duplicate.
+let feedbackWrites: Promise<unknown> = Promise.resolve();
+
+const nextFeedbackWrite = (write: () => Promise<CaptureResult>): Promise<CaptureResult> => {
+  const result = feedbackWrites.then(write, write);
+  feedbackWrites = result.catch(() => undefined);
+  return result;
+};
+
 export async function capture(opts: CaptureOpts): Promise<CaptureResult> {
   const kind: CaptureKind = opts.kind ?? 'inbox';
   const { content, sourceHint } = await resolveContent(opts);
-  if (kind === 'feedback') return captureToFeedback(opts, content);
+  if (kind === 'feedback') return nextFeedbackWrite(() => captureToFeedback(opts, content));
   return captureToInbox(opts, content, sourceHint);
 }

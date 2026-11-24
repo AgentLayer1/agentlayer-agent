@@ -154,6 +154,28 @@ describe('a capture replayed after an interrupted write', () => {
     expect(ranges).toEqual(['1-2', '3-3']);
   });
 
+  test('a block cut inside a character of its header is trimmed, and the retry writes a readable header', async () => {
+    const sessionId = '1a2b3c4d-0000-4000-8000-000000001112';
+    writeTranscript(messages(2, 'midchar'));
+    await capture(sessionId);
+    const before = readIndex();
+    const offset = sizeOf(dayFile());
+    writeTranscript(messages(3, 'midchar'));
+    await capture(sessionId);
+    const interrupted = stoppedAfterAppend(before, sessionId, offset);
+    const insideCharacter = readFileSync(dayFile()).subarray(offset).indexOf(Buffer.from('·', 'utf-8')) + 1;
+    expect(insideCharacter, 'the header carries a two-byte character').toBeGreaterThan(1);
+    truncateSync(dayFile(), offset + insideCharacter);
+    writeFileSync(INDEX, JSON.stringify(interrupted));
+
+    expect(await capture(sessionId)).toMatchObject({ saved: true, turns: 1 });
+    expect(readFileSync(dayFile(), 'utf-8')).not.toContain('\uFFFD');
+    const ranges = parseEntryHeaders(readFileSync(dayFile(), 'utf-8'))
+      .filter((header) => header.sessionId === sessionId)
+      .map((header) => `${header.from}-${header.to}`);
+    expect(ranges).toEqual(['1-2', '3-3']);
+  });
+
   test('a turn rewritten before the replay is written in its new form', async () => {
     const sessionId = '1a2b3c4d-0000-4000-8000-00000000dddd';
     writeTranscript(messages(2, 'revised'));

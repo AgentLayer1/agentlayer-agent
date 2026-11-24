@@ -181,7 +181,8 @@ function formatTurnList(turns: TranscriptTurn[]): string {
   return turns
     .map((turn) => {
       const role = turn.role === 'user' ? 'User' : 'Assistant';
-      const kept = turn.text.slice(0, KNOWLEDGE.MAX_TURN_CHARS);
+      // A role label quoted at the start of a line would read as a turn of its own, so its asterisks are escaped.
+      const kept = turn.text.slice(0, KNOWLEDGE.MAX_TURN_CHARS).replace(/^\*\*(User|Assistant):\*\*/gm, '\\*\\*$1:**');
       // A turn cut (or pasted) inside a code fence would swallow every block after it.
       const fence = (kept.match(/^\s*```/gm) ?? []).length % 2 === 1 ? '\n```' : '';
       const truncated =
@@ -394,11 +395,14 @@ async function settlePending(index: SessionIndex): Promise<SessionIndex> {
   if (day === null) {
     return settled;
   }
-  const written = day.subarray(pending.offset).toString('utf-8');
-  if (day.length >= pending.offset + pending.bytes && written.startsWith(pending.header)) {
+  // Compared as bytes: a write cut inside a character decodes to a replacement character that matches nothing.
+  const written = day.subarray(pending.offset);
+  const header = Buffer.from(pending.header, 'utf-8');
+  const startsWithHeader = written.subarray(0, header.length).equals(header);
+  if (day.length >= pending.offset + pending.bytes && startsWithHeader) {
     return recordCapture(settled, pending.capture);
   }
-  if (written.length > 0 && (written.startsWith(pending.header) || pending.header.startsWith(written))) {
+  if (written.length > 0 && (startsWithHeader || header.subarray(0, written.length).equals(written))) {
     await truncate(dayPath, pending.offset);
   }
   return settled;

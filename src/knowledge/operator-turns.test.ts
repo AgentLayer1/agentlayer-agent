@@ -1,12 +1,31 @@
 import { describe, expect, test } from 'bun:test';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { FOLDERS } from '@/config';
 import { operatorTurns, renderOperatorTurns } from '@/knowledge/operator-turns';
+import { captureSession } from '@/knowledge/session-capture';
 import { ENTRY_SEPARATOR } from '@/knowledge/session-format';
+import { todayDate } from '@/shared/date';
 
 const block = (id: string, date: string, turns: string[]): string =>
   [`### Session (10:00) [${id}] · ${date} · ~/Home · turns 1–${turns.length}`, ...turns].join('\n\n');
 
 const FIRST = '11111111-aaaa-bbbb-cccc-000000000001';
 const SECOND = '22222222-aaaa-bbbb-cccc-000000000002';
+
+describe('role labels quoted inside a turn', () => {
+  test('a reply quoting a user line is still one reply once captured', async () => {
+    const transcriptPath = resolve(FOLDERS.HOME, 'quoting.jsonl');
+    const turns = [
+      { role: 'user', content: 'How should a correction read?' },
+      { role: 'assistant', content: 'Like this:\n\n**User:** no, search by name\n\n**Assistant:** Searching by name.' }
+    ];
+    writeFileSync(transcriptPath, turns.map((message) => JSON.stringify({ message })).join('\n'));
+    await captureSession({ transcriptPath, cwd: FOLDERS.HOME, sessionId: '1a2b3c4d-0000-4000-8000-00000000abcd', mode: 'session-end' });
+    const day = readFileSync(resolve(FOLDERS.SESSIONS, `${todayDate()}.md`), 'utf-8');
+    expect(operatorTurns(day).map((turn) => turn.text)).toEqual(['How should a correction read?']);
+  });
+});
 
 describe('operatorTurns', () => {
   test('keeps what the operator typed, with its session and date, and drops injected turns', () => {
