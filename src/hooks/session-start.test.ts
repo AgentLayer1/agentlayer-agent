@@ -79,7 +79,7 @@ describe('sessionStart', () => {
       (home) => markedHome(home, { ...bridged, 'AGENTS.md': '# AGENTS.md\n\n## Memory Routing\n' }),
       () => sessionStart()
     );
-    expect(light.systemMessage).toContain('always loaded');
+    expect(light.systemMessage).toMatch(/Context: +\d+\.\dKB of home files, and \d+\.\dKB added today:/);
     expect(light.systemMessage).not.toContain('over the');
 
     const heavy = await withHome(
@@ -90,8 +90,7 @@ describe('sessionStart', () => {
         }),
       () => sessionStart()
     );
-    expect(heavy.systemMessage).toContain('always loaded, over the');
-    expect(heavy.systemMessage, 'it names where the weight is').toMatch(/budget \(AGENTS\.md \d+\.\dKB/);
+    expect(heavy.systemMessage, 'the budget is the agent\'s to keep, so the banner only gives the size').not.toContain('over the');
   });
 
   test('AGENTS.md without the bridge is flagged every session', async () => {

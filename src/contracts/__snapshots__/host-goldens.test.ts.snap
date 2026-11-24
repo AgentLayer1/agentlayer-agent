@@ -11,7 +11,7 @@ exports[`session start, per host and home state Claude Code, initialized home 1`
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context  · 0.0KB this session · 0.0KB always loaded
+  📚 Context:   0.0KB of home files, and 0.0KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -25,7 +25,7 @@ exports[`session start, per host and home state Claude Code, initialized home 1`
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context  · 0.0KB this session · 0.0KB always loaded
+  📚 Context:   0.0KB of home files, and 0.0KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -97,7 +97,7 @@ exports[`session start, per host and home state Claude Code in its terminal, ini
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context  · 0.0KB this session · 0.0KB always loaded
+  📚 Context:   0.0KB of home files, and 0.0KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -111,7 +111,7 @@ exports[`session start, per host and home state Claude Code in its terminal, ini
   \\u001b[1m\\u001b[31m⟳\\u001b[0m  Sync:      \\u001b[1mBrain never synced\\u001b[0m · \\u001b[2mrun /agentlayer:sync\\u001b[0m
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context  · 0.0KB this session · 0.0KB always loaded
+  📚 Context:   0.0KB of home files, and 0.0KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -132,7 +132,7 @@ exports[`session start, per host and home state Codex, initialized home 1`] = `
   ⟳  Sync:      Brain never synced · run $sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context  · 0.0KB this session · 0.2KB always loaded
+  📚 Context:   0.2KB of home files, and 0.0KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -145,7 +145,7 @@ exports[`session start, per host and home state Codex, initialized home 1`] = `
   ⟳  Sync:      Brain never synced · run $sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context  · 0.0KB this session · 0.2KB always loaded
+  📚 Context:   0.2KB of home files, and 0.0KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -278,7 +278,7 @@ exports[`session start, per host and home state no protocol, initialized home 1`
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context  · 0.0KB this session · 0.0KB always loaded
+  📚 Context:   0.0KB of home files, and 0.0KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -293,7 +293,7 @@ exports[`session start, per host and home state no protocol, initialized home 1`
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context  · 0.0KB this session · 0.0KB always loaded
+  📚 Context:   0.0KB of home files, and 0.0KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)

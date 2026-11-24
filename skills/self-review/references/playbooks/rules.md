@@ -102,7 +102,7 @@ Rank by `severity × instances × cycles`. Drop anything with fewer than two ind
 
 **Track A: home prompt edits.** For each: the target path, the current text (read it, quote it), the proposed text, the coverage state, and one sentence on why this surface.
 
-**An addition has to fit.** The Begin step's `context-weight.ts` gives the always-loaded total per host; the session banner flags a home over its budget. A Track A addition that would take the home over, or a Track D or E addition that would take a template over its cap in `src/contracts/templates.test.ts`, names in the same proposal what leaves to make room, with the bytes of each.
+**An addition has to fit.** The Begin step's `context-weight.ts` gives the always-loaded total per host and the `budget` each is held to. A Track A addition that would take the home over, or a Track D or E addition that would take a template over its cap in `src/contracts/templates.test.ts`, names in the same proposal what leaves to make room, with the bytes of each.
 
 **Track B: code-change plans.** Never edit code in this skill. If a self-review plan for the theme exists in `<HOME>/reports/plans/`, update it with `Edit`. Otherwise create one with the `report_write` MCP tool:
 

@@ -326,24 +326,26 @@ const welcomePart = (): string => {
   ].join('\n');
 };
 
-// Over budget, the line names the largest files, since those are where a cut pays.
-const weightNote = ({ total, files }: Stack): string => {
+// Over budget is the agent's to fix (compile and self-review keep the brain files small), so it goes to the log,
+// naming the largest files, and never to the operator's banner.
+const logOverBudget = ({ total, files }: Stack): void => {
   if (total <= CONTEXT.ALWAYS_LOADED_BUDGET) {
-    return `${formatKB(total)} always loaded`;
+    return;
   }
   const largest = [...files]
     .sort((a, b) => b.bytes - a.bytes)
     .slice(0, 3)
     .map((file) => `${relative(FOLDERS.HOME, file.path).split(sep).join('/')} ${formatKB(file.bytes)}`);
-  return paint(
-    `${formatKB(total)} always loaded, over the ${formatKB(CONTEXT.ALWAYS_LOADED_BUDGET)} budget (${largest.join(', ')})`,
-    ANSI.yellow
+  log.warn(
+    `${formatKB(total)} always loaded, over the ${formatKB(CONTEXT.ALWAYS_LOADED_BUDGET)} budget (${largest.join(', ')})`
   );
 };
 
-const alwaysLoadedStack = (host: HostAdapter): Stack | null => {
+const alwaysLoadedBytes = (host: HostAdapter): number | null => {
   try {
-    return host.delivery.kind === 'inject' ? injectedStack() : importedStack();
+    const stack = host.delivery.kind === 'inject' ? injectedStack() : importedStack();
+    logOverBudget(stack);
+    return stack.total;
   } catch (err) {
     log.error('always-loaded weight skipped', err);
     return null;
@@ -353,7 +355,7 @@ const alwaysLoadedStack = (host: HostAdapter): Stack | null => {
 function renderBanner(
   entries: ManifestEntry[],
   contextBytes: number,
-  alwaysLoaded: Stack | null,
+  alwaysLoaded: number | null,
   notices: readonly Notice[],
   launchIssue: { label: string; banner: string } | null,
   skill: SkillCommand
@@ -370,7 +372,7 @@ function renderBanner(
     `  ${agentEmoji() || '🤖'} Agent:     ${paint(agentDisplayName(), ANSI.bold, rgbEscape(agentColors().primary))} · v${PLUGIN_VERSION}`,
     `  🧠 Knowledge: ${FOLDERS.KNOWLEDGE}`,
     `  📁 Projects:  ${FOLDERS.PROJECTS}`,
-    `  📚 Context  · ${formatKB(contextBytes)} this session${alwaysLoaded === null ? '' : ` · ${weightNote(alwaysLoaded)}`}`
+    `  📚 Context:   ${alwaysLoaded === null ? '' : `${formatKB(alwaysLoaded)} of home files, and `}${formatKB(contextBytes)} added today:`
   ];
   head.splice(1, 0, ...notices.map((notice) => noticeLine(notice, skill)));
   if (welcomePending()) {
@@ -673,7 +675,7 @@ export async function assembleContext({
 
   const context = fitContext(parts, CONTEXT.MAX_CHARS);
   const notices = (await pendingNotices).filter((notice) => !promptRow || notice.level === 'hint');
-  const weight = alwaysLoadedStack(host);
+  const weight = alwaysLoadedBytes(host);
   const banner = renderBanner(entries, context.length, weight, notices, launchIssue, host.skill);
   const hasIssues =
     launchIssue !== null || entries.some((entry) => entry.status === 'missing' || entry.status === 'unavailable');
