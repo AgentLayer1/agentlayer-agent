@@ -4,45 +4,40 @@
  *
  * The upgrade's merge keeps any `##` section a home has that the new template lacks, since it can't tell a
  * section the template removed from one the operator added. This release removed one from the manual
- * ("Engineering the Codebase", the plugin's own contributor rules) and moved two from the always-on Xcode rule
- * into the path-scoped one ("After an Xcode update", "Apple's skills"), where the merge adds them.
+ * ("Engineering the Codebase", the plugin's own contributor rules), which is removed from the home only when its
+ * lines still match the template the home was built from.
  *
- * Each is removed from the home only when its lines still match the template the home was built from, read
- * from the recorded base at `<HOME>/.state/template-base`, never by comparing with the new template. A section
- * the operator edited, or a home with no recorded base, is left as it is and reported, for the upgrade to ask.
+ * It also trimmed the always-on Xcode rule and moved its reference material into the path-scoped one. The upgrade
+ * never merges those two pack files, so they move together here: both are replaced by the new templates when each
+ * is the shipped copy or already the new one, and both are kept when either was edited, so nothing leaves the
+ * first before it reaches the second.
+ *
+ * "Shipped" means the recorded base at `<HOME>/.state/template-base`, never a comparison with the new template.
+ * Anything edited, or a home with no recorded base, is left as it is and reported, for the upgrade to ask.
  *
  * Run by the upgrade skill via `run_upgrade`. Idempotent.
  * Contract: prints a single-line JSON report as its LAST stdout line; exits non-zero on failure.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { RUNTIME_DIR } from '../../../src/shared/naming';
 
 const VERSION = '1.1.0';
 const HOME = resolve(process.env.AGENT_HOME?.trim() || process.cwd());
 const BASE = resolve(HOME, RUNTIME_DIR, 'template-base');
+const TEMPLATES = resolve(import.meta.dir, '..', '..', '..', 'templates');
 
-const MOVED =
-  'The template moved this section to .claude/rules/xcode-project.md. Carry your changes there, then delete it here.';
-interface Retired {
-  file: string;
-  template: string;
-  heading: string;
-  ask: string;
-}
+const RETIRED = {
+  file: 'AGENTS.md',
+  heading: '## Engineering the Codebase',
+  ask: "The template dropped this section: it held the plugin's own contributor rules. Delete it unless you rely on it."
+} as const;
 
-const RETIRED: readonly Retired[] = [
-  {
-    file: 'AGENTS.md',
-    template: 'AGENTS.md',
-    heading: '## Engineering the Codebase',
-    ask: "The template dropped this section: it held the plugin's own contributor rules. Delete it unless you rely on it."
-  },
-  { file: '.claude/rules/xcode.md', template: 'rules/xcode.md', heading: '## After an Xcode update', ask: MOVED },
-  { file: '.claude/rules/xcode.md', template: 'rules/xcode.md', heading: "## Apple's skills", ask: MOVED }
-];
+const XCODE_RULES = ['xcode.md', 'xcode-project.md'] as const;
+const XCODE_ASK =
+  "The template trimmed the always-on Xcode rule and moved its reference sections (after an Xcode update, Apple's skills, previews) into xcode-project.md. Your copies differ from the shipped ones, so they were left as they are: merge them with the plugin's templates/rules/xcode.md and xcode-project.md by hand.";
 
-type Action = 'removed' | 'kept-edited' | 'kept-no-base' | 'not-present';
+type Action = 'removed' | 'replaced' | 'current' | 'kept-edited' | 'kept-no-base' | 'not-present';
 
 interface Split {
   before: string[];
@@ -61,13 +56,15 @@ const splitAt = (text: string, heading: string): Split | null => {
   return { before: lines.slice(0, start), section: lines.slice(start, end), after: lines.slice(end) };
 };
 
-const wording = ({ section }: Split): string =>
-  section
+const wording = (lines: readonly string[]): string =>
+  lines
     .map((line) => line.trimEnd())
     .filter(Boolean)
     .join('\n');
 
-const retire = ({ file, template, heading }: Retired): Action => {
+const readIfThere = (path: string): string | null => (existsSync(path) ? readFileSync(path, 'utf-8') : null);
+
+const retire = ({ file, heading }: typeof RETIRED): Action => {
   const homePath = resolve(HOME, file);
   if (!existsSync(homePath)) {
     return 'not-present';
@@ -76,12 +73,12 @@ const retire = ({ file, template, heading }: Retired): Action => {
   if (!mine) {
     return 'not-present';
   }
-  const basePath = resolve(BASE, template);
-  const original = existsSync(basePath) ? splitAt(readFileSync(basePath, 'utf-8'), heading) : null;
+  const base = readIfThere(resolve(BASE, file));
+  const original = base === null ? null : splitAt(base, heading);
   if (!original) {
     return 'kept-no-base';
   }
-  if (wording(mine) !== wording(original)) {
+  if (wording(mine.section) !== wording(original.section)) {
     return 'kept-edited';
   }
   const before = mine.before.join('\n').trimEnd();
@@ -90,16 +87,50 @@ const retire = ({ file, template, heading }: Retired): Action => {
   return 'removed';
 };
 
+const sameWording = (a: string, b: string): boolean => wording(a.split('\n')) === wording(b.split('\n'));
+
+const updateXcodeRules = (): Action => {
+  const rules = XCODE_RULES.map((name) => ({
+    home: resolve(HOME, '.claude', 'rules', name),
+    mine: readIfThere(resolve(HOME, '.claude', 'rules', name)),
+    base: readIfThere(resolve(BASE, 'rules', name)),
+    next: readFileSync(resolve(TEMPLATES, 'rules', name), 'utf-8')
+  }));
+  if (rules.every(({ mine }) => mine === null)) {
+    return 'not-present';
+  }
+  const pending = rules.filter(({ mine, next }) => mine === null || !sameWording(mine, next));
+  if (pending.length === 0) {
+    return 'current';
+  }
+  const present = pending.filter(({ mine }) => mine !== null);
+  if (present.some(({ base }) => base === null)) {
+    return 'kept-no-base';
+  }
+  if (present.some(({ mine, base }) => !sameWording(mine ?? '', base ?? ''))) {
+    return 'kept-edited';
+  }
+  pending.forEach(({ home, next }) => writeFileSync(home, next));
+  return 'replaced';
+};
+
 try {
-  const sections = RETIRED.map((entry) => {
-    const action = retire(entry);
-    return {
-      file: entry.file,
-      heading: entry.heading,
-      action,
-      ...(action.startsWith('kept') ? { ask: entry.ask } : {})
-    };
-  });
+  const manual = retire(RETIRED);
+  const xcode = updateXcodeRules();
+  const sections = [
+    {
+      file: RETIRED.file,
+      heading: RETIRED.heading,
+      action: manual,
+      ...(manual.startsWith('kept') ? { ask: RETIRED.ask } : {})
+    },
+    {
+      file: join('.claude', 'rules', XCODE_RULES.join(', ')),
+      heading: 'Xcode pack rules',
+      action: xcode,
+      ...(xcode.startsWith('kept') ? { ask: XCODE_ASK } : {})
+    }
+  ];
   process.stdout.write(JSON.stringify({ ok: true, version: VERSION, home: HOME, sections }) + '\n');
 } catch (err) {
   const message = err instanceof Error ? err.message : String(err);

@@ -9,8 +9,17 @@ const SCRIPT = resolve(import.meta.dir, '1.1.0.ts');
 const SECTION = '## Engineering the Codebase\n\nWhen writing code in this project:\n\n- **Bun-first.** Use bun.\n';
 const MANUAL = (section: string) =>
   `# Manual\n\n## Platform\n\nKeep the home safe.\n\n${section}\n## Where Your Code Lives\n\nYour codebase.\n`;
-const RULE =
+const SHIPPED_RULE =
   "# Xcode\n\n## Ground rules\n\n- One build driver.\n\n## After an Xcode update\n\n- Bump the version file.\n\n## Apple's skills\n\n- Read them as files.\n";
+const SHIPPED_PROJECT = '---\npaths:\n  - "**/*.pbxproj"\n---\n\n# Xcode project files\n\n## project.pbxproj\n\n- Edit through the tools.\n';
+const TEMPLATE = (name: string): string => readFileSync(resolve(import.meta.dir, '..', '..', '..', 'templates', 'rules', name), 'utf-8');
+const XCODE = 'Xcode pack rules';
+const shippedXcode = {
+  '.claude/rules/xcode.md': SHIPPED_RULE,
+  '.state/template-base/rules/xcode.md': SHIPPED_RULE,
+  '.claude/rules/xcode-project.md': SHIPPED_PROJECT,
+  '.state/template-base/rules/xcode-project.md': SHIPPED_PROJECT
+};
 
 const homes: string[] = [];
 const makeHome = (files: Record<string, string>): string => {
@@ -43,22 +52,9 @@ afterAll(() => homes.forEach((home) => rmSync(home, { recursive: true, force: tr
 
 describe('1.1.0 retired template sections', () => {
   test('a section still in the template wording is removed, its neighbours untouched, and a second run finds nothing', () => {
-    const home = makeHome({
-      'AGENTS.md': MANUAL(SECTION),
-      '.state/template-base/AGENTS.md': MANUAL(SECTION),
-      '.claude/rules/xcode.md': RULE,
-      '.state/template-base/rules/xcode.md': RULE
-    });
-    expect(run(home)).toMatchObject({
-      status: 0,
-      actions: {
-        '## Engineering the Codebase': 'removed',
-        '## After an Xcode update': 'removed',
-        "## Apple's skills": 'removed'
-      }
-    });
+    const home = makeHome({ 'AGENTS.md': MANUAL(SECTION), '.state/template-base/AGENTS.md': MANUAL(SECTION) });
+    expect(run(home)).toMatchObject({ status: 0, actions: { '## Engineering the Codebase': 'removed' } });
     expect(read(home, 'AGENTS.md')).toBe(MANUAL('').replace('\n\n\n', '\n\n'));
-    expect(read(home, '.claude/rules/xcode.md')).toBe('# Xcode\n\n## Ground rules\n\n- One build driver.\n');
     expect(run(home).actions['## Engineering the Codebase']).toBe('not-present');
   });
 
@@ -87,10 +83,39 @@ describe('1.1.0 retired template sections', () => {
 
   test('a home without the Xcode pack has nothing to move', () => {
     const home = makeHome({ 'AGENTS.md': MANUAL(''), '.state/template-base/AGENTS.md': MANUAL(SECTION) });
-    expect(run(home).actions).toEqual({
-      '## Engineering the Codebase': 'not-present',
-      '## After an Xcode update': 'not-present',
-      "## Apple's skills": 'not-present'
-    });
+    expect(run(home).actions).toEqual({ '## Engineering the Codebase': 'not-present', [XCODE]: 'not-present' });
+  });
+});
+
+describe('1.1.0 Xcode pack rules', () => {
+  test('shipped copies of both files become the new templates together, and a second run finds them current', () => {
+    const home = makeHome(shippedXcode);
+    expect(run(home).actions[XCODE]).toBe('replaced');
+    expect(read(home, '.claude/rules/xcode.md')).toBe(TEMPLATE('xcode.md'));
+    expect(read(home, '.claude/rules/xcode-project.md')).toBe(TEMPLATE('xcode-project.md'));
+    expect(read(home, '.claude/rules/xcode-project.md'), 'the moved reference arrives').toContain("## Apple's skills");
+    expect(run(home).actions[XCODE]).toBe('current');
+  });
+
+  test('an edit to either file keeps both as they are, so nothing leaves the always-on rule unmoved', () => {
+    const edited = `${SHIPPED_PROJECT}\n- My own pbxproj note.\n`;
+    const home = makeHome({ ...shippedXcode, '.claude/rules/xcode-project.md': edited });
+    const { actions, asks } = run(home);
+    expect(actions[XCODE]).toBe('kept-edited');
+    expect(asks[XCODE]).toContain('merge them');
+    expect(read(home, '.claude/rules/xcode.md')).toBe(SHIPPED_RULE);
+    expect(read(home, '.claude/rules/xcode-project.md')).toBe(edited);
+  });
+
+  test('a shipped always-on rule with its scoped file missing gets both', () => {
+    const home = makeHome({ '.claude/rules/xcode.md': SHIPPED_RULE, '.state/template-base/rules/xcode.md': SHIPPED_RULE });
+    expect(run(home).actions[XCODE]).toBe('replaced');
+    expect(read(home, '.claude/rules/xcode-project.md')).toBe(TEMPLATE('xcode-project.md'));
+  });
+
+  test('without a recorded base nothing is replaced', () => {
+    const home = makeHome({ '.claude/rules/xcode.md': SHIPPED_RULE, '.claude/rules/xcode-project.md': SHIPPED_PROJECT });
+    expect(run(home).actions[XCODE]).toBe('kept-no-base');
+    expect(read(home, '.claude/rules/xcode.md')).toBe(SHIPPED_RULE);
   });
 });
