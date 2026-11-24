@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { PLUGIN_SOURCE_ROOT } from '@/shared/naming';
 
 // Every home loads the manual into every session, and Codex reads only its first 32,768 bytes unless a home raises
-// the limit. This is its size today, and it only comes down.
-const MANUAL_BUDGET = 35_363;
+// the limit, so the budget leaves room for a home's own sections. It only comes down.
+const MANUAL_BUDGET = 29_000;
 
 describe('template sizes', () => {
   test(`the manual fits its ${MANUAL_BUDGET}-byte budget`, () => {

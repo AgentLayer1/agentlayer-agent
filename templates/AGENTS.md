@@ -50,61 +50,15 @@ The agent home directory is the single source of truth for memory.
 ## Knowledge Structure
 
 ```
-<HOME>/                              # Agent home — by convention ~/Documents/Agents/<AgentName> (the directory you launch your agent CLI from)
-├── AGENTS.md                        # this file — the operating manual, read by every AGENTS.md-aware harness
-├── SOUL.md                          # {{AGENT_NAME}}'s character
-├── IDENTITY.md                      # {{AGENT_NAME}}'s role
-├── USER.md                          # YOUR headline + links to {{KNOWLEDGE_REL}}/user/
-├── .obsidian/                       # Obsidian vault config (vault root = HOME; code lives in a separate tree)
-├── .claude/                         # only what Claude Code itself reads
-│   ├── CLAUDE.md                    # Claude Code bridge: @-imports this manual + the identity stack, plus Claude-only rules
-│   ├── settings.json                # shared policy: pre-granted tool permissions, deny list, sandbox (written by /init)
-│   ├── settings.local.json          # this machine's: plugin registration, status line, folder grants, env block (gitignored)
-│   ├── rules/                       # path-scoped coding rules, auto-applied by file glob (seeded by /init)
-│   └── skills/                      # user-authored custom skills only (lazy — pack skills stay in the plugin dir)
-├── .mcp.json                        # only if you register your own MCP servers — {{AGENT_NAME}}'s bundled `agent` server is registered in the plugin manifest
-├── assets/                          # {{AGENT_NAME}}'s avatar and other home-wide media (your picture lives in {{KNOWLEDGE_REL}}/user/assets/)
-├── scripts/                         # your permanent scripts for ongoing tasks
-│   └── browser/<flow>/              # your browser flows, run by the `browser_flows` tool outside the sandbox (a flow's `.env` is gitignored)
-├── extensions/
-│   └── skills/<skill>.md            # how this home changes a plugin skill; listed at session start when the home has any (none listed means none to look for), read before that skill runs, and wins where they disagree
-├── {{KNOWLEDGE_REL}}/
-│   ├── index.md                     # master catalog
-│   ├── user/                        # evolving long-form knowledge about you
-│   │   ├── profile.md
-│   │   ├── skills.md
-│   │   ├── preferences.md
-│   │   ├── career.md
-│   │   └── interests.md
-│   ├── concepts/                    # cross-cutting articles
-│   │   └── <slug>.md
-│   ├── memory/
-│   │   ├── index.md                 # hot context (threads, decisions, learnings)
-│   │   └── YYYY-MM-DD.md            # daily memory (transient, 14d retention)
-│   └── raw/                         # unprocessed inputs to compile
-│       ├── sessions/YYYY-MM-DD.md   # auto-captured by SessionEnd hook
-│       ├── user/feedback.md         # append-only correction log
-│       ├── inbox/                   # drop any input here (or use the `capture` tool) for compilation
-│       └── archive/inbox/           # compiled inbox items land here
-├── {{PROJECTS_REL}}/
-│   ├── TASKS.md                     # cross-project dashboard
-│   └── <slug>/
-│       ├── README.md
-│       ├── helpdesk.md              # optional queue profile: the project's support connection, schedule, workflow and rules
-│       └── tasks/<id>-<slug>.md
-├── reports/                         # transient skill outputs (tracked in git; linked from {{KNOWLEDGE_REL}}/index.md via reports/index.md)
-│   ├── briefings/                   # morning/evening briefings, goals, standup, flywheel
-│   ├── plans/                       # /plan-spec specs + /self-review proposals + native plan-mode saves (plansDirectory)
-│   ├── radar/                       # /attention checkpoint all session snapshots
-│   ├── api/                         # /api-collections request collections
-│   ├── reviews/                     # engineer PR reviews, replies, walkthroughs + adversarial-review dossiers
-│   ├── helpdesk/                    # /helpdesk pulses and routines (the newest of each is sync's cadence watermark)
-│   ├── slack/                       # /slack pulses
-│   └── captures/                    # browser screenshots and PDFs
-└── .state/                           # plugin runtime (hidden)
-    ├── config/                      # config.json + Google OAuth tokens
-    ├── knowledge.json               # compile state
-    └── logs/
+<HOME>/                    # the agent home: the folder you launch your agent CLI from
+├── AGENTS.md, SOUL.md, IDENTITY.md, USER.md   # this manual, {{AGENT_NAME}}'s character and role, your headline
+├── .claude/               # what Claude Code reads: the CLAUDE.md bridge, settings, path-scoped rules, your own skills
+├── extensions/skills/     # how this home changes a plugin skill; listed at session start when the home has any (none listed means none to look for), read before that skill runs, and wins where they disagree
+├── scripts/, assets/      # your permanent scripts (browser flows under scripts/browser/) and home-wide media
+├── {{KNOWLEDGE_REL}}/     # the brain: index.md, user/, concepts/, memory/ (index.md and 14 days of daily files), raw/ (sessions, user/feedback.md, inbox)
+├── {{PROJECTS_REL}}/      # TASKS.md, and a folder per project: README.md, tasks/<id>-<slug>.md, an optional helpdesk.md
+├── reports/               # dated skill outputs by category, listed in reports/index.md
+└── .state/                # plugin runtime: config, compile state, logs
 ```
 
 Raw → compiled lifecycle:
@@ -144,21 +98,13 @@ This home runs on **{{PLATFORM}}**. Match it whenever you run shell commands, wr
 
 **A command the sandbox blocks is the operator's to run.** Print the exact command, ask them to run it, and continue from their output. Never work around the refusal: no relinking stores, swapping registries, disabling TLS checks, or reshaping the step. A missing dependency a tool reports is the same: relay its install hint and stop. A permission the operator denied is declined: adjust or ask, never reach the same effect another way. Before calling a command blocked, compare it with the last run that worked: a `sandbox.excludedCommands` entry matches only the bare command, so a leading `cd … &&` or a trailing redirect sends it back into the sandbox.
 
-**Shell commands you run or hand over.** A command the operator pastes is one line: no brace blocks, heredocs, or line continuations. A command you run leaves the session where it found it, since a `cd` can carry over to every later call: name the repo with `git -C <abs>` and absolute paths, or keep the `cd` in a subshell `( cd <abs> && … )`, never leaning on an earlier call's directory. A command handed to the operator starts with its own absolute `cd`, holds no `<placeholder>` (zsh reads `<` as a redirect), and names a binary by full path when zsh has a builtin of that name (`/usr/bin/log`). Print `HEAD` before claiming what a checkout contains. A build or test gate is `&&`-joined to whatever depends on it (never `;`, never piped through `head`, `tail` or `grep`, which swallow the exit code; a subshell check is `( … ) && next`), a pass needs a positive count of what it proves (tests run, rows checked), and read the tool's own verdict line before claiming a pass. Commit messages go through a `mktemp` file and `git commit -F`, never an inline heredoc.
+**Shell commands you run or hand over.** A command the operator pastes is one line: no brace blocks, heredocs, or line continuations. A command you run leaves the session where it found it: name the repo with `git -C <abs>` and absolute paths, or keep the `cd` in a subshell `( cd <abs> && … )`. A command handed to the operator starts with its own absolute `cd`, holds no `<placeholder>` (zsh reads `<` as a redirect), and names a binary by full path when zsh has a builtin of that name (`/usr/bin/log`). Print `HEAD` before claiming what a checkout contains. A build or test gate is `&&`-joined to whatever depends on it (never `;`, never piped through `head`, `tail` or `grep`, which swallow the exit code; a subshell check is `( … ) && next`), a pass needs a positive count of what it proves (tests run, rows checked), and read the tool's own verdict line before claiming a pass. Commit messages go through a `mktemp` file and `git commit -F`, never an inline heredoc.
 
 **Keep the live home out of harm's way.** Tests and throwaway scripts that write or delete files run against a temp home (point the home variable at a `mktemp -d` fixture), and never `rm` a path that could match a real artifact. Sessions launch from the agent home; a failure caused by a subdirectory working directory gets surfaced, not coded around. To show the operator a file, put its absolute path in the reply: the terminal makes it a link they Cmd-click (Ctrl-click off macOS) to open in their default app, so never add an `! open` command for it, an app's link scheme (`obsidian://`) or `open -a <app>` unless they named the app. When a launch you run yourself fails, show the path instead of retrying through other launchers.
 
-**Scratch files get a `mktemp` name, never a hand-picked one.** `$TMPDIR` is one directory for every session on this machine, so a fixed or parameter-keyed name gets overwritten mid-read by another session. Use `mktemp "${TMPDIR:-/tmp}/<prefix>-XXXXXX"` (or `mktemp -d`), with nothing after the X's (macOS keeps a suffix literal; when a file needs an extension, make a directory and name the file inside it), and use only the exact path it printed, held in a variable inside the same command that uses it (`M=$(mktemp …) && … && git commit -F "$M"`) so the suffix is never retyped, never one found again by glob, `ls` or `find`. The `guard` hook refuses a glob under the temp dir, a hand-picked `$TMPDIR` name and a session-moving `cd`, so a block from it is this rule, not the sandbox. When a file contradicts what you just wrote there, suspect a shared-path clobber before the tool, and re-read from the source.
+**Scratch files get a `mktemp` name, never a hand-picked one:** `M=$(mktemp "${TMPDIR:-/tmp}/<prefix>-XXXXXX")` (or `mktemp -d`), held in a variable inside the command that uses it, since every session on the machine shares that directory. The `guard` hook refuses a hand-picked name there, a glob, and a session-moving `cd`, so a block from it is this rule, not the sandbox. When a file contradicts what you just wrote there, suspect a shared-path clobber before the tool, and re-read from the source.
 
 - **On native Windows, PowerShell 7+ (`pwsh`) is required.** Scripts and tooling invoke `pwsh`, never the built-in Windows PowerShell 5.1 (`powershell.exe`) — its parsing and single-object `.Count` quirks aren't supported. Call `pwsh` and let it fail loud if absent.
-
-## Engineering the Codebase
-
-When writing or editing code in this project (MCP server, hooks, CLI, skills):
-
-- **Bun-first.** Use `bun` / `bunx` for every script, dependency, and run command. No `node`, `npm`, `npx`, `pnpm`, or `yarn` (this holds even if a global default says otherwise).
-- **Never hand-craft paths.** Build and parse them with the `node:path` / `node:url` APIs (`path.join`, `path.basename`, `path.relative`, `pathToFileURL`, `fileURLToPath`), not string concatenation or splitting on `/`. Prefer cross-platform implementations by default.
-- **macOS-first, fail loud elsewhere.** This project is primarily macOS-supported. Don't over-engineer Windows shims: where real cross-platform support would be drastic or risky, fail fast with a `TODO(windows):` marker and a clear log line instead of shipping a half-correct workaround.
 
 ## Where Your Code Lives
 
@@ -166,12 +112,7 @@ If you've set a primary codebase (`$AGENT_CODE_PATH` — captured during `/agent
 
 ## Git Worktrees
 
-When you (or a parallel agent) need an isolated checkout of a code repo to work a branch without disturbing the main checkout, use a [git worktree](https://git-scm.com/docs/git-worktree). Two conventions, always:
-
-- **Siblings, never nested.** A worktree lives one level up, alongside the main checkout, not inside it. If the repo is at `~/Developer/<Org>/acme`, the worktree is `~/Developer/<Org>/acme-my-feature`. From the main checkout, the `../` keeps it at the same level: `git worktree add ../acme-my-feature -b feat/my-feature`. A nested worktree lands under a tracked path and pollutes the parent's working tree.
-- **Bootstrap before coding.** A fresh worktree has no gitignored local files (`.env*`, `.claude/settings.local.json`), no installed deps, and no built packages. Copy the machine-local config from the main checkout, install, and build before the branch is workable.
-
-Don't do this by hand. The `setup-worktree` skill does both steps: it pins which repo you mean (asks when the code root holds several), creates the sibling worktree on a new branch, and bootstraps it (copies the gitignored local files, detects the package manager, installs, and runs the repo's build script). When asked to "make a worktree for X" or work a branch in parallel, reach for that skill.
+For an isolated checkout of a code repo, use the `setup-worktree` skill, never a raw `git worktree add`: it creates the worktree as a sibling of the main checkout (never nested inside it) and bootstraps it (the gitignored local files, dependencies, the build).
 
 ## How {{AGENT_NAME}} Should Work With You
 
@@ -213,7 +154,7 @@ Don't do this by hand. The `setup-worktree` skill does both steps: it pins which
 - Before a release or risky change, a second model reviews (adversarial-review): it documents, the implementer codes, and every finding is verified against the code.
 - Git is forward-only. Fix a bad commit with a new commit on top (`git revert` or a corrective commit), never `--amend`, `rebase -i` squash/fixup, or `reset` + rebuild — even when local and unpushed. The one exception is scrubbing a confidentiality leak from an unpushed commit.
 - Compare options before committing — back-of-envelope across alternatives saves months.
-- Verify before claim — anything specific (number, status, partner behavior, current prod state) gets a source check or "I don't know". A claim about this machine's current state (which mode, credential, or setting is live) needs the file read or the check run in the same turn as the claim, never a read from earlier in the session; docs describe rules, not state. Before handing over an analysis with several findings, recheck each one yourself and label it confirmed, strong, or guess, with its source. A guess never sits in the headline. The operator should never have to ask "are you sure?" to get the downgrade. A safety verdict (harmless, unused, narrow, same as main, ready, validated, isolated, survives a clear or restart) names the input that would break it and how far the check reached; without both it goes out as a question.
+- Verify before claim — anything specific (number, status, partner behavior, current prod state) gets a source check or "I don't know". A claim about this machine's current state (which mode, credential, or setting is live) needs the file read or the check run in the same turn as the claim, never a read from earlier in the session; docs describe rules, not state. Before handing over an analysis with several findings, recheck each one yourself and label it measured, inferred, or guess, with its source. A guess never sits in the headline. The operator should never have to ask "are you sure?" to get the downgrade. A safety verdict (harmless, unused, narrow, same as main, ready, validated, isolated, survives a clear or restart) names the input that would break it and how far the check reached; without both it goes out as a question.
 - A claim about what code does on a path starts at every entry that reaches it (each handler, each webhook, each job), lists the early returns on the way, and reads the guard at the next step before relaying a consequence; a reading from the callee alone says so. A guard is ruled against its whole invariant (both ends of a move, both directions of a fallback), with a red case for each.
 - A brief to another agent restates its hard rules in full, never by reference to a file it may not reread; names each rule by its effect, not one command's spelling; gives every ceiling the action to take when it's hit; and says a denied call of any kind is handed back, never reached another way.
 - Before calling something broken, read the code and `git blame` it: a months-old unchanged path is more often design you don't yet understand than a regression. A monitoring check firing is worth a look, not proof. A name is not a definition: a flag, field, or a peer's sentence says what someone meant, so read the line that computes it and one real row before relaying it.
@@ -248,13 +189,9 @@ These guidelines apply to any code {{AGENT_NAME}} reads, writes, or reviews — 
 
 ### Principles
 
-Each lives in full in the `engineer` skill, beside a playbook per code task. Read it before applying; name the decision it changed.
+The `engineer` skill holds each of these in full, beside a playbook per code task. Read it before applying one; name the decision it changed.
 
-- **Core:** laziness protocol (smallest change, prefer deletion), foundational thinking (data shape first), redesign from first principles, attack the premise (two failed fixes: census the premise), subtract before you add, minimize reader load, outcome-oriented execution, experience first, exhaust the design space (design it twice), build the lever (script the edit or the proof).
-- **Architecture:** model the domain, boundary discipline (validate at the edges, trust types inside), type system discipline (illegal states unrepresentable), make operations idempotent, migrate callers then delete legacy APIs (one wave), separate before serializing shared state.
-- **Verification:** prove it works (the real artifact, proof-ladder level stated), fix root causes (reproduce, no silencing guards), sequence verifiable units (failing test before the fix), test behavior not implementation (passes with every import `undefined`? rewrite or delete).
-- **Delegation:** guard the context window, never block on the human (reversible work proceeds; the ask-first list still holds).
-- **Meta:** encode lessons in structure (a rule needed twice becomes a type, test, lint, or hook).
+Laziness protocol, foundational thinking, redesign from first principles, attack the premise, subtract before you add, minimize reader load, outcome-oriented execution, experience first, exhaust the design space, build the lever; model the domain, boundary discipline, type system discipline, make operations idempotent, migrate callers then delete legacy APIs, separate before serializing shared state; prove it works, fix root causes, sequence verifiable units, test behavior not implementation; guard the context window, never block on the human; encode lessons in structure.
 
 ### Toolchain
 
