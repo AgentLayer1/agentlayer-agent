@@ -21,7 +21,8 @@ mkdirSync(USER_HOME, { recursive: true });
 mkdirSync(FAKE_BIN, { recursive: true });
 [
   ['claude', '2.9.999 (Claude Code)'],
-  ['codex', 'codex-cli 9.999.0']
+  ['codex', 'codex-cli 9.999.0'],
+  ['agy', '9.999.0']
 ].forEach(([name, version]) => {
   const path = resolve(FAKE_BIN, name);
   writeFileSync(path, `#!/bin/sh\necho "${version}"\n`);
@@ -166,6 +167,44 @@ const codexRollout = (home: string, turns: number): string => {
   return path;
 };
 
+const antigravityTranscript = (home: string, turns: number): string => {
+  const path = resolve(home, 'antigravity-transcript.jsonl');
+  const steps = Array.from({ length: turns }, (_unused, index) =>
+    index % 2 === 0
+      ? {
+          step_index: index,
+          source: 'USER_EXPLICIT',
+          type: 'USER_INPUT',
+          content: `<USER_REQUEST>\nantigravity turn ${index + 1}\n</USER_REQUEST>\n<ADDITIONAL_METADATA>\nThe current local time is: 2026-09-06T17:44:08Z.\n</ADDITIONAL_METADATA>`
+        }
+      : {
+          step_index: index,
+          source: 'MODEL',
+          type: 'PLANNER_RESPONSE',
+          model: 'gemini-test',
+          content: `antigravity turn ${index + 1}`
+        }
+  );
+  const noise = [
+    { step_index: 90, source: 'SYSTEM_SDK', type: 'SYSTEM_MESSAGE', content: 'injected context' },
+    { step_index: 91, source: 'MODEL', type: 'PLANNER_RESPONSE', model: 'gemini-test', content: '' },
+    { step_index: 92, source: 'MODEL', type: 'GENERIC', content: 'a tool result' }
+  ];
+  writeFileSync(path, `${[...noise, ...steps].map((step) => JSON.stringify(step)).join('\n')}\n`);
+  return path;
+};
+
+const antigravityPayload = (home: string, extra: Record<string, unknown> = {}): string =>
+  JSON.stringify({
+    conversationId: SESSION_ID,
+    cwd: home,
+    workspacePaths: [home],
+    hookEventName: 'SessionStart',
+    lastUserInput: 'hi',
+    transcriptPath: resolve(home, 'antigravity-transcript.jsonl'),
+    ...extra
+  });
+
 const SESSION_ID = '0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6';
 
 describe.skipIf(!POSIX_GIT)('session start, per host and home state', () => {
@@ -187,6 +226,20 @@ describe.skipIf(!POSIX_GIT)('session start, per host and home state', () => {
   test.each(kinds)('Codex, %s home', (kind) => {
     const home = makeHome(kind);
     expect(cli(home, ['session-start', '--hook-protocol=codex', `--home=${home}`])).toMatchSnapshot();
+  });
+
+  test.each(kinds)('Antigravity, %s home', (kind) => {
+    const home = makeHome(kind);
+    antigravityTranscript(home, 1);
+    expect(
+      cli(home, ['session-start', '--hook-protocol=antigravity', `--home=${home}`], { stdin: antigravityPayload(home) })
+    ).toMatchSnapshot();
+  });
+
+  test("an Antigravity subagent's start gets no context", () => {
+    const home = makeHome('initialized');
+    const stdin = antigravityPayload(home, { lastUserInput: '', transcriptPath: resolve(home, 'not-yet.jsonl') });
+    expect(cli(home, ['session-start', '--hook-protocol=antigravity', `--home=${home}`], { stdin })).toMatchSnapshot();
   });
 
   test('no protocol, initialized home', () => {
@@ -254,6 +307,17 @@ describe.skipIf(!POSIX_GIT)('the shell guard, per host', () => {
     expect(cli(home, ['guard', '--hook-protocol=codex', `--home=${home}`], { stdin: input(home) })).toMatchSnapshot();
   });
 
+  test.each(cases)('Antigravity: %s', (_label, input) => {
+    const home = makeHome('initialized');
+    const { tool_input: toolInput, cwd } = JSON.parse(input(home)) as { tool_input: { command: string }; cwd: string };
+    const stdin = antigravityPayload(home, {
+      hookEventName: 'PreToolUse',
+      cwd,
+      toolCall: { id: '1', name: 'run_command', args: { CommandLine: toolInput.command, WaitMsBeforeAsync: 5000 } }
+    });
+    expect(cli(home, ['guard', '--hook-protocol=antigravity', `--home=${home}`], { stdin })).toMatchSnapshot();
+  });
+
   test('a payload with unescaped backslashes is repaired and still guarded', () => {
     const home = makeHome('initialized');
     const stdin = `{"tool_input":{"command":"git commit --amend"},"cwd":"${home}","note":"C:\\Users\\acme"}`;
@@ -304,6 +368,15 @@ describe.skipIf(!POSIX_GIT)('session capture, per host', () => {
     const home = makeHome('initialized');
     const run = cli(home, ['session-capture', `--mode=${mode}`, '--hook-protocol=codex', `--home=${home}`], {
       stdin: hookPayload(codexRollout(home, 6), home)
+    });
+    expect({ ...run, days: dayFiles(home) }).toMatchSnapshot();
+  });
+
+  test('Antigravity, session-end', () => {
+    const home = makeHome('initialized');
+    const stdin = antigravityPayload(home, { hookEventName: 'Stop', transcriptPath: antigravityTranscript(home, 6) });
+    const run = cli(home, ['session-capture', '--mode=session-end', '--hook-protocol=antigravity', `--home=${home}`], {
+      stdin
     });
     expect({ ...run, days: dayFiles(home) }).toMatchSnapshot();
   });

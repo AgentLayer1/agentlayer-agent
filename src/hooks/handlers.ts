@@ -4,11 +4,21 @@
  * returns the process exit code.
  */
 import { FOLDERS, isInitialized } from '@/config';
-import { HOST_NAMES, isHostName, type HookReply, type HostAdapter } from '@/hosts/contract';
+import { HOST_NAMES, isHostName, type HookPayload, type HookReply, type HostAdapter } from '@/hosts/contract';
 import { DEFAULT_HOST, hostNamed } from '@/hosts/registry';
 import { CLI_COMMAND } from '@/shared/naming';
 
 type Flag = (name: string) => string | undefined;
+
+/** Who started this conversation, read from the hook payload; one that can't be read counts as the user's. */
+const originOf = async (host: HostAdapter): Promise<HookPayload['origin']> => {
+  const raw = await Bun.stdin.text();
+  try {
+    return raw.trim() ? host.readPayload(raw).origin : 'user';
+  } catch {
+    return 'user';
+  }
+};
 
 const emit = (reply: HookReply): number => {
   if (reply.stdout !== undefined) {
@@ -52,6 +62,9 @@ export const runGuard = async (flag: Flag): Promise<number> => {
 
 export const runSessionStart = async (flag: Flag): Promise<number> => {
   const host = hostOf(flag);
+  if (host && (await originOf(host)) === 'child') {
+    return 0;
+  }
   const { sessionStart } = await import('@/hooks/session-start');
   const isTerminal = host?.terminal() ?? false;
   const { rowDraws } = await import('@/notices/notices');

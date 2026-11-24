@@ -12,7 +12,7 @@
  * Always returns a result — internal errors are caught and emitted as an
  * empty payload + `error` field so the host never chokes on hook output.
  */
-import { AGENT_SLUG, FILES, FOLDERS, isInitialized, PLUGIN_NAME, staticContextFiles } from '@/config';
+import { AGENT_SLUG, FILES, FOLDERS, isInitialized, PLUGIN_NAME } from '@/config';
 import { assembleContext } from '@/hooks/context';
 import type { HostAdapter, SkillCommand } from '@/hosts/contract';
 import { renderGlossary } from '@/hosts/dialect';
@@ -125,7 +125,8 @@ export async function sessionStart({
     if (!inject) {
       return { systemMessage: '\n' + banner, additionalContext: lane.context, hasIssues: lane.hasIssues };
     }
-    const files = staticContextFiles()
+    const files = inject
+      .files()
       .filter((path) => existsSync(path))
       .map((path) => {
         const name = relative(FOLDERS.HOME, path).split(sep).join('/');

@@ -124,12 +124,12 @@ Hook commands (internal — wired into Claude Code hooks; safe to run manually f
   session-capture --mode=... --transcript=PATH --cwd=PATH --session-id=X
                                     Plain-CLI mode — same logic without the hook envelope. Useful for testing.
   session-capture ... --format=claude (default)
-                                    Transcript-format adapter (claude, codex).
-  session-start [--hook-protocol=claude|codex]
+                                    Transcript-format adapter (claude, codex, antigravity).
+  session-start [--hook-protocol=claude|codex|antigravity]
                                     Emit dynamic SessionStart context. Without the flag, prints the structured result for testing.
   session-start|session-capture ... --home=PATH
-                                    Pin the agent home from the command line (how the per-home Codex hooks name it)
-  guard [--hook-protocol=claude|codex]
+                                    Pin the agent home from the command line (how the per-home Codex and Antigravity hooks name it)
+  guard [--hook-protocol=claude|codex|antigravity]
                                     PreToolUse hook: read the tool call from stdin and exit 2 when a shell command
                                     would write a home tree (knowledge/, projects/, reports/) relative to a cwd outside the home,
                                     move the session anywhere but back to the home (claude only: a cd carries over there), find

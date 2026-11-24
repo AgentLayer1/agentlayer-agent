@@ -153,9 +153,38 @@ const codexExtractor: Extractor = (transcriptPath) => {
   return turns;
 };
 
+/**
+ * Antigravity transcript extractor. A transcript is JSONL, one step per line: the operator's turns are `USER_INPUT`
+ * steps whose text sits inside `<USER_REQUEST>` (metadata blocks follow it), and the model's are `PLANNER_RESPONSE`
+ * steps with `content` (empty when the step only calls tools). Tool results, injected context and the host's own
+ * messages are other step types.
+ */
+const antigravityExtractor: Extractor = (transcriptPath) =>
+  readFileSync(transcriptPath, 'utf-8')
+    .split('\n')
+    .flatMap((line): TranscriptTurn[] => {
+      let step: unknown;
+      try {
+        step = JSON.parse(line);
+      } catch {
+        return [];
+      }
+      if (!isRecord(step) || typeof step.content !== 'string') return [];
+      if (step.type === 'USER_INPUT') {
+        const text = (/<USER_REQUEST>\n?([\s\S]*?)\n?<\/USER_REQUEST>/.exec(step.content)?.[1] ?? '').trim();
+        return text ? [{ role: 'user', text }] : [];
+      }
+      const text = step.content.trim();
+      if (step.type !== 'PLANNER_RESPONSE' || !text) return [];
+      return typeof step.model === 'string'
+        ? [{ role: 'assistant', text, model: step.model }]
+        : [{ role: 'assistant', text }];
+    });
+
 const EXTRACTORS: Record<HostName, Extractor> = {
   claude: claudeExtractor,
-  codex: codexExtractor
+  codex: codexExtractor,
+  antigravity: antigravityExtractor
 };
 
 /** Render `cwd` as `~/<relative>` when under `$HOME`, else return unchanged. */

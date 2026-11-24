@@ -1,4 +1,5 @@
 import { claudeProtocol } from '@/hosts/claude-protocol';
+import { staticContextFiles } from '@/config';
 import type { HostAdapter } from '@/hosts/contract';
 import { PLUGIN_SOURCE_ROOT, pluginName } from '@/shared/naming';
 import { existsSync } from 'node:fs';
@@ -22,6 +23,7 @@ export const codexHost = {
   launchIssue: () => null,
   delivery: {
     kind: 'inject',
+    files: staticContextFiles,
     glossary: {
       pluginRoot: `in one of ${pluginName()}'s skills (its \`<path>\` runs through \`${pluginName()}/<version>/skills/\`), \`${PLUGIN_SOURCE_ROOT}\`, the checkout this session's hooks and MCP server run from, since that \`<path>\` is Codex's cached copy and can be an older version; in another plugin's skill, two folders above its SKILL.md`,
       skillDir: `in one of ${pluginName()}'s skills, \`${join(PLUGIN_SOURCE_ROOT, 'skills', '<skill>')}\` with the skill's name for \`<skill>\`; in another plugin's skill, the folder holding its SKILL.md`,

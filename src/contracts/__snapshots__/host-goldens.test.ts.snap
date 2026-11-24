@@ -716,3 +716,247 @@ exports[`session capture, per host Claude Code's launch folder wins over the pay
   "stdout": "",
 }
 `;
+
+exports[`session start, per host and home state Antigravity, initialized home 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home=<HOME>
+<TIMESTAMP> INFO  [🪝 session] [start] hook fired (antigravity)
+  🦊 Agent:     Nova · v<VERSION>
+  ↑  Upgrade:   Turn on update tracking · run the upgrade skill
+  ⟳  Sync:      Brain never synced · run the sync skill
+  🧠 Knowledge: <HOME>/knowledge
+  📁 Projects:  <HOME>/projects
+  📚 Context:   0.2KB of home files and 0.0KB added today:
+    ○ session tail     0.0KB  (no session in the last week)
+    ○ today's reports  0.0KB  (no reports yet)
+    ○ pinned reports   0.0KB  (none pinned)
+    ○ history          0.0KB  (off · run the history skill)
+"
+,
+  "stdout": 
+"{"injectSteps":[{"systemMessage":{"systemMessage":"<!-- session banner: mention its warnings and notices in your first reply, unless the request asks for a set output format -->
+🦊 Agent:     Nova · v<VERSION>
+  ↑  Upgrade:   Turn on update tracking · run the upgrade skill
+  ⟳  Sync:      Brain never synced · run the sync skill
+  🧠 Knowledge: <HOME>/knowledge
+  📁 Projects:  <HOME>/projects
+  📚 Context:   0.2KB of home files and 0.0KB added today:
+    ○ session tail     0.0KB  (no session in the last week)
+    ○ today's reports  0.0KB  (no reports yet)
+    ○ pinned reports   0.0KB  (none pinned)
+    ○ history          0.0KB  (off · run the history skill)
+
+<!-- agent static context · harness: antigravity · hooks and MCP server run from: <ROOT> · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs the upgrade skill · delivered by the plugin's SessionStart hook because this host has no @-import -->
+
+<!-- agentlayer glossary for antigravity: the skills are written in Claude Code's terms; read each one as follows -->
+- \`\${CLAUDE_PLUGIN_ROOT}\` → two folders above the skill's SKILL.md (for agentlayer's skills, \`<ROOT>\`)
+- \`\${CLAUDE_SKILL_DIR}\` → the folder holding the SKILL.md
+- \`mcp__plugin_agentlayer_agent__<tool>\` → \`call_mcp_tool\` with the agent's server as \`ServerName\` (the one ending \`_agent\` that offers \`ping\`) and the tool as \`ToolName\`; another server's \`mcp__<server>__<tool>\` is \`call_mcp_tool\` with that server's name
+- \`AskUserQuestion\` → \`ask_question\`
+- \`Agent, a subagent\` → \`invoke_subagent\`
+- \`/agentlayer:<name> or Skill(agentlayer:<name>)\` → the skill by its name (\\"use the <name> skill\\"); when the body you were given stops before the skill does, read the rest from its SKILL.md in ranges
+- \`WebSearch\` → \`search_web\`
+- \`WebFetch\` → the agent's \`browser_markdown\` tool; \`curl\` only for the home's allowed network domains
+
+<!-- file: AGENTS.md -->
+# AGENTS.md
+
+## Memory Routing
+
+<!-- file: SOUL.md -->
+# Soul
+
+Sharp and kind.
+
+<!-- file: IDENTITY.md -->
+# Identity
+
+- **Name:** Nova
+- **Emoji:** 🦊
+
+<!-- file: USER.md -->
+# About Ada
+
+<!-- file: knowledge/index.md -->
+# Knowledge Index
+
+<!-- file: knowledge/memory/index.md -->
+# Memory
+
+## Active Threads
+
+- none
+
+<!-- file: projects/TASKS.md -->
+# Tasks
+
+<!-- session context (dynamic lane) -->
+## Today
+<WEEKDAY>, <MONTH> <DAY>, <YEAR> (UTC)
+"}}]}"
+,
+}
+`;
+
+exports[`session start, per host and home state Antigravity, pre-init home 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home=<HOME>
+<TIMESTAMP> INFO  [🪝 session] [start] hook fired (pre-init)
+"
+,
+  "stdout": 
+"{"injectSteps":[{"systemMessage":{"systemMessage":"<!-- session banner: mention its warnings and notices in your first reply, unless the request asks for a set output format -->
+╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗
+ ╠═╣ ║ ╦ ║╣  ║║║  ║ 
+ ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ 
+===OPPI=== 🐙
+
+→ Not set up yet, run the init skill to get started.
+
+<!-- agentlayer glossary for antigravity: the skills are written in Claude Code's terms; read each one as follows -->
+- \`\${CLAUDE_PLUGIN_ROOT}\` → two folders above the skill's SKILL.md (for agentlayer's skills, \`<ROOT>\`)
+- \`\${CLAUDE_SKILL_DIR}\` → the folder holding the SKILL.md
+- \`mcp__plugin_agentlayer_agent__<tool>\` → \`call_mcp_tool\` with the agent's server as \`ServerName\` (the one ending \`_agent\` that offers \`ping\`) and the tool as \`ToolName\`; another server's \`mcp__<server>__<tool>\` is \`call_mcp_tool\` with that server's name
+- \`AskUserQuestion\` → \`ask_question\`
+- \`Agent, a subagent\` → \`invoke_subagent\`
+- \`/agentlayer:<name> or Skill(agentlayer:<name>)\` → the skill by its name (\\"use the <name> skill\\"); when the body you were given stops before the skill does, read the rest from its SKILL.md in ranges
+- \`WebSearch\` → \`search_web\`
+- \`WebFetch\` → the agent's \`browser_markdown\` tool; \`curl\` only for the home's allowed network domains
+
+The agentlayer plugin is loaded, but \`the init skill\` hasn't been run yet — the Agent home directory and identity files don't exist.
+
+If the user asks you to do anything that requires the agent's data (compile, briefing, task ops, knowledge lookup), suggest they run \`the init skill\` first.
+
+If they ask general questions or want help with something unrelated to the agent, answer normally — you don't need the agent's context to be helpful."}}]}"
+,
+}
+`;
+
+exports[`session start, per host and home state Antigravity, stranded home 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home=<HOME>
+<TIMESTAMP> WARN  [🪝 session] [start] hook fired (home marker missing at <HOME>)
+"
+,
+  "stdout": 
+"{"injectSteps":[{"systemMessage":{"systemMessage":"<!-- session banner: mention its warnings and notices in your first reply, unless the request asks for a set output format -->
+╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗
+ ╠═╣ ║ ╦ ║╣  ║║║  ║ 
+ ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ 
+===OPPI=== 🐙
+
+→ <HOME> has a SOUL.md but no .state/version.json recording this agent — see the note below. Do NOT run init.
+
+<!-- agentlayer glossary for antigravity: the skills are written in Claude Code's terms; read each one as follows -->
+- \`\${CLAUDE_PLUGIN_ROOT}\` → two folders above the skill's SKILL.md (for agentlayer's skills, \`<ROOT>\`)
+- \`\${CLAUDE_SKILL_DIR}\` → the folder holding the SKILL.md
+- \`mcp__plugin_agentlayer_agent__<tool>\` → \`call_mcp_tool\` with the agent's server as \`ServerName\` (the one ending \`_agent\` that offers \`ping\`) and the tool as \`ToolName\`; another server's \`mcp__<server>__<tool>\` is \`call_mcp_tool\` with that server's name
+- \`AskUserQuestion\` → \`ask_question\`
+- \`Agent, a subagent\` → \`invoke_subagent\`
+- \`/agentlayer:<name> or Skill(agentlayer:<name>)\` → the skill by its name (\\"use the <name> skill\\"); when the body you were given stops before the skill does, read the rest from its SKILL.md in ranges
+- \`WebSearch\` → \`search_web\`
+- \`WebFetch\` → the agent's \`browser_markdown\` tool; \`curl\` only for the home's allowed network domains
+
+The agentlayer plugin is loaded and \`<HOME>\` looks like an agent home (it has a SOUL.md), but no \`.state/version.json\` records \`agentlayer\`, which is how this agent recognises its own home. Until that's resolved the agent's data is unreachable: sessions won't be captured and its tools will refuse to run.
+
+Help the user work out which cause applies:
+
+1. **This is another agent's home.** Every agent's home has a SOUL.md, only this one's \`.state/version.json\` records \`agentlayer\`. Launch that agent from here instead, and launch this one from its own home.
+2. **This home's \`.state/\` state didn't survive a restore, clone, or sync.** Restore \`.state/version.json\` (upgrade baseline, the file that marks the home) and \`.state/knowledge.json\` (compile cursor) from the backup or the brain repo; both are git-tracked. Without the compile cursor the next compile re-ingests everything.
+
+**Do not suggest \`init\` to fix this.** Its re-run path offers to overwrite SOUL.md, IDENTITY.md, USER.md and the operating manual, which is the operator losing their agent, not repairing it."}}]}"
+,
+}
+`;
+
+exports[`session start, per host and home state an Antigravity subagent's start gets no context 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home=<HOME>
+"
+,
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host Antigravity: an ordinary command 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host Antigravity: a home-tree write from outside the home 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "{"decision":"deny","reason":"Blocked: this shell command would write \\"projects/x.md\\" outside the agent home <HOME> (the command's cwd is <SCRATCH>). Home trees (knowledge/, projects/, reports/) take the absolute path under <HOME>, or cd back to the home first."}",
+}
+`;
+
+exports[`the shell guard, per host Antigravity: a cd that carries over 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host Antigravity: a history rewrite 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "{"decision":"deny","reason":"Blocked: git commit --amend rewrites or hides history, and git here is forward-only (AGENTS.md, Workflow): fix a commit with a new commit on top, and merge without discarding the other side. The one exception, scrubbing a confidentiality leak from an unpushed commit, is the operator's to run with !."}",
+}
+`;
+
+exports[`session capture, per host Antigravity, session-end 1`] = `
+{
+  "days": 
+"--- <DATE>.md
+# Session Log: <DATE>
+
+### Session (<TIME>) [0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6] · <DATE> · <HOME> · turns 1–6 · antigravity: gemini-test
+
+**User:** antigravity turn 1
+
+**Assistant:** antigravity turn 2
+
+**User:** antigravity turn 3
+
+**Assistant:** antigravity turn 4
+
+**User:** antigravity turn 5
+
+**Assistant:** antigravity turn 6
+
+
+---
+
+"
+,
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-capture --mode=session-end --hook-protocol=antigravity --home=<HOME>
+<TIMESTAMP> INFO  [🪝 session] [capture] saved turns 1–6 → <DATE>.md (session-end)
+"
+,
+  "stdout": 
+"{
+  "saved": true,
+  "turns": 6,
+  "path": "<HOME>/knowledge/raw/sessions/<DATE>.md",
+  "filename": "<DATE>.md"
+}
+"
+,
+}
+`;

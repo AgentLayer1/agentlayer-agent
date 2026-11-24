@@ -5,7 +5,7 @@ import type { DialectTerm } from '@/hosts/dialect';
  * Every host the plugin runs inside. A name is stored in installed homes' hook commands, in day-file headers and
  * in the pending-capture queue, so it never changes.
  */
-export const HOST_NAMES = ['claude', 'codex'] as const;
+export const HOST_NAMES = ['claude', 'codex', 'antigravity'] as const;
 
 export type HostName = (typeof HOST_NAMES)[number];
 
@@ -34,6 +34,8 @@ export interface HostFloor {
  */
 export interface InjectDelivery {
   kind: 'inject';
+  /** The files the hook sends, in order. */
+  files: () => string[];
   glossary: Record<DialectTerm, string>;
 }
 
@@ -49,6 +51,8 @@ export interface HookPayload {
   sessionId?: string;
   transcriptPath?: string;
   cwd?: string;
+  /** `child` for a subagent's conversation, which gets no context and no capture of its own. */
+  origin: 'user' | 'child';
   call?: ToolCall;
 }
 
