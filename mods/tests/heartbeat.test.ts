@@ -898,17 +898,31 @@ describe('brain refresh', () => {
     expect(band).toMatch(/brain refreshed (1h|2h) ago/);
   });
 
-  test('a refresh that ends without stamping is not tried again until its window passes', async ($, on) => {
+  const refreshes = (host: FakeHost) => host.commands.filter((command) => command === REFRESH).length;
+
+  test('a refresh that never finished is tried once more at the next look, then waits out its window', async ($, on) => {
     const { host } = await bound($, on);
     host.status.refreshDue = true;
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual(['clear', REFRESH, WAKE]);
     await host.clock.advance(55 * MINUTE);
-    expect(host.commands, 'the next tick only looks').toEqual(['clear', REFRESH, WAKE, WAKE]);
-    await host.clock.advance(5 * 55 * MINUTE);
-    expect(host.commands.filter((command) => command === REFRESH), '330 minutes on, still inside the window').toHaveLength(1);
+    expect(refreshes(host), 'the next tick tries once more').toBe(2);
     await host.clock.advance(55 * MINUTE);
-    expect(host.commands.filter((command) => command === REFRESH), '385 minutes on, it tries again').toHaveLength(2);
+    expect(refreshes(host), 'a second failure only looks').toBe(2);
+    expect(host.commands.at(-1)).toBe(WAKE);
+    await host.clock.advance(5 * 55 * MINUTE);
+    expect(refreshes(host), '330 minutes after the retry, still inside the window').toBe(2);
+    await host.clock.advance(55 * MINUTE);
+    expect(refreshes(host), '385 minutes after the retry, a new window opens').toBe(3);
+  });
+
+  test('a refresh that was recorded as done is not retried, even while one still reads as due', async ($, on) => {
+    const { host } = await bound($, on);
+    host.status.refreshDue = true;
+    await host.clock.advance(55 * MINUTE);
+    host.status.refreshedAt = new Date(host.clock.now()).toISOString();
+    await host.clock.advance(55 * MINUTE);
+    expect(refreshes(host)).toBe(1);
   });
 
   test('/heartbeat now in a session that just lost the heartbeat never clears it', async ($, on) => {

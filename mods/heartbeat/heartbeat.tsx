@@ -203,7 +203,13 @@ async function look($: EngineInterface): Promise<void> {
 
 // A brain refresh and the day's first wake clear the conversation first, so the heartbeat's context stays small. A
 // refresh runs sync's maintenance steps, then the look reads the brain it left.
-async function wake($: EngineInterface, now: number, status: HeartbeatStatus, refresh = false): Promise<void> {
+async function wake(
+  $: EngineInterface,
+  now: number,
+  status: HeartbeatStatus,
+  refresh = false,
+  isRetry = false
+): Promise<void> {
   const today = dayIn(now, status.timezone);
   const { wokeOn } = await read($, beat);
   const clears = refresh || (wokeOn !== '' && wokeOn !== today);
@@ -212,8 +218,12 @@ async function wake($: EngineInterface, now: number, status: HeartbeatStatus, re
     await update($, beat, (current) => ({ ...current, clearedId, awaiting: [] }));
     await $.command.run({ command: 'clear' });
   }
-  // A refresh is tried once per window, so one that fails before it stamps doesn't run again on every tick.
-  await update($, beat, (current) => ({ ...current, wokeOn: today, ...(refresh ? { refreshTriedAt: now } : {}) }));
+  // A refresh is tried once per window and retried once, so one that fails before it stamps doesn't run on every tick.
+  await update($, beat, (current) => ({
+    ...current,
+    wokeOn: today,
+    ...(refresh ? { refreshTriedAt: now, refreshRetried: isRetry } : {})
+  }));
   $.clock.after(0, async () => {
     if (refresh) {
       await expectTurn($, 'refresh');
@@ -384,12 +394,15 @@ async function tick($: EngineInterface): Promise<void> {
     return;
   }
   const used = await lastUse($);
-  const { refreshTriedAt = 0 } = await read($, beat);
+  const { refreshTriedAt = 0, refreshRetried = false } = await read($, beat);
   // A refresh waits for something to absorb: a session written since the last sync or refresh.
   const absorbs = used === null || used > refreshedMs(status);
-  if (status.refreshDue && absorbs && now - refreshTriedAt >= REFRESH_RETRY_MS) {
+  const windowPassed = now - refreshTriedAt >= REFRESH_RETRY_MS;
+  // A try newer than the last recorded refresh never finished, as when the machine slept through it.
+  const isRetry = !windowPassed && refreshTriedAt > refreshedMs(status) && !refreshRetried;
+  if (status.refreshDue && absorbs && (windowPassed || isRetry)) {
     await ticked($, status, now);
-    await wake($, now, status, true);
+    await wake($, now, status, true, isRetry);
     return;
   }
   // A home it can't see is treated as in use, since skipping would stop the heartbeat for good.
