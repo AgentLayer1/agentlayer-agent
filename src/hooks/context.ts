@@ -35,6 +35,7 @@ import { CLI_PATH } from '@/shared/naming';
 import { isInside } from '@/shared/paths';
 import { listMarkdown, MARKDOWN_RE, readText, readTextAsync } from '@/shared/text';
 import { countOf } from '@/shared/utils';
+import { importedStack, injectedStack } from '@/shared/weight';
 import { livePins } from '@/status/surfaces';
 import { statusLineDrift } from '@/statusline/setting';
 import { getUpgradeStatus, readMigratedFrom } from '@/upgrade/version';
@@ -324,9 +325,24 @@ const welcomePart = (): string => {
   ].join('\n');
 };
 
+const weightNote = (bytes: number): string =>
+  bytes > CONTEXT.ALWAYS_LOADED_BUDGET
+    ? paint(`${formatKB(bytes)} always loaded, over the ${formatKB(CONTEXT.ALWAYS_LOADED_BUDGET)} budget`, ANSI.yellow)
+    : `${formatKB(bytes)} always loaded`;
+
+const alwaysLoadedBytes = (host: HostAdapter): number | null => {
+  try {
+    return (host.delivery.kind === 'inject' ? injectedStack() : importedStack()).total;
+  } catch (err) {
+    log.error('always-loaded weight skipped', err);
+    return null;
+  }
+};
+
 function renderBanner(
   entries: ManifestEntry[],
   contextBytes: number,
+  alwaysLoaded: number | null,
   notices: readonly Notice[],
   billing: string | null,
   skill: SkillCommand
@@ -343,7 +359,7 @@ function renderBanner(
     `  ${agentEmoji() || '🤖'} Agent:     ${paint(agentDisplayName(), ANSI.bold, rgbEscape(agentColors().primary))} · v${PLUGIN_VERSION}`,
     `  🧠 Knowledge: ${FOLDERS.KNOWLEDGE}`,
     `  📁 Projects:  ${FOLDERS.PROJECTS}`,
-    `  📚 Context  · ${formatKB(contextBytes)}`
+    `  📚 Context  · ${formatKB(contextBytes)} this session${alwaysLoaded === null ? '' : ` · ${weightNote(alwaysLoaded)}`}`
   ];
   head.splice(1, 0, ...notices.map((notice) => noticeLine(notice, skill)));
   if (welcomePending()) {
@@ -646,7 +662,8 @@ export async function assembleContext({
 
   const context = fitContext(parts, CONTEXT.MAX_CHARS);
   const notices = (await pendingNotices).filter((notice) => !promptRow || notice.level === 'hint');
-  const banner = renderBanner(entries, context.length, notices, billing?.banner ?? null, host.skill);
+  const weight = alwaysLoadedBytes(host);
+  const banner = renderBanner(entries, context.length, weight, notices, billing?.banner ?? null, host.skill);
   const hasIssues = billing !== null || entries.some((entry) => entry.status === 'missing' || entry.status === 'unavailable');
   return { context, banner, hasIssues };
 }

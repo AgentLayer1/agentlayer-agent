@@ -123,8 +123,8 @@ crash knowledge belongs; the agent home's swift rule carries only the general fo
 
 ## Skills
 
-Apple's own skills ship with Xcode and are read from the folder the agent home's `xcode.md` rule
-names. Map them to this app's areas, plus any third-party skills the repo vendors:
+Apple's own skills ship with Xcode and are read from the folder the agent home's `xcode-project.md`
+rule names. Map them to this app's areas, plus any third-party skills the repo vendors:
 
 | Before working on… | Read |
 |---|---|

@@ -196,6 +196,7 @@ describe('incremental compile', () => {
     expect(item?.prompt).not.toContain('{{');
     // Raw input from before a rename says the old name; the compiler must read it as this agent.
     expect(item?.prompt).toContain('this agent was called Scout');
+    expect(item?.prompt).toContain('- session `aaa11111` · date `2026-06-01` · first topic discussion');
     expect((await markComplete(item!.itemId)).promoted).toBe(true);
   });
 

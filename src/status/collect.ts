@@ -11,6 +11,7 @@
  * through repoRelative()/tildify so absolute machine paths never leak.
  */
 import {
+  CONTEXT,
   FILES,
   FOLDERS,
   HOME_TIMEZONE,
@@ -22,6 +23,7 @@ import {
   TIMEZONE
 } from '@/config';
 import { contextManifest, type ManifestEntry } from '@/hooks/context';
+import { importedStack } from '@/shared/weight';
 import { type HistoryState, historyStatus, type LastCommit } from '@/home/history';
 import { claudeHost } from '@/hosts/claude';
 import { listInboxFiles } from '@/knowledge/utils';
@@ -463,6 +465,9 @@ export interface StatusSnapshot {
   context: {
     staticImports: StaticImport[];
     staticBytes: number;
+    /** What the session banner weighs against the budget: the bridge, every import it follows, and the unscoped rules. */
+    alwaysLoadedBytes: number;
+    alwaysLoadedBudget: number;
     dynamic: { date: string; entries: ManifestEntry[]; bytes: number };
     /** Path-scoped coding rules (user + project), newest layer last. */
     rules: RuleEntry[];
@@ -841,7 +846,14 @@ const collectContext = async (): Promise<StatusSnapshot['context']> => {
     bytes: 0
   }));
 
-  return { staticImports, staticBytes, dynamic, rules: collectRules() };
+  return {
+    staticImports,
+    staticBytes,
+    alwaysLoadedBytes: importedStack().total,
+    alwaysLoadedBudget: CONTEXT.ALWAYS_LOADED_BUDGET,
+    dynamic,
+    rules: collectRules()
+  };
 };
 
 /** Pull the `paths:` glob list out of a rule file's YAML frontmatter. Hand-rolled

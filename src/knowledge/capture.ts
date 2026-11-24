@@ -12,6 +12,13 @@
  * compile lifecycle is unchanged — capture is just a writer.
  */
 import { FILES, FOLDERS, KNOWLEDGE } from '@/config';
+import {
+  keyedEntries,
+  keyedHeader,
+  NO_SESSION,
+  sameStatement,
+  type StatementKey
+} from '@/knowledge/feedback-keys';
 import { hashBuffer, redactSecrets, splitFrontmatter } from '@/knowledge/utils';
 import { nowISO, nowTimeCompact, todayDate } from '@/shared/date';
 import { htmlToMarkdown, renderExtracted } from '@/shared/html-to-markdown';
@@ -31,6 +38,15 @@ export interface CaptureOpts {
   kind?: CaptureKind;
   title?: string;
   label?: string;
+  /**
+   * Feedback only: the operator's own words. Keys the entry, so one statement is recorded once.
+   */
+  quote?: string;
+  /**
+   * Feedback only, with `quote`: the session the words were said in, and that session's date.
+   */
+  session?: string;
+  date?: string;
 }
 
 export interface CaptureResult {
@@ -171,12 +187,51 @@ async function captureToInbox(opts: CaptureOpts, content: string, sourceHint: st
   };
 }
 
+const normalizedWords = (quote: string): string =>
+  quote
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+
+const statementKey = (opts: CaptureOpts, quote: string): StatementKey => {
+  if (opts.session !== undefined && !/^[0-9a-fA-F-]{8,}$/.test(opts.session)) {
+    throw new Error(`Not a session id: ${opts.session}`);
+  }
+  if (opts.date !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(opts.date)) {
+    throw new Error(`Not a YYYY-MM-DD date: ${opts.date}`);
+  }
+  return {
+    day: opts.date ?? todayDate(),
+    session: opts.session ?? NO_SESSION,
+    hash: hashBuffer(normalizedWords(quote))
+  };
+};
+
 async function captureToFeedback(opts: CaptureOpts, content: string): Promise<CaptureResult> {
   const redacted = redactSecrets(content).trim();
   if (!redacted) throw new Error('Empty feedback content after redaction');
+  const quote = opts.quote ? redactSecrets(opts.quote).trim() : '';
+  if (!quote && (opts.session !== undefined || opts.date !== undefined)) {
+    throw new Error("session and date key a quote: pass the operator's words in quote");
+  }
 
-  const header = opts.label ? `## ${nowISO()} — ${opts.label}` : `## ${nowISO()}`;
-  const entry = `\n\n---\n\n${header}\n\n${redacted}\n`;
+  const key = quote ? statementKey(opts, quote) : null;
+  const recorded = key && existsSync(FILES.FEEDBACK) ? keyedEntries(await readFile(FILES.FEEDBACK, 'utf-8')) : [];
+  if (key && recorded.some((entry) => sameStatement(entry, key))) {
+    return {
+      ok: true,
+      kind: 'feedback',
+      path: FILES.FEEDBACK,
+      relPath: homeRelative(FILES.FEEDBACK),
+      bytes: 0,
+      duplicate: true
+    };
+  }
+
+  const label = opts.label ?? '';
+  const header = key ? keyedHeader(key, label) : `## ${nowISO()}${label ? ` — ${label}` : ''}`;
+  const quoted = quote ? `${quote.replace(/^/gm, '> ')}\n\n` : '';
+  const entry = `\n\n---\n\n${header}\n\n${quoted}${redacted}\n`;
 
   await mkdir(FOLDERS.USER_RAW, { recursive: true });
   if (!existsSync(FILES.FEEDBACK)) {

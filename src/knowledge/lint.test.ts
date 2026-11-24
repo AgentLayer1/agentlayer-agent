@@ -54,3 +54,50 @@ describe('lint backlinks', () => {
     expect(target.match(/## See Also/g)).toHaveLength(1);
   });
 });
+
+describe('lint knowledge index', () => {
+  test('flags an entry over one line and a permanent article the index never names', async () => {
+    article('acme-listed', 'title: Acme listed');
+    article('acme-unlisted', 'title: Acme unlisted');
+    writeFileSync(
+      join(FOLDERS.KNOWLEDGE, 'index.md'),
+      `# Knowledge Index\n\n## Concepts\n\n- [[concepts/acme-listed]] — ${'a long recap '.repeat(30)}\n- [[concepts/acme-flat]] — short\n`
+    );
+    const report = readFileSync((await run()).reportPath, 'utf-8');
+    expect(report).toContain('index.md has 1 entry over 200 chars');
+    expect(report).toContain('concepts/acme-unlisted.md is not listed in index.md');
+    expect(report).not.toContain('concepts/acme-listed.md is not listed');
+  });
+});
+
+describe('lint memory budget', () => {
+  const memoryIndex = (sections: Record<string, string>): void => {
+    mkdirSync(join(FOLDERS.KNOWLEDGE, 'memory'), { recursive: true });
+    writeFileSync(
+      join(FOLDERS.KNOWLEDGE, 'memory', 'index.md'),
+      `# Memory\n\n${Object.entries(sections)
+        .map(([heading, body]) => `## ${heading}\n\n${body}\n`)
+        .join('\n')}`
+    );
+  };
+  const bullets = (count: number, chars = 20): string =>
+    Array.from({ length: count }, (_unused, i) => `- ${String(i).padEnd(chars - 2, 'x')}`).join('\n');
+
+  test('every section is held to its budget, and one the prompt never defined gets a default', async () => {
+    memoryIndex({
+      'Recent Decisions (Last Week)': bullets(16),
+      'Key Context': bullets(1, 1_200),
+      Learnings: bullets(1, 3_000),
+      'Open Questions': bullets(8),
+      'Daily Memory': bullets(2, 160),
+      'Scratch Notes': bullets(1, 2_100)
+    });
+    const report = readFileSync((await run()).reportPath, 'utf-8');
+    expect(report).toContain('§ Recent Decisions has 16 bullets (budget 15)');
+    expect(report).toContain('§ Key Context is 1.2KB (budget 1KB)');
+    expect(report).toContain('§ Open Questions has 8 bullets (budget 7)');
+    expect(report).toContain('§ Daily Memory has 2 bullet(s) over 150 chars');
+    expect(report).toContain('§ Scratch Notes is 2.1KB (budget 2KB)');
+    expect(report).not.toContain('§ Learnings');
+  });
+});

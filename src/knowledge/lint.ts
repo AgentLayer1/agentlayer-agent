@@ -49,11 +49,25 @@ const PERMANENT_DIRS = ['user/', 'concepts/'] as const;
 const MEMORY_INDEX_PATH = 'memory/index.md';
 const MEMORY_TOTAL_WARN_BYTES = 30_000;
 const MEMORY_TOTAL_ERROR_BYTES = 40_000;
-const MEMORY_SECTION_BUDGETS = [
-  { name: 'Active Threads', maxBytes: 8_000, maxBullets: 10, maxBulletChars: 250 },
-  { name: 'Recent Decisions', maxBytes: 10_000, maxBullets: 25, maxBulletChars: 250 },
-  { name: 'Pending', maxBytes: 2_000 }
-] satisfies ReadonlyArray<{ name: string; maxBytes: number; maxBullets?: number; maxBulletChars?: number }>;
+interface SectionBudget {
+  maxBytes?: number;
+  maxBullets?: number;
+  maxBulletChars?: number;
+}
+
+const MEMORY_SECTION_BUDGETS: Readonly<Record<string, SectionBudget>> = {
+  'Active Threads': { maxBytes: 8_000, maxBullets: 10, maxBulletChars: 250 },
+  'Recent Decisions': { maxBytes: 5_000, maxBullets: 15, maxBulletChars: 250 },
+  Pending: { maxBytes: 2_000 },
+  'Key Context': { maxBytes: 1_000 },
+  Learnings: { maxBullets: 12 },
+  'Open Questions': { maxBullets: 7 },
+  'Daily Memory': { maxBullets: 14, maxBulletChars: 150 }
+};
+const MEMORY_UNKNOWN_SECTION_BUDGET: SectionBudget = { maxBytes: 2_000 };
+
+const KNOWLEDGE_INDEX_PATH = 'index.md';
+const INDEX_ENTRY_MAX_CHARS = 200;
 
 interface LintIssue {
   check: string;
@@ -302,39 +316,63 @@ async function checkMemoryBudget(articles: Map<string, string>): Promise<LintIss
   }
 
   const sections = parseMemorySections(content);
-  for (const cfg of MEMORY_SECTION_BUDGETS) {
-    const section = sections.get(cfg.name);
-    if (!section) continue;
+  for (const [name, section] of sections) {
+    const { maxBytes, maxBullets, maxBulletChars } = MEMORY_SECTION_BUDGETS[name] ?? MEMORY_UNKNOWN_SECTION_BUDGET;
     const bytes = Buffer.byteLength(section, 'utf-8');
     const bullets = extractTopLevelBullets(section);
 
-    if (bytes > cfg.maxBytes) {
+    if (maxBytes !== undefined && bytes > maxBytes) {
       push(
         'warning',
-        `${MEMORY_INDEX_PATH} § ${cfg.name} is ${(bytes / 1024).toFixed(1)}KB (budget ${cfg.maxBytes / 1000}KB). Demote older entries or collapse multi-sentence bullets to pointers.`
+        `${MEMORY_INDEX_PATH} § ${name} is ${(bytes / 1024).toFixed(1)}KB (budget ${maxBytes / 1000}KB). Demote older entries or collapse multi-sentence bullets to pointers.`
       );
     }
-    const maxBullets = cfg.maxBullets;
     if (maxBullets !== undefined && bullets.length > maxBullets) {
       push(
         'warning',
-        `${MEMORY_INDEX_PATH} § ${cfg.name} has ${bullets.length} bullets (budget ${maxBullets}). Demote lowest-priority / least-recently-touched ones.`
+        `${MEMORY_INDEX_PATH} § ${name} has ${bullets.length} bullets (budget ${maxBullets}). Demote lowest-priority / least-recently-touched ones.`
       );
     }
-    const maxBulletChars = cfg.maxBulletChars;
     if (maxBulletChars !== undefined) {
       const oversized = bullets.filter((b) => b.length > maxBulletChars);
       if (oversized.length > 0) {
         const longest = Math.max(...oversized.map((b) => b.length));
         push(
           'warning',
-          `${MEMORY_INDEX_PATH} § ${cfg.name} has ${oversized.length} bullet(s) over ${maxBulletChars} chars (longest: ${longest}). Each bullet is a pointer, not a recap — push detail into the linked task / daily memory.`
+          `${MEMORY_INDEX_PATH} § ${name} has ${oversized.length} bullet(s) over ${maxBulletChars} chars (longest: ${longest}). Each bullet is a pointer, not a recap — push detail into the linked task / daily memory.`
         );
       }
     }
   }
 
   return issues;
+}
+
+async function checkKnowledgeIndex(articles: Map<string, string>): Promise<LintIssue[]> {
+  const index = await readWikiIndex();
+  const long = index.split('\n').filter((line) => line.startsWith('- [[') && line.length > INDEX_ENTRY_MAX_CHARS);
+  const listed = new Set(extractWikilinks(index));
+  const unlisted = [...articles.keys()]
+    .filter((relPath) => PERMANENT_DIRS.some((dir) => relPath.startsWith(dir)))
+    .filter((relPath) => !listed.has(relPath.replace(/\.md$/, '')));
+  return [
+    ...(long.length > 0
+      ? [
+          {
+            check: 'Knowledge index',
+            severity: 'warning' as const,
+            message: `${KNOWLEDGE_INDEX_PATH} has ${long.length} entr${long.length === 1 ? 'y' : 'ies'} over ${INDEX_ENTRY_MAX_CHARS} chars (longest: ${Math.max(...long.map((line) => line.length))}). An entry is one line: move what the article lacks into the article, then cut the entry.`,
+            file: KNOWLEDGE_INDEX_PATH
+          }
+        ]
+      : []),
+    ...unlisted.map((relPath) => ({
+      check: 'Knowledge index',
+      severity: 'warning' as const,
+      message: `${relPath} is not listed in ${KNOWLEDGE_INDEX_PATH}`,
+      file: relPath
+    }))
+  ];
 }
 
 // ── Helpers (exported for tests) ──────────────────────────────────────
@@ -536,12 +574,13 @@ export async function run(opts: LintOptions = {}): Promise<LintSummary> {
       checkSparseArticles(articles),
       checkTransientMemoryRefs(articles),
       checkInvalidFrontmatter(articles),
-      checkMemoryBudget(articles)
+      checkMemoryBudget(articles),
+      checkKnowledgeIndex(articles)
     ]);
     const allIssues = checks.flat();
 
     log.info(
-      `Structural checks: ${checks[0].length} broken, ${checks[1].length} orphan pages, ${checks[2].length} orphan sources, ${checks[3].length} missing backlinks, ${checks[4].length} sparse, ${checks[5].length} transient refs, ${checks[6].length} invalid frontmatter, ${checks[7].length} memory budget`
+      `Structural checks: ${checks[0].length} broken, ${checks[1].length} orphan pages, ${checks[2].length} orphan sources, ${checks[3].length} missing backlinks, ${checks[4].length} sparse, ${checks[5].length} transient refs, ${checks[6].length} invalid frontmatter, ${checks[7].length} memory budget, ${checks[8].length} knowledge index`
     );
 
     // Auto-fix

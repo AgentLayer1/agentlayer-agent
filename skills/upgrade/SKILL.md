@@ -291,7 +291,9 @@ write the deny-gated paths) and returns a JSON report — surface it in Step 6. 
 move on (not an error). If a migration returns `ok: false`, **stop**: show the
 error + stderr, do not stamp the baseline past that version, and tell the user to
 fix and re-run. Migrations are idempotent, so a re-run after a partial failure is
-safe. (If `deps` ran or MCP-server code changed this session, the running server
+safe. An entry of the report that carries an `ask` is something the migration left for
+the operator to decide (a section they edited, a home with no recorded base): put each
+one to them with the file and heading it names, and apply their answer by hand. (If `deps` ran or MCP-server code changed this session, the running server
 still holds old code — see Step 7's restart ordering; `run_upgrade` is part
 of the server, so a deps/code change means restart **before** the script can run.)
 
@@ -326,7 +328,8 @@ bun "$PLUGIN_ROOT/skills/init/scripts/codex-setup.ts" --home "$HOME_DIR" --write
 ```
 
 The generator also fills missing home-level `model` and `model_reasoning_effort` keys with
-`gpt-6.2-sol` and `high`. Each existing home-level value is preserved (a home still on the
+`gpt-6.2-sol` and `high`, and a missing `project_doc_max_bytes` with `65536`, so a manual past
+Codex's default 32,768-byte read is not cut. Each existing home-level value is preserved (a home still on the
 old default `gpt-6.1-sol` is moved by the 1.0.3 migration script, once). This applies to previously
 wired homes as well as new ones and takes precedence over the user's global Codex defaults;
 report the resulting pair in Step 6. The user-global paste note no longer recommends a reasoning

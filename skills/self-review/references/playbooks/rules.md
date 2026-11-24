@@ -56,6 +56,8 @@ Run `knowledge_lint` without `fix` during the scan (it writes only its own repor
 
 **Restore first.** Before proposing new retirements, check every entry in the watermark's `retired` list. A correction dated after its `date` that matches the rule means the trial failed: put the text back at `from` (always a prompt surface, never Learnings), drop the entry, and say so in the report. Otherwise increment its `checks`; at `checks: 2` the retirement is permanent and the entry is dropped. This bookkeeping happens every run, including one that changes nothing else.
 
+**A "model default" retirement is a trial with a gate.** Before it, run `bun "$PLUGIN_ROOT/skills/self-review/scripts/rule-compliance.ts" --home "$HOME_DIR"` and put its weekly numbers in the cycle report. Retire only a handful of lines a cycle, so a change in the numbers can be traced to them. At the next cycle the retirement stays only if no week since is listed under `regressions` and, once the compile has recorded keyed corrections, `correctionsPer1000` has not risen; otherwise restore it as above. For a rule whose effect shows in an answer rather than a command, `replay.ts` beside it sets up a blind comparison: one prompt (taken from the session a keyed correction names) asked several times against the manual at two git refs, for the operator to run and score before opening the key.
+
 **Never prune on the "model default" ground** a safety, privacy, confidentiality, faith, or money rule, or anything that encodes this operator's own preference: the model cannot know a preference by default, and insurance rules are cheap. Those leave only on "superseded" or "dead reference", with an explicit go.
 
 **Markers.** Graduating a Learnings theme is an append to the feedback log through the `capture` MCP tool, never an edit of past entries:
@@ -70,6 +72,8 @@ When only one rule inside a broader theme moved (the rest of the theme still ear
 **The home must already hold the rule when the marker is written.** Put it on the home's own surface (`<HOME>/AGENTS.md`, `SOUL.md`, `USER.md`) in this run. A Track D edit to `templates/` does not count on its own: it reaches an existing home only after a release and an upgrade, and until then the next compile would drop the Learnings copy with nothing loaded in its place.
 
 The next compile drops the theme (or the one rule) from Learnings and brings it back only if a later correction shows it broke. Quoting the rule is what lets the compiler match a later correction to it; a later correction that names neither the rule nor the action stays undecidable, which is why Step 1 also greps sessions for each graduated rule's own words. Retirements need no marker: they touch prompt surfaces only, and the watermark carries them.
+
+**A Learnings bullet over 250 characters is a backlog.** The compile keeps such a bullet word for word and waits for this pass. Split it into its rules and decide each one: move it to the surface that should hold it (the manual, SOUL, USER, or a Track B plan when only a hook will hold it), or let it go because something already holds it, with a `graduated-rule:` marker either way. When every rule in the bullet has been decided, write the `graduated:` marker and the next compile drops the bullet.
 
 Present the manifest grouped by class, with bytes saved per item. For each item: the exact text or path, the evidence, the action. Get approval per group (`AskUserQuestion` with multi-select under Claude Code, a numbered list under Codex), then apply. Quote every deleted line verbatim in the cycle report so a restore never depends on git.
 
@@ -97,6 +101,8 @@ Rank by `severity × instances × cycles`. Drop anything with fewer than two ind
 | A recurring multi-step procedure (3+ instances) | **Skill** (Track C). |
 
 **Track A: home prompt edits.** For each: the target path, the current text (read it, quote it), the proposed text, the coverage state, and one sentence on why this surface.
+
+**An addition has to fit.** The Begin step's `context-weight.ts` gives the always-loaded total per host; the session banner flags a home over its budget. A Track A addition that would take the home over, or a Track D or E addition that would take a template over its cap in `src/contracts/templates.test.ts`, names in the same proposal what leaves to make room, with the bytes of each.
 
 **Track B: code-change plans.** Never edit code in this skill. If a self-review plan for the theme exists in `<HOME>/reports/plans/`, update it with `Edit`. Otherwise create one with the `report_write` MCP tool:
 

@@ -234,6 +234,7 @@ describe('codex-setup mcp registration', () => {
     expect(config.default_permissions).toBe(`${PLUGIN_NAME}`);
     expect(config.approval_policy).toBe('on-request');
     expect(config.approvals_reviewer).toBe('user');
+    expect(config.project_doc_max_bytes).toBe(65_536);
     expect(config.mcp_servers[PLUGIN_NAME]).toEqual({
       command: 'bun',
       args: [resolve(PLUGIN, 'src', 'server.ts')],

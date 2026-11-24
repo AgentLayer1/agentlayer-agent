@@ -308,12 +308,14 @@ const OWNED_TABLES: string[][] = [
   ['shell_environment_policy']
 ];
 /** The top-level keys it sets when absent; an operator's own value is kept. */
-const OWNED_KEYS: Record<string, string> = {
+const OWNED_KEYS: Record<string, string | number> = {
   default_permissions: pluginName,
   approval_policy: 'on-request',
   approvals_reviewer: 'user',
   model: CODEX_MODEL,
-  model_reasoning_effort: CODEX_EFFORT
+  model_reasoning_effort: CODEX_EFFORT,
+  // Codex reads 32,768 bytes of AGENTS.md by default and drops the rest with only a log warning.
+  project_doc_max_bytes: 65_536
 };
 interface OwnedTableKeys {
   label: string;
@@ -520,7 +522,9 @@ for (const owned of OWNED_TABLES) {
 }
 const missingKeys = Object.entries(OWNED_KEYS).filter(([key]) => !(key in existingTables));
 // Top-level keys must precede the first table, or TOML files them under whatever table came last.
-const topKeys = missingKeys.map(([key, value]) => `${key} = ${tomlString(value)}`).join('\n');
+const topKeys = missingKeys
+  .map(([key, value]) => `${key} = ${typeof value === 'number' ? value : tomlString(value)}`)
+  .join('\n');
 // Missing keys go inside an existing `[table]` header, since TOML refuses a second one. A table
 // that only holds sub-tables (`[tui.keymap]`, `[[skills.config]]`) gets its own header appended,
 // which TOML allows after the sub-tables; one written another way (inline table, dotted keys) is

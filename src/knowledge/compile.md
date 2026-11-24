@@ -56,7 +56,7 @@ If the headline summary in `USER.md` itself needs an update (e.g. new role, new 
 **PRE-FLIGHT (do this BEFORE adding anything new):**
 
 1. `Read` the current `{{memoryIndex}}` and measure: total bytes, bullet count per section, longest bullet per section.
-2. If any of these are over budget — total > 30KB, Active Threads > 10 bullets or any bullet > 250 chars, Recent Decisions > 25 bullets or > 14 days old or any bullet not single-line ≤ 250 chars, Pending > 2KB — **fix the existing file first**, in the same edit pass that adds today's content. Compression options, in order: (a) collapse multi-sentence bullets to a single pointer line, (b) move detail into the linked task's `## Thread` or today's daily memory, (c) demote / drop the lowest-value entries, (d) graduate a recurring pattern into `concepts/<slug>.md` and replace the bullet with a wikilink, (e) archive decisions older than 2 weeks to `{{memoryDir}}/archive/decisions-YYYY-MM.md`.
+2. If any of these are over budget — total > 30KB, Active Threads > 10 bullets or any bullet > 250 chars, Recent Decisions > 15 bullets or > 7 days old or any bullet not single-line ≤ 250 chars, Pending > 2KB, a Daily Memory bullet > 150 chars (its link plus a summary of at most 120) — **fix the existing file first**, in the same edit pass that adds today's content. Compression options, in order: (a) collapse multi-sentence bullets to a single pointer line, (b) move detail into the linked task's `## Thread` or today's daily memory, (c) demote / drop the lowest-value entries, (d) graduate a recurring pattern into `concepts/<slug>.md` and replace the bullet with a wikilink, (e) archive decisions older than a week to `{{memoryDir}}/archive/decisions-YYYY-MM.md`.
 3. Only AFTER the existing file is within budget, add today's new bullets.
 
 Compile is the *only* pass that touches this file — if you append without enforcing, the warning will fire on the next session start. Treat the budgets as hard constraints, not aspirations.
@@ -67,13 +67,19 @@ Per-section budgets:
   - **Reconcile against task frontmatter every compile.** For each bullet referencing a task ID, read `projects/*/tasks/<id>-*.md` and check `status`. If `done`/`cancelled`, REMOVE the bullet. Staleness is the top failure mode.
   - If an active task isn't represented but appears in today's raw inputs, ADD a bullet.
   - If you're over 10 bullets, demote the lowest-priority / least-recently-touched ones — they can come back next session if they re-surface.
-- **Recent Decisions** (≤ 10KB, ≤ 25 bullets, **≤ 250 chars per bullet, exactly one line**): last 2 weeks max. Format: `- **YYYY-MM-DD** — <what was decided>. <one-clause rationale or pointer>.` No multi-sentence prose, no nested bullets, no inline file paths beyond a single `path:line` reference. Older items belong in `archive/decisions-YYYY-MM.md` or graduate to `concepts/`.
+- **Recent Decisions** (≤ 5KB, ≤ 15 bullets, **≤ 250 chars per bullet, exactly one line**): the last week at most, under the heading `## Recent Decisions (Last Week)`. Format: `- **YYYY-MM-DD** — <what was decided>. <one-clause rationale or pointer>.` No multi-sentence prose, no nested bullets, no inline file paths beyond a single `path:line` reference. Older items belong in `archive/decisions-YYYY-MM.md` or graduate to `concepts/`.
 - **Pending** (≤ 2KB): only items actually still pending. Drop completed. One line each.
 - **Key Context** (≤ 1KB): stable facts that provide essential background every session.
 - **Learnings** (if present): DO NOT TOUCH. Managed exclusively by the feedback compile step. Preserve verbatim.
-- **Daily Memory** (LAST section, ≤ 14 bullets): manifest of every `memory/YYYY-MM-DD.md`, most recent first. When you write today's daily memory (output #3), ADD a bullet at the top: `- [[memory/YYYY-MM-DD]] — <one-sentence summary, ≤ 200 chars>`. Drop bullets whose date is older than 14 days.
+- **Daily Memory** (LAST section, ≤ 14 bullets): manifest of every `memory/YYYY-MM-DD.md`, most recent first. When you write today's daily memory (output #3), ADD a bullet at the top: `- [[memory/YYYY-MM-DD]] — <one-sentence summary, ≤ 120 chars>`, and shorten any older bullet whose summary runs longer. Drop bullets whose date is older than 14 days.
 
 **IMPORTANT: When updating, READ the current index first, then enforce the budgets above.** If a section is over budget, compress: collapse multi-sentence entries to one line, demote bloated entries to the linked task/daily memory, or drop the lowest-value items. After your edits, the rendered file MUST satisfy: total ≤ 30KB, no entry > 250 chars in Active Threads / Recent Decisions / Pending. If you can't get under budget without losing load-bearing information, that information probably belongs in a permanent article (`concepts/`) — promote it.
+
+**5. Corrections** — what the operator corrected, recorded for the feedback step. These are the turns in this chunk the operator typed; every other `**User:**` turn is a skill body, a command message or a notification:
+
+{{operatorTurns}}
+
+For each of those turns in which the operator corrects {{agentName}} (says something it did or said was wrong, redirects it, or says how they want it done instead), find the full turn in the raw input and call `capture` once with `kind: "feedback"`, `label: "correction"`, `session` and `date` copied from the turn's line above, `quote` holding the operator's correcting sentences word for word, and `text` holding one line of scope: what was being done, and exactly what was corrected. Record what was said, never a lesson or a rule drawn from it: the feedback step decides what becomes a Learning. A turn that only answers a question, approves, or gives a new instruction is not a correction. `capture` answers `duplicate: true` for a statement already recorded; move on. No turns listed, or no corrections among them: record nothing.
 
 ### Rules:
 1. Prefer updating existing articles over creating new ones.
@@ -82,7 +88,7 @@ Per-section budgets:
 4. User-knowledge articles: factual, organised by section, no narrative chronology — facts, not stories.
 5. Concept articles: encyclopedia style — factual, self-contained.
 6. Memory entries: conversational summaries — recent context, not encyclopedia.
-7. **Keep the manifest current.** If you create a new article in `user/`, `concepts/`, or anywhere permanent, add a bullet to the matching section of `{{knowledgeDir}}/index.md` with a wikilink and a one-line description. If you significantly change an existing article's scope, update its description line. The index IS the manifest — every future compile uses it as the canonical pointer list, so any article missing from the index is invisible to the next pass.
+7. **Keep the manifest current.** If you create a new article in `user/`, `concepts/`, or anywhere permanent, add a bullet to the matching section of `{{knowledgeDir}}/index.md` with a wikilink and a one-line description of at most 200 characters: what the article is about, never what it says. If you significantly change an existing article's scope, update its description line. When the article you are updating has an index entry over 200 characters, shorten it in the same pass: first check each clause of the long entry against the article body and add any the article lacks, then cut the entry to one line. The index IS the manifest — every future compile uses it as the canonical pointer list, so any article missing from the index is invisible to the next pass.
 8. **Sources policy for permanent articles:** NEVER reference `memory/YYYY-MM-DD*` files in `sources:` or `## See Also`. Daily memory is transient (14-day retention). Anchor permanent articles to: (a) other permanent articles via wikilinks, (b) raw session log paths like `raw/sessions/YYYY-MM-DD.md` for session-level provenance, or (c) free-text descriptors with dates.
 
 ### What to compile:

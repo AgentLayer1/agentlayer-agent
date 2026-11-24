@@ -1618,7 +1618,7 @@ _No yearly goals set yet — run `goals year` to plan the year by quarters._
 <!-- GOALS:END -->
 ```
 
-After scaffolding, call `mcp__plugin_agentlayer_agent__dashboard` once so the file has its (empty) Active/Blocked/Overdue/Stale/Recently Closed sections rendered from day one — no scaffold drift (this also writes the first `dashboard.html`).
+After scaffolding, call `mcp__plugin_agentlayer_agent__dashboard` once so the file has its (empty) Priorities, Blocked, Overdue and Open by Project sections rendered from day one — no scaffold drift (this also writes the first `dashboard.html`).
 
 **Seed concept articles — preservation-aware.** Four bundled concepts describe the system itself (the wiki pattern, the task system, the feedback loop, the audit-premise-decay heuristic). Seeding them means a freshly-initialised home has working `[[concepts/*]]` wikilinks from day one instead of broken refs, and the operator can read them to understand the architecture they just installed.
 
@@ -1657,7 +1657,7 @@ Idempotent by file, same as the concept seeding above: an existing rule file is 
 
 ## Step 7c — Codex wiring (when the harness is Codex, or the operator also runs Codex here)
 
-The generator adds `model = "gpt-6.2-sol"` and `model_reasoning_effort = "high"` when those keys are absent from the home config, including when the user-global config selects something else. Existing home-level values survive every regeneration. Report the resulting pair in Step 9; if the operator cannot access Sol, help them choose an available model and set it in the home config.
+The generator adds `model = "gpt-6.2-sol"` and `model_reasoning_effort = "high"` when those keys are absent from the home config, including when the user-global config selects something else. Existing home-level values survive every regeneration. It also adds `project_doc_max_bytes = 65536` when absent: Codex reads only the first 32,768 bytes of `AGENTS.md` by default and drops the rest with a log warning. Report the resulting pair in Step 9; if the operator cannot access Sol, help them choose an available model and set it in the home config.
 
 Codex reads `AGENTS.md` natively but has no `@-import`, and as of Codex 0.153 a plugin can bundle neither hooks nor an MCP server that knows which home it serves (the server is launched inside the plugin cache, and Codex exports no workspace variable and advertises no MCP roots). So under Codex it lives per home: hooks in `$HOME_DIR/.codex/hooks.json`, the `agentlayer` MCP server plus the home's permission posture in `$HOME_DIR/.codex/config.toml`, and the command rules in `$HOME_DIR/.codex/rules/agentlayer.rules`, each pinned to this plugin checkout and this home. Generate them with the `codex_setup` MCP tool; never hand-write these files. The tool runs the generator outside the shell sandbox, which matters under Codex, where the workspace's `.codex/` directory is read-only to the model's shell. If the tool is unavailable (a session whose server has not started), the same generator runs from the shell:
 

@@ -384,7 +384,9 @@ export const CONTEXT = {
   /** Pins from `reports/pinned.md` listed by name; the rest are counted. */
   MAX_PINS: 10,
   /** Commits to surface in the recent-git-activity slice. */
-  MAX_GIT_LOG_COMMITS: 15
+  MAX_GIT_LOG_COMMITS: 15,
+  /** Bytes a home may load into every session before the banner and the status screen flag it. */
+  ALWAYS_LOADED_BUDGET: 100 * 1024
 } as const;
 
 /**

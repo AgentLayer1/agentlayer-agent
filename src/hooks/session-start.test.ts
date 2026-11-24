@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { AGENT_SLUG, FILES, FOLDERS, PLUGIN_VERSION, staticContextFiles } from '@/config';
+import { AGENT_SLUG, CONTEXT, FILES, FOLDERS, PLUGIN_VERSION, staticContextFiles } from '@/config';
 import { CLI_FILE, HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
 import { sessionStart } from '@/hooks/session-start';
 import { codexHost } from '@/hosts/codex';
@@ -71,6 +71,26 @@ describe('sessionStart', () => {
       () => sessionStart()
     );
     expect(result.additionalContext).not.toContain('Operating manual layout');
+  });
+
+  test('the banner says how much loads every session, and flags a home over the budget', async () => {
+    const bridged = { '.claude/CLAUDE.md': '@../AGENTS.md\n' };
+    const light = await withHome(
+      (home) => markedHome(home, { ...bridged, 'AGENTS.md': '# AGENTS.md\n\n## Memory Routing\n' }),
+      () => sessionStart()
+    );
+    expect(light.systemMessage).toContain('always loaded');
+    expect(light.systemMessage).not.toContain('over the');
+
+    const heavy = await withHome(
+      (home) =>
+        markedHome(home, {
+          ...bridged,
+          'AGENTS.md': `# AGENTS.md\n\n## Memory Routing\n${'x'.repeat(CONTEXT.ALWAYS_LOADED_BUDGET)}`
+        }),
+      () => sessionStart()
+    );
+    expect(heavy.systemMessage).toContain('always loaded, over the');
   });
 
   test('AGENTS.md without the bridge is flagged every session', async () => {

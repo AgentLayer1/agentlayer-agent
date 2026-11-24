@@ -1,0 +1,99 @@
+import { FILES, FOLDERS, staticContextFiles } from '@/config';
+import { readText } from '@/shared/text';
+import { existsSync, readdirSync, statSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
+
+interface Stack {
+  files: { path: string; bytes: number }[];
+  total: number;
+  unresolved: string[];
+  absent: string[];
+}
+
+const IMPORT_DEPTH = 5;
+
+/**
+ * `@path` tokens in prose, as the host reads them: fenced blocks (backtick or tilde, three or more, up to three
+ * spaces indented, an unclosed one running to the end) and code spans are not imports. A token that resolves to a
+ * file is an import whatever it looks like (`@README`); one that does not resolve is an import only when it looks
+ * like a path, so a bare word such as `@Observable` in a task title is a mention rather than an unresolved import.
+ */
+const importsOf = (path: string): string[] => {
+  const prose = readText(path)
+    .replace(/^ {0,3}(([`~])\2{2,})[^\n]*\n[\s\S]*?^ {0,3}\1\2*[ \t]*$/gm, '')
+    .replace(/^ {0,3}([`~])\1{2,}[\s\S]*$/m, '')
+    .replace(/`[^`\n]*`/g, '');
+  return [...prose.matchAll(/(?:^|[\s(\[])@([^\s`]+)/g)]
+    .map((match) => match[1].replace(/[.,;:)\]]+$/, ''))
+    .map((target) => ({
+      target,
+      resolved: target.startsWith('~/')
+        ? join(homedir(), target.slice(2))
+        : isAbsolute(target)
+          ? target
+          : resolve(dirname(path), target)
+    }))
+    .filter(({ target, resolved }) => existsSync(resolved) || /[/.~]/.test(target))
+    .map(({ resolved }) => resolved);
+};
+
+/**
+ * A rule is scoped when its leading YAML frontmatter has a top-level `paths` key; frontmatter that does not parse
+ * scopes nothing, so the file counts as always loaded.
+ */
+export const isScoped = (text: string): boolean => {
+  if (!text.startsWith('---\n')) {
+    return false;
+  }
+  const frontmatter = text.slice(4).split('\n---')[0];
+  try {
+    const parsed: unknown = Bun.YAML.parse(frontmatter);
+    return typeof parsed === 'object' && parsed !== null && 'paths' in parsed;
+  } catch {
+    return false;
+  }
+};
+
+const unscopedRules = (): string[] => {
+  const dir = join(FOLDERS.HOME, '.claude', 'rules');
+  if (!existsSync(dir)) {
+    return [];
+  }
+  return readdirSync(dir, { recursive: true, encoding: 'utf-8' })
+    .filter((name) => name.endsWith('.md'))
+    .map((name) => join(dir, name))
+    .filter((path) => !isScoped(readText(path)));
+};
+
+const stack = (roots: string[], followImports: boolean): Stack => {
+  const seen = new Set<string>();
+  const unresolved: string[] = [];
+  const visit = (path: string, depth: number): void => {
+    if (seen.has(path)) {
+      return;
+    }
+    if (!existsSync(path)) {
+      unresolved.push(path);
+      return;
+    }
+    seen.add(path);
+    if (followImports && depth < IMPORT_DEPTH) {
+      importsOf(path).forEach((target) => visit(target, depth + 1));
+    }
+  };
+  const absent = roots.filter((root) => !followImports && !existsSync(root));
+  roots.filter((root) => !absent.includes(root)).forEach((root) => visit(root, 0));
+  const files = [...seen].map((path) => ({ path, bytes: statSync(path).size }));
+  return { files, total: files.reduce((sum, file) => sum + file.bytes, 0), unresolved, absent };
+};
+
+/**
+ * What a host that follows `@`-imports loads into every session: the bridge, what it imports, and the unscoped rules.
+ */
+export const importedStack = (): Stack => stack([FILES.CLAUDE, ...unscopedRules()], true);
+
+/**
+ * What a host without `@`-imports gets every session: the manual it reads natively and the files the hook injects.
+ */
+export const injectedStack = (): Stack => stack([FILES.AGENTS, ...staticContextFiles()], false);

@@ -14,7 +14,7 @@ Pick the strongest mechanism the situation allows, in this order:
 
 Agents copy whatever the surrounding code already does, so a weaker guard becomes the next template. When the fix is structural, delete the instruction. The instruction was the symptom.
 
-**Close the loop.** Route a one-off correction to feedback capture, a recurring fix to a test, lint, or skill, and a systemic one to the manual. Recording without routing doesn't persist, and neither does "noted going forward" without a write in the same turn.
+**Close the loop.** A one-off correction is recorded by the compile from the session log, never written mid-task. Route a recurring fix to a test, lint, or skill, and a systemic one to the manual. Recording without routing doesn't persist.
 
 ---
 

@@ -8,10 +8,14 @@ before editing so the Edit anchors match what is on disk.{{formerNames}}
 
 {{feedback}}
 
+An entry headed `## <date> — correction [<session>:<hash>]` was recorded by the compile from a
+session log: the quoted lines are the operator's words, the line under them is the scope. Count
+it as one correction on that date. Entries in any other form were written live.
+
 ## Your task
 
-Use the Edit tool to replace the `## Learnings` section of `{{memoryIndexPath}}`
-with a fresh synthesis, or add the section (after `## Key Context`, before any
+Use the Edit tool to bring the `## Learnings` section of `{{memoryIndexPath}}`
+up to date with the log, or add the section (after `## Key Context`, before any
 trailing content) if it doesn't exist yet.
 
 **Rules:**
@@ -19,22 +23,29 @@ trailing content) if it doesn't exist yet.
 1. **Preserve every other section verbatim.** Active Threads, Recent Decisions,
    Pending, Key Context, and the YAML frontmatter stay exactly as they are.
    Only touch the `## Learnings` section.
-2. **Keep it lean.** 5–12 bullets max. Memory index must stay under 150 lines.
-3. **Each bullet is one observed theme** with inline evidence. Format:
+2. **Keep it lean.** At most 12 bullets. The memory index as a whole has a 30KB budget, which the
+   session compile holds.
+3. **Each bullet is one observed theme** with inline evidence, on one line of at most
+   250 characters: the pattern, never the incidents behind it. Format:
    `- **<theme name>.** <one-line description>. Evidence: <N> <kind(s)>
-   across <dates>.`
-4. **Only include themes with real signal** — 2+ independent feedback entries,
+   across <dates>.` A fact about one project (how its site works, who its users are) is
+   not a theme; it belongs in that project's README, so leave it out.
+4. **A bullet already over 250 characters is kept word for word.** Update only the count
+   and dates in its `Evidence:` clause. Don't extend it, shorten it or split it: its rules
+   leave through self-review, not here. New evidence that doesn't fit its theme as written
+   starts a new bullet under the limit. Name these bullets' themes in your closing message.
+5. **Only include themes with real signal** — 2+ independent feedback entries,
    across distinct days. Weak or one-off signals get dropped.
-5. **Facts only, no proposals.** Don't say "should change X to Y" — just name
+6. **Facts only, no proposals.** Don't say "should change X to Y" — just name
    the pattern. The interactive self-review skill is where proposals happen.
-6. **Graduated themes drop out.** An entry headed `— graduated: <theme>` means the
+7. **Graduated themes drop out.** An entry headed `— graduated: <theme>` means the
    self-review skill moved that rule onto a surface loaded in every session (the manual,
    SOUL, a code guard). Leave the theme out of Learnings. Bring it back only when a
    correction dated after that entry clearly concerns the same rule (same behaviour, not
    just a similar topic), and say in its line that it recurred after graduating. An entry
    headed `— graduated-rule: <theme>` moves only the rule it quotes: drop that rule's
    wording from the theme's line and keep the rest of the theme.
-7. **Update frontmatter** `updated: {{now}}`.
+8. **Update frontmatter** `updated: {{now}}`.
 
 **Example of what a good Learnings section looks like:**
 
