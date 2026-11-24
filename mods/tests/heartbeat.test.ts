@@ -904,6 +904,20 @@ describe('brain refresh', () => {
     expect(host.commands).toEqual([]);
   });
 
+  test('an idle home gets no refresh, even a due one with something to absorb, until a session writes again', async ($, on) => {
+    const { host } = await bound($, on);
+    host.status.refreshDue = true;
+    host.status.refreshedAt = new Date(NOW - 7 * 60 * MINUTE).toISOString();
+    host.transcripts = { 'session-9': NOW - 5 * MINUTE };
+    await host.clock.advance(55 * MINUTE);
+    expect(host.commands, 'last written an hour ago').toEqual([]);
+    expect(await drawnBand($)).toContain('home idle');
+    await host.clock.advance(30 * MINUTE);
+    host.transcripts = { 'session-9': host.clock.now() };
+    await host.clock.advance(25 * MINUTE);
+    expect(host.commands, 'the operator is back').toEqual(['clear', REFRESH, WAKE]);
+  });
+
   test('a refresh that never ran is due as soon as a session writes', async ($, on) => {
     const { host } = await bound($, on);
     host.status.refreshDue = true;

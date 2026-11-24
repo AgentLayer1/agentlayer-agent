@@ -418,8 +418,10 @@ async function tick($: EngineInterface, revivedLateMs = 0): Promise<void> {
   const lastTryUnfinished = refreshTry.at > refreshedMs(status);
   const mayTry = !insideRetryWindow(refreshTry.at, now) || (lastTryUnfinished && !refreshTry.isRetry);
   const refreshes = status.refreshDue && absorbs && mayTry;
-  // A home it can't see is treated as in use, since skipping would stop the heartbeat for good.
-  if (!refreshes && used !== null && now - used >= status.heartbeat.everyMinutes * MINUTE_MS) {
+  // A wake holds the machine awake while its turns run, so an idle home gets none, a refresh included: one due
+  // overnight runs at the first look after the operator is back. A home it can't see is treated as in use, since
+  // skipping would stop the heartbeat for good.
+  if (used !== null && now - used >= status.heartbeat.everyMinutes * MINUTE_MS) {
     await ticked($, status, now, 'home idle');
     return;
   }
