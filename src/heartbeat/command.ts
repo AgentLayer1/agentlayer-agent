@@ -8,6 +8,7 @@ import { roomFor, showingNow, TARGET } from '@/proposals/rules';
 import { readCadence } from '@/shared/cadence';
 import { env } from '@/shared/env';
 import { CLI_COMMAND } from '@/shared/naming';
+import { syncRunning } from '@/shared/sync-lock';
 import { flagOf } from '@/shared/utils';
 import { heartbeatProblem, readHeartbeat, writeHeartbeat } from './ledger';
 import { DEFAULT_EVERY_MINUTES, lastRefreshed, parseEvery, refreshDue, released } from './rules';
@@ -44,7 +45,8 @@ const status = (args: readonly string[]): number => {
     heartbeat: beat,
     timezone: TIMEZONE,
     refreshedAt,
-    refreshDue: refreshDue(refreshedAt, now),
+    // A sync or refresh running in another session is doing the refresh's work already.
+    refreshDue: refreshDue(refreshedAt, now) && !syncRunning(now.getTime()),
     proposals: { target: TARGET, room: roomFor(proposals, now), showing: showingNow(proposals, now).length },
     notes: {
       cap: DAILY_CAP,

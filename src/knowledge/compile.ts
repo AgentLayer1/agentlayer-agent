@@ -15,6 +15,7 @@ import { hashBuffer, listInboxFiles, listRawFiles, loadScriptTemplate, renderTem
 import type { CompileState, IngestedEntry, PartialEntry } from '@/knowledge/types';
 import { agentDisplayName, agentFormerNames } from '@/shared/agent-name';
 import { nowISO } from '@/shared/date';
+import { touchSyncLock } from '@/shared/sync-lock';
 import { readTextAsync } from '@/shared/text';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
@@ -221,6 +222,7 @@ async function buildInboxPrompt(inboxPath: string): Promise<string> {
 // ── Pick / mark ──────────────────────────────────────────────────────
 
 export async function pickNext(): Promise<CompileWorkItem | null> {
+  touchSyncLock();
   const state = await loadState();
   if (state.in_flight) {
     state.in_flight = null;

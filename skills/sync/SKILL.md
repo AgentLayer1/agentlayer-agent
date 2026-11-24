@@ -29,12 +29,12 @@ The briefing reads the post-sync state, so it's strictly better than running the
 
 The heartbeat runs this unattended, so nobody is there to answer: **never call `AskUserQuestion`**, and never offer, nudge or interview. What needs the operator (goals, self-review, cadences, briefings, the closing interview) stays in a full sync they run; the refresh only keeps the brain current, which also makes that sync quicker. Run these steps of the protocol, in order, and nothing else:
 
-1. **Before step 0**: the opening snapshot.
+1. **Before step 0**: the opening snapshot, run with `--refresh`. When it returns `SYNC_RUNNING`, a sync or another refresh already runs: stop there and end with `🧠 Brain refresh skipped: a <holder.kind> has been running since <holder.startedAt as HH:MM>.` Never `--take-over`.
 2. **Step 0**: refresh the code checkouts.
 3. **Steps 1–4**: compile, lint, prune, links.
 4. **Step 5**: the flywheel pass, with sync's overrides. Its stalled tasks are listed, never asked about: the heartbeat's look after this run turns them into proposals.
 5. **Step 11**: one `dashboard` call with `{ refresh: true }` (not `sync: true`), which refreshes the dashboards and the cmux sidebar and records the run as a brain refresh, so the full-sync nudge keeps nudging.
-6. **Step 12**: commit the brain history.
+6. **Step 12**: commit the brain history, releasing the lock.
 
 Skip steps 6–10 and 13, and write no output block. End with one line, which the heartbeat's band shows, so nothing goes on a line after it: `🧠 Brain refreshed: compiled <n>, lint fixed <n>, flywheel closed <n>, stalled <n>.`, with the stalled tasks appended to that same line as `<id> (<n>d)`, comma-separated, when there are any. A step that fails is one clause on that line (`compile failed: <reason>`), never a stop.
 
@@ -46,13 +46,15 @@ Most maintenance ops have a natural order: compile feeds lint feeds the wiki sta
 
 ### Before step 0: save the home as it stands
 
-Commit whatever the home already holds, before anything in this run writes to it:
+Take the home's sync lock, then commit whatever the home already holds, before anything in this run writes to it:
 
 ```bash
 bun "${CLAUDE_PLUGIN_ROOT}/skills/sync/scripts/snapshot-brain.ts"
 ```
 
-It is step 12's committer making one commit, `Sync: save the home before the run`: the same guards, the same JSON, read into the `💾 Brain` line. It is the point to go back to if the run damages the brain. A skipped or blocked snapshot is a note on that line, never a stopped sync.
+**The lock comes first.** Only one sync or brain refresh runs in a home at a time, since two would compile the same sessions into memory twice. When another run holds the lock, the script commits nothing and returns `{ "status": "SYNC_RUNNING", "holder": { kind, startedAt, lastProgressAt, freesAt } }`: stop the whole sync before any step writes, and ask the operator in one `AskUserQuestion`, "A <holder.kind, `refresh` read as the heartbeat's brain refresh> has been running since <startedAt as HH:MM> (last progress <lastProgressAt as HH:MM>)", with **Wait for it** (recommended) and **Take over: it was stopped**. Wait ends the sync with that one line; the lock frees itself at `freesAt` if the run never finishes. Take over reruns the script with `--take-over` and the sync goes on. Under no other answer is `--take-over` passed.
+
+Otherwise the result carries `lock`, the token step 12 hands back. The snapshot itself is step 12's committer making one commit, `Sync: save the home before the run`: the same guards, the same JSON, read into the `💾 Brain` line. It is the point to go back to if the run damages the brain. A skipped or blocked snapshot is a note on that line, never a stopped sync.
 
 ### 0. Refresh the code checkouts
 
@@ -292,8 +294,10 @@ Returns `{ path, bytes, sidebar, tasks: { active, blocked, overdue, stale, close
 Everything above has now written its outputs — compiled knowledge, lint fixes, task mutations, reports, the freshly rendered dashboards. Commit them, so the brain's git history records the run instead of waiting for the operator to remember (they never do). The opening snapshot already holds what the home had before the run, so these commits are the run's own changes:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/skills/sync/scripts/commit-brain.ts"
+bun "${CLAUDE_PLUGIN_ROOT}/skills/sync/scripts/commit-brain.ts" --release=<lock>
 ```
+
+`<lock>` is the token the opening snapshot returned; the script frees the sync lock after committing, whatever the commit's status, so the next sync or refresh can start. A run that never reaches this step leaves its lock to go stale after an hour without progress.
 
 The script is the guard, not the model: it commits **only** when the HOME repo is on `main`/`master` with **no remote configured** — a remoted brain is the operator's own push workflow, out of scope — and it never pushes or amends. Changes are grouped into ordered commits so history stays legible: `Sync: update knowledge` (the knowledge root + root identity files), `Sync: update projects`, `Sync: save reports`, `Sync: update state` (runtime dir, `.claude`, dashboards, plus any other tracked edit as catch-all). `.gitignore` still fences secrets. Untracked files outside those roots are never committed — they come back in `leftUncommitted` for the report; a stray scratch file shouldn't enter history silently. The guard matrix lives in `scripts/commit-brain.test.ts`.
 
