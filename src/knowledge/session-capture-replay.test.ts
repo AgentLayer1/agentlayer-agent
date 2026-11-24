@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, resolve } from 'node:path';
 import type { CaptureMode } from '@/knowledge/session-capture';
+import { parseEntryHeaders } from '@/knowledge/session-format';
 import type { PendingCapture, SessionIndex } from '@/knowledge/types';
 import { todayDate } from '@/shared/date';
 import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
@@ -131,6 +132,26 @@ describe('a capture replayed after an interrupted write', () => {
     expect(await capture(sessionId)).toMatchObject({ saved: true, turns: 1 });
     expect(occurrences('unlanded message 3')).toBe(1);
     expect(readIndex().pending).toBeUndefined();
+  });
+
+  test('a block cut short mid-append is trimmed, and its turns are written once under a readable header', async () => {
+    const sessionId = '1a2b3c4d-0000-4000-8000-000000001111';
+    writeTranscript(messages(2, 'cut'));
+    await capture(sessionId);
+    const before = readIndex();
+    const offset = sizeOf(dayFile());
+    writeTranscript(messages(3, 'cut'));
+    await capture(sessionId);
+    const interrupted = stoppedAfterAppend(before, sessionId, offset);
+    truncateSync(dayFile(), sizeOf(dayFile()) - 3);
+    writeFileSync(INDEX, JSON.stringify(interrupted));
+
+    expect(await capture(sessionId)).toMatchObject({ saved: true, turns: 1 });
+    expect(occurrences('cut message 3')).toBe(1);
+    const ranges = parseEntryHeaders(readFileSync(dayFile(), 'utf-8'))
+      .filter((header) => header.sessionId === sessionId)
+      .map((header) => `${header.from}-${header.to}`);
+    expect(ranges).toEqual(['1-2', '3-3']);
   });
 
   test('a turn rewritten before the replay is written in its new form', async () => {
