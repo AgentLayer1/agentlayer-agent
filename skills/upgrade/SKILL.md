@@ -291,7 +291,9 @@ write the deny-gated paths) and returns a JSON report — surface it in Step 6. 
 move on (not an error). If a migration returns `ok: false`, **stop**: show the
 error + stderr, do not stamp the baseline past that version, and tell the user to
 fix and re-run. Migrations are idempotent, so a re-run after a partial failure is
-safe. (If `deps` ran or MCP-server code changed this session, the running server
+safe. An entry of the report that carries an `ask` is something the migration left for
+the operator to decide (a section they edited, a home with no recorded base): put each
+one to them with the file and heading it names, and apply their answer by hand. (If `deps` ran or MCP-server code changed this session, the running server
 still holds old code — see Step 7's restart ordering; `run_upgrade` is part
 of the server, so a deps/code change means restart **before** the script can run.)
 
