@@ -1,4 +1,5 @@
 import { daysBetween } from '../../../src/shared/date';
+import type { Asked } from '../../self-review/scripts/quality';
 
 export interface ReviewWatermark {
   lastRun?: string;
@@ -6,6 +7,7 @@ export interface ReviewWatermark {
   snoozeUntil?: string;
   skippedOn?: string;
   skips?: number;
+  asked?: Record<string, Asked>;
 }
 
 /** What the brain audit found wrong or worn in the files a session loads, and whether they are over their budget. */
@@ -51,17 +53,19 @@ export const selfReviewDue = (
     : isDate(oldestSessionDay) && daysBetween(oldestSessionDay, today) >= MONTH;
   const rulesAge = isDate(review.lastRun) ? daysBetween(review.lastRun, today) : Infinity;
   const newFeedback = feedbackChangedOn !== null && (!isDate(review.lastRun) || feedbackChangedOn >= review.lastRun);
-  const slipped = quality.findings >= QUALITY_FINDINGS || quality.overBudget;
-  const rulesDue =
-    (rulesAge >= 14 && newFeedback) || (isDate(review.lastRun) && rulesAge >= MONTH) || (rulesAge >= WEEK && slipped);
+  const manyFindings = quality.findings >= QUALITY_FINDINGS;
+  // Like the monthly clause, this one waits for a first rules pass: a fresh home's templates are not yet its own.
+  const slipped = isDate(review.lastRun) && rulesAge >= WEEK && (manyFindings || quality.overBudget);
+  const rulesDue = (rulesAge >= 14 && newFeedback) || (isDate(review.lastRun) && rulesAge >= MONTH) || slipped;
   if (!brainDue && !rulesDue) {
     return null;
   }
   const skipped = (review.skips ?? 0) >= 2 ? `, skipped ${review.skips} times in a row` : '';
-  const why =
-    rulesDue && quality.findings >= QUALITY_FINDINGS
+  const why = !rulesDue
+    ? ''
+    : manyFindings
       ? `: ${quality.findings} lines duplicated, out of date or buried in detail`
-      : rulesDue && quality.overBudget
+      : quality.overBudget
         ? ': the brain is over its budget'
         : '';
   const passes = brainDue && rulesDue ? '' : brainDue ? ' brain' : ' rules';

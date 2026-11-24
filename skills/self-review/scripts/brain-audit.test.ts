@@ -245,4 +245,18 @@ describe('brain-audit', () => {
     });
     expect(quality.narrative[0]).toMatchObject({ file: 'knowledge/memory/index.md' });
   });
+
+  test('a quality lead the operator kept drops out while its text is unchanged', () => {
+    const { write, run } = home();
+    write(
+      'knowledge/memory/index.md',
+      '# Memory\n\n## Learnings\n\n- **Verify first.** Read before a claim (11-02); it recurred (11-09) and again on 11-14.\n'
+    );
+    const [lead] = run().quality.narrative;
+    write(
+      join(RUNTIME_DIR, 'review.json'),
+      JSON.stringify({ asked: { [lead.key]: { date: TODAY, answer: 'keep', hash: lead.hash } } })
+    );
+    expect(run().counts.narrative).toBe(0);
+  });
 });

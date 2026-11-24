@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { digest, parseEntries } from './feedback-digest';
+import { feedbackEntries } from '../../../src/knowledge/feedback-keys';
+import { digest } from './feedback-digest';
 
 const entry = (header: string, body: string): string => `\n\n---\n\n${header}\n\n${body}\n`;
 const filler = (index: number): string =>
@@ -25,7 +26,7 @@ const LOG = [
 
 describe('feedback digest', () => {
   test('every header form is an entry: the old dot form, the dash form and a keyed one', () => {
-    const entries = parseEntries(LOG);
+    const entries = feedbackEntries(LOG);
     expect(entries).toHaveLength(24);
     expect(entries[0]).toMatchObject({ date: '2026-04-23', label: 'correction', session: null });
     expect(entries.at(-2)).toMatchObject({

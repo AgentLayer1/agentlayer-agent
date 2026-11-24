@@ -45,6 +45,7 @@ describe('selfReviewDue', () => {
     expect(selfReviewDue(recent, TODAY, null, null, { findings: 4, overBudget: false }), 'below the threshold').toBeNull();
     expect(selfReviewDue({ ...recent, lastRun: '2026-10-25' }, TODAY, null, null, slipped), 'inside the week').toBeNull();
     expect(selfReviewDue({ ...recent, snoozeUntil: '2026-11-01' }, TODAY, null, null, slipped), 'snoozed').toBeNull();
+    expect(selfReviewDue({ brainLastRun: TODAY }, TODAY, null, null, slipped), 'a home never reviewed').toBeNull();
   });
 
   test('tomorrow holds it off for a day, a skip for a month, and two skips in a row show in the label', () => {

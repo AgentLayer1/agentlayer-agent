@@ -98,11 +98,6 @@ describe('lint memory budget', () => {
     expect(report).toContain('§ Open Questions has 8 bullets (budget 7)');
     expect(report).toContain('§ Daily Memory has 2 bullet(s) over 150 chars');
     expect(report).toContain('§ Scratch Notes is 2.1KB (budget 2KB)');
-    expect(report).toContain('§ Learnings has 1 bullet(s) over 250 chars (longest: 3000). Self-review splits');
-  });
-
-  test('a Learnings bullet of 250 characters is within its length', async () => {
-    memoryIndex({ Learnings: bullets(1, 250) });
-    expect(readFileSync((await run()).reportPath, 'utf-8')).not.toContain('§ Learnings');
+    expect(report, 'an over-long Learnings bullet is the brain audit\'s, through self-review').not.toContain('§ Learnings');
   });
 });

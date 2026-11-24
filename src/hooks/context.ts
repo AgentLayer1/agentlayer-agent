@@ -35,8 +35,7 @@ import { CLI_PATH } from '@/shared/naming';
 import { isInside } from '@/shared/paths';
 import { listMarkdown, MARKDOWN_RE, readText, readTextAsync } from '@/shared/text';
 import { countOf } from '@/shared/utils';
-import type { Stack } from '@/shared/weight';
-import { importedStack, injectedStack } from '@/shared/weight';
+import { importedStack, injectedStack, isOverBudget, type Stack } from '@/shared/weight';
 import { livePins } from '@/status/surfaces';
 import { statusLineDrift } from '@/statusline/setting';
 import { getUpgradeStatus, readMigratedFrom } from '@/upgrade/version';
@@ -328,12 +327,13 @@ const welcomePart = (): string => {
 
 // Over budget is the agent's to fix (compile and self-review keep the brain files small), so it goes to the log,
 // naming the largest files, and never to the operator's banner.
-const logOverBudget = ({ total, files }: Stack): void => {
-  if (total <= CONTEXT.ALWAYS_LOADED_BUDGET) {
+const logOverBudget = (stack: Stack): void => {
+  if (!isOverBudget(stack)) {
     return;
   }
-  const largest = [...files]
-    .sort((a, b) => b.bytes - a.bytes)
+  const { total, files } = stack;
+  const largest = files
+    .toSorted((a, b) => b.bytes - a.bytes)
     .slice(0, 3)
     .map((file) => `${relative(FOLDERS.HOME, file.path).split(sep).join('/')} ${formatKB(file.bytes)}`);
   log.warn(

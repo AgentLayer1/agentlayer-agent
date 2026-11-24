@@ -1,4 +1,4 @@
-import { FILES, FOLDERS, staticContextFiles } from '@/config';
+import { CONTEXT, FILES, FOLDERS, staticContextFiles } from '@/config';
 import { readText } from '@/shared/text';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -67,30 +67,33 @@ const unscopedRules = (): string[] => {
 };
 
 const stack = (roots: string[], followImports: boolean): Stack => {
-  const seen = new Set<string>();
+  const seen = new Map<string, number>();
   const unresolved: string[] = [];
   const visit = (path: string, depth: number): void => {
     if (seen.has(path)) {
       return;
     }
-    if (!existsSync(path)) {
+    const stats = statSync(path, { throwIfNoEntry: false });
+    if (!stats) {
       unresolved.push(path);
       return;
     }
     // An import naming a folder loads nothing.
-    if (!statSync(path).isFile()) {
+    if (!stats.isFile()) {
       return;
     }
-    seen.add(path);
+    seen.set(path, stats.size);
     if (followImports && depth < IMPORT_DEPTH) {
       importsOf(path).forEach((target) => visit(target, depth + 1));
     }
   };
   const absent = roots.filter((root) => !followImports && !existsSync(root));
   roots.filter((root) => !absent.includes(root)).forEach((root) => visit(root, 0));
-  const files = [...seen].map((path) => ({ path, bytes: statSync(path).size }));
+  const files = [...seen].map(([path, bytes]) => ({ path, bytes }));
   return { files, total: files.reduce((sum, file) => sum + file.bytes, 0), unresolved, absent };
 };
+
+export const isOverBudget = ({ total }: Stack): boolean => total > CONTEXT.ALWAYS_LOADED_BUDGET;
 
 /**
  * What a host that follows `@`-imports loads into every session: the bridge, what it imports, and the unscoped rules.

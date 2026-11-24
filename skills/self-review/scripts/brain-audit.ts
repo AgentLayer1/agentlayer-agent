@@ -10,7 +10,6 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { basename, join, relative, resolve, sep } from 'node:path';
 import { readTextIfExists } from '../../../src/shared/text';
-import { TASK_REF } from '../../../src/tasks/prefix';
 
 const args = process.argv.slice(2);
 const flag = (name: string): string | undefined => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
@@ -21,14 +20,13 @@ if (homeFlag) {
 }
 // Read-only means no log file either: a scanner warning would otherwise write into the home.
 process.env.AGENT_LOG_FILE = 'off';
-const { FILES, FOLDERS } = await import('../../../src/config');
+const { FOLDERS } = await import('../../../src/config');
 const { agentHomePath, isAgentHome } = await import('../../../src/shared/env');
 const { daysBetween, todayDate } = await import('../../../src/shared/date');
 const { hashBuffer, splitFrontmatter } = await import('../../../src/knowledge/utils');
 const { discoverProjects, scanAllTasks, scanArchivedTasks } = await import('../../../src/tasks/scan');
 const { projectPins, readPins, surfaceFiles } = await import('../../../src/status/surfaces');
-const { importedStack, injectedStack } = await import('../../../src/shared/weight');
-const { findClosedRefs, findDuplicates, findNarrative, listItems, sentences } = await import('./quality');
+const { keptQuietIn, loadedDocs, namedIds, qualityOf } = await import('./quality');
 
 if (!isAgentHome(agentHomePath())) {
   console.error(`not an agent home: ${agentHomePath()}`);
@@ -44,7 +42,6 @@ const KEEP_QUIET_DAYS = 90;
 const DECISION_DAYS = 45;
 const CAPTURE_DAYS = 30;
 const SESSION_WINDOW_DAYS = 90;
-const TASK_ID = new RegExp(`\\b${TASK_REF}\\b`, 'g');
 
 const isDate = (value: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(value);
 const age = (date: string): number | null => (isDate(date) ? daysBetween(date, TODAY) : null);
@@ -52,14 +49,9 @@ const age = (date: string): number | null => (isDate(date) ? daysBetween(date, T
 const homeRelative = (path: string): string => relative(FOLDERS.HOME, path).split(sep).join('/');
 const hash = (text: string): string => hashBuffer(text.trim().replace(/\s+/g, ' '));
 
-interface Asked {
-  date: string;
-  answer: string;
-  hash?: string;
-}
 interface Watermark {
   brainLastRun?: string;
-  asked?: Record<string, Asked>;
+  asked?: Parameters<typeof keptQuietIn>[0];
 }
 const watermark: Watermark = (() => {
   try {
@@ -73,11 +65,7 @@ const settled = (key: string): boolean => {
   const sinceAsked = age(watermark.asked?.[key]?.date ?? '');
   return sinceAsked !== null && sinceAsked < KEEP_QUIET_DAYS;
 };
-/** A Keep settles an item only while its text is unchanged. */
-const keptQuiet = (key: string, currentHash = ''): boolean => {
-  const entry = watermark.asked?.[key];
-  return entry?.answer === 'keep' && settled(key) && (entry.hash ?? '') === currentHash;
-};
+const keptQuiet = keptQuietIn(watermark.asked ?? {}, TODAY);
 
 // Operator mentions: whole-word hits inside `**User:**` turns of the dated session day-files.
 const userTurns = (text: string): string =>
@@ -185,7 +173,7 @@ const section = (name: string): string[] =>
     .filter((line) => line.startsWith('- '));
 const memoryRow = (name: string) => (line: string) => {
   const lineHash = hash(line);
-  const ids = [...new Set(line.match(TASK_ID) ?? [])].filter((id) => knownIds.has(id));
+  const ids = namedIds(line, knownIds);
   const mention = ids.length > 0 ? lastMention(ids) : null;
   const signal =
     ids.length > 0 && ids.every((id) => closedIds.has(id))
@@ -328,29 +316,7 @@ const staleSurfaces = [
   .filter((row) => !keptQuiet(row.key, row.hash))
   .toSorted((left, right) => left.modified.localeCompare(right.modified));
 
-// Quality across everything loaded into a session, whatever the host. TASKS.md is generated from the task files and
-// the bridge only imports, so neither is read; the memory index's live sections have their own buckets above.
-const loadedFiles = [...new Set([...importedStack().files, ...injectedStack().files].map((file) => file.path))]
-  .filter((path) => path !== FILES.CLAUDE && path !== resolve(FOLDERS.PROJECTS, 'TASKS.md'))
-  .toSorted();
-const loadedItems = loadedFiles.flatMap((path) => listItems({ file: homeRelative(path), text: readTextIfExists(path) }));
-const memoryIndexFile = homeRelative(join(FOLDERS.MEMORY, 'index.md'));
-const RULE_FILES = new Set(['AGENTS.md', 'SOUL.md']);
-const quality = {
-  duplicates: findDuplicates(
-    loadedFiles.flatMap((path) => sentences({ file: homeRelative(path), text: readTextIfExists(path) }))
-  ),
-  closedRefs: findClosedRefs(
-    loadedItems.filter((item) => item.file !== memoryIndexFile),
-    knownIds,
-    closedIds
-  ),
-  narrative: findNarrative(
-    loadedItems.filter(
-      (item) => RULE_FILES.has(item.file) || (item.file === memoryIndexFile && item.section === 'Learnings')
-    )
-  )
-};
+const quality = qualityOf(loadedDocs(), { known: knownIds, closed: closedIds }, keptQuiet);
 
 const memory = {
   threads: memoryLines('Active Threads'),
