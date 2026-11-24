@@ -1,5 +1,6 @@
 import { relative, resolve, sep } from 'node:path';
 import { FILES, FOLDERS } from '../../../src/config';
+import { isBackgroundReport } from '../../../src/knowledge/background-noise';
 import { contentWords } from '../../../src/knowledge/feedback-keys';
 import { hashBuffer } from '../../../src/knowledge/utils';
 import { readTextIfExists } from '../../../src/shared/text';
@@ -150,6 +151,12 @@ export const findNarrative = (items: readonly Item[]): Narrative[] =>
     return markers >= NARRATIVE_MARKERS ? [{ ...row('narrative', item), markers, chars: item.text.length }] : [];
   });
 
+/** Memory lines that report what a heartbeat look or refresh found, which says nothing the brain needs. */
+export const findHeartbeatNoise = (items: readonly Item[]): Row[] =>
+  items.flatMap((item) =>
+    isBackgroundReport(item.text) ? [row('heartbeat', item)] : []
+  );
+
 const homeRelative = (path: string): string => relative(FOLDERS.HOME, path).split(sep).join('/');
 
 /**
@@ -190,7 +197,8 @@ export const keptQuietIn =
 /**
  * What is wrong or worn in what a session loads: sentences said twice, lines naming only closed tasks (the memory
  * index's live sections have their own buckets), and rule bullets told as incidents (Learnings, AGENTS.md,
- * SOUL.md). Leads the operator kept are left out.
+ * SOUL.md), and memory-index lines that only report a heartbeat look or refresh (the daily files that hold more of
+ * them prune themselves within two weeks). Leads the operator kept are left out.
  */
 export const qualityOf = (
   docs: readonly Doc[],
@@ -212,6 +220,9 @@ export const qualityOf = (
         closed
       )
     ),
-    narrative: fresh(findNarrative(items.filter(ruleBullet)))
+    narrative: fresh(findNarrative(items.filter(ruleBullet))),
+    heartbeatNoise: fresh(
+      findHeartbeatNoise(items.filter((item) => item.file === memoryIndex))
+    )
   };
 };

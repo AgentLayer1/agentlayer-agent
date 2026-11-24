@@ -13,6 +13,7 @@
  */
 import { FOLDERS, KNOWLEDGE, PLUGIN_NAME, isInitialized } from '@/config';
 import type { HostName } from '@/hosts/contract';
+import { backgroundByText, isBackgroundRun, isCaveatOnly } from '@/hosts/claude-transcript';
 import { ENTRY_SEPARATOR, escapeTurnMarkers, formatEntryHeader } from '@/knowledge/session-format';
 import {
   adoptLegacyKey,
@@ -78,6 +79,10 @@ function claudeContentToText(content: unknown): string {
 const claudeExtractor: Extractor = (transcriptPath) => {
   const turns: TranscriptTurn[] = [];
   const fileContent = readFileSync(transcriptPath, 'utf-8');
+  // Claude Code stamps the record that opens each prompt with who started it and what it ran, and every record until
+  // the next prompt belongs to it. A transcript from a host that doesn't stamp is judged from its text instead.
+  const stamped = fileContent.includes('"turnOrigin"');
+  let background = false;
   for (const line of fileContent.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed) continue;
@@ -95,16 +100,30 @@ const claudeExtractor: Extractor = (transcriptPath) => {
     const msg = isRecord(entry.message) ? entry.message : entry;
     const role = typeof msg.role === 'string' ? msg.role : undefined;
     if (role !== 'user' && role !== 'assistant') continue;
-
     const text = claudeContentToText(msg.content).trim();
+    if (stamped && role === 'user' && typeof entry.turnOrigin === 'string') {
+      const { origin } = entry;
+      background =
+        isRecord(origin) &&
+        origin.kind === 'plugin' &&
+        origin.name === PLUGIN_NAME &&
+        origin.asUser !== true &&
+        isBackgroundRun(text, PLUGIN_NAME);
+    }
     if (!text) continue;
     if (text.startsWith('<system-reminder>') || text.startsWith('<command-name>')) continue;
 
     // "<synthetic>" marks Claude Code's own notices (API errors, limits), not a model.
     const model = typeof msg.model === 'string' && !msg.model.startsWith('<') ? msg.model : undefined;
-    turns.push(role === 'assistant' && model ? { role, text, model } : { role, text });
+    // A lone local-command note is kept as a turn, so the cursor's turn count holds, and marked like a background run.
+    const quiet = background || (role === 'user' && isCaveatOnly(text));
+    turns.push(role === 'assistant' && model ? { role, text, model, background: quiet } : { role, text, background: quiet });
   }
-  return turns;
+  if (stamped) {
+    return turns;
+  }
+  const flags = backgroundByText(turns, PLUGIN_NAME);
+  return turns.map((turn, index) => ({ ...turn, background: flags[index] }));
 };
 
 /**
@@ -320,6 +339,7 @@ export type CaptureSessionReason =
   | 'no-new-turns'
   | 'too-few-turns'
   | 'empty-after-redaction'
+  | 'background-only'
   | 'deferred';
 
 export type CaptureSessionResult =
@@ -567,10 +587,15 @@ async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessio
       log.info(`skip (${mode}) — no new turns since last capture (cursor ${prior?.captured_turns ?? 0})`);
       return { saved: false, reason: 'no-new-turns', turns: 0 };
     }
-    if (diff.newTurns.length < cfg.minTurns) {
-      // Don't advance the cursor — these turns are re-offered on the next capture.
-      log.info(`skip (${mode}) — ${diff.newTurns.length} new turns (min ${cfg.minTurns})`);
-      return { saved: false, reason: 'too-few-turns', turns: diff.newTurns.length };
+    // A skip below leaves the cursor where it was, so these turns are offered again with the next ones.
+    const kept = diff.newTurns.filter((turn) => !turn.background);
+    if (kept.length === 0) {
+      log.info(`skip (${mode}) — only this plugin's background runs`);
+      return { saved: false, reason: 'background-only', turns: diff.newTurns.length };
+    }
+    if (kept.length < cfg.minTurns) {
+      log.info(`skip (${mode}) — ${kept.length} new turns (min ${cfg.minTurns})`);
+      return { saved: false, reason: 'too-few-turns', turns: kept.length };
     }
     if (diff.reanchored) {
       log.warn(
@@ -578,7 +603,7 @@ async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessio
       );
     }
 
-    const redacted = redactSecrets(formatTurnList(diff.newTurns));
+    const redacted = redactSecrets(formatTurnList(kept));
     if (!redacted.trim()) {
       log.info(`skip (${mode}) — empty after redaction`);
       return { saved: false, reason: 'empty-after-redaction', turns: diff.newTurns.length };
@@ -594,7 +619,7 @@ async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessio
     }
 
     const source = homeRelative(opts.cwd);
-    const models = new Set(diff.newTurns.flatMap((turn) => (turn.model ? [turn.model] : [])));
+    const models = new Set(kept.flatMap((turn) => (turn.model ? [turn.model] : [])));
     const header = formatEntryHeader({
       heading: cfg.heading,
       time: nowTime(),
@@ -616,7 +641,7 @@ async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessio
       from: diff.from,
       to: diff.to,
       lastTurnFp: fingerprintTurn(turns[turns.length - 1]),
-      briefingStub: briefingStub(diff.newTurns)
+      briefingStub: briefingStub(kept)
     };
     await saveIndex({
       ...index,

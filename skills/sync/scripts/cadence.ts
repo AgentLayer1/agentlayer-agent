@@ -97,7 +97,7 @@ const oldestSessionDay =
 const brainQuality = ((): BrainQuality => {
   const found = qualityOf(loadedDocs(), taskIds(), keptQuietIn(selfReview.asked ?? {}, todayDate()));
   return {
-    findings: found.duplicates.length + found.closedRefs.length + found.narrative.length,
+    findings: Object.values(found).reduce((sum, rows) => sum + rows.length, 0),
     overBudget: isOverBudget(importedStack()) || isOverBudget(injectedStack())
   };
 })();

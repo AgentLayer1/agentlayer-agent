@@ -1,12 +1,32 @@
 ---
 name: knowledge-compile
 description: Compile raw session logs, feedback, and inbox items into structured wiki articles. Orchestrated in this session — MCP returns work items, Claude synthesizes, MCP confirms. Triggers on "compile my knowledge", "process the inbox", "absorb today's sessions", or /knowledge-compile.
-allowed-tools: mcp__plugin_agentlayer_agent__compile_status, mcp__plugin_agentlayer_agent__compile_next, mcp__plugin_agentlayer_agent__compile_write, mcp__plugin_agentlayer_agent__capture, Read, Write, Edit, Glob, Grep
+allowed-tools: mcp__plugin_agentlayer_agent__compile_status, mcp__plugin_agentlayer_agent__compile_next, mcp__plugin_agentlayer_agent__compile_write, mcp__plugin_agentlayer_agent__capture, AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash
 ---
 
 # Compile
 
+> **Plugin root.** Claude Code fills in `CLAUDE_PLUGIN_ROOT`; Codex leaves it unset. Under Codex, read every `CLAUDE_PLUGIN_ROOT` path in this skill as the plugin root the session context names, or, in a session without one, as this skill's base directory two levels up (the `<skill>` block's `<path>`).
+
 Compile raw inputs from `<HOME>/knowledge/raw/` into structured wiki articles. The orchestration loop runs in **this session** — the MCP server is pure I/O, no LLM calls.
+
+## Lock
+
+Only one compile, sync or brain refresh runs in a home at a time, since two would compile the same sessions into memory twice. Before the loop, take the home's sync lock:
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/skills/knowledge-compile/scripts/compile-lock.ts" take
+```
+
+It returns `{ "lock": "<token>" }`, or `{ "status": "SYNC_RUNNING", "holder": { kind, startedAt, lastProgressAt, freesAt } }` when another run holds it. Then compile nothing and ask the operator in one `AskUserQuestion`, "A <holder.kind, `refresh` read as the heartbeat's brain refresh> has been running since <startedAt as HH:MM> (last progress <lastProgressAt as HH:MM>)", with **Wait for it** (recommended) and **Take over: it was stopped**. Wait ends the run with that one line; a sync compiles what's pending anyway. Take over reruns `take --take-over`. Under no other answer is `--take-over` passed.
+
+When the run ends, however it ends (done, an error stop, after the gap pass), release the lock with the token `take` returned:
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/skills/knowledge-compile/scripts/compile-lock.ts" release --token=<lock>
+```
+
+A run that never releases it leaves the lock to go stale after an hour without progress.
 
 ## Loop
 
@@ -60,6 +80,8 @@ Do **not** invent gaps to hit a quota. Most runs surface 0–3. This is a judgme
 - `compile_next` returns `{ done: true }` — work complete.
 - Three consecutive errors from any MCP call — stop and surface the error.
 - The user interrupts.
+
+Each ends with the lock released (see Lock).
 
 ## Why this shape
 

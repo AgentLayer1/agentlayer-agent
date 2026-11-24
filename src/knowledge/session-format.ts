@@ -129,3 +129,6 @@ export function parseEntryHeaders(content: string): ParsedEntryHeader[] {
   }
   return out;
 }
+
+export const TURN_SPLIT_RE = new RegExp(`\n\n(?=${TURN_MARKER})`);
+export const USER_LABEL = '**User:**';

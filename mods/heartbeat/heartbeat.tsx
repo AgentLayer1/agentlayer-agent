@@ -7,6 +7,7 @@ import { expandHome } from '../manuals/repo';
 import { TURN_REASONS } from '../shared/turns';
 import { clip } from '../tasks/task';
 import type { HeartbeatEvent, Queue } from '../types';
+import { BACKGROUND_RUNS } from '../shared/background';
 import { SCOUTING_AGENTS, homeLensAgent, scoutAgent } from './agents';
 import {
   MINUTE_MS,
@@ -223,7 +224,7 @@ async function look($: EngineInterface): Promise<void> {
   const titles = await workspacesNow($);
   await expectTurn($, 'look');
   await $.command.run({
-    command: `${$.plugin.name}:proposals`,
+    command: `${$.plugin.name}:${BACKGROUND_RUNS.look.skill}`,
     args: titles.length ? `workspaces: ${JSON.stringify(titles)}` : ''
   });
 }
@@ -251,7 +252,7 @@ async function wake($: EngineInterface, now: number, status: HeartbeatStatus, re
   $.clock.after(0, async () => {
     if (refresh) {
       await expectTurn($, 'refresh');
-      await $.command.run({ command: `${$.plugin.name}:sync`, args: 'brain' });
+      await $.command.run({ command: `${$.plugin.name}:${BACKGROUND_RUNS.refresh.skill}`, args: BACKGROUND_RUNS.refresh.args });
       await scout($, status);
     }
     await look($);

@@ -359,6 +359,7 @@ const audit = {
     duplicates: quality.duplicates.length,
     closedRefs: quality.closedRefs.length,
     narrative: quality.narrative.length,
+    heartbeatNoise: quality.heartbeatNoise.length,
     oldestWaiting
   }
 };

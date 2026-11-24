@@ -209,7 +209,7 @@ From the selected entries, collect every `### Upgrade` action line. Each is:
 - `<kind>: <severity>` — <note>
 ```
 
-- **kinds:** `deps` · `settings` · `template/<file>` · `file` · `script` · `manual`
+- **kinds:** `deps` · `settings` · `template/<file>` · `file` · `script` · `skill` · `manual`
 - **severity:** `required` · `mandatory` · `optional` · `additive` · `none`
 
 Coalesce across the selected releases (latest wins; the goal is the *current*
@@ -223,6 +223,9 @@ template state, not a replay of every intermediate edit):
 - **script** — keep **one per version** (these are version-pinned, not coalesced):
   each `script: <severity>` runs the migration at `skills/upgrade/scripts/<version>.ts`.
   Run them in ascending version order in Step 4.
+- **skill** — dedupe by skill name, in release order. Each runs in Step 7, before the
+  closing sync: the skill named first in the note (`self-review`, …), with the note as its
+  reason.
 - **manual** — collect and surface to the user at the end (these are notes the
   skill cannot automate; never silently skip them).
 
@@ -715,9 +718,10 @@ the stale server. Therefore:
 
 - **If `bun install` ran this session, or the update pulled new MCP-server code** →
   do NOT sync yet. Tell the user to **restart / reload the harness (Claude Code or Codex) first**, then run
-  `/agentlayer:sync`. (End the skill here with that instruction.)
-- **Otherwise** (HOME-only changes — settings, rules, templates) → invoke the `sync`
-  skill now via the Skill tool as the final step.
+  each `skill` step's skill (`/agentlayer:<skill>`, in order, with its reason), then `/agentlayer:sync`.
+  (End the skill here with that instruction.)
+- **Otherwise** (HOME-only changes — settings, rules, templates) → invoke each `skill` step's
+  skill via the Skill tool, in order, then the `sync` skill as the final step.
 
 ## Notes
 

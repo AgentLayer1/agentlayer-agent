@@ -6,6 +6,8 @@ import { HOME_BINDING_KEY, recordedGitDir, stampClaims } from "../../../src/home
 import { agentHomePath, env, isAgentHome } from "../../../src/shared/env";
 import { RUNTIME_DIR } from "../../../src/shared/naming";
 import { expandTilde } from "../../../src/shared/paths";
+import { releaseSyncLock } from "../../../src/shared/sync-lock";
+import { flagOf } from "../../../src/shared/utils";
 
 /**
  * Brain committer for sync — commits the HOME repo's pending changes as grouped,
@@ -13,7 +15,8 @@ import { expandTilde } from "../../../src/shared/paths";
  * main/master with no remote configured. Never pushes, never amends. Untracked
  * files outside the known content roots are reported, not swept into history.
  *
- * Usage: bun commit-brain.ts — prints a single JSON result for the skill to render.
+ * Usage: bun commit-brain.ts [--release=<lock>] — prints a single JSON result for the skill to render, then frees
+ * the sync lock the opening snapshot took.
  */
 
 /** The one commit sync's opening snapshot makes, so the run's own changes diff cleanly against it. */
@@ -290,4 +293,8 @@ if (import.meta.main) {
     process.exit(1);
   }
   console.log(JSON.stringify(commitBrain(home)));
+  const token = flagOf(process.argv.slice(2), "release");
+  if (token) {
+    releaseSyncLock(token);
+  }
 }

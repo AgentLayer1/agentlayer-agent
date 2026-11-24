@@ -1,7 +1,8 @@
 import { expect, spyOn, test } from 'bun:test';
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { FILES } from '@/config';
+import { SyncKind, takeSyncLock } from '@/shared/sync-lock';
 import { runHeartbeatCommand } from './command';
 import { parseHeartbeat, readHeartbeat, type Heartbeat } from './ledger';
 import { lastRefreshed, parseEvery, refreshDue, released } from './rules';
@@ -113,6 +114,23 @@ test('the status a tick reads holds the heartbeat, the brain, and the room for p
     }
   } finally {
     rmSync(FILES.HEARTBEAT, { force: true });
+  }
+});
+
+test('no refresh is due while a sync or a refresh runs in another session, and one is due again once it ends', () => {
+  const cadence = existsSync(FILES.CADENCE) ? readFileSync(FILES.CADENCE, 'utf-8') : null;
+  rmSync(FILES.CADENCE, { force: true });
+  const due = (): unknown => JSON.parse(quietly(() => runHeartbeatCommand('status', ['--json'])).lines[0] ?? '').refreshDue;
+  try {
+    expect(takeSyncLock(SyncKind.Sync).taken).toBe(true);
+    expect(due()).toBe(false);
+    rmSync(FILES.SYNC_LOCK, { force: true });
+    expect(due()).toBe(true);
+  } finally {
+    rmSync(FILES.SYNC_LOCK, { force: true });
+    if (cadence !== null) {
+      writeFileSync(FILES.CADENCE, cadence);
+    }
   }
 });
 

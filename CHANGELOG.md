@@ -24,7 +24,7 @@ backticked tag plus a human note:
 - `<kind>: <severity>` — <note>
 ```
 
-- **kind** — `deps` · `settings` · `template/<file>` · `file` · `script` · `manual`
+- **kind** — `deps` · `settings` · `template/<file>` · `file` · `script` · `skill` · `manual`
 - **severity** — `required` (deps/script) · `mandatory` (auto-applied) · `optional`
   (the upgrade asks first, with a diff) · `additive` (copy if absent) · `none`
 
@@ -36,6 +36,11 @@ report; it carries no permanent footprint in the server and may be pruned once t
 minimum supported baseline passes it (a `script:` whose file is absent is treated as
 already-applied). Use it for heavy data moves; use `manual` for steps a human must do
 by hand.
+
+A `skill: required` line names a plugin skill the upgrade runs once the home is migrated and
+before its closing sync, for work that needs the operator in the room, such as a self-review
+that clears what the release stops writing. When the upgrade must end with a restart, it names
+the skill to run right after the restart, before the sync.
 
 A code-only release writes a single line: `None — code-only, no bun install or HOME changes.`
 
@@ -52,9 +57,10 @@ and prompts per optional one. The new template files are the source of truth for
 Less loads into every session, and the brain's upkeep is measured instead of guessed.
 
 ### Added
-- The session banner gives how much loads into every session for the host it runs on ("121.1KB of
-  home files, and 7.7KB added today"), against a 100 KB budget; over it, the log names the three
-  largest files. The status screen and the dashboard weigh the same total.
+- The session banner says how much loads into every session for the host it runs on, in one line
+  over the list of what the start hook adds: "121.1KB of home files and 7.7KB added today:". Over
+  the 100 KB budget, the log (not the banner) names the three largest files; the status screen and
+  the dashboard weigh the same total.
 - The compile records the operator's corrections from the session logs: each quoted with one line
   of scope, keyed on its session, and never appended twice.
 - Self-review scripts: `rule-compliance.ts` counts corrections per 1,000 replies and two shell
@@ -62,7 +68,10 @@ Less loads into every session, and the brain's upkeep is measured instead of gue
   refs and scores the answers blind; `feedback-digest.ts` reads the feedback log by code, so a
   rules pass reads a few KB of it instead of all of it.
 - The brain audit reads every file a session loads and finds lines said twice, lines naming only
-  closed tasks, and rules buried in their incidents.
+  closed tasks, and rules buried in their incidents, plus memory lines that only report a heartbeat
+  look or refresh. A lead the operator kept stays quiet while its text is unchanged.
+- A release's Upgrade block can name a skill the upgrade runs before its closing sync
+  (`skill: required`), or right after the restart when it ends on one.
 
 ### Changed
 - The manual is 28,810 bytes, down from 35,363. "Engineering the Codebase" (the plugin's own
@@ -82,15 +91,26 @@ Less loads into every session, and the brain's upkeep is measured instead of gue
   section and the index.
 - Self-review's rules pass ranks what it prunes by harm (wrong, said twice, narrative, low value,
   then size), takes one yes for the items its scripts settled, proposes up to three retirements a
-  sitting, holds additions to the budget, and opens its report with a scorecard. Sync offers it
-  seven days after the last one when the brain audit finds 5 or more such lines or the home is over
-  its budget.
-- Codex: a home's `.codex/config.toml` gets `project_doc_max_bytes = 65536` when the key is absent,
-  since Codex reads only the first 32,768 bytes of `AGENTS.md` by default. Whether Codex honours the
-  key from a home's own config is not yet confirmed.
+  sitting, holds additions to the budget, and opens its report with a scorecard. Sync also offers
+  it seven days after the last rules pass, once a home has had one, when the loaded files and the
+  memory hold 5 or more such lines the operator hasn't kept, or the home is over its budget. That
+  check reads only those files, never the session logs.
+- Codex: the Codex setup writes `project_doc_max_bytes = 65536` into a home's `.codex/config.toml`
+  when the key is absent, and the upgrade reruns that setup in a home that uses Codex. Codex reads
+  only the first 32,768 bytes of `AGENTS.md` by default: a session in a home whose manual was 36,999
+  bytes lost its last 4 KB, and Codex logged the cut. Whether Codex honours the key from a home's own
+  config, rather than the user's, is not yet confirmed.
 - A release entry gives the before and after size of an always-loaded template it changes.
 
 ### Fixed
+- The heartbeat's own runs no longer reach the brain. Every look and brain refresh was captured like
+  a working session (each with the whole proposals skill), compiled into daily memory as "proposal
+  looks: nothing new worth proposing", and, when the heartbeat ran last, injected into the next
+  session as its last-session memory. Capture now knows them from Claude Code's own record of who
+  started each prompt and what it ran, whatever the run's wording, and drops them; a prompt
+  queued as the operator's words or a button they pressed is kept. Which runs are background is one
+  list the heartbeat also issues them from. Session logs already on disk are filtered by the same
+  list before the compile and the session tail read them.
 - Heartbeat: a look that starts late (a timer firing in a brief wake of a sleeping Mac) waits two
   minutes for the machine to stay awake, and a re-arm in that wait no longer drops it; an idle home
   gets no wake, a due brain refresh included; a brain refresh that never finished is retried once
@@ -102,16 +122,27 @@ Less loads into every session, and the brain's upkeep is measured instead of gue
   role label at the start of a line no longer reads as an operator turn; a capture cut inside a
   multi-byte character of its header is trimmed.
 - An `@-import` naming a folder no longer aborts the banner's weight and the dashboard rebuild.
+- One sync, brain refresh or compile runs in a home at a time. Two at once (a sync started twice by
+  accident, or the heartbeat's refresh coming up during a sync) compiled the same session into
+  memory twice. Sync and `knowledge-compile` now take a lock (`.state/sync.lock`) at their start
+  and free it at their end; a second run asks the operator to wait or take over, the heartbeat
+  skips its refresh while the lock is held, and a run with no progress for an hour loses the lock,
+  so one that stopped never blocks the next.
 
 ### Upgrade
 - `script: required` — run skills/upgrade/scripts/1.1.0.ts: removes "Engineering the Codebase" from
   `AGENTS.md` when unedited, and replaces the Xcode pack's two rule files together when both are
-  the shipped copies. Anything you edited is left as it is and put to you.
+  the shipped copies. Anything you edited is left as it is and put to you. It also takes out of the
+  daily memory files the bullets that only report a heartbeat look or brain refresh, and a section
+  they leave empty; a bullet with code or a commit in backticks stays, and every removed line is
+  in its report.
 - `template/AGENTS.md: mandatory` — the trimmed manual and the new correction rule.
 - `manual: optional` — Xcode pack only: if the upgrade reports your `xcode.md` or
   `xcode-project.md` as edited, merge them with the plugin's `templates/rules/` copies by hand.
 - `manual: optional` — If a session is your heartbeat, restart it and run `/heartbeat` there: the
   late-look and retry fixes run only in a session started on 1.1.0.
+- `skill: required` — self-review, before the sync: the first quality-first sitting. Its verified
+  list includes the heartbeat looks and refreshes still in the memory index, cleared with one yes.
 
 ## [1.0.11] - 2026-11-23
 

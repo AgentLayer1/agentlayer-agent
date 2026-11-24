@@ -276,6 +276,10 @@ export const FILES = {
   get HEARTBEAT() {
     return resolve(dataRoot(), 'heartbeat.json');
   },
+  /** Held while a sync or a brain refresh runs, so only one runs at a time (shared/sync-lock.ts). */
+  get SYNC_LOCK() {
+    return resolve(dataRoot(), 'sync.lock');
+  },
   /** Sessions the agent proposes (proposals/ledger.ts). */
   get PROPOSALS() {
     return resolve(dataRoot(), 'proposals.json');

@@ -5,15 +5,17 @@
  * (with a fully-rendered prompt and source content); the calling Claude
  * session synthesizes (Read/Write/Edit) and confirms via markComplete.
  */
-import { FILES, FOLDERS, KNOWLEDGE } from '@/config';
+import { FILES, FOLDERS, KNOWLEDGE, PLUGIN_NAME } from '@/config';
 import { chunkSessionLog } from '@/knowledge/chunk';
 import { operatorTurns, renderOperatorTurns } from '@/knowledge/operator-turns';
+import { withoutBackgroundRuns } from '@/hosts/claude-transcript';
 import { ENTRY_HEADER_RE } from '@/knowledge/session-format';
 import { loadState, saveState } from '@/knowledge/state';
 import { hashBuffer, listInboxFiles, listRawFiles, loadScriptTemplate, renderTemplate } from '@/knowledge/utils';
 import type { CompileState, IngestedEntry, PartialEntry } from '@/knowledge/types';
 import { agentDisplayName, agentFormerNames } from '@/shared/agent-name';
 import { nowISO } from '@/shared/date';
+import { touchSyncLock } from '@/shared/sync-lock';
 import { readTextAsync } from '@/shared/text';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
@@ -220,6 +222,7 @@ async function buildInboxPrompt(inboxPath: string): Promise<string> {
 // ── Pick / mark ──────────────────────────────────────────────────────
 
 export async function pickNext(): Promise<CompileWorkItem | null> {
+  touchSyncLock();
   const state = await loadState();
   if (state.in_flight) {
     state.in_flight = null;
@@ -248,7 +251,11 @@ export async function pickNext(): Promise<CompileWorkItem | null> {
     const sliceBuf = buf.subarray(sliceStart, sliceEnd);
     // A valid pinned slice already hashed equal to pinned.hash above — reuse it.
     const sliceHash = pinned ? pinned.hash : hashBuffer(sliceBuf);
-    const chunks = chunkSessionLog(sliceBuf.toString('utf-8'), KNOWLEDGE.MAX_SESSION_LOG_CHUNK_BYTES);
+    // Filtered before the cut, so a chunk is never all background runs and a run never straddles two chunks.
+    const chunks = chunkSessionLog(
+      withoutBackgroundRuns(sliceBuf.toString('utf-8'), PLUGIN_NAME),
+      KNOWLEDGE.MAX_SESSION_LOG_CHUNK_BYTES
+    );
     const chunkIndex = pinned ? pinned.completed : 0;
     const costSoFar = pinned ? pinned.cost_usd : 0;
 
