@@ -390,8 +390,8 @@ bun "$PLUGIN_ROOT/skills/init/scripts/antigravity-user-config.ts" --home "$HOME_
 ```
 
 Its report says `manifest` (`current`, `missing` or `add-entry`) and the `settings` keys the user
-file lacks. Anything but `current` with no settings keys becomes one `manual:` line in the Step 6
-report naming the note; stay silent otherwise. Never edit either user-level file.
+file lacks. Unless the manifest is `current` and no settings key is missing, add one `manual:` line
+to the Step 6 report naming the note; otherwise stay silent. Never edit either user-level file.
 
 **file (additive)** — copy the template to its HOME destination **only if absent**:
 

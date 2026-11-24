@@ -13,10 +13,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
+import { entriesOf, namesCheckout } from '../../../src/hosts/antigravity';
 import { codexHost } from '../../../src/hosts/codex';
 import type { HostName } from '../../../src/hosts/contract';
 import { PLUGIN_SOURCE_ROOT } from '../../../src/shared/naming';
-import { resolvedPath } from '../../../src/shared/paths';
 import { listDirs } from '../../../src/shared/text';
 
 /** Where consumers install from, and the marketplace repos that name replaced. */
@@ -224,16 +224,11 @@ findings.push(
 
 // Antigravity loads the checkout its personal manifest names, in place.
 const pluginsManifest = resolve(geminiDir, 'config', 'plugins.json');
-const manifestPaths = ((): string[] => {
-  const entries = readJson(pluginsManifest)?.entries;
-  return Array.isArray(entries)
-    ? entries.flatMap((entry) => (isRecord(entry) && typeof entry.path === 'string' ? [entry.path] : []))
-    : [];
-})();
+const manifestPaths = entriesOf(readJson(pluginsManifest));
 const ownCheckouts = manifestPaths.filter(
   (path) => readJson(resolve(path, '.antigravity-plugin', 'plugin.json'))?.name === plugin || !existsSync(path)
 );
-const loadsThis = manifestPaths.some((path) => resolvedPath(path) === resolvedPath(pluginRoot));
+const loadsThis = namesCheckout(manifestPaths, pluginRoot);
 if (ownCheckouts.length > 0 && !loadsThis) {
   findings.push({
     host: 'antigravity',
@@ -242,7 +237,7 @@ if (ownCheckouts.length > 0 && !loadsThis) {
     commands: []
   });
 }
-if (manifestPaths.length > 0 && existsSync(resolve(geminiDir, 'config', 'plugins', plugin))) {
+if ((loadsThis || ownCheckouts.length > 0) && existsSync(resolve(geminiDir, 'config', 'plugins', plugin))) {
   findings.push({
     host: 'antigravity',
     kind: 'global-copy',

@@ -46,23 +46,19 @@ const rootsRead = (() => {
   if (!fromRoots) {
     return Promise.resolve();
   }
-  const read = async (): Promise<void> => {
-    if (!server.server.getClientCapabilities()?.roots) {
-      return;
-    }
-    const { roots } = await server.server.listRoots();
-    const found = useHomeInRoots(roots.map((root) => root.uri));
-    log.info(found ? `home from MCP roots: ${FOLDERS.HOME}` : 'no MCP root is an agent home');
-  };
   const first = new Promise<void>((done) => {
     server.server.oninitialized = () => {
-      read()
+      (async (): Promise<void> => {
+        if (!server.server.getClientCapabilities()?.roots) {
+          return;
+        }
+        const { roots } = await server.server.listRoots();
+        const found = useHomeInRoots(roots.map((root) => root.uri));
+        log.info(found ? `home from MCP roots: ${FOLDERS.HOME}` : 'no MCP root is an agent home');
+      })()
         .catch((err: unknown) => log.warn(`roots/list failed: ${String(err)}`))
         .finally(done);
     };
-  });
-  server.server.setNotificationHandler('notifications/roots/list_changed', () => {
-    read().catch((err: unknown) => log.warn(`roots/list failed: ${String(err)}`));
   });
   return Promise.race([first, Bun.sleep(ROOTS_WAIT_MS)]);
 })();

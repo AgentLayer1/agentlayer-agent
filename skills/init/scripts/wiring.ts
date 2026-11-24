@@ -52,7 +52,7 @@ interface ClaudeSettings {
   enableAllProjectMcpServers?: unknown;
 }
 
-const stringsOf = (list: unknown): string[] =>
+export const stringsOf = (list: unknown): string[] =>
   Array.isArray(list) ? list.filter((item): item is string => typeof item === 'string') : [];
 
 export interface HomeSettings {

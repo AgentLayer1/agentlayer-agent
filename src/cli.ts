@@ -136,11 +136,14 @@ Hook commands (internal — wired into Claude Code hooks; safe to run manually f
   session-start [--hook-protocol=claude|codex|antigravity]
                                     Emit dynamic SessionStart context. Without the flag, prints the structured result for testing.
   session-start|session-capture ... --home=PATH
-                                    Pin the agent home from the command line (how the per-home Codex and Antigravity hooks name it)
-  policy --hook-protocol=antigravity --home=PATH
+                                    Pin the agent home from the command line (how the per-home Codex hooks name it)
+  session-start|session-capture|policy ... --home-from-payload
+                                    Pin the home the payload's session works in, before any settings load (the Antigravity
+                                    plugin's hooks, which run in the plugin's folder). Outside a home the hook does nothing
+  policy --hook-protocol=antigravity --home-from-payload
                                     PreToolUse hook on every tool for a host whose own permission rules can't hold the home's:
-                                    the shell guard, then every deny in the home's Claude settings, and a refusal for every
-                                    call that would ask in Claude Code. Shell runs only under the launcher's policy file.
+                                    the shell guard, then the home's Claude settings: a deny is refused, an ask goes to the
+                                    host's own approval prompt, a granted MCP tool runs without one
   guard [--hook-protocol=claude|codex|antigravity]
                                     PreToolUse hook: read the tool call from stdin and exit 2 when a shell command
                                     would write a home tree (knowledge/, projects/, reports/) relative to a cwd outside the home,

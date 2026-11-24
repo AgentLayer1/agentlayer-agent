@@ -4,11 +4,11 @@
  * returns the process exit code.
  */
 import { FOLDERS, isInitialized } from '@/config';
+import { hookStdin } from '@/hooks/stdin';
 import { HOST_NAMES, isHostName, type HookPayload, type HookReply, type HostAdapter } from '@/hosts/contract';
 import { DEFAULT_HOST, hostNamed } from '@/hosts/registry';
 import { CLI_COMMAND } from '@/shared/naming';
 import { pinHome } from '@/shared/settings-env';
-import { hookStdin } from '@/hooks/stdin';
 
 type Flag = (name: string) => string | undefined;
 
@@ -84,13 +84,16 @@ export const runGuard = async (flag: Flag): Promise<number> => {
 
 /**
  * A host's policy hook on every tool call: the shell guard, then the home's rules. Its own failure refuses the call
- * with the repair named, since a policy that can't be read can't let anything through.
+ * with its reason, since a policy that can't be read can't let anything through.
  */
 export const runPolicy = async (flag: Flag): Promise<number> => {
-  const host = hostOf(flag) ?? DEFAULT_HOST;
+  const host = hostOf(flag);
+  const reply = host?.policyReply;
+  if (!host || !reply) {
+    return 0;
+  }
   const payload = await payloadOf(host);
-  const reply = host.policyReply;
-  if (!payload || !reply || !atHome(host, payload) || !isInitialized()) {
+  if (!payload || !atHome(host, payload) || !isInitialized()) {
     return 0;
   }
   try {
@@ -111,7 +114,7 @@ export const runPolicy = async (flag: Flag): Promise<number> => {
     return emit(
       reply({
         decision: 'deny',
-        reason: `The agent's policy check failed (${reason}); run ${host.skill('upgrade')} from Claude Code to repair it.`
+        reason: `The agent's policy check failed, so every call is refused until it is fixed: ${reason}`
       })
     );
   }

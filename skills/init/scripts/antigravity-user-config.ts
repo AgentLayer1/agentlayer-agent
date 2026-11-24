@@ -13,14 +13,23 @@
  * Usage: antigravity-user-config.ts --home <dir> [--plugin-root <dir>] [--manifest <file>] [--settings <file>]
  *        [--claude-settings <file>] [--out <file>]
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import { readMergedSettings } from '../../../src/home/settings-scope';
+import { readMergedSettings, readSettingsFile } from '../../../src/home/settings-scope';
 import { WIRING } from '../../../src/hooks/policy';
+import { cliSettings, entriesOf, namesCheckout, personalManifest } from '../../../src/hosts/antigravity';
 import { PLUGIN_SOURCE_ROOT, RUNTIME_DIR } from '../../../src/shared/naming';
 import { isInside, resolvedPath } from '../../../src/shared/paths';
-import { denyGlobs, expandTilde, isRecord, readHomeSettings, shellPrefixes, workspaceRootsOf } from './wiring';
+import {
+  denyGlobs,
+  expandTilde,
+  isRecord,
+  readHomeSettings,
+  shellPrefixes,
+  stringsOf,
+  workspaceRootsOf
+} from './wiring';
 
 type Json = Record<string, unknown>;
 
@@ -48,8 +57,6 @@ export interface UserConfig {
 }
 
 const GLOB = /[*?[\]{}]/;
-const strings = (value: unknown): string[] =>
-  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 const at = (value: unknown, ...keys: string[]): unknown =>
   keys.reduce<unknown>((node, key) => (isRecord(node) ? node[key] : undefined), value);
 const unique = (items: string[]): string[] => [...new Set(items)];
@@ -78,14 +85,8 @@ const ruleTarget = (glob: string, work: string[]): string | undefined => {
 
 export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
   const { home, checkout } = inputs;
-  const entries = at(inputs.manifest, 'entries');
-  const named = Array.isArray(entries)
-    ? entries.some(
-        (entry) => isRecord(entry) && typeof entry.path === 'string' && resolvedPath(entry.path) === checkout
-      )
-    : false;
   const work = [home, checkout, ...inputs.codeRoots];
-  const userDenies = strings(at(inputs.claudeUser, 'permissions', 'deny'));
+  const userDenies = stringsOf(at(inputs.claudeUser, 'permissions', 'deny'));
   const readGlobs = denyGlobs(userDenies);
   const editGlobs = userDenies
     .map((rule) => /^(?:Edit|Write)\((.+)\)$/.exec(rule)?.[1] ?? '')
@@ -94,12 +95,12 @@ export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
   const readTargets = readGlobs.map((glob) => ruleTarget(glob, work));
   const editTargets = editGlobs.map((glob) => ruleTarget(glob, work));
   const domains = [
-    ...strings(at(inputs.claudeUser, 'sandbox', 'network', 'allowedDomains')),
-    ...strings(at(inputs.claudeHome, 'sandbox', 'network', 'allowedDomains'))
+    ...stringsOf(at(inputs.claudeUser, 'sandbox', 'network', 'allowedDomains')),
+    ...stringsOf(at(inputs.claudeHome, 'sandbox', 'network', 'allowedDomains'))
   ].map((domain) => domain.replace(/^\*\./, ''));
   const writable = [
     ...inputs.codeRoots,
-    ...strings(at(inputs.claudeHome, 'sandbox', 'filesystem', 'allowWrite')).map(expandTilde)
+    ...stringsOf(at(inputs.claudeHome, 'sandbox', 'filesystem', 'allowWrite')).map(expandTilde)
   ].filter((path) => isAbsolute(path) && !GLOB.test(path));
 
   const unread = outermost([
@@ -124,7 +125,7 @@ export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
       ...unique(domains).map((domain) => `read_url(${domain})`)
     ]
   };
-  const have = (list: 'allow' | 'deny'): Set<string> => new Set(strings(at(inputs.settings, 'permissions', list)));
+  const have = (list: 'allow' | 'deny'): Set<string> => new Set(stringsOf(at(inputs.settings, 'permissions', list)));
   const missingDeny = wanted.deny.filter((rule) => !have('deny').has(rule));
   const missingAllow = wanted.allow.filter((rule) => !have('allow').has(rule));
   const permissions = {
@@ -132,7 +133,11 @@ export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
     ...(missingDeny.length > 0 ? { deny: missingDeny } : {})
   };
   return {
-    manifest: named ? 'current' : Array.isArray(entries) ? 'add-entry' : 'missing',
+    manifest: !Array.isArray(at(inputs.manifest, 'entries'))
+      ? 'missing'
+      : namesCheckout(entriesOf(inputs.manifest), checkout)
+        ? 'current'
+        : 'add-entry',
     settings: {
       ...(at(inputs.settings, 'enableTerminalSandbox') === true ? {} : { enableTerminalSandbox: true }),
       ...(Object.keys(permissions).length > 0 ? { permissions } : {})
@@ -142,14 +147,6 @@ export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
       ...editGlobs.filter((_glob, index) => editTargets[index] === undefined)
     ]
   };
-};
-
-const readJson = (path: string): Json => {
-  if (!existsSync(path)) {
-    return {};
-  }
-  const parsed: unknown = JSON.parse(readFileSync(path, 'utf-8'));
-  return isRecord(parsed) && !Array.isArray(parsed) ? parsed : {};
 };
 
 const note = (config: UserConfig, paths: { manifest: string; settings: string }, checkout: string): string => {
@@ -219,8 +216,8 @@ if (import.meta.main) {
   }
   const home = resolvedPath(resolve(homeArg));
   const paths = {
-    manifest: flag('manifest') ?? resolve(homedir(), '.gemini', 'config', 'plugins.json'),
-    settings: flag('settings') ?? resolve(homedir(), '.gemini', 'antigravity-cli', 'settings.json')
+    manifest: flag('manifest') ?? personalManifest(),
+    settings: flag('settings') ?? cliSettings()
   };
   const claudeUserPath = flag('claude-settings') ?? resolve(homedir(), '.claude', 'settings.json');
   const checkout = resolvedPath(resolve(flag('plugin-root') ?? PLUGIN_SOURCE_ROOT));
@@ -228,9 +225,9 @@ if (import.meta.main) {
   const config = buildUserConfig({
     home,
     checkout,
-    manifest: readJson(paths.manifest),
-    settings: readJson(paths.settings),
-    claudeUser: readJson(claudeUserPath),
+    manifest: readSettingsFile(paths.manifest),
+    settings: readSettingsFile(paths.settings),
+    claudeUser: readSettingsFile(claudeUserPath),
     codeRoots: workspaceRootsOf(home, homeSettings).map(resolvedPath),
     claudeHome: readMergedSettings(home).merged
   });

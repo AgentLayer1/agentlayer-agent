@@ -1,24 +1,18 @@
 import { FILES, staticContextFiles } from '@/config';
 import type { HookPayload, HostAdapter, ToolCall } from '@/hosts/contract';
+import { isRecord } from '@/shared/json-block';
 import { PLUGIN_SOURCE_ROOT, pluginName } from '@/shared/naming';
-import { homeInPayload } from '@/shared/settings-env';
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { resolvedPath } from '@/shared/paths';
+import { homeOfSession } from '@/shared/settings-env';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, resolve } from 'node:path';
 
 /** Antigravity keeps about 48,900 bytes of one injected message; each piece stays well under that. */
-export const PIECE_BYTES = 45_000;
+const PIECE_BYTES = 45_000;
 
 /** The user's discovery manifest for plugins, which loads this checkout in place in every workspace. */
 export const personalManifest = (): string => resolve(homedir(), '.gemini', 'config', 'plugins.json');
-
-const realpath = (path: string): string => {
-  try {
-    return realpathSync(path);
-  } catch {
-    return path;
-  }
-};
 
 /** The Antigravity CLI's user settings, the only place it keeps permission rules and the sandbox switch. */
 export const cliSettings = (): string => resolve(homedir(), '.gemini', 'antigravity-cli', 'settings.json');
@@ -27,40 +21,38 @@ export const cliSettings = (): string => resolve(homedir(), '.gemini', 'antigrav
 export const sandboxOnIn = (settingsPath: string): boolean => {
   try {
     const parsed: unknown = JSON.parse(readFileSync(settingsPath, 'utf-8'));
-    return (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      'enableTerminalSandbox' in parsed &&
-      parsed.enableTerminalSandbox === true
-    );
+    return isRecord(parsed) && parsed.enableTerminalSandbox === true;
   } catch {
     return false;
   }
 };
 
-/** Whether a discovery manifest loads the checkout at `root`, however the path to it is spelled. */
-export const manifestLoads = (manifest: string, root: string): boolean => {
-  if (!existsSync(manifest)) {
-    return false;
-  }
+/** The folders a parsed discovery manifest names. */
+export const entriesOf = (manifest: unknown): string[] => {
+  const entries = isRecord(manifest) ? manifest.entries : undefined;
+  return Array.isArray(entries)
+    ? entries.flatMap((entry: unknown) => (isRecord(entry) && typeof entry.path === 'string' ? [entry.path] : []))
+    : [];
+};
+
+/** The folders a discovery manifest file names; none when it is absent or unreadable. */
+export const manifestEntries = (manifest: string): string[] => {
   try {
-    const parsed: unknown = JSON.parse(readFileSync(manifest, 'utf-8'));
-    const entries = typeof parsed === 'object' && parsed !== null && 'entries' in parsed ? parsed.entries : undefined;
-    return (
-      Array.isArray(entries) &&
-      entries.some(
-        (entry: unknown) =>
-          typeof entry === 'object' &&
-          entry !== null &&
-          'path' in entry &&
-          typeof entry.path === 'string' &&
-          realpath(entry.path) === realpath(root)
-      )
-    );
+    return entriesOf(JSON.parse(readFileSync(manifest, 'utf-8')));
   } catch {
-    return false;
+    return [];
   }
 };
+
+/** Whether any of a manifest's entries is the checkout at `root`, however the path to it is spelled. */
+export const namesCheckout = (entries: string[], root: string): boolean => {
+  const target = resolvedPath(root);
+  return entries.some((path) => resolvedPath(path) === target);
+};
+
+/** Whether a discovery manifest file loads the checkout at `root`. */
+export const manifestLoads = (manifest: string, root: string): boolean =>
+  namesCheckout(manifestEntries(manifest), root);
 
 interface AntigravityPayload {
   conversationId?: string;
@@ -126,7 +118,7 @@ const readPayload = (raw: string): HookPayload => {
         : undefined) ?? parsed.cwd,
     origin: child ? 'child' : 'user',
     call: toolCallOf(parsed),
-    home: homeInPayload(raw)
+    home: homeOfSession(parsed)
   };
 };
 
@@ -136,7 +128,7 @@ const cutBytes = (bytes: Buffer, max: number): Buffer[] => {
     return bytes.length > 0 ? [bytes] : [];
   }
   // A continuation byte (10xxxxxx) sits inside a character, so the cut steps back to the byte that starts one.
-  const end = [...Array(max).keys()].map((back) => max - back).find((at) => ((bytes[at] ?? 0) & 0xc0) !== 0x80) ?? max;
+  const end = [0, 1, 2, 3].map((back) => max - back).find((at) => ((bytes[at] ?? 0) & 0xc0) !== 0x80) ?? max;
   return [bytes.subarray(0, end), ...cutBytes(bytes.subarray(end), max)];
 };
 
@@ -145,14 +137,16 @@ export const splitPieces = (text: string, max: number = PIECE_BYTES): string[] =
   text
     .split(/(?<=\n)/)
     .flatMap((line) => cutBytes(Buffer.from(line), max))
-    .reduce<Buffer[][]>((pieces, line) => {
+    .reduce<{ parts: Buffer[]; size: number }[]>((pieces, line) => {
       const last = pieces.at(-1);
-      const size = last?.reduce((total, part) => total + part.length, 0) ?? Infinity;
-      return last !== undefined && size + line.length <= max
-        ? [...pieces.slice(0, -1), [...last, line]]
-        : [...pieces, [line]];
+      return last !== undefined && last.size + line.length <= max
+        ? [...pieces.slice(0, -1), { parts: [...last.parts, line], size: last.size + line.length }]
+        : [...pieces, { parts: [line], size: line.length }];
     }, [])
-    .map((parts) => Buffer.concat(parts).toString('utf-8'));
+    .map((piece) => Buffer.concat(piece.parts).toString('utf-8'));
+
+const policyReply: NonNullable<HostAdapter['policyReply']> = (decision) =>
+  decision === null ? { code: 0 } : { stdout: JSON.stringify(decision), code: 0 };
 
 const injectSteps = (pieces: string[]): string =>
   JSON.stringify({ injectSteps: pieces.map((piece) => ({ systemMessage: { systemMessage: piece } })) });
@@ -161,10 +155,9 @@ export const antigravityHost = {
   name: 'antigravity',
   readPayload,
   homeFromPayload: true,
-  policyReply: (decision) => (decision === null ? { code: 0 } : { stdout: JSON.stringify(decision), code: 0 }),
+  policyReply,
   // Antigravity reads a JSON reply on exit 0; `{}` would refuse the call, so a pass writes nothing.
-  guardReply: (refusal) =>
-    refusal === null ? { code: 0 } : { stdout: JSON.stringify({ decision: 'deny', reason: refusal }), code: 0 },
+  guardReply: (refusal) => policyReply(refusal === null ? null : { decision: 'deny', reason: refusal }),
   sessionStartReply: (result) => {
     if (result.error) {
       return {

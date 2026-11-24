@@ -12,12 +12,18 @@ type Json = Record<string, unknown>;
 const isObject = (value: unknown): value is Json =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** A settings file as an object: `{}` when absent, and a throw when it is not a JSON object. */
-const readSettingsFile = (path: string): Json => {
+/** A settings file as an object: `{}` when absent, and a throw naming the file when it is not a JSON object. */
+export const readSettingsFile = (path: string): Json => {
   if (!existsSync(path)) {
     return {};
   }
-  const parsed: unknown = JSON.parse(readFileSync(path, 'utf-8'));
+  const parsed: unknown = (() => {
+    try {
+      return JSON.parse(readFileSync(path, 'utf-8'));
+    } catch (err) {
+      throw new Error(`${path} is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  })();
   if (!isObject(parsed)) {
     throw new Error(`${path} is not a JSON object`);
   }

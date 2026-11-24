@@ -6,11 +6,11 @@
  */
 import { gitParts, plainTexts } from '@/hooks/guard';
 import { commandWords, scanShell, type ShellCommand } from '@/hooks/shell-scan';
-import { mergeSettings, readMergedSettings } from '@/home/settings-scope';
+import { mergeSettings, readMergedSettings, readSettingsFile } from '@/home/settings-scope';
 import type { PolicyDecision, ToolCall } from '@/hosts/contract';
-import { pluginName } from '@/shared/naming';
+import { isRecord } from '@/shared/json-block';
+import { pluginName, RUNTIME_DIR } from '@/shared/naming';
 import { isInside, resolvedPath } from '@/shared/paths';
-import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, isAbsolute, join, resolve } from 'node:path';
 
@@ -41,23 +41,12 @@ const innerScript = (words: string[]): string | undefined =>
 /** A word naming a path from the user's home (`~/x`, `$HOME/x`) as the path it names. */
 const fromUserHome = (word: string): string => word.replace(/^(?:~|\$HOME|\$\{HOME\})(?=$|\/)/, homedir());
 
-const isObject = (value: unknown): value is Json =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const readJson = (path: string): Json => {
-  if (!existsSync(path)) {
-    return {};
-  }
-  const parsed: unknown = JSON.parse(readFileSync(path, 'utf-8'));
-  return isObject(parsed) ? parsed : {};
-};
-
 /** The user-level Claude settings under the home's two, which is what Claude Code applies in the home. */
 export const effectiveSettings = (home: string): Json =>
-  mergeSettings(readJson(join(homedir(), '.claude', 'settings.json')), readMergedSettings(home).merged);
+  mergeSettings(readSettingsFile(join(homedir(), '.claude', 'settings.json')), readMergedSettings(home).merged);
 
 const rulesOf = (settings: Json, list: 'allow' | 'ask' | 'deny'): string[] => {
-  const value = isObject(settings.permissions) ? settings.permissions[list] : undefined;
+  const value = isRecord(settings.permissions) ? settings.permissions[list] : undefined;
   return Array.isArray(value) ? value.filter((rule): rule is string => typeof rule === 'string') : [];
 };
 
@@ -167,7 +156,7 @@ const shellDecision = (command: string, bypass: boolean, context: PolicyContext)
   if (asked !== undefined) {
     return { decision: 'force_ask', reason: `${FROM_CLAUDE}: \`${asked}\`.` };
   }
-  const sandbox = isObject(context.settings.sandbox) ? context.settings.sandbox : {};
+  const sandbox = isRecord(context.settings.sandbox) ? context.settings.sandbox : {};
   const excluded = Array.isArray(sandbox.excludedCommands)
     ? sandbox.excludedCommands.filter((rule): rule is string => typeof rule === 'string')
     : [];
@@ -183,7 +172,7 @@ const pathDecision = (kind: 'read' | 'write' | 'search', path: string, context: 
   const deny = rulesOf(context.settings, 'deny');
   const readDenies = bodies(deny, 'Read');
   if (kind === 'search') {
-    const anchors = [join(home, '.state', 'secrets'), ...readDenies.map((rule) => absoluteGlob(rule, home))]
+    const anchors = [join(home, RUNTIME_DIR, 'secrets'), ...readDenies.map((rule) => absoluteGlob(rule, home))]
       .filter((anchor) => !/[*?[{]/.test(anchor))
       .map(resolvedPath);
     return anchors.some((anchor) => isInside(anchor, target))

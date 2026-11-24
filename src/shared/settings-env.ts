@@ -43,16 +43,17 @@ export const homeAbove = (start: string): string | undefined => {
   return ownDataDir(dir) ? dir : parent === dir ? undefined : homeAbove(parent);
 };
 
-/** The home a hook payload's session works in: the first of its workspace folders, then its cwd, that sits in one. */
+/** The home a session works in: the first of its workspace folders, then its folder, that sits in one. */
+export const homeOfSession = (session: { workspacePaths?: unknown; cwd?: unknown }): string | undefined =>
+  [...(Array.isArray(session.workspacePaths) ? session.workspacePaths : []), session.cwd]
+    .filter((folder): folder is string => typeof folder === 'string' && folder !== '')
+    .reduce<string | undefined>((found, folder) => found ?? homeAbove(folder), undefined);
+
+/** The home a raw hook payload's session works in, or undefined when it doesn't parse. */
 export const homeInPayload = (raw: string): string | undefined => {
   try {
     const parsed: unknown = JSON.parse(raw);
-    const payload = typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : {};
-    const folders = [...(Array.isArray(payload.workspacePaths) ? payload.workspacePaths : []), payload.cwd];
-    return folders
-      .filter((folder): folder is string => typeof folder === 'string' && folder !== '')
-      .map(homeAbove)
-      .find((home) => home !== undefined);
+    return typeof parsed === 'object' && parsed !== null ? homeOfSession(parsed) : undefined;
   } catch {
     return undefined;
   }
