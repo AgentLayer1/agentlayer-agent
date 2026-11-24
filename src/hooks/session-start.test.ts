@@ -79,7 +79,7 @@ describe('sessionStart', () => {
       (home) => markedHome(home, { ...bridged, 'AGENTS.md': '# AGENTS.md\n\n## Memory Routing\n' }),
       () => sessionStart()
     );
-    expect(light.systemMessage).toMatch(/Context: +\d+\.\dKB of home files, and \d+\.\dKB added today:/);
+    expect(light.systemMessage).toMatch(/Context: +\d+\.\dKB of home files and \d+\.\dKB added today:/);
     expect(light.systemMessage).not.toContain('over the');
 
     const heavy = await withHome(

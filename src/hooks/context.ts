@@ -372,7 +372,7 @@ function renderBanner(
     `  ${agentEmoji() || '🤖'} Agent:     ${paint(agentDisplayName(), ANSI.bold, rgbEscape(agentColors().primary))} · v${PLUGIN_VERSION}`,
     `  🧠 Knowledge: ${FOLDERS.KNOWLEDGE}`,
     `  📁 Projects:  ${FOLDERS.PROJECTS}`,
-    `  📚 Context:   ${alwaysLoaded === null ? '' : `${formatKB(alwaysLoaded)} of home files, and `}${formatKB(contextBytes)} added today:`
+    `  📚 Context:   ${alwaysLoaded === null ? '' : `${formatKB(alwaysLoaded)} of home files and `}${formatKB(contextBytes)} added today:`
   ];
   head.splice(1, 0, ...notices.map((notice) => noticeLine(notice, skill)));
   if (welcomePending()) {
