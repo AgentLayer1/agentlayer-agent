@@ -561,7 +561,7 @@ done
 
 Never overwrite an existing rule — the operator may have edited it. Report kept vs seeded.
 
-`xcode.md` deliberately carries **no `paths:` frontmatter**, so it loads unconditionally every session. That is not an oversight: Claude Code's path-scoped rules "trigger when Claude reads files matching the pattern, not on every tool use", so a rule globbed on `**/*.swift` would never fire on "build the iOS scheme" — the exact moment the toolchain routing has to be in context. `xcode-project.md` is path-scoped, because its content only matters when a pbxproj, xcconfig or `Package.swift` is actually open.
+`xcode.md` deliberately carries **no `paths:` frontmatter**, so it loads unconditionally every session. That is not an oversight: Claude Code's path-scoped rules "trigger when Claude reads files matching the pattern, not on every tool use", so a rule globbed on `**/*.swift` would never fire on "build the iOS scheme" — the exact moment the toolchain routing has to be in context. It holds only what must be in context before any file is read: the toolchain routing, headless recovery and the ground rules. `xcode-project.md` is path-scoped to project files and Swift sources, and carries project surgery plus the reference material (previews and the iPhone Duo, the oldest-OS launch check, what to do after an Xcode update, Apple's own skills); `xcode.md` ends by naming it, since code reached only through the Xcode tools may never trigger a path rule.
 
 **(8) Offer the repo scaffold.** `AskUserQuestion`:
 
