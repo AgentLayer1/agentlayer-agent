@@ -122,6 +122,12 @@ Less loads into every session, and the brain's upkeep is measured instead of gue
   role label at the start of a line no longer reads as an operator turn; a capture cut inside a
   multi-byte character of its header is trimmed.
 - An `@-import` naming a folder no longer aborts the banner's weight and the dashboard rebuild.
+- One sync, brain refresh or compile runs in a home at a time. Two at once (a sync started twice by
+  accident, or the heartbeat's refresh coming up during a sync) compiled the same session into
+  memory twice. Sync and `knowledge-compile` now take a lock (`.state/sync.lock`) at their start
+  and free it at their end; a second run asks the operator to wait or take over, the heartbeat
+  skips its refresh while the lock is held, and a run with no progress for an hour loses the lock,
+  so one that stopped never blocks the next.
 
 ### Upgrade
 - `script: required` — run skills/upgrade/scripts/1.1.0.ts: removes "Engineering the Codebase" from
