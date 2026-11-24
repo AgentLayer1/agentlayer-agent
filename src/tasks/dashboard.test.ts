@@ -117,7 +117,6 @@ test('a rebuild keeps the goals and the summary blocks byte for byte, the summar
   expect(rebuilt).toContain(summary);
   expect(rebuilt.indexOf(goals)).toBeLessThan(rebuilt.indexOf(summary));
   expect(rebuilt.indexOf(summary)).toBeLessThan(rebuilt.indexOf('## Priorities (0)'));
-  // The work model reads both blocks back out of this file, so they must parse as written.
   expect(parseGoals(rebuilt).map((block) => block.goals.length)).toEqual(parseGoals(goals).map((block) => block.goals.length));
   expect(parseTasksSummary(rebuilt)).toEqual(parseTasksSummary(summary));
 });

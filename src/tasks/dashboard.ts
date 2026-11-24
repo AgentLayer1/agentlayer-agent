@@ -1,10 +1,6 @@
 /**
  * Dashboard generator for `projects/TASKS.md`.
  *
- * The file loads into every session, so it carries what a session needs up front (the goals, the top
- * priorities, what is blocked or overdue, a count per project) and leaves every other task to the task
- * files, which the task tools and the HTML dashboard read.
- *
  * Queries (`buildSections`) and formatter (`formatDashboard`) are kept
  * separate so each can be tested/replaced independently. `writeDashboard`
  * composes them and persists the file, preserving the human-authored
@@ -14,6 +10,7 @@ import { FOLDERS } from '@/config';
 import { agentDisplayName } from '@/shared/agent-name';
 import { shiftDate, todayDate } from '@/shared/date';
 import { readText } from '@/shared/text';
+import { truncate } from '@/status/format';
 import { readTasks } from '@/work/build';
 import { GOALS_MARKER_END, GOALS_MARKER_START } from '@/work/goals';
 import { SUMMARY_MARKER_END, SUMMARY_MARKER_START } from '@/work/summary';
@@ -39,10 +36,8 @@ export const buildSections = (work: Pick<Work, 'tasks'>, today: string): Dashboa
   active: withStatus(work, 'active', 'open').toSorted(taskOrder),
   blocked: withStatus(work, 'blocked').toSorted(taskOrder),
   overdue: overdue(work, today).toSorted((a, b) => a.due.localeCompare(b.due)),
-  stale: stale(work, today).toSorted((a, b) => a.updated.localeCompare(b.updated)),
+  stale: stale(work, today),
   closedRecent: closedSince(work, shiftDate(today, -14))
-    .toSorted((a, b) => b.closed.localeCompare(a.closed))
-    .slice(0, 20)
 });
 
 // ── Formatting ────────────────────────────────────────────────────────
@@ -53,7 +48,7 @@ const taskLink = (task: WorkTask): string => `[[${fileSlug(task.path, task.id)}|
 
 type MetaField = keyof Pick<
   WorkTask,
-  'project' | 'priority' | 'status' | 'due' | 'updated' | 'closed' | 'blockedBy' | 'dependsOn' | 'assignee'
+  'project' | 'priority' | 'status' | 'due' | 'updated' | 'blockedBy' | 'dependsOn' | 'assignee'
 >;
 
 // TASKS.md names each field as the task file's frontmatter does.
@@ -61,14 +56,11 @@ const META_LABEL: Readonly<Partial<Record<MetaField, string>>> = { blockedBy: 'b
 
 const LINE_TEXT_CHARS = 100;
 
-const cut = (text: string): string =>
-  text.length > LINE_TEXT_CHARS ? `${text.slice(0, LINE_TEXT_CHARS - 1).trimEnd()}…` : text;
-
 const fmtMeta = (task: WorkTask, fields: MetaField[]): string => {
   const parts = fields.flatMap((field) => {
     const entry = task[field];
     const empty = Array.isArray(entry) ? entry.length === 0 : !entry;
-    const shown = Array.isArray(entry) ? entry.join(', ') : cut(String(entry));
+    const shown = Array.isArray(entry) ? entry.join(', ') : truncate(String(entry), LINE_TEXT_CHARS);
     return empty ? [] : [`${META_LABEL[field] ?? field}: ${shown}`];
   });
   return parts.length === 0 ? '' : ` _(${parts.join(' · ')})_`;
@@ -80,7 +72,7 @@ const issueLink = (task: WorkTask): string => {
 };
 
 const taskLine = (task: WorkTask, fields: MetaField[]): string =>
-  `- ${taskLink(task)} **${cut(task.title)}**${issueLink(task)}${fmtMeta(task, fields)}`;
+  `- ${taskLink(task)} **${truncate(task.title, LINE_TEXT_CHARS)}**${issueLink(task)}${fmtMeta(task, fields)}`;
 
 const groupByProject = (tasks: WorkTask[]): [string, WorkTask[]][] =>
   [...Map.groupBy(tasks, (task) => task.project).entries()].sort(([a], [b]) => a.localeCompare(b));
@@ -89,16 +81,14 @@ const sectionBody = (lines: string[]): string => (lines.length === 0 ? '_(none)_
 
 const PRIORITIES = ['P0', 'P1', 'P2', 'P3'] as const;
 
-const renderProjects = (open: WorkTask[], blocked: WorkTask[]): string =>
+const renderProjects = (tasks: WorkTask[]): string =>
   sectionBody(
-    groupByProject([...open, ...blocked]).map(([project, list]) => {
-      const mine = open.filter((task) => task.project === project);
-      const byPriority = PRIORITIES.map((priority) => ({
-        priority,
-        count: mine.filter((task) => task.priority === priority).length
-      }))
-        .filter(({ count }) => count > 0)
-        .map(({ priority, count }) => `${priority} ${count}`);
+    groupByProject(tasks).map(([project, list]) => {
+      const mine = list.filter((task) => task.status !== 'blocked');
+      const byPriority = PRIORITIES.flatMap((priority) => {
+        const count = mine.filter((task) => task.priority === priority).length;
+        return count > 0 ? [`${priority} ${count}`] : [];
+      });
       const waiting = list.length - mine.length;
       const counts = [`${mine.length} open`, ...byPriority, ...(waiting > 0 ? [`${waiting} blocked`] : [])];
       return `- **${project}**: ${counts.join(' · ')}`;
@@ -133,15 +123,12 @@ export const formatDashboard = (
   const priorities = sections.active.filter(isTopPriority);
   const blockedTop = sections.blocked.filter(isTopPriority);
   const blockedRest = sections.blocked.length - blockedTop.length;
-  const blockedBody = [
-    ...(blockedTop.length > 0 || blockedRest === 0
-      ? [sectionBody(blockedTop.map((t) => taskLine(t, ['project', 'priority', 'blockedBy', 'dependsOn'])))]
-      : []),
-    ...(blockedRest > 0 ? [`_${blockedTop.length > 0 ? 'Plus ' : ''}${blockedRest} at lower priority._`] : [])
-  ].join('\n\n');
+  const blockedLines = blockedTop.map((t) => taskLine(t, ['project', 'priority', 'blockedBy', 'dependsOn'])).join('\n');
+  const lowerNote = blockedRest > 0 ? `_${blockedTop.length > 0 ? 'Plus ' : ''}${blockedRest} at lower priority._` : '';
+  const blockedBody = [blockedLines, lowerNote].filter(Boolean).join('\n\n') || '_(none)_';
   const overdueBody = sectionBody(sections.overdue.map((t) => taskLine(t, ['project', 'priority', 'due', 'status'])));
   const rest = `_${sections.stale.length} stale · ${sections.closedRecent.length} closed in the last 14 days._`;
-  const byProject = renderProjects(sections.active, sections.blocked);
+  const byProject = renderProjects([...sections.active, ...sections.blocked]);
 
   return [
     header,

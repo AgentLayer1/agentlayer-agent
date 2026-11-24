@@ -62,6 +62,15 @@ describe('1.1.0 retired template sections', () => {
     expect(run(home).actions['## Engineering the Codebase']).toBe('not-present');
   });
 
+  test("the operator's own spacing elsewhere in the file is left as it is", () => {
+    const spaced = `# Manual\n\n\n\n## Platform\n\nKeep the home safe.\n\n${SECTION}\n## Where Your Code Lives\n\n\n\nYour codebase.\n`;
+    const home = makeHome({ 'AGENTS.md': spaced, '.state/template-base/AGENTS.md': MANUAL(SECTION) });
+    expect(run(home).actions['## Engineering the Codebase']).toBe('removed');
+    expect(read(home, 'AGENTS.md')).toBe(
+      '# Manual\n\n\n\n## Platform\n\nKeep the home safe.\n\n## Where Your Code Lives\n\n\n\nYour codebase.\n'
+    );
+  });
+
   test('a section the operator edited is kept and reported', () => {
     const edited = SECTION.replace('Use bun.', 'Use bun, and pin its version.');
     const home = makeHome({ 'AGENTS.md': MANUAL(edited), '.state/template-base/AGENTS.md': MANUAL(SECTION) });

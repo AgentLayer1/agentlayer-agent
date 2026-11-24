@@ -24,7 +24,14 @@ const BASE = resolve(HOME, RUNTIME_DIR, 'template-base');
 
 const MOVED =
   'The template moved this section to .claude/rules/xcode-project.md. Carry your changes there, then delete it here.';
-const RETIRED = [
+interface Retired {
+  file: string;
+  template: string;
+  heading: string;
+  ask: string;
+}
+
+const RETIRED: readonly Retired[] = [
   {
     file: 'AGENTS.md',
     template: 'AGENTS.md',
@@ -33,58 +40,53 @@ const RETIRED = [
   },
   { file: '.claude/rules/xcode.md', template: 'rules/xcode.md', heading: '## After an Xcode update', ask: MOVED },
   { file: '.claude/rules/xcode.md', template: 'rules/xcode.md', heading: "## Apple's skills", ask: MOVED }
-] as const;
+];
 
 type Action = 'removed' | 'kept-edited' | 'kept-no-base' | 'not-present';
 
-interface Section {
-  start: number;
-  end: number;
-  lines: string[];
+interface Split {
+  before: string[];
+  section: string[];
+  after: string[];
 }
 
-const sectionOf = (text: string, heading: string): Section | null => {
-  const start = text.split('\n').findIndex((line) => line.trimEnd() === heading);
+const splitAt = (text: string, heading: string): Split | null => {
+  const lines = text.split('\n');
+  const start = lines.findIndex((line) => line.trimEnd() === heading);
   if (start === -1) {
     return null;
   }
-  const lines = text.split('\n');
   const next = lines.findIndex((line, i) => i > start && line.startsWith('## '));
   const end = next === -1 ? lines.length : next;
-  return { start, end, lines: lines.slice(start, end) };
+  return { before: lines.slice(0, start), section: lines.slice(start, end), after: lines.slice(end) };
 };
 
-const wording = (section: Section): string =>
-  section.lines
+const wording = ({ section }: Split): string =>
+  section
     .map((line) => line.trimEnd())
     .filter(Boolean)
     .join('\n');
 
-const retire = ({
-  file,
-  template,
-  heading
-}: Pick<(typeof RETIRED)[number], 'file' | 'template' | 'heading'>): Action => {
+const retire = ({ file, template, heading }: Retired): Action => {
   const homePath = resolve(HOME, file);
   if (!existsSync(homePath)) {
     return 'not-present';
   }
-  const text = readFileSync(homePath, 'utf-8');
-  const mine = sectionOf(text, heading);
+  const mine = splitAt(readFileSync(homePath, 'utf-8'), heading);
   if (!mine) {
     return 'not-present';
   }
   const basePath = resolve(BASE, template);
-  const original = existsSync(basePath) ? sectionOf(readFileSync(basePath, 'utf-8'), heading) : null;
+  const original = existsSync(basePath) ? splitAt(readFileSync(basePath, 'utf-8'), heading) : null;
   if (!original) {
     return 'kept-no-base';
   }
   if (wording(mine) !== wording(original)) {
     return 'kept-edited';
   }
-  const lines = text.split('\n');
-  const rest = [...lines.slice(0, mine.start), ...lines.slice(mine.end)].join('\n');
-  writeFileSync(homePath, `${rest.replace(/\n{3,}/g, '\n\n').trimEnd()}\n`);
+  const before = mine.before.join('\n').trimEnd();
+  const after = mine.after.join('\n').trim();
+  writeFileSync(homePath, `${[before, after].filter(Boolean).join('\n\n')}\n`);
   return 'removed';
 };
 

@@ -39,6 +39,10 @@ test("builds a home per ref from that ref's templates, and a run script whose an
   expect(script.match(/claude -p/g)).toHaveLength(4);
 });
 
-test('refuses fewer than two refs or a missing prompt', () => {
+test('refuses a missing prompt, and a single ref, which leaves nothing to compare', () => {
+  const work = mkdtempSync(join(tmpdir(), 'replay-test-'));
+  dirs.push(work);
+  writeFileSync(join(work, 'prompt.txt'), 'What next?\n');
   expect(spawnSync(process.execPath, [SCRIPT, '--prompt', '/nonexistent', '--refs', 'HEAD,HEAD']).status).toBe(2);
+  expect(spawnSync(process.execPath, [SCRIPT, '--prompt', join(work, 'prompt.txt'), '--refs', 'HEAD']).status).toBe(2);
 });

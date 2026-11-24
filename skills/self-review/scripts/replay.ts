@@ -11,6 +11,7 @@ import { execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { DEFAULT_AGENT_EMOJI, DEFAULT_AGENT_NAME } from '../../../src/shared/persona';
 
 const args = process.argv.slice(2);
 const flag = (name: string): string | undefined =>
@@ -27,13 +28,12 @@ if (!existsSync(prompt) || refs.length < 2 || !Number.isInteger(runs) || runs < 
 }
 
 const TOKENS: Readonly<Record<string, string>> = {
-  AGENT_NAME: 'Oppi',
-  AGENT_EMOJI: '🐙',
+  AGENT_NAME: DEFAULT_AGENT_NAME,
+  AGENT_EMOJI: DEFAULT_AGENT_EMOJI,
   KNOWLEDGE_REL: 'knowledge',
   PROJECTS_REL: 'projects',
   PLATFORM: 'macOS'
 };
-// A token this script has no value for reads as its own name, so no `{{…}}` reaches the model.
 const render = (text: string): string =>
   text.replace(/\{\{([A-Z][A-Z0-9_]*)\}\}/g, (_match, name: string) => TOKENS[name] ?? name);
 const templateAt = (ref: string, file: string): string =>
@@ -71,7 +71,7 @@ writeFileSync(
     `R=${JSON.stringify(root)}`,
     ...shuffled.map(
       ({ home, answer }, i) =>
-        `echo "${i + 1}/${shuffled.length}"; ( cd ${JSON.stringify(home)} && claude -p "$(cat "$R/prompt.txt")"${model ? ` --model ${model}` : ''} < /dev/null > "$R/answers/${answer}" 2> "$R/answers/${answer}.err" )`
+        `echo "${i + 1}/${shuffled.length}"; ( cd ${JSON.stringify(home)} && claude -p "$(cat "$R/prompt.txt")"${model ? ` --model ${JSON.stringify(model)}` : ''} < /dev/null > "$R/answers/${answer}" 2> "$R/answers/${answer}.err" )`
     ),
     'echo "done: score the files in $R/answers, then open $R/key.json"',
     ''

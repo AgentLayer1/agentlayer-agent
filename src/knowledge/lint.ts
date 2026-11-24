@@ -55,8 +55,6 @@ interface SectionBudget {
   maxBulletChars?: number;
 }
 
-// Learnings has only a bullet count here: a bullet from before the one-line rule is kept until self-review
-// graduates it, so its length is not this check's to flag.
 const MEMORY_SECTION_BUDGETS: Readonly<Record<string, SectionBudget>> = {
   'Active Threads': { maxBytes: 8_000, maxBullets: 10, maxBulletChars: 250 },
   'Recent Decisions': { maxBytes: 5_000, maxBullets: 15, maxBulletChars: 250 },
@@ -66,10 +64,8 @@ const MEMORY_SECTION_BUDGETS: Readonly<Record<string, SectionBudget>> = {
   'Open Questions': { maxBullets: 7 },
   'Daily Memory': { maxBullets: 14, maxBulletChars: 150 }
 };
-// A section the compile prompt doesn't define still loads into every session.
 const MEMORY_UNKNOWN_SECTION_BUDGET: SectionBudget = { maxBytes: 2_000 };
 
-// The knowledge index loads into every session too: one line per article, the detail in the article.
 const KNOWLEDGE_INDEX_PATH = 'index.md';
 const INDEX_ENTRY_MAX_CHARS = 200;
 
@@ -321,31 +317,29 @@ async function checkMemoryBudget(articles: Map<string, string>): Promise<LintIss
 
   const sections = parseMemorySections(content);
   for (const [name, section] of sections) {
-    const cfg = { name, ...(MEMORY_SECTION_BUDGETS[name] ?? MEMORY_UNKNOWN_SECTION_BUDGET) };
+    const { maxBytes, maxBullets, maxBulletChars } = MEMORY_SECTION_BUDGETS[name] ?? MEMORY_UNKNOWN_SECTION_BUDGET;
     const bytes = Buffer.byteLength(section, 'utf-8');
     const bullets = extractTopLevelBullets(section);
 
-    if (cfg.maxBytes !== undefined && bytes > cfg.maxBytes) {
+    if (maxBytes !== undefined && bytes > maxBytes) {
       push(
         'warning',
-        `${MEMORY_INDEX_PATH} § ${cfg.name} is ${(bytes / 1024).toFixed(1)}KB (budget ${cfg.maxBytes / 1000}KB). Demote older entries or collapse multi-sentence bullets to pointers.`
+        `${MEMORY_INDEX_PATH} § ${name} is ${(bytes / 1024).toFixed(1)}KB (budget ${maxBytes / 1000}KB). Demote older entries or collapse multi-sentence bullets to pointers.`
       );
     }
-    const maxBullets = cfg.maxBullets;
     if (maxBullets !== undefined && bullets.length > maxBullets) {
       push(
         'warning',
-        `${MEMORY_INDEX_PATH} § ${cfg.name} has ${bullets.length} bullets (budget ${maxBullets}). Demote lowest-priority / least-recently-touched ones.`
+        `${MEMORY_INDEX_PATH} § ${name} has ${bullets.length} bullets (budget ${maxBullets}). Demote lowest-priority / least-recently-touched ones.`
       );
     }
-    const maxBulletChars = cfg.maxBulletChars;
     if (maxBulletChars !== undefined) {
       const oversized = bullets.filter((b) => b.length > maxBulletChars);
       if (oversized.length > 0) {
         const longest = Math.max(...oversized.map((b) => b.length));
         push(
           'warning',
-          `${MEMORY_INDEX_PATH} § ${cfg.name} has ${oversized.length} bullet(s) over ${maxBulletChars} chars (longest: ${longest}). Each bullet is a pointer, not a recap — push detail into the linked task / daily memory.`
+          `${MEMORY_INDEX_PATH} § ${name} has ${oversized.length} bullet(s) over ${maxBulletChars} chars (longest: ${longest}). Each bullet is a pointer, not a recap — push detail into the linked task / daily memory.`
         );
       }
     }
@@ -354,10 +348,6 @@ async function checkMemoryBudget(articles: Map<string, string>): Promise<LintIss
   return issues;
 }
 
-/**
- * The knowledge index against the articles it lists: an entry longer than one line's worth, and a permanent
- * article it never names, which every later compile would then miss.
- */
 async function checkKnowledgeIndex(articles: Map<string, string>): Promise<LintIssue[]> {
   const index = await readWikiIndex();
   const long = index.split('\n').filter((line) => line.startsWith('- [[') && line.length > INDEX_ENTRY_MAX_CHARS);
