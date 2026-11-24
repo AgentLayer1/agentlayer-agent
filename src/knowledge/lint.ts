@@ -53,6 +53,8 @@ interface SectionBudget {
   maxBytes?: number;
   maxBullets?: number;
   maxBulletChars?: number;
+  /** What to do with a bullet over the length, when it isn't the default (push detail into the task). */
+  longBullet?: string;
 }
 
 const MEMORY_SECTION_BUDGETS: Readonly<Record<string, SectionBudget>> = {
@@ -60,7 +62,12 @@ const MEMORY_SECTION_BUDGETS: Readonly<Record<string, SectionBudget>> = {
   'Recent Decisions': { maxBytes: 5_000, maxBullets: 15, maxBulletChars: 250 },
   Pending: { maxBytes: 2_000 },
   'Key Context': { maxBytes: 1_000 },
-  Learnings: { maxBullets: 12 },
+  // The compile keeps an over-long Learnings bullet word for word; self-review splits it into its rules.
+  Learnings: {
+    maxBullets: 12,
+    maxBulletChars: 250,
+    longBullet: 'Self-review splits each into its rules and graduates them.'
+  },
   'Open Questions': { maxBullets: 7 },
   'Daily Memory': { maxBullets: 14, maxBulletChars: 150 }
 };
@@ -317,7 +324,7 @@ async function checkMemoryBudget(articles: Map<string, string>): Promise<LintIss
 
   const sections = parseMemorySections(content);
   for (const [name, section] of sections) {
-    const { maxBytes, maxBullets, maxBulletChars } = MEMORY_SECTION_BUDGETS[name] ?? MEMORY_UNKNOWN_SECTION_BUDGET;
+    const { maxBytes, maxBullets, maxBulletChars, longBullet } = MEMORY_SECTION_BUDGETS[name] ?? MEMORY_UNKNOWN_SECTION_BUDGET;
     const bytes = Buffer.byteLength(section, 'utf-8');
     const bullets = extractTopLevelBullets(section);
 
@@ -339,7 +346,7 @@ async function checkMemoryBudget(articles: Map<string, string>): Promise<LintIss
         const longest = Math.max(...oversized.map((b) => b.length));
         push(
           'warning',
-          `${MEMORY_INDEX_PATH} § ${name} has ${oversized.length} bullet(s) over ${maxBulletChars} chars (longest: ${longest}). Each bullet is a pointer, not a recap — push detail into the linked task / daily memory.`
+          `${MEMORY_INDEX_PATH} § ${name} has ${oversized.length} bullet(s) over ${maxBulletChars} chars (longest: ${longest}). ${longBullet ?? 'Each bullet is a pointer, not a recap — push detail into the linked task / daily memory.'}`
         );
       }
     }

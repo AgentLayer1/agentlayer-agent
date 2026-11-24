@@ -21,12 +21,14 @@ if (homeFlag) {
 }
 // Read-only means no log file either: a scanner warning would otherwise write into the home.
 process.env.AGENT_LOG_FILE = 'off';
-const { FOLDERS } = await import('../../../src/config');
+const { FILES, FOLDERS } = await import('../../../src/config');
 const { agentHomePath, isAgentHome } = await import('../../../src/shared/env');
 const { daysBetween, todayDate } = await import('../../../src/shared/date');
 const { hashBuffer, splitFrontmatter } = await import('../../../src/knowledge/utils');
 const { discoverProjects, scanAllTasks, scanArchivedTasks } = await import('../../../src/tasks/scan');
 const { projectPins, readPins, surfaceFiles } = await import('../../../src/status/surfaces');
+const { importedStack, injectedStack } = await import('../../../src/shared/weight');
+const { findClosedRefs, findDuplicates, findNarrative, listItems, sentences } = await import('./quality');
 
 if (!isAgentHome(agentHomePath())) {
   console.error(`not an agent home: ${agentHomePath()}`);
@@ -326,6 +328,30 @@ const staleSurfaces = [
   .filter((row) => !keptQuiet(row.key, row.hash))
   .toSorted((left, right) => left.modified.localeCompare(right.modified));
 
+// Quality across everything loaded into a session, whatever the host. TASKS.md is generated from the task files and
+// the bridge only imports, so neither is read; the memory index's live sections have their own buckets above.
+const loadedFiles = [...new Set([...importedStack().files, ...injectedStack().files].map((file) => file.path))]
+  .filter((path) => path !== FILES.CLAUDE && path !== resolve(FOLDERS.PROJECTS, 'TASKS.md'))
+  .toSorted();
+const loadedItems = loadedFiles.flatMap((path) => listItems({ file: homeRelative(path), text: readTextIfExists(path) }));
+const memoryIndexFile = homeRelative(join(FOLDERS.MEMORY, 'index.md'));
+const RULE_FILES = new Set(['AGENTS.md', 'SOUL.md']);
+const quality = {
+  duplicates: findDuplicates(
+    loadedFiles.flatMap((path) => sentences({ file: homeRelative(path), text: readTextIfExists(path) }))
+  ),
+  closedRefs: findClosedRefs(
+    loadedItems.filter((item) => item.file !== memoryIndexFile),
+    knownIds,
+    closedIds
+  ),
+  narrative: findNarrative(
+    loadedItems.filter(
+      (item) => RULE_FILES.has(item.file) || (item.file === memoryIndexFile && item.section === 'Learnings')
+    )
+  )
+};
+
 const memory = {
   threads: memoryLines('Active Threads'),
   pending: memoryLines('Pending'),
@@ -349,6 +375,7 @@ const audit = {
   articles: staleArticles,
   surfaces: { broken: brokenPins, stale: staleSurfaces },
   storage: { captures },
+  quality,
   counts: {
     staleTasks: staleTasks.length,
     dormantTasks: staleTasks.filter((task) => task.dormant).length,
@@ -363,6 +390,9 @@ const audit = {
     brokenPins: brokenPins.length,
     staleSurfaces: staleSurfaces.length,
     oldCaptureFiles: captures.reduce((sum, group) => sum + group.files.length + group.folders.length, 0),
+    duplicates: quality.duplicates.length,
+    closedRefs: quality.closedRefs.length,
+    narrative: quality.narrative.length,
     oldestWaiting
   }
 };

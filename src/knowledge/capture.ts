@@ -16,6 +16,7 @@ import {
   keyedEntries,
   keyedHeader,
   NO_SESSION,
+  normalizedWords,
   sameStatement,
   type StatementKey
 } from '@/knowledge/feedback-keys';
@@ -186,12 +187,6 @@ async function captureToInbox(opts: CaptureOpts, content: string, sourceHint: st
     duplicate: false
   };
 }
-
-const normalizedWords = (quote: string): string =>
-  quote
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
 
 const statementKey = (opts: CaptureOpts, quote: string): StatementKey => {
   if (opts.session !== undefined && !/^[0-9a-fA-F-]{8,}$/.test(opts.session)) {

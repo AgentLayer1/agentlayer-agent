@@ -223,4 +223,26 @@ describe('brain-audit', () => {
       ['surface:projects/acme/research.md', 'projects/acme/README.md']
     ]);
   });
+
+  test('every file a session loads is checked for duplicates, closed tasks spoken of as live, and narrative rules', () => {
+    const { write, task, run } = home();
+    task({ id: 'ac-001', project: 'acme', status: 'done', updated: 3 });
+    write('AGENTS.md', '# Manual\n\n## Raw\n\nCompiled inbox items land in the archive folder after every compile run.\n');
+    write(
+      'knowledge/index.md',
+      '# Index\n\n- Compiled inbox items land in the archive folder after each compile run.\n- [[concepts/sidebar]] \u2014 the sidebar build (ac-001).\n'
+    );
+    write(
+      'knowledge/memory/index.md',
+      '# Memory\n\n## Active Threads\n\n- Sidebar (ac-001).\n\n## Learnings\n\n- **Verify first.** Read before a claim (11-02); it recurred (11-09) and again on 11-14.\n'
+    );
+    const { quality, counts } = run();
+    expect(counts).toMatchObject({ duplicates: 1, closedRefs: 1, narrative: 1 });
+    expect(quality.duplicates[0]).toMatchObject({ file: 'AGENTS.md', with: { file: 'knowledge/index.md', line: 3 } });
+    expect(quality.closedRefs[0], 'the memory index has its own buckets').toMatchObject({
+      file: 'knowledge/index.md',
+      ids: ['ac-001']
+    });
+    expect(quality.narrative[0]).toMatchObject({ file: 'knowledge/memory/index.md' });
+  });
 });

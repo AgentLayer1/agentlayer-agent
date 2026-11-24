@@ -10,6 +10,16 @@ export interface KeyedEntry extends StatementKey {
 
 export const NO_SESSION = '-';
 
+/**
+ * Lowercased letters and digits, one space between words, so wording that differs only in case and punctuation
+ * compares equal.
+ */
+export const normalizedWords = (text: string): string =>
+  text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+
 const KEYED_HEADER_RE = /^## (\d{4}-\d{2}-\d{2})(?: — ([^\n]*?))? \[([0-9a-fA-F-]+):([0-9a-f]{16})\]$/gm;
 
 export const keyedHeader = ({ day, session, hash }: StatementKey, label: string): string =>
