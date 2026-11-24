@@ -145,11 +145,7 @@ export async function loadIndex(): Promise<SessionIndex> {
     if (!parsed || typeof parsed !== 'object' || typeof parsed.sessions !== 'object') {
       throw new Error('malformed session index');
     }
-    return {
-      schema: parsed.schema ?? 1,
-      sessions: parsed.sessions ?? {},
-      ...(parsed.pending ? { pending: parsed.pending } : {})
-    };
+    return { schema: parsed.schema ?? 1, sessions: parsed.sessions ?? {}, pending: parsed.pending };
   } catch (err) {
     log.warn('session index unparseable — rebuilding from day-file headers', err);
     return rebuildFromDayFiles();

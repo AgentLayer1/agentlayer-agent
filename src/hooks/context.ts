@@ -344,7 +344,7 @@ function renderBanner(
   contextBytes: number,
   alwaysLoaded: number | null,
   notices: readonly Notice[],
-  billing: string | null,
+  launchIssue: { label: string; banner: string } | null,
   skill: SkillCommand
 ): string {
   const labelWidth = Math.max(...entries.map((e) => e.label.length), 12);
@@ -371,8 +371,8 @@ function renderBanner(
         : "  👋 Welcome:   first session, say hi and I'll suggest where to start"
     );
   }
-  if (billing) {
-    head.splice(1, 0, `  ⚠️ Billing:   ${billing}`);
+  if (launchIssue) {
+    head.splice(1, 0, `  ⚠️ ${`${launchIssue.label}:`.padEnd(10)} ${launchIssue.banner}`);
   }
   return [...head, ...lines].join('\n');
 }
@@ -654,17 +654,18 @@ export async function assembleContext({
     return [];
   });
   const gathered = await gatherContext(healHistoryLink(), host.skill);
-  const billing = host.billing();
+  const launchIssue = host.launchIssue();
   const { entries } = gathered;
   // Right after `## Today`, so the size cap below never cuts it.
   const [today, ...rest] = gathered.parts;
-  const parts = billing ? [today, billing.section, ...rest] : gathered.parts;
+  const parts = launchIssue ? [today, launchIssue.section, ...rest] : gathered.parts;
 
   const context = fitContext(parts, CONTEXT.MAX_CHARS);
   const notices = (await pendingNotices).filter((notice) => !promptRow || notice.level === 'hint');
   const weight = alwaysLoadedBytes(host);
-  const banner = renderBanner(entries, context.length, weight, notices, billing?.banner ?? null, host.skill);
-  const hasIssues = billing !== null || entries.some((entry) => entry.status === 'missing' || entry.status === 'unavailable');
+  const banner = renderBanner(entries, context.length, weight, notices, launchIssue, host.skill);
+  const hasIssues =
+    launchIssue !== null || entries.some((entry) => entry.status === 'missing' || entry.status === 'unavailable');
   return { context, banner, hasIssues };
 }
 

@@ -34,6 +34,12 @@ writeFileSync(
   "Bun.plugin({ name: 'lane-fails', setup(build) { build.onLoad({ filter: /src\\/hooks\\/context\\.ts$/ }, () => ({ contents: 'export const assembleContext = async () => { throw new Error(\"lane down\"); };', loader: 'ts' })); } });\n"
 );
 
+const START_FAILS = resolve(SCRATCH, 'start-fails.ts');
+writeFileSync(
+  START_FAILS,
+  "Bun.plugin({ name: 'start-fails', setup(build) { build.onLoad({ filter: /src\\/hooks\\/context\\.ts$/ }, () => ({ contents: 'export const assembleContext = async () => ({ context: \"\", hasIssues: false });', loader: 'ts' })); } });\n"
+);
+
 afterAll(() => rmSync(SCRATCH, { recursive: true, force: true }));
 
 const FILES: Record<string, string> = {
@@ -202,6 +208,20 @@ describe.skipIf(!POSIX_GIT)('session start, per host and home state', () => {
     expect(codex.stdout).toContain('<!-- file: SOUL.md -->');
   });
 
+  test('a session start that fails answers an empty reply and exits 1, on either host', () => {
+    const home = makeHome('initialized');
+    const preload = [START_FAILS];
+    const claude = cli(home, ['session-start', '--hook-protocol=claude'], {
+      env: { CLAUDE_PROJECT_DIR: home },
+      preload
+    });
+    const codex = cli(home, ['session-start', '--hook-protocol=codex', `--home=${home}`], { preload });
+    expect({
+      claude: { stdout: claude.stdout, exit: claude.exit },
+      codex: { stdout: codex.stdout, exit: codex.exit }
+    }).toMatchSnapshot();
+  });
+
   test('an unknown protocol is refused', () => {
     const home = makeHome('initialized');
     const run = cli(home, ['session-start', '--hook-protocol=acme']);
@@ -234,6 +254,31 @@ describe.skipIf(!POSIX_GIT)('the shell guard, per host', () => {
     expect(cli(home, ['guard', '--hook-protocol=codex', `--home=${home}`], { stdin: input(home) })).toMatchSnapshot();
   });
 
+  test('a payload with unescaped backslashes is repaired and still guarded', () => {
+    const home = makeHome('initialized');
+    const stdin = `{"tool_input":{"command":"git commit --amend"},"cwd":"${home}","note":"C:\\Users\\acme"}`;
+    expect(
+      cli(home, ['guard', '--hook-protocol=claude'], { stdin, env: { CLAUDE_PROJECT_DIR: home } })
+    ).toMatchSnapshot();
+  });
+
+  test('a call with no command, no cwd or no payload is let through', () => {
+    const home = makeHome('initialized');
+    const runs = [
+      JSON.stringify({ tool_input: { file_path: resolve(home, 'SOUL.md') }, cwd: home }),
+      JSON.stringify({ tool_input: { command: 'git commit --amend' } }),
+      ''
+    ].map((stdin) => cli(home, ['guard', '--hook-protocol=claude'], { stdin, env: { CLAUDE_PROJECT_DIR: home } }));
+    expect(runs).toMatchSnapshot();
+  });
+
+  test("an unknown protocol falls back to Claude Code's guard", () => {
+    const home = makeHome('initialized');
+    expect(
+      cli(home, ['guard', '--hook-protocol=acme'], { stdin: payload('git commit --amend', home) })
+    ).toMatchSnapshot();
+  });
+
   test('outside a home there is nothing to guard', () => {
     const home = makeHome('pre-init');
     expect(
@@ -259,6 +304,16 @@ describe.skipIf(!POSIX_GIT)('session capture, per host', () => {
     const home = makeHome('initialized');
     const run = cli(home, ['session-capture', `--mode=${mode}`, '--hook-protocol=codex', `--home=${home}`], {
       stdin: hookPayload(codexRollout(home, 6), home)
+    });
+    expect({ ...run, days: dayFiles(home) }).toMatchSnapshot();
+  });
+
+  test("Claude Code's launch folder wins over the payload's cwd", () => {
+    const home = makeHome('initialized');
+    mkdirSync(resolve(home, 'sub'), { recursive: true });
+    const run = cli(home, ['session-capture', '--mode=session-end', '--hook-protocol=claude'], {
+      stdin: hookPayload(claudeTranscript(home, 4), resolve(home, 'sub')),
+      env: { CLAUDE_PROJECT_DIR: home }
     });
     expect({ ...run, days: dayFiles(home) }).toMatchSnapshot();
   });

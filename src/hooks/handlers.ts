@@ -4,30 +4,20 @@
  * returns the process exit code.
  */
 import { FOLDERS, isInitialized } from '@/config';
-import { HOST_NAMES, isHostName, type HostAdapter } from '@/hosts/contract';
+import { HOST_NAMES, isHostName, type HookReply, type HostAdapter } from '@/hosts/contract';
 import { DEFAULT_HOST, hostNamed } from '@/hosts/registry';
 import { CLI_COMMAND } from '@/shared/naming';
 
 type Flag = (name: string) => string | undefined;
 
-interface HookInput {
-  session_id?: string;
-  transcript_path?: string;
-  cwd?: string;
-  tool_input?: { command?: unknown };
-}
-
-/**
- * Parse hook JSON arriving on stdin. Falls back to escaping unescaped
- * backslashes (a workaround for some Claude hook payload variants that
- * emit Windows-style paths without re-escaping).
- */
-const parseHookInput = (raw: string): HookInput => {
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return JSON.parse(raw.replace(/(?<!\\)\\(?!["\\])/g, '\\\\'));
+const emit = (reply: HookReply): number => {
+  if (reply.stdout !== undefined) {
+    process.stdout.write(reply.stdout);
   }
+  if (reply.stderr !== undefined) {
+    process.stderr.write(reply.stderr);
+  }
+  return reply.code;
 };
 
 const hostOf = (flag: Flag): HostAdapter | undefined => {
@@ -49,20 +39,15 @@ export const runGuard = async (flag: Flag): Promise<number> => {
   if (!isInitialized()) {
     return 0;
   }
+  const host = hostNamed(flag('hook-protocol') ?? '') ?? DEFAULT_HOST;
   const raw = await Bun.stdin.text();
-  const input: HookInput = raw.trim() ? parseHookInput(raw) : {};
-  const command = input.tool_input?.command;
-  if (typeof command !== 'string' || !input.cwd) {
+  const { call, cwd } = raw.trim() ? host.readPayload(raw) : {};
+  if (call?.kind !== 'shell' || !cwd) {
     return 0;
   }
   const { shellGuard } = await import('@/hooks/guard');
-  const host = hostNamed(flag('hook-protocol') ?? '') ?? DEFAULT_HOST;
-  const refusal = shellGuard(command, input.cwd, FOLDERS.HOME, host.guard, { launch: host.launchDir() });
-  if (refusal) {
-    console.error(refusal);
-    return 2;
-  }
-  return 0;
+  const refusal = shellGuard(call.command, cwd, FOLDERS.HOME, host.guard, { launch: host.launchDir() });
+  return emit(host.guardReply(refusal || null));
 };
 
 export const runSessionStart = async (flag: Flag): Promise<number> => {
@@ -75,22 +60,15 @@ export const runSessionStart = async (flag: Flag): Promise<number> => {
     console.log(JSON.stringify(result, null, 2));
     return 0;
   }
-  process.stdout.write(
-    JSON.stringify({
-      systemMessage: result.systemMessage,
-      hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: result.additionalContext }
-    })
-  );
-  return result.error ? 1 : 0;
+  return emit(host.sessionStartReply(result));
 };
 
-// Codex's hook payload uses Claude's field names (session_id, transcript_path, cwd).
 const sessionFromPayload = async (host: HostAdapter) => {
-  const parsed = parseHookInput(await Bun.stdin.text());
+  const payload = host.readPayload(await Bun.stdin.text());
   return {
-    transcriptPath: parsed.transcript_path ?? '',
-    cwd: host.launchDir() ?? parsed.cwd ?? '',
-    sessionId: parsed.session_id ?? 'unknown'
+    transcriptPath: payload.transcriptPath ?? '',
+    cwd: host.launchDir() ?? payload.cwd ?? '',
+    sessionId: payload.sessionId ?? 'unknown'
   };
 };
 

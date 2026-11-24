@@ -381,9 +381,8 @@ export async function drainDeferredCaptures(): Promise<void> {
 }
 
 /**
- * The index with the last capture's pending block settled: recorded when the day file holds it at the offset the
- * capture saved, dropped otherwise, so a capture stopped between its append and its index save is neither written
- * twice nor lost. A block cut short mid-append is trimmed off, so the retry's block starts on a clean line.
+ * The last capture's pending block, recorded when the day file holds it at its saved offset and dropped otherwise;
+ * a block cut short mid-append is trimmed, so the retry's block starts on a clean line.
  */
 async function settlePending(index: SessionIndex): Promise<SessionIndex> {
   const { pending, ...settled } = index;
@@ -413,18 +412,16 @@ async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessio
   {
     const loaded = await loadIndex();
     const index = adoptLegacyKey(await settlePending(loaded), opts.sessionId);
+    if (index !== loaded) await saveIndex(index);
     const prior = index.sessions[opts.sessionId] ?? null;
     const diff = diffTurns(turns, prior);
 
     if (diff.newTurns.length === 0) {
-      // A settled block or an adopted legacy key is still worth keeping.
-      if (index !== loaded) await saveIndex(index);
       log.info(`skip (${mode}) — no new turns since last capture (cursor ${prior?.captured_turns ?? 0})`);
       return { saved: false, reason: 'no-new-turns', turns: 0 };
     }
     if (diff.newTurns.length < cfg.minTurns) {
       // Don't advance the cursor — these turns are re-offered on the next capture.
-      if (index !== loaded) await saveIndex(index);
       log.info(`skip (${mode}) — ${diff.newTurns.length} new turns (min ${cfg.minTurns})`);
       return { saved: false, reason: 'too-few-turns', turns: diff.newTurns.length };
     }
@@ -436,7 +433,6 @@ async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessio
 
     const redacted = redactSecrets(formatTurnList(diff.newTurns));
     if (!redacted.trim()) {
-      if (index !== loaded) await saveIndex(index);
       log.info(`skip (${mode}) — empty after redaction`);
       return { saved: false, reason: 'empty-after-redaction', turns: diff.newTurns.length };
     }

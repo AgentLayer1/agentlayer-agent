@@ -19,6 +19,8 @@ const BUN_FLOOR: ToolFloor = {
 
 export const HOST_FLOORS: readonly ToolFloor[] = [...HOSTS.map((host) => ({ name: host.name, ...host.floor })), BUN_FLOOR];
 
+const binaryOf = (name: ToolName): string => HOST_FLOORS.find((floor) => floor.name === name)?.binary ?? name;
+
 export interface HostStatus {
   name: ToolName;
   required: boolean;
@@ -45,7 +47,7 @@ const runVersion: VersionRunner = (name) => {
     return Bun.version;
   }
   try {
-    return execFileSync(name, ['--version'], {
+    return execFileSync(binaryOf(name), ['--version'], {
       encoding: 'utf-8',
       timeout: 5_000,
       stdio: ['ignore', 'pipe', 'ignore']
@@ -89,6 +91,6 @@ export const hostIssues = (report: HostReport): string[] =>
     .filter((host) => host.state === 'outdated' || (host.state === 'absent' && host.required))
     .map((host) =>
       host.state === 'absent'
-        ? `${host.name} is not on PATH, and this home is wired for it`
-        : `${host.name} ${host.installed} is below the plugin's floor ${host.floor} (${host.why}) — run \`${host.update}\` and relaunch`
+        ? `${binaryOf(host.name)} is not on PATH, and this home is wired for it`
+        : `${binaryOf(host.name)} ${host.installed} is below the plugin's floor ${host.floor} (${host.why}) — run \`${host.update}\` and relaunch`
     );

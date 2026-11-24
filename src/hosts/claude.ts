@@ -1,4 +1,5 @@
 import { FILES, SUBSCRIPTION_MARKER } from '@/config';
+import { claudeProtocol } from '@/hosts/claude-protocol';
 import type { HostAdapter } from '@/hosts/contract';
 import { SKILL_PREFIX } from '@/hosts/dialect';
 import { env } from '@/shared/env';
@@ -15,6 +16,7 @@ export const subscriptionIssue = (hasSubscription: boolean, marker: string | und
 
 export const claudeHost: HostAdapter = {
   name: 'claude',
+  ...claudeProtocol,
   launchDir: () => env('CLAUDE_PROJECT_DIR'),
   delivery: { kind: 'import' },
   terminal: () => env('CLAUDE_CODE_ENTRYPOINT') === 'cli',
@@ -33,11 +35,12 @@ export const claudeHost: HostAdapter = {
           `\`.claude/CLAUDE.md\` is missing, so Claude Code loads neither the manual nor the identity stack — run \`${skill('upgrade')}\` to write the bridge`
         ]
       : [],
-  billing: () => {
+  launchIssue: () => {
     const issue = subscriptionIssue(existsSync(FILES.CLAUDE_SUBSCRIPTION), env(SUBSCRIPTION_MARKER));
     return issue === null
       ? null
       : {
+          label: 'Billing',
           banner: issue,
           section: `## ⚠️ Claude subscription\n\nThis agent has its own Claude subscription, but this session ${issue} If the operator did start with "agent", \`.state/secrets/.env.claude.json\` is missing \`"${SUBSCRIPTION_MARKER}": "1"\` in its \`env\`.\n\n**Report this to the operator before anything else**: every turn until they restart bills the wrong account.`
         };

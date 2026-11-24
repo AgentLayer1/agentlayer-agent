@@ -1,3 +1,4 @@
+import { claudeProtocol } from '@/hosts/claude-protocol';
 import type { HostAdapter } from '@/hosts/contract';
 import { PLUGIN_SOURCE_ROOT, pluginName } from '@/shared/naming';
 import { existsSync } from 'node:fs';
@@ -5,6 +6,7 @@ import { join, resolve } from 'node:path';
 
 export const codexHost = {
   name: 'codex',
+  ...claudeProtocol,
   launchDir: () => undefined,
   terminal: () => false,
   captureReply: 'json',
@@ -17,7 +19,7 @@ export const codexHost = {
   skill: (name) => `$${name}`,
   usedBy: (home) => existsSync(resolve(home, '.codex', 'hooks.json')),
   homeIssues: () => [],
-  billing: () => null,
+  launchIssue: () => null,
   delivery: {
     kind: 'inject',
     glossary: {
