@@ -27,7 +27,7 @@ import { nowTime, todayDate } from '@/shared/date';
 import { log as baseLog } from '@/shared/log';
 import type { CaptureEvent, SessionIndex, TranscriptTurn } from '@/knowledge/types';
 import { existsSync, readFileSync } from 'node:fs';
-import { appendFile, mkdir, readdir, readFile, rename, rm, stat, utimes, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, rename, rm, stat, truncate, utimes, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { relative, resolve } from 'node:path';
 
@@ -383,20 +383,26 @@ export async function drainDeferredCaptures(): Promise<void> {
 /**
  * The index with the last capture's pending block settled: recorded when the day file holds it at the offset the
  * capture saved, dropped otherwise, so a capture stopped between its append and its index save is neither written
- * twice nor lost.
+ * twice nor lost. A block cut short mid-append is trimmed off, so the retry's block starts on a clean line.
  */
 async function settlePending(index: SessionIndex): Promise<SessionIndex> {
   const { pending, ...settled } = index;
   if (!pending) {
     return index;
   }
-  const day = await readFile(resolve(FOLDERS.SESSIONS, pending.file)).catch(() => null);
-  const landed =
-    day !== null &&
-    day.length >= pending.offset + pending.bytes &&
-    day.subarray(pending.offset, pending.offset + Buffer.byteLength(pending.header)).toString('utf-8') ===
-      pending.header;
-  return landed ? recordCapture(settled, pending.capture) : settled;
+  const dayPath = resolve(FOLDERS.SESSIONS, pending.file);
+  const day = await readFile(dayPath).catch(() => null);
+  if (day === null) {
+    return settled;
+  }
+  const written = day.subarray(pending.offset).toString('utf-8');
+  if (day.length >= pending.offset + pending.bytes && written.startsWith(pending.header)) {
+    return recordCapture(settled, pending.capture);
+  }
+  if (written.length > 0 && (written.startsWith(pending.header) || pending.header.startsWith(written))) {
+    await truncate(dayPath, pending.offset);
+  }
+  return settled;
 }
 
 async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessionResult> {
