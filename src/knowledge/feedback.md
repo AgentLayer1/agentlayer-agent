@@ -23,7 +23,8 @@ trailing content) if it doesn't exist yet.
 1. **Preserve every other section verbatim.** Active Threads, Recent Decisions,
    Pending, Key Context, and the YAML frontmatter stay exactly as they are.
    Only touch the `## Learnings` section.
-2. **Keep it lean.** 5–12 bullets max. Memory index must stay under 150 lines.
+2. **Keep it lean.** At most 12 bullets. The memory index as a whole has a 30KB budget, which the
+   session compile holds.
 3. **Each bullet is one observed theme** with inline evidence, on one line of at most
    250 characters: the pattern, never the incidents behind it. Format:
    `- **<theme name>.** <one-line description>. Evidence: <N> <kind(s)>

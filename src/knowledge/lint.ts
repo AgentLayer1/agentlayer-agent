@@ -49,11 +49,25 @@ const PERMANENT_DIRS = ['user/', 'concepts/'] as const;
 const MEMORY_INDEX_PATH = 'memory/index.md';
 const MEMORY_TOTAL_WARN_BYTES = 30_000;
 const MEMORY_TOTAL_ERROR_BYTES = 40_000;
-const MEMORY_SECTION_BUDGETS = [
-  { name: 'Active Threads', maxBytes: 8_000, maxBullets: 10, maxBulletChars: 250 },
-  { name: 'Recent Decisions', maxBytes: 10_000, maxBullets: 25, maxBulletChars: 250 },
-  { name: 'Pending', maxBytes: 2_000 }
-] satisfies ReadonlyArray<{ name: string; maxBytes: number; maxBullets?: number; maxBulletChars?: number }>;
+interface SectionBudget {
+  maxBytes?: number;
+  maxBullets?: number;
+  maxBulletChars?: number;
+}
+
+// Learnings has only a bullet count here: a bullet from before the one-line rule is kept until self-review
+// graduates it, so its length is not this check's to flag.
+const MEMORY_SECTION_BUDGETS: Readonly<Record<string, SectionBudget>> = {
+  'Active Threads': { maxBytes: 8_000, maxBullets: 10, maxBulletChars: 250 },
+  'Recent Decisions': { maxBytes: 5_000, maxBullets: 15, maxBulletChars: 250 },
+  Pending: { maxBytes: 2_000 },
+  'Key Context': { maxBytes: 1_000 },
+  Learnings: { maxBullets: 12 },
+  'Open Questions': { maxBullets: 7 },
+  'Daily Memory': { maxBullets: 14, maxBulletChars: 150 }
+};
+// A section the compile prompt doesn't define still loads into every session.
+const MEMORY_UNKNOWN_SECTION_BUDGET: SectionBudget = { maxBytes: 2_000 };
 
 // The knowledge index loads into every session too: one line per article, the detail in the article.
 const KNOWLEDGE_INDEX_PATH = 'index.md';
@@ -306,13 +320,12 @@ async function checkMemoryBudget(articles: Map<string, string>): Promise<LintIss
   }
 
   const sections = parseMemorySections(content);
-  for (const cfg of MEMORY_SECTION_BUDGETS) {
-    const section = sections.get(cfg.name);
-    if (!section) continue;
+  for (const [name, section] of sections) {
+    const cfg = { name, ...(MEMORY_SECTION_BUDGETS[name] ?? MEMORY_UNKNOWN_SECTION_BUDGET) };
     const bytes = Buffer.byteLength(section, 'utf-8');
     const bullets = extractTopLevelBullets(section);
 
-    if (bytes > cfg.maxBytes) {
+    if (cfg.maxBytes !== undefined && bytes > cfg.maxBytes) {
       push(
         'warning',
         `${MEMORY_INDEX_PATH} § ${cfg.name} is ${(bytes / 1024).toFixed(1)}KB (budget ${cfg.maxBytes / 1000}KB). Demote older entries or collapse multi-sentence bullets to pointers.`
