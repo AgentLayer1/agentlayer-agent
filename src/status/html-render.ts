@@ -1724,10 +1724,12 @@ const buildContextBody = (snap: StatusSnapshot): string => {
     })
   ];
 
+  const overBudget =
+    context.staticBytes > context.staticBudget ? ` · over the ${humanBytes(context.staticBudget)} budget` : '';
   return [
     section(
       'Context loaded every session',
-      `${context.staticImports.length} sources · ${humanBytes(context.staticBytes)}`,
+      `${context.staticImports.length} sources · ${humanBytes(context.staticBytes)}${overBudget}`,
       composition + table(['', 'source', 'size'], staticRows)
     ),
     buildRulesSection(snap),

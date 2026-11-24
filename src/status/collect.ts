@@ -11,6 +11,7 @@
  * through repoRelative()/tildify so absolute machine paths never leak.
  */
 import {
+  CONTEXT,
   FILES,
   FOLDERS,
   HOME_TIMEZONE,
@@ -463,6 +464,7 @@ export interface StatusSnapshot {
   context: {
     staticImports: StaticImport[];
     staticBytes: number;
+    staticBudget: number;
     dynamic: { date: string; entries: ManifestEntry[]; bytes: number };
     /** Path-scoped coding rules (user + project), newest layer last. */
     rules: RuleEntry[];
@@ -841,7 +843,7 @@ const collectContext = async (): Promise<StatusSnapshot['context']> => {
     bytes: 0
   }));
 
-  return { staticImports, staticBytes, dynamic, rules: collectRules() };
+  return { staticImports, staticBytes, staticBudget: CONTEXT.ALWAYS_LOADED_BUDGET, dynamic, rules: collectRules() };
 };
 
 /** Pull the `paths:` glob list out of a rule file's YAML frontmatter. Hand-rolled
