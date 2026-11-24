@@ -299,7 +299,8 @@ const makeSnapshot = (overrides: Partial<StatusSnapshot> = {}): StatusSnapshot =
       { label: 'knowledge/index.md', bytes: 200, present: true, group: 'knowledge' }
     ],
     staticBytes: 300,
-    staticBudget: 1000,
+    alwaysLoadedBytes: 300,
+    alwaysLoadedBudget: 1000,
     dynamic: {
       date: '2026-06-11',
       entries: [{ label: 'session tail', bytes: 500, status: 'loaded' }],

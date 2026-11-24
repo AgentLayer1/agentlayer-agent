@@ -22,7 +22,6 @@ import {
   TIMEZONE_ISSUE
 } from '@/config';
 import { followMove, historyStatus, restorePointer } from '@/home/history';
-import { importedStack, injectedStack } from '@/hooks/weight';
 import type { HostAdapter, SkillCommand } from '@/hosts/contract';
 import { DEFAULT_HOST, HOSTS } from '@/hosts/registry';
 import { checkHosts, hostIssues, requiredHosts } from '@/upgrade/hosts';
@@ -36,6 +35,7 @@ import { CLI_PATH } from '@/shared/naming';
 import { isInside } from '@/shared/paths';
 import { listMarkdown, MARKDOWN_RE, readText, readTextAsync } from '@/shared/text';
 import { countOf } from '@/shared/utils';
+import { importedStack, injectedStack } from '@/shared/weight';
 import { livePins } from '@/status/surfaces';
 import { statusLineDrift } from '@/statusline/setting';
 import { getUpgradeStatus, readMigratedFrom } from '@/upgrade/version';
@@ -330,9 +330,6 @@ const weightNote = (bytes: number): string =>
     ? paint(`${formatKB(bytes)} always loaded, over the ${formatKB(CONTEXT.ALWAYS_LOADED_BUDGET)} budget`, ANSI.yellow)
     : `${formatKB(bytes)} always loaded`;
 
-/**
- * The always-loaded total for this host, or null when a file can't be read: the banner never fails on it.
- */
 const alwaysLoadedBytes = (host: HostAdapter): number | null => {
   try {
     return (host.delivery.kind === 'inject' ? injectedStack() : importedStack()).total;

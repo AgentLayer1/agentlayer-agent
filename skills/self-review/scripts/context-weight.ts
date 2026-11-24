@@ -16,7 +16,7 @@ const homeFlag = args.indexOf('--home') === -1 ? undefined : args[args.indexOf('
 if (homeFlag) process.env.AGENT_HOME = resolve(homeFlag);
 const { FOLDERS } = await import('../../../src/config');
 const { agentHomePath, isAgentHome } = await import('../../../src/shared/env');
-const { importedStack, injectedStack } = await import('../../../src/hooks/weight');
+const { importedStack, injectedStack } = await import('../../../src/shared/weight');
 
 const home = agentHomePath();
 if (!isAgentHome(home)) {

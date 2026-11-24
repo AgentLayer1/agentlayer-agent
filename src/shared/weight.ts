@@ -4,7 +4,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 
-export interface Stack {
+interface Stack {
   files: { path: string; bytes: number }[];
   total: number;
   unresolved: string[];
@@ -42,7 +42,7 @@ const importsOf = (path: string): string[] => {
  * A rule is scoped when its leading YAML frontmatter has a top-level `paths` key; frontmatter that does not parse
  * scopes nothing, so the file counts as always loaded.
  */
-const isScoped = (text: string): boolean => {
+export const isScoped = (text: string): boolean => {
   if (!text.startsWith('---\n')) {
     return false;
   }
