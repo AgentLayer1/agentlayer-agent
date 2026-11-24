@@ -13,25 +13,19 @@
  */
 import { FOLDERS, KNOWLEDGE, PLUGIN_NAME, isInitialized } from '@/config';
 import type { HostName } from '@/hosts/contract';
-import {
-  ENTRY_SEPARATOR,
-  formatEntryHeader,
-  parseEntryHeaders,
-  type ParsedEntryHeader
-} from '@/knowledge/session-format';
+import { ENTRY_SEPARATOR, formatEntryHeader } from '@/knowledge/session-format';
 import {
   adoptLegacyKey,
   diffTurns,
   fingerprintTurn,
-  healFromDayFiles,
   loadIndex,
   recordCapture,
   saveIndex
 } from '@/knowledge/session-index';
 import { redactSecrets } from '@/knowledge/utils';
-import { nowTime, shiftDate, todayDate } from '@/shared/date';
+import { nowTime, todayDate } from '@/shared/date';
 import { log as baseLog } from '@/shared/log';
-import type { TranscriptTurn } from '@/knowledge/types';
+import type { CaptureEvent, SessionIndex, TranscriptTurn } from '@/knowledge/types';
 import { existsSync, readFileSync } from 'node:fs';
 import { appendFile, mkdir, readdir, readFile, rename, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -387,17 +381,22 @@ export async function drainDeferredCaptures(): Promise<void> {
 }
 
 /**
- * Block headers in today's and yesterday's day files, where a capture that stopped before its index save left its
- * block.
+ * The index with the last capture's pending block settled: recorded when the day file holds it at the offset the
+ * capture saved, dropped otherwise, so a capture stopped between its append and its index save is neither written
+ * twice nor lost.
  */
-async function recentHeaders(): Promise<ParsedEntryHeader[]> {
-  const today = todayDate();
-  const texts = await Promise.all(
-    [shiftDate(today, -1), today].map((day) =>
-      readFile(resolve(FOLDERS.SESSIONS, `${day}.md`), 'utf-8').catch(() => '')
-    )
-  );
-  return texts.flatMap(parseEntryHeaders);
+async function settlePending(index: SessionIndex): Promise<SessionIndex> {
+  const { pending, ...settled } = index;
+  if (!pending) {
+    return index;
+  }
+  const day = await readFile(resolve(FOLDERS.SESSIONS, pending.file)).catch(() => null);
+  const landed =
+    day !== null &&
+    day.length >= pending.offset + pending.bytes &&
+    day.subarray(pending.offset, pending.offset + Buffer.byteLength(pending.header)).toString('utf-8') ===
+      pending.header;
+  return landed ? recordCapture(settled, pending.capture) : settled;
 }
 
 async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessionResult> {
@@ -407,24 +406,19 @@ async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessio
   const cfg = MODES[mode];
   {
     const loaded = await loadIndex();
-    const adopted = adoptLegacyKey(loaded, opts.sessionId);
-    const index = healFromDayFiles(adopted, opts.sessionId, turns, await recentHeaders(), briefingStub(turns));
-    if (index !== adopted) {
-      log.warn(
-        `(${mode}) [${opts.sessionId}] the index was behind the day file; cursor moved to turn ${index.sessions[opts.sessionId]?.captured_turns}`
-      );
-    }
+    const index = adoptLegacyKey(await settlePending(loaded), opts.sessionId);
     const prior = index.sessions[opts.sessionId] ?? null;
     const diff = diffTurns(turns, prior);
 
     if (diff.newTurns.length === 0) {
-      // An adopted legacy key or a healed cursor is still worth keeping.
+      // A settled block or an adopted legacy key is still worth keeping.
       if (index !== loaded) await saveIndex(index);
       log.info(`skip (${mode}) — no new turns since last capture (cursor ${prior?.captured_turns ?? 0})`);
       return { saved: false, reason: 'no-new-turns', turns: 0 };
     }
     if (diff.newTurns.length < cfg.minTurns) {
       // Don't advance the cursor — these turns are re-offered on the next capture.
+      if (index !== loaded) await saveIndex(index);
       log.info(`skip (${mode}) — ${diff.newTurns.length} new turns (min ${cfg.minTurns})`);
       return { saved: false, reason: 'too-few-turns', turns: diff.newTurns.length };
     }
@@ -436,6 +430,7 @@ async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessio
 
     const redacted = redactSecrets(formatTurnList(diff.newTurns));
     if (!redacted.trim()) {
+      if (index !== loaded) await saveIndex(index);
       log.info(`skip (${mode}) — empty after redaction`);
       return { saved: false, reason: 'empty-after-redaction', turns: diff.newTurns.length };
     }
@@ -464,9 +459,8 @@ async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessio
       continues: prior && diff.from !== 1 ? prior.first_seen : undefined,
       reanchored: diff.reanchored
     });
-    await appendFile(logPath, `${header}\n\n${redacted}${ENTRY_SEPARATOR}`, 'utf-8');
-
-    const updated = recordCapture(index, {
+    const block = `${header}\n\n${redacted}${ENTRY_SEPARATOR}`;
+    const capture: CaptureEvent = {
       sessionId: opts.sessionId,
       date: today,
       cwd: source,
@@ -474,8 +468,13 @@ async function captureUnderLock(opts: CaptureSessionOpts): Promise<CaptureSessio
       to: diff.to,
       lastTurnFp: fingerprintTurn(turns[turns.length - 1]),
       briefingStub: briefingStub(diff.newTurns)
+    };
+    await saveIndex({
+      ...index,
+      pending: { file: filename, offset: (await stat(logPath)).size, bytes: Buffer.byteLength(block), header, capture }
     });
-    await saveIndex(updated);
+    await appendFile(logPath, block, 'utf-8');
+    await saveIndex(recordCapture(index, capture));
 
     log.info(`saved turns ${diff.from}–${diff.to} → ${filename} (${mode})`);
     return { saved: true, turns: diff.newTurns.length, path: logPath, filename };

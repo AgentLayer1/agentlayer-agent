@@ -47,9 +47,33 @@ export interface SessionRecord {
   blocks: SessionBlock[];
 }
 
+export interface CaptureEvent {
+  sessionId: string;
+  date: string;
+  cwd: string;
+  from: number;
+  to: number;
+  lastTurnFp: string;
+  /** used only when creating a fresh record */
+  briefingStub: string;
+}
+
+/**
+ * A capture's block, saved in the index before the block is appended, so the next capture can tell from the day file
+ * whether the append landed: the bytes at `offset` in `file` start with `header` and run at least `bytes` long.
+ */
+export interface PendingCapture {
+  file: string;
+  offset: number;
+  bytes: number;
+  header: string;
+  capture: CaptureEvent;
+}
+
 export interface SessionIndex {
   schema: number;
   sessions: Record<string, SessionRecord>;
+  pending?: PendingCapture;
 }
 
 /**

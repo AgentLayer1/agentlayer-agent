@@ -14,9 +14,9 @@
  */
 import { FILES } from '@/config';
 import { hashBuffer, listRawFiles } from '@/knowledge/utils';
-import { parseEntryHeaders, type ParsedEntryHeader } from '@/knowledge/session-format';
+import { parseEntryHeaders } from '@/knowledge/session-format';
 import { log as baseLog } from '@/shared/log';
-import type { SessionIndex, SessionRecord, TranscriptTurn } from '@/knowledge/types';
+import type { CaptureEvent, SessionIndex, SessionRecord, TranscriptTurn } from '@/knowledge/types';
 import { writeJsonAtomic } from '@/shared/utils';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -84,17 +84,6 @@ export function adoptLegacyKey(index: SessionIndex, sessionId: string): SessionI
   return { ...index, sessions: { ...sessions, [sessionId]: legacy } };
 }
 
-export interface CaptureEvent {
-  sessionId: string;
-  date: string;
-  cwd: string;
-  from: number;
-  to: number;
-  lastTurnFp: string;
-  /** used only when creating a fresh record */
-  briefingStub: string;
-}
-
 /** Merge a freshly-written block into a session's coverage list, coalescing
  *  contiguous same-day ranges (e.g. a Pre-Compact 1–40 then a Session 41–55). */
 const mergeBlock = (blocks: SessionRecord['blocks'], date: string, from: number, to: number) => {
@@ -118,34 +107,6 @@ export function recordCapture(index: SessionIndex, ev: CaptureEvent): SessionInd
     blocks: mergeBlock(base.blocks, ev.date, ev.from, ev.to)
   };
   return { schema: index.schema, sessions: { ...index.sessions, [ev.sessionId]: record } };
-}
-
-/**
- * The index with a session's cursor moved past its newest day-file block when that block is the one the index never
- * recorded (it starts right after the cursor), so a capture that stopped after its append and before its index save
- * is not written a second time. `headers` are in file order, oldest first.
- */
-export function healFromDayFiles(
-  index: SessionIndex,
-  sessionId: string,
-  turns: TranscriptTurn[],
-  headers: ParsedEntryHeader[],
-  briefingStub: string
-): SessionIndex {
-  const last = headers.findLast((header) => header.sessionId === sessionId);
-  const cursor = index.sessions[sessionId]?.captured_turns ?? 0;
-  if (!last || last.from !== cursor + 1 || last.to > turns.length) {
-    return index;
-  }
-  return recordCapture(index, {
-    sessionId,
-    date: last.date,
-    cwd: last.source,
-    from: cursor + 1,
-    to: last.to,
-    lastTurnFp: fingerprintTurn(turns[last.to - 1]),
-    briefingStub
-  });
 }
 
 // ── I/O ──────────────────────────────────────────────────────────────
@@ -184,7 +145,11 @@ export async function loadIndex(): Promise<SessionIndex> {
     if (!parsed || typeof parsed !== 'object' || typeof parsed.sessions !== 'object') {
       throw new Error('malformed session index');
     }
-    return { schema: parsed.schema ?? 1, sessions: parsed.sessions ?? {} };
+    return {
+      schema: parsed.schema ?? 1,
+      sessions: parsed.sessions ?? {},
+      ...(parsed.pending ? { pending: parsed.pending } : {})
+    };
   } catch (err) {
     log.warn('session index unparseable — rebuilding from day-file headers', err);
     return rebuildFromDayFiles();
