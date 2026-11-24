@@ -10,12 +10,12 @@ import type { HeartbeatEvent, Queue } from '../types';
 import { SCOUTING_AGENTS, homeLensAgent, scoutAgent } from './agents';
 import {
   MINUTE_MS,
-  REFRESH_RETRY_MS,
   ago,
   clockIn,
   closingLine,
   dayIn,
   eventView,
+  insideRetryWindow,
   isLate,
   lastWrite,
   logged,
@@ -123,11 +123,10 @@ async function revive($: EngineInterface): Promise<void> {
     if (!isHeartbeat || nextAt === undefined || everyMinutes === undefined || now - nextAt <= STALL_MS) {
       return;
     }
-    logLate($, nextAt, now, 'revived');
     startLooks($, everyMinutes);
     await update($, beat, (current) => ({ ...current, nextAt: now + everyMinutes * MINUTE_MS }));
     await note($, { at: now, kind: 'stopped', text: `the look due ${clockIn(nextAt, zone)} never came; the clock restarted` });
-    await tick($);
+    await tick($, now - nextAt);
   } finally {
     reviving = false;
   }
@@ -148,14 +147,9 @@ async function said($: EngineInterface, args: readonly string[]): Promise<string
   return runCli($, args).then((stdout) => stdout.trim(), errorText);
 }
 
-// The band's notes die with this process, and the CLI logs every call with its arguments, so a late start goes
-// through it: a look cut short by sleep can then be traced to one that began late.
-function logLate($: EngineInterface, dueAt: number, now: number, how: 'tick' | 'revived'): void {
-  void said($, ['heartbeat', 'status', `--late=${Math.round((now - dueAt) / MINUTE_MS)}m`, `--${how}`]);
-}
-
-async function statusOrWhy($: EngineInterface): Promise<HeartbeatStatus | string> {
-  return runCli($, ['heartbeat', 'status', '--json']).then(
+async function statusOrWhy($: EngineInterface, lateMs = 0): Promise<HeartbeatStatus | string> {
+  const late = lateMs > 0 ? [`--late=${Math.round(lateMs / MINUTE_MS)}m`] : [];
+  return runCli($, ['heartbeat', 'status', '--json', ...late]).then(
     (stdout) => parseStatus(stdout) ?? "the heartbeat's status didn't read",
     errorText
   );
@@ -210,13 +204,7 @@ async function look($: EngineInterface): Promise<void> {
 
 // A brain refresh and the day's first wake clear the conversation first, so the heartbeat's context stays small. A
 // refresh runs sync's maintenance steps, then the look reads the brain it left.
-async function wake(
-  $: EngineInterface,
-  now: number,
-  status: HeartbeatStatus,
-  refresh = false,
-  isRetry = false
-): Promise<void> {
+async function wake($: EngineInterface, now: number, status: HeartbeatStatus, refresh = false): Promise<void> {
   const today = dayIn(now, status.timezone);
   const { wokeOn } = await read($, beat);
   const clears = refresh || (wokeOn !== '' && wokeOn !== today);
@@ -225,11 +213,12 @@ async function wake(
     await update($, beat, (current) => ({ ...current, clearedId, awaiting: [] }));
     await $.command.run({ command: 'clear' });
   }
-  // A refresh is tried once per window and retried once, so one that fails before it stamps doesn't run on every tick.
   await update($, beat, (current) => ({
     ...current,
     wokeOn: today,
-    ...(refresh ? { refreshTriedAt: now, refreshRetried: isRetry } : {})
+    ...(refresh
+      ? { refreshTriedAt: now, refreshRetried: insideRetryWindow(current.refreshTriedAt ?? 0, now) }
+      : {})
   }));
   $.clock.after(0, async () => {
     if (refresh) {
@@ -367,17 +356,13 @@ async function lastUse($: EngineInterface): Promise<number | null> {
   return entries && lastWrite(entries, [id, clearedId ?? '']);
 }
 
-async function tick($: EngineInterface): Promise<void> {
-  const [{ nextAt: dueAt }, startedAt] = await Promise.all([read($, beat), $.clock.now()]);
-  if (dueAt !== undefined && isLate(dueAt, startedAt)) {
-    logLate($, dueAt, startedAt, 'tick');
-  }
-  const [status, { isBusy }, { everyMinutes = 55 }, owner] = await Promise.all([
-    statusOrWhy($),
-    read($, queue),
+async function tick($: EngineInterface, revivedLateMs = 0): Promise<void> {
+  const [{ everyMinutes = 55, nextAt: dueAt, refreshTriedAt = 0, refreshRetried = false }, startedAt] = await Promise.all([
     read($, beat),
-    heldToken($)
+    $.clock.now()
   ]);
+  const lateMs = revivedLateMs || (dueAt !== undefined && isLate(dueAt, startedAt) ? startedAt - dueAt : 0);
+  const [status, { isBusy }, owner] = await Promise.all([statusOrWhy($, lateMs), read($, queue), heldToken($)]);
   if (typeof status === 'string') {
     // A status that won't read is a skip with its reason, and the next look keeps its interval.
     const now = await $.clock.now();
@@ -405,15 +390,13 @@ async function tick($: EngineInterface): Promise<void> {
     return;
   }
   const used = await lastUse($);
-  const { refreshTriedAt = 0, refreshRetried = false } = await read($, beat);
   // A refresh waits for something to absorb: a session written since the last sync or refresh.
   const absorbs = used === null || used > refreshedMs(status);
-  const windowPassed = now - refreshTriedAt >= REFRESH_RETRY_MS;
-  // A try newer than the last recorded refresh never finished, as when the machine slept through it.
-  const isRetry = !windowPassed && refreshTriedAt > refreshedMs(status) && !refreshRetried;
-  if (status.refreshDue && absorbs && (windowPassed || isRetry)) {
+  const lastTryUnfinished = refreshTriedAt > refreshedMs(status);
+  const mayTry = !insideRetryWindow(refreshTriedAt, now) || (lastTryUnfinished && !refreshRetried);
+  if (status.refreshDue && absorbs && mayTry) {
     await ticked($, status, now);
-    await wake($, now, status, true, isRetry);
+    await wake($, now, status, true);
     return;
   }
   // A home it can't see is treated as in use, since skipping would stop the heartbeat for good.

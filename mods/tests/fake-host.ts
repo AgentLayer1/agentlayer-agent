@@ -212,7 +212,7 @@ const cliAnswer = (host: FakeMachine, args: string): { value: ProcessRunResult }
   if (args.startsWith('notes brief --json')) {
     return ran(0, JSON.stringify(host.notesBrief ?? { lens: 'brain', agent: 'home-lens', prompt: 'Lens: brain.' }));
   }
-  if (args === 'heartbeat status --json') {
+  if (args.startsWith('heartbeat status --json')) {
     const { target, showing, heartbeat, refreshedAt = '', refreshDue = false } = host.status;
     const notes = { cap: 3, room: host.notesRoom ?? 0, today: 3 - (host.notesRoom ?? 0), scout: host.notesScout ?? true, web: host.notesWeb ?? true };
     return ran(

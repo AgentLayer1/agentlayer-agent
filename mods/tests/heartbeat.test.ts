@@ -504,7 +504,7 @@ describe('heartbeat band', () => {
     expect(
       host.argv.map((argv) => argv.slice(2).join(' ')),
       'the late start is in the CLI log, which outlives the band'
-    ).toContain('heartbeat status --late=3m --revived');
+    ).toContain('heartbeat status --json --late=3m');
     await ended($, 'Nothing new worth proposing.', 't2');
     host.commands.length = 0;
     await host.clock.advance(55 * MINUTE);

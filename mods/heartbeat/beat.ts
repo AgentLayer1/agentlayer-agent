@@ -12,6 +12,8 @@ export const MINUTE_MS = 60_000;
  */
 export const REFRESH_RETRY_MS = 6 * 60 * MINUTE_MS;
 
+export const insideRetryWindow = (triedAt: number, now: number): boolean => now - triedAt < REFRESH_RETRY_MS;
+
 // Named, so a word typed after a decision is never taken for a workspace.
 const WORKSPACE_FLAG = '--workspace=';
 
