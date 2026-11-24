@@ -119,3 +119,43 @@ describe('1.1.0 Xcode pack rules', () => {
     expect(read(home, '.claude/rules/xcode.md')).toBe(SHIPPED_RULE);
   });
 });
+
+describe('1.1.0 daily memory', () => {
+  const DAY = [
+    '# 2026-11-22',
+    '',
+    '## Heartbeat',
+    '',
+    '- 09:43 brain refresh: compiled 5, lint fixed 1, nothing stalled.',
+    '- 09:43 and 10:38 proposal looks: nothing new worth proposing.',
+    '',
+    '## Work',
+    '',
+    '- Fixed the banner; the look found nothing new.',
+    '- **Band fix `3f6b7ab`**: a look ending "Nothing new worth proposing." drew a green tick.',
+    '- Proposal looks were reworked:',
+    '  1. one swap per look',
+    ''
+  ].join('\n');
+
+  test("bullets that only report a heartbeat look or refresh go, with a section they leave empty; the rest stays", () => {
+    const home = makeHome({ 'knowledge/memory/2026-11-22.md': DAY, 'knowledge/memory/index.md': '- 09:43 proposal looks: nothing new worth proposing.\n' });
+    const result = spawnSync('bun', [SCRIPT], { env: { ...process.env, AGENT_HOME: home }, encoding: 'utf-8' });
+    const report = JSON.parse(result.stdout.trim().split('\n').at(-1) ?? '{}');
+    expect(report.dailyMemory).toEqual([
+      {
+        file: 'knowledge/memory/2026-11-22.md',
+        removed: [
+          '- 09:43 brain refresh: compiled 5, lint fixed 1, nothing stalled.',
+          '- 09:43 and 10:38 proposal looks: nothing new worth proposing.'
+        ]
+      }
+    ]);
+    const after = read(home, 'knowledge/memory/2026-11-22.md');
+    expect(after).not.toContain('## Heartbeat');
+    expect(after).toContain('## Work');
+    expect(after).toContain('Band fix');
+    expect(after, 'a bullet with its own sub-items stays').toContain('- Proposal looks were reworked:\n  1. one swap per look');
+    expect(read(home, 'knowledge/memory/index.md'), 'the memory index is the self-review\'s').toContain('proposal looks');
+  });
+});

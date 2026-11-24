@@ -126,14 +126,17 @@ Less loads into every session, and the brain's upkeep is measured instead of gue
 ### Upgrade
 - `script: required` — run skills/upgrade/scripts/1.1.0.ts: removes "Engineering the Codebase" from
   `AGENTS.md` when unedited, and replaces the Xcode pack's two rule files together when both are
-  the shipped copies. Anything you edited is left as it is and put to you.
+  the shipped copies. Anything you edited is left as it is and put to you. It also takes out of the
+  daily memory files the bullets that only report a heartbeat look or brain refresh, and a section
+  they leave empty; a bullet with code or a commit in backticks stays, and every removed line is
+  in its report.
 - `template/AGENTS.md: mandatory` — the trimmed manual and the new correction rule.
 - `manual: optional` — Xcode pack only: if the upgrade reports your `xcode.md` or
   `xcode-project.md` as edited, merge them with the plugin's `templates/rules/` copies by hand.
 - `manual: optional` — If a session is your heartbeat, restart it and run `/heartbeat` there: the
   late-look and retry fixes run only in a session started on 1.1.0.
 - `skill: required` — self-review, before the sync: the first quality-first sitting. Its verified
-  list includes the heartbeat looks and refreshes already in memory, cleared with one yes.
+  list includes the heartbeat looks and refreshes still in the memory index, cleared with one yes.
 
 ## [1.0.11] - 2026-11-23
 

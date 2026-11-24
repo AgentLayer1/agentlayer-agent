@@ -15,11 +15,18 @@
  * "Shipped" means the recorded base at `<HOME>/.state/template-base`, never a comparison with the new template.
  * Anything edited, or a home with no recorded base, is left as it is and reported, for the upgrade to ask.
  *
+ * The heartbeat's looks and brain refreshes were captured and compiled into the daily memory files until this
+ * release. Each daily file loses the bullets that only report one ("09:43 and 10:38 proposal looks: nothing new
+ * worth proposing"), and a section left empty goes with them. A bullet that carries code or a commit in backticks is
+ * a note about the heartbeat's own development and stays; the memory index's lines are the self-review's, on a yes.
+ * Every removed line is in the report.
+ *
  * Run by the upgrade skill via `run_upgrade`. Idempotent.
  * Contract: prints a single-line JSON report as its LAST stdout line; exits non-zero on failure.
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { isBackgroundReport } from '../../../src/knowledge/background-noise';
 import { RUNTIME_DIR } from '../../../src/shared/naming';
 
 const VERSION = '1.1.0';
@@ -115,6 +122,36 @@ const updateXcodeRules = (): Action => {
   return 'replaced';
 };
 
+const MEMORY = resolve(HOME, 'knowledge', 'memory');
+
+// Without its background reports, and without a section they leave empty.
+const withoutReports = (text: string): { kept: string; removed: string[] } => {
+  const lines = text.split('\n');
+  const removable = (line: string, index: number): boolean =>
+    line.startsWith('- ') && !line.includes('`') && isBackgroundReport(line) && !/^\s+\S/.test(lines[index + 1] ?? '');
+  const removed = lines.filter(removable);
+  const sections = lines
+    .filter((line, index) => !removable(line, index))
+    .join('\n')
+    .split(/^(?=## )/m)
+    .filter((section) => !section.startsWith('## ') || section.split('\n').slice(1).some((line) => line.trim() !== ''));
+  return { kept: sections.join('').replace(/\n{3,}/g, '\n\n'), removed };
+};
+
+const cleanDailyMemory = (): { file: string; removed: string[] }[] =>
+  (existsSync(MEMORY) ? readdirSync(MEMORY) : [])
+    .filter((name) => /^\d{4}-\d{2}-\d{2}\.md$/.test(name))
+    .toSorted()
+    .flatMap((name) => {
+      const path = join(MEMORY, name);
+      const { kept, removed } = withoutReports(readFileSync(path, 'utf-8'));
+      if (removed.length === 0) {
+        return [];
+      }
+      writeFileSync(path, kept);
+      return [{ file: join('knowledge', 'memory', name), removed }];
+    });
+
 try {
   const manual = retire(RETIRED);
   const xcode = updateXcodeRules();
@@ -132,7 +169,8 @@ try {
       ...(xcode.startsWith('kept') ? { ask: XCODE_ASK } : {})
     }
   ];
-  process.stdout.write(JSON.stringify({ ok: true, version: VERSION, home: HOME, sections }) + '\n');
+  const dailyMemory = cleanDailyMemory();
+  process.stdout.write(JSON.stringify({ ok: true, version: VERSION, home: HOME, sections, dailyMemory }) + '\n');
 } catch (err) {
   const message = err instanceof Error ? err.message : String(err);
   process.stdout.write(JSON.stringify({ ok: false, version: VERSION, error: message }) + '\n');

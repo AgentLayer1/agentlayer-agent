@@ -1,5 +1,6 @@
 import { relative, resolve, sep } from 'node:path';
 import { FILES, FOLDERS } from '../../../src/config';
+import { isBackgroundReport } from '../../../src/knowledge/background-noise';
 import { contentWords } from '../../../src/knowledge/feedback-keys';
 import { hashBuffer } from '../../../src/knowledge/utils';
 import { readTextIfExists } from '../../../src/shared/text';
@@ -150,17 +151,10 @@ export const findNarrative = (items: readonly Item[]): Narrative[] =>
     return markers >= NARRATIVE_MARKERS ? [{ ...row('narrative', item), markers, chars: item.text.length }] : [];
   });
 
-// A look or a brain refresh reported as news: what the heartbeat's runs left in memory before capture kept them out.
-const HEARTBEAT_OUTCOME = [
-  /nothing new worth proposing/i,
-  /\bproposals? looks?\b/i,
-  /\bbrain refresh(?:ed)?\b[^.]*\bcompiled \d+/i
-];
-
 /** Memory lines that report what a heartbeat look or refresh found, which says nothing the brain needs. */
 export const findHeartbeatNoise = (items: readonly Item[]): Row[] =>
   items.flatMap((item) =>
-    HEARTBEAT_OUTCOME.some((pattern) => pattern.test(item.text)) ? [row('heartbeat', item)] : []
+    isBackgroundReport(item.text) ? [row('heartbeat', item)] : []
   );
 
 const homeRelative = (path: string): string => relative(FOLDERS.HOME, path).split(sep).join('/');
