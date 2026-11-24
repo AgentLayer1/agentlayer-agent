@@ -114,7 +114,7 @@ test('corrections are counted from the keyed entries the compile recorded, per 1
   const key = '11111111-aaaa-bbbb-cccc-000000000001:0123456789abcdef';
   writeFileSync(
     join(dir, 'feedback.md'),
-    `# Feedback\n\n---\n\n## 2026-03-03 — correction [${key}]\n\n> no\n\nScope.\n\n---\n\n## 2026-03-03T10:00:00+08:00 — a rule written live\n\nAlways preview.\n`
+    `# Feedback\n\n---\n\n## 2026-03-03 — correction [${key}]\n\n> no\n\nScope.\n\n---\n\n## 2026-03-03 — standing rule [-:fedcba9876543210]\n\n> always preview\n\nA rule written live.\n`
   );
   const proc = spawnSync(process.execPath, [
     SCRIPT,

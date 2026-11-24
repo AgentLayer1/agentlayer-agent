@@ -1,4 +1,5 @@
 import { ENTRY_SPLIT_RE, parseEntryHeaders, TURN_MARKER } from '@/knowledge/session-format';
+import { truncate } from '@/status/format';
 import { isConversationUserText } from '@/status/radar-refs';
 
 export interface OperatorTurn {
@@ -10,6 +11,8 @@ export interface OperatorTurn {
 const TURN_SPLIT_RE = new RegExp(`\\n\\n(?=${TURN_MARKER})`);
 const USER_LABEL = '**User:**';
 const EXCERPT_CHARS = 200;
+// The host writes a compaction summary as a user turn; whatever it quotes was said in a turn already listed.
+const COMPACTION_SUMMARY = 'This session is being continued';
 
 /**
  * The turns in a session-log chunk the operator typed, each with its block's session id and date. Most `**User:**`
@@ -25,7 +28,7 @@ export const operatorTurns = (chunk: string): OperatorTurn[] =>
       .split(TURN_SPLIT_RE)
       .filter((turn) => turn.startsWith(USER_LABEL))
       .map((turn) => turn.slice(USER_LABEL.length).trim())
-      .filter(isConversationUserText)
+      .filter((text) => isConversationUserText(text) && !text.startsWith(COMPACTION_SUMMARY))
       .map((text) => ({ sessionId: header.sessionId, date: header.date, text }));
   });
 
@@ -37,8 +40,7 @@ export const renderOperatorTurns = (turns: readonly OperatorTurn[]): string =>
     ? '_None in this chunk._'
     : turns
         .map(({ sessionId, date, text }) => {
-          const flat = text.replace(/\s+/g, ' ');
-          const excerpt = flat.length > EXCERPT_CHARS ? `${flat.slice(0, EXCERPT_CHARS)}…` : flat;
+          const excerpt = truncate(text.replace(/\s+/g, ' '), EXCERPT_CHARS);
           return `- session \`${sessionId}\` · date \`${date}\` · ${excerpt}`;
         })
         .join('\n');

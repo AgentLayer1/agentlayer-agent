@@ -12,6 +12,13 @@
  * compile lifecycle is unchanged — capture is just a writer.
  */
 import { FILES, FOLDERS, KNOWLEDGE } from '@/config';
+import {
+  keyedEntries,
+  keyedHeader,
+  NO_SESSION,
+  sameStatement,
+  type StatementKey
+} from '@/knowledge/feedback-keys';
 import { hashBuffer, redactSecrets, splitFrontmatter } from '@/knowledge/utils';
 import { nowISO, nowTimeCompact, todayDate } from '@/shared/date';
 import { htmlToMarkdown, renderExtracted } from '@/shared/html-to-markdown';
@@ -180,14 +187,11 @@ async function captureToInbox(opts: CaptureOpts, content: string, sourceHint: st
   };
 }
 
-const NO_SESSION = '-';
-const KEYED_HEADER_RE = /^## (\d{4}-\d{2}-\d{2})\b[^\n]*\[([0-9a-fA-F-]+):([0-9a-f]{16})\]$/gm;
-
-interface StatementKey {
-  day: string;
-  session: string;
-  hash: string;
-}
+const normalizedWords = (quote: string): string =>
+  quote
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
 
 const statementKey = (opts: CaptureOpts, quote: string): StatementKey => {
   if (opts.session !== undefined && !/^[0-9a-fA-F-]{8,}$/.test(opts.session)) {
@@ -199,32 +203,9 @@ const statementKey = (opts: CaptureOpts, quote: string): StatementKey => {
   return {
     day: opts.date ?? todayDate(),
     session: opts.session ?? NO_SESSION,
-    // Case, spacing and punctuation differ between a quote typed live and one copied from a log.
-    hash: hashBuffer(
-      quote
-        .toLowerCase()
-        .replace(/[^\p{L}\p{N}]+/gu, ' ')
-        .trim()
-    )
+    hash: hashBuffer(normalizedWords(quote))
   };
 };
-
-/**
- * Two keys name one statement when the words match and the session does. An entry written live has no session, so
- * it matches by words and day instead: the same sentence on another day is a second statement.
- */
-const sameStatement = (a: StatementKey, b: StatementKey): boolean =>
-  a.hash === b.hash &&
-  (a.session !== NO_SESSION && b.session !== NO_SESSION ? a.session === b.session : a.day === b.day);
-
-const recordedKeys = async (): Promise<StatementKey[]> =>
-  existsSync(FILES.FEEDBACK)
-    ? [...(await readFile(FILES.FEEDBACK, 'utf-8')).matchAll(KEYED_HEADER_RE)].map(([, day, session, hash]) => ({
-        day,
-        session,
-        hash
-      }))
-    : [];
 
 async function captureToFeedback(opts: CaptureOpts, content: string): Promise<CaptureResult> {
   const redacted = redactSecrets(content).trim();
@@ -235,7 +216,8 @@ async function captureToFeedback(opts: CaptureOpts, content: string): Promise<Ca
   }
 
   const key = quote ? statementKey(opts, quote) : null;
-  if (key && (await recordedKeys()).some((recorded) => sameStatement(recorded, key))) {
+  const recorded = key && existsSync(FILES.FEEDBACK) ? keyedEntries(await readFile(FILES.FEEDBACK, 'utf-8')) : [];
+  if (key && recorded.some((entry) => sameStatement(entry, key))) {
     return {
       ok: true,
       kind: 'feedback',
@@ -246,8 +228,8 @@ async function captureToFeedback(opts: CaptureOpts, content: string): Promise<Ca
     };
   }
 
-  const label = opts.label ? ` — ${opts.label}` : '';
-  const header = key ? `## ${key.day}${label} [${key.session}:${key.hash}]` : `## ${nowISO()}${label}`;
+  const label = opts.label ?? '';
+  const header = key ? keyedHeader(key, label) : `## ${nowISO()}${label ? ` — ${label}` : ''}`;
   const quoted = quote ? `${quote.replace(/^/gm, '> ')}\n\n` : '';
   const entry = `\n\n---\n\n${header}\n\n${quoted}${redacted}\n`;
 

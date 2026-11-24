@@ -17,7 +17,8 @@ describe('operatorTurns', () => {
         '**User:** <task-notification>\n<status>completed</status>\n</task-notification>',
         '**User:** Base directory for this skill: /plugin/skills/sync\n\n# Sync',
         '**User:** <command-message>acme:sync</command-message>',
-        '**User:** [Request interrupted by user]'
+        '**User:** [Request interrupted by user]',
+        '**User:** This session is being continued from a previous conversation. The operator said: no, by name.'
       ]),
       block(SECOND, '2026-03-03', ['**User:** that is not what they asked\n\nthey asked why', '**Assistant:** Right.'])
     ].join(ENTRY_SEPARATOR);

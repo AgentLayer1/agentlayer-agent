@@ -3,17 +3,18 @@
  * How well a home's sessions followed two rules that can be counted, week by week, from its Claude Code
  * transcripts: commit messages passed with `-F`, and shell calls that open with a bare `cd`. Also the median
  * tokens a session started with, and the operator's corrections per 1,000 replies, counted from the dated,
- * keyed entries the compile records in the feedback log. A week with enough calls that falls outside a threshold is listed as a
- * regression, so a change to the manual can be checked against the weeks before it. Read-only, and it reads
- * only a record's timestamp, model, token usage, tool name and shell command.
+ * keyed entries the compile records in the feedback log. A week with enough calls that falls outside a
+ * threshold is listed as a regression, so a change to the manual can be checked against the weeks before it.
+ * Read-only, and it reads only a record's timestamp, model, token usage, tool name and shell command.
  *
  * Usage: rule-compliance.ts [--home <dir>] [--transcripts <dir>] [--feedback <file>] [--since YYYY-MM-DD]
  *        (--home: else the agent's home variable, else the cwd; --since: else eight weeks ago;
  *         --transcripts without --feedback counts no corrections)
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { keyedEntries, NO_SESSION } from '../../../src/knowledge/feedback-keys';
 
 const args = process.argv.slice(2);
 const flag = (name: string): string | undefined =>
@@ -23,7 +24,6 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const THRESHOLDS = { fileShareMin: 0.88, cdPer1000Max: 12, minCommits: 20, minShellCalls: 200 } as const;
 
 const homeFlag = flag('home');
-// The config module resolves the home from AGENT_HOME, so an explicit --home is exported before it loads.
 if (homeFlag) {
   process.env.AGENT_HOME = resolve(homeFlag);
 }
@@ -39,11 +39,13 @@ const transcriptsFor = async (): Promise<string> => {
   return join(homedir(), '.claude', 'projects', home.replace(/[^A-Za-z0-9-]/g, '-'));
 };
 
-const feedbackFor = async (): Promise<string | null> =>
-  flag('transcripts') ? null : (await import('../../../src/config')).FILES.FEEDBACK;
+const transcriptsFlag = flag('transcripts');
+const feedbackFlag = flag('feedback');
+const homeFeedback = async (): Promise<string | null> =>
+  transcriptsFlag ? null : (await import('../../../src/config')).FILES.FEEDBACK;
 
-const transcripts = flag('transcripts') ? resolve(flag('transcripts') ?? '') : await transcriptsFor();
-const feedback = flag('feedback') ? resolve(flag('feedback') ?? '') : await feedbackFor();
+const transcripts = transcriptsFlag ? resolve(transcriptsFlag) : await transcriptsFor();
+const feedback = feedbackFlag ? resolve(feedbackFlag) : await homeFeedback();
 const since = flag('since') ?? new Date(Date.now() - 8 * WEEK_MS).toISOString().slice(0, 10);
 
 interface Usage {
@@ -87,8 +89,7 @@ const parse = (line: string): Row | null => {
   }
 };
 
-// `commit` as git's own subcommand, after any global options: `git log --grep commit` is not one.
-const isCommit = (command: string): boolean =>
+const isGitCommitCall = (command: string): boolean =>
   /\bgit(\s+-[Cc]\s+\S+|\s+--[\w-]+(=\S+)?)*\s+commit\b/.test(command) && !/commit\s+--help/.test(command);
 const usesMessageFile = (command: string): boolean => /commit\b[^|;&]*\s(-F|--file)\b/.test(command);
 const tokensOf = (usage: Usage): number =>
@@ -115,7 +116,11 @@ const weekFor = (stamp: string): Week => {
   return made;
 };
 
-const files = existsSync(transcripts) ? readdirSync(transcripts).filter((name) => name.endsWith('.jsonl')) : [];
+const files = existsSync(transcripts)
+  ? readdirSync(transcripts)
+      .filter((name) => name.endsWith('.jsonl'))
+      .filter((name) => statSync(join(transcripts, name)).mtimeMs >= Date.parse(since))
+  : [];
 files.forEach((name) => {
   const seenCalls = new Set<string>();
   const all = readFileSync(join(transcripts, name), 'utf-8')
@@ -127,10 +132,14 @@ files.forEach((name) => {
   const inWindow = (row: Row): boolean => (row.timestamp ?? '').slice(0, 10) >= since;
   const rows = all.filter(inWindow);
 
-  // A session that began before the window has no first turn in it.
-  const first = all.find((row) => row.message?.usage && row.message.model !== '<synthetic>');
-  if (first?.timestamp && inWindow(first) && first.message?.usage && tokensOf(first.message.usage) > 0) {
-    weekFor(first.timestamp).firstTurns.push(tokensOf(first.message.usage));
+  const sessionFirstTurn = all.find((row) => row.message?.usage && row.message.model !== '<synthetic>');
+  if (
+    sessionFirstTurn?.timestamp &&
+    inWindow(sessionFirstTurn) &&
+    sessionFirstTurn.message?.usage &&
+    tokensOf(sessionFirstTurn.message.usage) > 0
+  ) {
+    weekFor(sessionFirstTurn.timestamp).firstTurns.push(tokensOf(sessionFirstTurn.message.usage));
   }
 
   rows.forEach((row) => {
@@ -147,20 +156,20 @@ files.forEach((name) => {
         week.sessions.add(name);
         week.shellCalls += 1;
         week.leadingCd += /^cd\s+\S/.test(command) ? 1 : 0;
-        week.commits += isCommit(command) ? 1 : 0;
-        week.commitsWithFile += isCommit(command) && usesMessageFile(command) ? 1 : 0;
+        const commits = isGitCommitCall(command);
+        week.commits += commits ? 1 : 0;
+        week.commitsWithFile += commits && usesMessageFile(command) ? 1 : 0;
       });
   });
 });
 
-// A correction the compile recorded: dated by its session, keyed on the session and the operator's words.
-const CORRECTION_HEADER_RE = /^## (\d{4}-\d{2}-\d{2}) — correction \[[0-9a-fA-F-]+:[0-9a-f]{16}\]$/gm;
 const recorded =
   feedback && existsSync(feedback)
-    ? [...readFileSync(feedback, 'utf-8').matchAll(CORRECTION_HEADER_RE)].map((match) => match[1])
+    ? keyedEntries(readFileSync(feedback, 'utf-8'))
+        .filter((entry) => entry.session !== NO_SESSION)
+        .map((entry) => entry.day)
     : [];
-// A log with no keyed entry yet has not been counted, which is not the same as a week with none.
-const counted = recorded.length > 0;
+const correctionsRecorded = recorded.length > 0;
 recorded
   .filter((day) => day >= since)
   .forEach((day) => {
@@ -183,9 +192,11 @@ const report = [...weeks.entries()]
     fileShare: tally.commits === 0 ? null : Math.round((tally.commitsWithFile / tally.commits) * 100) / 100,
     firstTurnMedian: median(tally.firstTurns),
     replies: tally.replies.size,
-    corrections: counted ? tally.corrections : null,
+    corrections: correctionsRecorded ? tally.corrections : null,
     correctionsPer1000:
-      counted && tally.replies.size > 0 ? Math.round((tally.corrections / tally.replies.size) * 10_000) / 10 : null
+      correctionsRecorded && tally.replies.size > 0
+        ? Math.round((tally.corrections / tally.replies.size) * 10_000) / 10
+        : null
   }));
 
 const regressions = report.flatMap((week) => [
