@@ -1,0 +1,239 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`Codex's whole wiring for a home with every kind of rule and server 1`] = `
+{
+  "config": 
+"default_permissions = "agentlayer"
+approval_policy = "on-request"
+approvals_reviewer = "user"
+model_reasoning_effort = "high"
+project_doc_max_bytes = 65536
+
+model = "operator-model"
+
+[tui]
+status_line = ["model-with-reasoning", "current-dir", "git-branch", "approval-mode", "context-used"]
+status_line_use_colors = true
+theme = "dark"
+
+[skills]
+max_context_tokens = 10000
+
+[mcp_servers.agentlayer]
+command = "bun"
+args = ["<ROOT>/src/server.ts"]
+
+[mcp_servers.agentlayer.env]
+AGENT_HOME = "<SCRATCH>/Scout"
+PLAYWRIGHT_BROWSERS_PATH = "0"
+
+[mcp_servers.agentlayer.tools.curl_run]
+approval_mode = "prompt"
+
+[mcp_servers.xcode]
+command = "xcrun"
+args = ["mcpbridge"]
+
+[mcp_servers.xcode.tools.InvokeDebuggerCommand]
+approval_mode = "prompt"
+
+[mcp_servers.acme-db]
+command = "bun"
+args = ["db.ts"]
+
+[mcp_servers.acme-db.env]
+DB_URL = "postgres://localhost/acme"
+
+[permissions.agentlayer]
+description = "agentlayer home: write the home and its repos, commit in them, never read the secrets store"
+extends = ":workspace"
+
+[permissions.agentlayer.filesystem]
+"<SCRATCH>/Scout/.state/secrets" = "deny"
+"/**/.state/secrets/**" = "deny"
+"<SCRATCH>/user/.ssh/id_*" = "deny"
+
+[permissions.agentlayer.filesystem.":workspace_roots"]
+".git" = "write"
+"**/.state/secrets/**" = "deny"
+"**/*.env" = "deny"
+"**/.env.*" = "deny"
+"./private/notes.md" = "deny"
+"**/.env" = "deny"
+
+[permissions.agentlayer.network]
+enabled = true
+
+[permissions.agentlayer.workspace_roots]
+"<SCRATCH>/code" = true
+
+[shell_environment_policy]
+set = { AGENT_CODE_PATH = "<SCRATCH>/code", AGENT_HOME = "<SCRATCH>/Scout" }
+"
+,
+  "dry": {
+    "code": 0,
+    "stderr": "",
+    "stdout": 
+"{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo operator-stop",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \\"<ROOT>/src/cli.ts\\" session-start --hook-protocol=codex --home=\\"<SCRATCH>/Scout\\"",
+            "timeout": 15,
+            "additionalContextLimit": 0
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \\"<ROOT>/src/cli.ts\\" session-capture --mode=session-end --hook-protocol=codex --home=\\"<SCRATCH>/Scout\\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \\"<ROOT>/src/cli.ts\\" session-capture --mode=pre-compact --hook-protocol=codex --home=\\"<SCRATCH>/Scout\\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \\"<ROOT>/src/cli.ts\\" guard --hook-protocol=codex --home=\\"<SCRATCH>/Scout\\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
+"
+,
+  },
+  "hooks": 
+"{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo operator-stop",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \\"<ROOT>/src/cli.ts\\" session-start --hook-protocol=codex --home=\\"<SCRATCH>/Scout\\"",
+            "timeout": 15,
+            "additionalContextLimit": 0
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \\"<ROOT>/src/cli.ts\\" session-capture --mode=session-end --hook-protocol=codex --home=\\"<SCRATCH>/Scout\\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \\"<ROOT>/src/cli.ts\\" session-capture --mode=pre-compact --hook-protocol=codex --home=\\"<SCRATCH>/Scout\\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \\"<ROOT>/src/cli.ts\\" guard --hook-protocol=codex --home=\\"<SCRATCH>/Scout\\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
+"
+,
+  "rules": 
+"# Generated by the agentlayer plugin from this home's Claude permissions.ask and permissions.deny; regenerated by init and upgrade.
+
+# Your own rules belong in another file in this directory: Codex loads every .rules file here.
+
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "prompt",
+    justification = "git push waits for the operator, as it does under Claude Code",
+)
+
+prefix_rule(
+    pattern = ["gh"],
+    decision = "forbidden",
+    justification = "gh is denied in this home, as it is under Claude Code",
+)
+"
+,
+  "written": {
+    "code": 0,
+    "stderr": "",
+    "stdout": 
+"{"hooks":{"path":"<SCRATCH>/Scout/.codex/hooks.json","changed":true},"mcp":{"path":"<SCRATCH>/Scout/.codex/config.toml","changed":true},"rules":{"path":"<SCRATCH>/Scout/.codex/rules/agentlayer.rules","changed":true},"entries":4,"profile":{"name":"agentlayer","workspaceRoots":["<SCRATCH>/code"],"rules":["git push"],"forbidden":["gh"],"servers":["xcode","acme-db"]},"notes":["<SCRATCH>/user-codex.toml sets default_permissions; this home's profile overrides it for sessions started here, and Codex does not combine sandbox_mode with a profile","model is \\"operator-model\\" in <SCRATCH>/Scout/.codex/config.toml; the recommended value is \\"gpt-6.2-sol\\" and yours was kept","acme-env was not mirrored into <SCRATCH>/Scout/.codex/config.toml: its .mcp.json entry uses \${VAR}, which Claude Code fills in and Codex does not"]}
+"
+,
+  },
+}
+`;
