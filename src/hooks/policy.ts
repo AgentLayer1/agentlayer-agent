@@ -9,10 +9,10 @@ import { commandWords, scanShell, type ShellCommand } from '@/hooks/shell-scan';
 import { mergeSettings, readMergedSettings } from '@/home/settings-scope';
 import type { PolicyDecision, ToolCall } from '@/hosts/contract';
 import { pluginName } from '@/shared/naming';
-import { isInside } from '@/shared/paths';
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { isInside, resolvedPath } from '@/shared/paths';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
+import { basename, isAbsolute, join, resolve } from 'node:path';
 
 type Json = Record<string, unknown>;
 
@@ -55,16 +55,6 @@ const rulesOf = (settings: Json, list: 'allow' | 'ask' | 'deny'): string[] => {
 /** The bodies of one tool's rules: `Read(./x)` → `./x`. */
 const bodies = (rules: string[], tool: string): string[] =>
   rules.flatMap((rule) => (rule.startsWith(`${tool}(`) && rule.endsWith(')') ? [rule.slice(tool.length + 1, -1)] : []));
-
-/** A path as the host checks it: symlinks resolved through the longest part of it that exists and can be read. */
-const resolvedPath = (path: string): string => {
-  try {
-    return realpathSync(path);
-  } catch {
-    const parent = dirname(path);
-    return parent === path ? path : join(resolvedPath(parent), basename(path));
-  }
-};
 
 /** A Claude path rule as an absolute glob: `//x` from the root, `~/x` from the user's home, anything else from the home. */
 const absoluteGlob = (rule: string, home: string): string =>

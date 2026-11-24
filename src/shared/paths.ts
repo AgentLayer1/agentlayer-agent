@@ -8,7 +8,7 @@
  */
 import { realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { isAbsolute, relative, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 /** Expand `~` or `~/foo` to an absolute path under the user's home. Other paths pass through. */
 export const expandTilde = (path: string): string => {
@@ -24,6 +24,16 @@ export const existingTarget = (path: string): string => {
     return realpathSync(path);
   } catch {
     return path;
+  }
+};
+
+/** A path with its symlinks resolved through the longest part of it that exists and can be read. */
+export const resolvedPath = (path: string): string => {
+  try {
+    return realpathSync(path);
+  } catch {
+    const parent = dirname(path);
+    return parent === path ? path : join(resolvedPath(parent), basename(path));
   }
 };
 
