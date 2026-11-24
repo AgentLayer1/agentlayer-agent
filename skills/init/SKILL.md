@@ -1618,7 +1618,7 @@ _No yearly goals set yet — run `goals year` to plan the year by quarters._
 <!-- GOALS:END -->
 ```
 
-After scaffolding, call `mcp__plugin_agentlayer_agent__dashboard` once so the file has its (empty) Active/Blocked/Overdue/Stale/Recently Closed sections rendered from day one — no scaffold drift (this also writes the first `dashboard.html`).
+After scaffolding, call `mcp__plugin_agentlayer_agent__dashboard` once so the file has its (empty) Priorities, Blocked, Overdue and Open by Project sections rendered from day one — no scaffold drift (this also writes the first `dashboard.html`).
 
 **Seed concept articles — preservation-aware.** Four bundled concepts describe the system itself (the wiki pattern, the task system, the feedback loop, the audit-premise-decay heuristic). Seeding them means a freshly-initialised home has working `[[concepts/*]]` wikilinks from day one instead of broken refs, and the operator can read them to understand the architecture they just installed.
 

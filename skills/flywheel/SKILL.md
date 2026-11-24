@@ -20,13 +20,13 @@ Don't just pick the most urgent thing and ride it for the whole session. Touch e
 
 ### 1. Orient (3 minutes)
 
-Refresh the dashboard, then read it as your single source of truth for what's active across the portfolio:
+Refresh the dashboard, then read it for the goals and the top priorities across the portfolio:
 ```
 mcp__plugin_agentlayer_agent__dashboard
 Read <HOME>/projects/TASKS.md
 ```
 
-`TASKS.md` is auto-rebuilt from task frontmatter on every mutation; refreshing first guarantees the view matches disk. The `dashboard` tool regenerates both views (`TASKS.md` + the Agent OS `dashboard.html`) in one pass, so one call covers everything. The rendered sections (Active grouped by project, Blocked, Overdue, Stale, Recently Closed) are your action queue — no need to chain per-project queries to get the same picture.
+`TASKS.md` is auto-rebuilt from task frontmatter on every mutation; refreshing first guarantees the view matches disk. The `dashboard` tool regenerates both views (`TASKS.md` + the Agent OS `dashboard.html`) in one pass, so one call covers everything. It carries the goals, the P0 and P1 tasks, what is blocked or overdue, and a count per project. Every other task is in the task files: `task_query` (`status: "open"`, then `"active"`) lists them, and that list is your action queue.
 
 Then read `<HOME>/knowledge/memory/index.md` end to end for narrative context. The `## Active Threads` section explains the *why* behind the tasks. If it conflicts with `TASKS.md`, trust the dashboard — frontmatter is source of truth; memory index is a synthesis that the next compile will reconcile.
 
@@ -54,7 +54,7 @@ Most work happens in sessions that never touch a task, so the board alone unders
 
 ### 3. Sweep active tasks per project
 
-Walk the Active section of `TASKS.md` project by project. Only when you need full task detail (description, checklist, thread history) reach for:
+Walk the open and active tasks from `task_query` project by project. Only when you need full task detail (description, checklist, thread history) reach for:
 ```
 mcp__plugin_agentlayer_agent__task_get with { id: "<id>" }
 ```

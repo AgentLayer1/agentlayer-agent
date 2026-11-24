@@ -13,4 +13,4 @@ Shipping the store relaunch while the paperwork waits on other people.
 ```
 
 - **The written line:** the time from `date '+%Y-%m-%d %H:%M %z'`, and who wrote it (`by sync` or `by the heartbeat`).
-- **The theme:** one sentence of at most about 15 words, which the sidebar shows on two lines: what this stretch of work is about across every project, not a status report. Name the big themes, never a task, an id, a date, a count, a person, or anything in parentheses; the task list right under it carries the detail.
+- **The theme:** one sentence of at most about 15 words, which the sidebar shows on two lines: what this stretch of work is about across every project, not a status report. Name the big themes, never a task, an id, a date, a count, a person, or anything in parentheses; the priorities right under it carry the detail.

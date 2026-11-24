@@ -12,6 +12,13 @@ const CLOSED = new Set(['done', 'cancelled']);
 
 export const isClosed = (status: string): boolean => CLOSED.has(status);
 
+const TOP_PRIORITIES = new Set(['P0', 'P1']);
+
+/**
+ * The priorities TASKS.md lists task by task; the rest it only counts.
+ */
+export const isTopPriority = (task: Pick<WorkTask, 'priority'>): boolean => TOP_PRIORITIES.has(task.priority);
+
 /**
  * The fields the date rules read, so a parsed task file and a model task share them.
  */
