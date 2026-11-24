@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { manifestLoads, splitPieces } from '@/hosts/antigravity';
+import { manifestLoads, sandboxOnIn, splitPieces } from '@/hosts/antigravity';
 
 describe('splitPieces', () => {
   const bytes = (text: string): number => Buffer.byteLength(text);
@@ -54,5 +54,23 @@ describe('manifestLoads', () => {
     );
     expect(manifestLoads(join(scratch, 'absent.json'), checkout)).toBe(false);
     expect(manifestLoads(manifest('broken.json', '{'), checkout)).toBe(false);
+  });
+});
+
+describe('sandboxOnIn', () => {
+  const scratch = mkdtempSync(join(tmpdir(), 'antigravity-sandbox-'));
+  afterAll(() => rmSync(scratch, { recursive: true, force: true }));
+  const settings = (name: string, text: string): string => {
+    const path = join(scratch, name);
+    writeFileSync(path, text);
+    return path;
+  };
+
+  test('is on only when the settings say true', () => {
+    expect(sandboxOnIn(settings('on.json', JSON.stringify({ enableTerminalSandbox: true })))).toBe(true);
+    expect(sandboxOnIn(settings('off.json', JSON.stringify({ enableTerminalSandbox: false })))).toBe(false);
+    expect(sandboxOnIn(settings('unset.json', JSON.stringify({ trustedWorkspaces: [] })))).toBe(false);
+    expect(sandboxOnIn(join(scratch, 'absent.json'))).toBe(false);
+    expect(sandboxOnIn(settings('broken.json', '{'))).toBe(false);
   });
 });

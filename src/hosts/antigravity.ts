@@ -20,6 +20,24 @@ const realpath = (path: string): string => {
   }
 };
 
+/** The Antigravity CLI's user settings, the only place it keeps permission rules and the sandbox switch. */
+export const cliSettings = (): string => resolve(homedir(), '.gemini', 'antigravity-cli', 'settings.json');
+
+/** Whether CLI settings turn the terminal sandbox on in every mode (it is otherwise on only in auto mode). */
+export const sandboxOnIn = (settingsPath: string): boolean => {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(settingsPath, 'utf-8'));
+    return (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      'enableTerminalSandbox' in parsed &&
+      parsed.enableTerminalSandbox === true
+    );
+  } catch {
+    return false;
+  }
+};
+
 /** Whether a discovery manifest loads the checkout at `root`, however the path to it is spelled. */
 export const manifestLoads = (manifest: string, root: string): boolean => {
   if (!existsSync(manifest)) {
@@ -174,7 +192,16 @@ export const antigravityHost = {
   skill: (name) => `the ${name} skill`,
   usedBy: () => manifestLoads(personalManifest(), PLUGIN_SOURCE_ROOT),
   homeIssues: () => [],
-  launchIssue: () => null,
+  launchIssue: () =>
+    sandboxOnIn(cliSettings())
+      ? null
+      : {
+          label: 'Sandbox',
+          banner:
+            "Antigravity's terminal sandbox isn't on for this machine, so shell commands can reach your whole disk. Paste the settings from .state/updates/antigravity-user-config.md (the upgrade skill, run from Claude Code, writes it).",
+          section:
+            "## ⚠️ Sandbox\n\nAntigravity's terminal sandbox isn't switched on in this machine's settings, so outside auto mode shell commands run with nothing between them and the rest of the disk. **Tell the operator before anything else**: paste the settings in `.state/updates/antigravity-user-config.md` into `~/.gemini/antigravity-cli/settings.json` (the upgrade skill, run from Claude Code, writes that note), then restart Antigravity."
+        },
   delivery: {
     kind: 'inject',
     files: () => [FILES.AGENTS, ...staticContextFiles()],
