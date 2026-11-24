@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { RUNTIME_DIR, pluginName } from '../../../src/shared/naming';
@@ -24,8 +24,8 @@ const home = () => {
   write('AGENTS.md', '# Manual\n');
   write('SOUL.md', '# Soul\n');
   write('.claude/CLAUDE.md', '@../AGENTS.md\n@../SOUL.md\n');
-  const run = () => {
-    const proc = spawnSync(process.execPath, [SCRIPT, '--home', root]);
+  const run = (...extra: string[]) => {
+    const proc = spawnSync(process.execPath, [SCRIPT, '--home', root, ...extra]);
     return { status: proc.status, out: JSON.parse(proc.stdout.toString()) };
   };
   const claudeFiles = () =>
@@ -95,5 +95,27 @@ describe('context-weight', () => {
       'AGENTS.md',
       'SOUL.md'
     ]);
+  });
+
+  test('--record keeps the watermark and saves the sizes; the next run reports growth by file since then', () => {
+    const { root, write, run } = home();
+    write(join(RUNTIME_DIR, 'review.json'), '{"lastRun":"2026-11-01","asked":{"k":{"date":"2026-11-01","answer":"keep"}}}\n');
+    expect(run().out.growth, 'nothing recorded yet').toBeNull();
+    expect(run('--record').status).toBe(0);
+    const review = JSON.parse(readFileSync(join(root, RUNTIME_DIR, 'review.json'), 'utf-8'));
+    expect(review).toMatchObject({ lastRun: '2026-11-01', asked: { k: { answer: 'keep' } } });
+    expect(review.weights.claude['AGENTS.md']).toBe('# Manual\n'.length);
+    write('AGENTS.md', '# Manual\n\nOne more line.\n');
+    const { growth } = run().out;
+    expect(growth.claude).toEqual({ total: 16, files: [{ file: 'AGENTS.md', bytes: 16 }] });
+  });
+
+  test('--record refuses a watermark that does not parse, and leaves it as it was', () => {
+    const { root, write, run } = home();
+    write(join(RUNTIME_DIR, 'review.json'), '{"lastRun":');
+    const spawned = spawnSync(process.execPath, [SCRIPT, '--home', root, '--record']);
+    expect(spawned.status).toBe(1);
+    expect(readFileSync(join(root, RUNTIME_DIR, 'review.json'), 'utf-8')).toBe('{"lastRun":');
+    expect(run().out.growth).toBeNull();
   });
 });

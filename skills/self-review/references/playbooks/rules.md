@@ -40,7 +40,7 @@ Read every surface where corrections and decay actually show up.
 
 ## Step 2 — Prune pass
 
-Build a **deletion manifest** before any additive proposal. Every candidate needs evidence you verified this session (a `grep` hit, an `ls` miss, a quoted line, a commit), not a hunch. Classes:
+The pass is about the quality of what a session carries: every loaded line true, current, said once, and worth acting on. Size is the last lens, not the first. Build a **deletion manifest** before any additive proposal. Every candidate needs evidence you verified this session (a `grep` hit, an `ls` miss, a quoted line, a commit), not a hunch. The Begin step's `brain-audit.ts` lists three kinds across every loaded file under `quality`; verify each row before it becomes an item. Classes:
 
 | Class | What it looks like | Action |
 |---|---|---|
@@ -51,12 +51,17 @@ Build a **deletion manifest** before any additive proposal. Every candidate need
 | **Model default** | A line on a prompt surface (`AGENTS.md`, `SOUL.md`, a rule file, a template) stating generic practice the current model already follows unprompted ("read before editing", "write clean code"), with zero violations since the watermark and no matching `## Learnings` theme. A Learnings theme is an operator correction by definition, so it never qualifies. Models improve; instructions written for an older one go stale. | **Retire on trial:** remove it and log it in the watermark's `retired` list with the surface it came from. Later cycles restore it if it's violated after that. |
 | **Local override shipped upstream** | A home-local rule or custom skill added as a consumer workaround whose fix is now in the installed plugin. | Delete the override. |
 | **Stuck plan** | A self-review plan over 14 days old with no follow-through. | Re-surface, downgrade, or close (set `status`, add a closing line). |
+| **Closed but live** | A line that speaks of finished work as open (`quality.closedRefs`, and the memory index's `signal: closed` lines). | Rewrite to the outcome in a few words, or delete. |
+| **Duplicate** | The same fact in two loaded files (`quality.duplicates`, a lead: a pointer to an article is not its copy). | Keep it where it is owned (the task, the article, the manual), cut the copy to a pointer or delete it. |
+| **Narrative** | A rule buried in its incidents (`quality.narrative`: dates, task ids, "recurred"). The incidents already live in the feedback log. | Rewrite to the rule in one line. In Learnings, which compile owns, this is the over-250-character backlog below. |
+
+**Order the manifest by harm:** what is wrong (superseded, dead reference, closed but live), then what is said twice, then narrative, then low value (model default, enforced elsewhere), then size. The budget only decides how far down the list a sitting goes: a home over its `budget` keeps going past the quality items until it fits or the operator stops it.
 
 Run `knowledge_lint` without `fix` during the scan (it writes only its own report: dead wikilinks, orphans, invalid frontmatter) and fold its findings into the manifest as items to approve. Never call `knowledge_lint({ fix: true })` or `memory_prune` from this skill: both rewrite or delete across the whole home with no per-item approval and would touch protected sections; `sync` runs them on its own cadence.
 
 **Restore first.** Before proposing new retirements, check every entry in the watermark's `retired` list. A correction dated after its `date` that matches the rule means the trial failed: put the text back at `from` (always a prompt surface, never Learnings), drop the entry, and say so in the report. Otherwise increment its `checks`; at `checks: 2` the retirement is permanent and the entry is dropped. This bookkeeping happens every run, including one that changes nothing else.
 
-**A "model default" retirement is a trial with a gate.** Before it, run `bun "$PLUGIN_ROOT/skills/self-review/scripts/rule-compliance.ts" --home "$HOME_DIR"` and put its weekly numbers in the cycle report. Retire only a handful of lines a cycle, so a change in the numbers can be traced to them. At the next cycle the retirement stays only if no week since is listed under `regressions` and, once the compile has recorded keyed corrections, `correctionsPer1000` has not risen; otherwise restore it as above. For a rule whose effect shows in an answer rather than a command, `replay.ts` beside it sets up a blind comparison: one prompt (taken from the session a keyed correction names) asked several times against the manual at two git refs, for the operator to run and score before opening the key.
+**A "model default" retirement is a trial with a gate, and every rules pass proposes one.** Up to three lines a sitting, or the report says why none qualified. Begin's `rule-compliance.ts` numbers are its baseline, and they go in the cycle report. Retire only a handful of lines a cycle, so a change in the numbers can be traced to them. At the next cycle the retirement stays only if no week since is listed under `regressions` and, once the compile has recorded keyed corrections, `correctionsPer1000` has not risen; otherwise restore it as above. For a rule whose effect shows in an answer rather than a command, `replay.ts` beside it sets up a blind comparison: one prompt (taken from the session a keyed correction names) asked several times against the manual at two git refs, for the operator to run and score before opening the key.
 
 **Never prune on the "model default" ground** a safety, privacy, confidentiality, faith, or money rule, or anything that encodes this operator's own preference: the model cannot know a preference by default, and insurance rules are cheap. Those leave only on "superseded" or "dead reference", with an explicit go.
 
@@ -75,7 +80,7 @@ The next compile drops the theme (or the one rule) from Learnings and brings it 
 
 **A Learnings bullet over 250 characters is a backlog.** The compile keeps such a bullet word for word and waits for this pass. Split it into its rules and decide each one: move it to the surface that should hold it (the manual, SOUL, USER, or a Track B plan when only a hook will hold it), or let it go because something already holds it, with a `graduated-rule:` marker either way. When every rule in the bullet has been decided, write the `graduated:` marker and the next compile drops the bullet.
 
-Present the manifest grouped by class, with bytes saved per item. For each item: the exact text or path, the evidence, the action. Get approval per group (`AskUserQuestion` with multi-select under Claude Code, a numbered list under Codex), then apply. Quote every deleted line verbatim in the cycle report so a restore never depends on git.
+Present the manifest grouped by class, with bytes saved per item. For each item: the exact text or path, the evidence, the action. **Verified items take one yes.** An item the machine settled (a dead reference, a line naming only closed tasks, a duplicate once you have read both copies and named the one that owns the fact, prose a hook or test now enforces, a fact superseded by its named source) goes in one list: numbered, each with its text, its evidence and its action. Ask once: **Apply all** · **One by one** · **Leave them**; a typed answer such as "all but 3 and 7" applies the rest. Judgment items (a model-default retirement, a narrative rewrite, a graduation, a stuck plan) are asked on their own, grouped by class. Ask with `AskUserQuestion` under Claude Code, a numbered list under Codex, then apply. Quote every deleted line verbatim in the cycle report so a restore never depends on git.
 
 ## Step 3 — Cluster, count, classify the feedback
 
@@ -102,7 +107,7 @@ Rank by `severity × instances × cycles`. Drop anything with fewer than two ind
 
 **Track A: home prompt edits.** For each: the target path, the current text (read it, quote it), the proposed text, the coverage state, and one sentence on why this surface.
 
-**An addition has to fit.** The Begin step's `context-weight.ts` gives the always-loaded total per host and the `budget` each is held to. A Track A addition that would take the home over, or a Track D or E addition that would take a template over its cap in `src/contracts/templates.test.ts`, names in the same proposal what leaves to make room, with the bytes of each.
+**A sitting does not leave the brain heavier.** Every addition names in the same proposal what leaves, with the bytes of each, so the sitting nets out at or below where it began (`context-weight.ts` at Begin and Finish). Growth the operator approves anyway is named in the report with its reason. A Track D or E addition is held the same way against its template's cap in `src/contracts/templates.test.ts`.
 
 **Track B: code-change plans.** Never edit code in this skill. If a self-review plan for the theme exists in `<HOME>/reports/plans/`, update it with `Edit`. Otherwise create one with the `report_write` MCP tool:
 

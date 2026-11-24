@@ -41,16 +41,20 @@ Keep the agent's brain and context lean and correct, and close the feedback loop
 HOME_DIR="${AGENT_HOME:-$PWD}"
 [ -f "$HOME_DIR/.state/version.json" ] || [ -f "$HOME_DIR/.state/knowledge.json" ] || echo "NOT_AN_AGENT_HOME: $HOME_DIR"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"
+bun "$PLUGIN_ROOT/skills/self-review/scripts/brain-audit.ts" --home "$HOME_DIR"
+bun "$PLUGIN_ROOT/skills/self-review/scripts/rule-compliance.ts" --home "$HOME_DIR"
 bun "$PLUGIN_ROOT/skills/self-review/scripts/context-weight.ts" --home "$HOME_DIR"
 ```
 
 `NOT_AN_AGENT_HOME` → stop and ask the operator to relaunch from the agent home.
 
+The three outputs are the sitting's **scorecard**, quality first: `brain-audit.ts` counts what is wrong or worn in the brain (its `quality` buckets across every loaded file, plus stale tasks and memory lines), and is the brain pass's inventory; `rule-compliance.ts` gives the weekly compliance numbers and, once the compile has recorded keyed corrections, `correctionsPer1000`, the closest thing to a measure of whether the agent is getting better; `context-weight.ts` gives size, last.
+
 `context-weight.ts` prints the **always-loaded stack per host**, with bytes per file and a total. The two stacks differ: Claude Code loads the bridge, everything it `@`-imports (recursively, prose only: an `@path` inside a fenced block or a code span is not an import, and a bare `@word` that names no file is a mention), and every `.md` under `.claude/rules/` without a `paths:` scope; Codex loads `AGENTS.md` natively and gets the identity stack (SOUL, IDENTITY, USER, the knowledge index, the memory index, the task dashboard) from the SessionStart hook, never the bridge or the rules. A non-zero exit means an import did not resolve: fix or report that before using the totals. Record both totals as this sitting's baseline, before either pass changes anything; Finish reports the deltas. A rules-file deletion is a Claude-only saving; say so.
 
 ## Finish
 
-Re-run `context-weight.ts`, then persist one report for the sitting with `report_write({ category: 'briefings', slug: 'self-review', title: 'Self-review: <date> (<counts>)', skill: 'self-review', status: 'draft', body })`. The body opens with the context weight per host (Claude `<before>` → `<after>` bytes, Codex `<before>` → `<after>`), then the `## Brain` section from the brain pass and the summary from the rules pass, and quotes every deleted or rewritten line verbatim under `## Removed`. Surface `📄 Saved to <path>` using the absolute `path` the tool returns. Skip the report only when nothing was pruned or changed. Then write the rules pass's watermark update (its Step 6), filling each new `retired` entry's `report` with the relPath the report write returned; the brain pass wrote its keys in its own Step 4, and neither overwrites the other's. The watermark is written even when the report is skipped.
+Re-run `brain-audit.ts` and `context-weight.ts`, then persist one report for the sitting with `report_write({ category: 'briefings', slug: 'self-review', title: 'Self-review: <date> (<counts>)', skill: 'self-review', status: 'draft', body })`. The body opens with the scorecard, in this order: the quality counts before → after (duplicates, closed but live, narrative, stale memory lines); the correction rate and any compliance regression; then size per host before → after against `budget`, and the three files that grew most since the last sitting (`growth`). Then the `## Brain` section from the brain pass and the summary from the rules pass, and quotes every deleted or rewritten line verbatim under `## Removed`. Surface `📄 Saved to <path>` using the absolute `path` the tool returns. Skip the report only when nothing was pruned or changed. Then write the rules pass's watermark update (its Step 6), filling each new `retired` entry's `report` with the relPath the report write returned; the brain pass wrote its keys in its own Step 4, and neither overwrites the other's. The watermark is written even when the report is skipped. Last, run `context-weight.ts --home "$HOME_DIR" --record`, which saves today's sizes for the next sitting's `growth`.
 
 
 ## Hard rules
@@ -58,7 +62,7 @@ Re-run `context-weight.ts`, then persist one report for the sitting with `report
 - **Never edit `IDENTITY.md`'s preamble or `## Who`.** Its `## Operational Pattern` changes only as a Track A proposal the operator approves.
 - **`raw/user/feedback.md` is append-only.** The only write is a `graduated:` or `graduated-rule:` marker through `capture`. Never edit past entries.
 - **In `memory/index.md`, never touch `## Learnings` or `## Open Questions`.** Compile regenerates both: use markers for Learnings, and fix an Open Question at its source. Other sections take approved deletions and rewrites only.
-- **Nothing is deleted without approval**, every deleted line is quoted in the cycle report, and no whole-home mutation tool (`knowledge_lint` with `fix`, `memory_prune`, `links_rewrite`) runs from this skill.
+- **Nothing is deleted without approval** (a list of machine-verified items takes one yes), every deleted line is quoted in the cycle report, and no whole-home mutation tool (`knowledge_lint` with `fix`, `memory_prune`, `links_rewrite`) runs from this skill.
 - **Never edit the host's plugin cache** (`~/.claude/plugins/cache/…` or Codex's equivalent). In consumer mode plugin fixes are an override plus a proposal.
 - **Never commit, push, tag, or `/release`** from this skill, and never file an upstream issue without an explicit go. Plugin-checkout edits need a go on that specific diff.
 - **Never install a skill without explicit in-session approval.**

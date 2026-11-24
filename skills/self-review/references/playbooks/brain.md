@@ -4,13 +4,7 @@ The agent's data, not its rules: tasks nobody touches, projects gone quiet, memo
 
 ## Step 1 — Inventory
 
-```bash
-HOME_DIR="${AGENT_HOME:-$PWD}"
-PLUGIN_ROOT="<plugin root>"
-bun "$PLUGIN_ROOT/skills/self-review/scripts/brain-audit.ts" --home "$HOME_DIR"
-```
-
-It prints JSON, writes nothing, and counts only. Every bucket is a date comparison:
+The inventory is the `brain-audit.ts` output Begin printed (SKILL.md). It prints JSON, writes nothing, and counts only. Every bucket is a date comparison:
 
 | Bucket | Means |
 |---|---|
@@ -56,6 +50,8 @@ Order, because a stale item costs most where it's loaded most:
 5. Decisions to promote.
 6. Articles.
 7. Capture months.
+
+**Verified first, with one yes.** Step 2 settles some items on the machine: a memory line whose tasks are all closed, a Pending item whose artifact or receipt exists, a broken pin whose file was found elsewhere (Fix the link) or nowhere (Unpin), a line whose path or name no longer exists. List them before anything else, numbered, each with its text, its evidence and the action, and ask once: **Apply all** · **One by one** · **Leave them**. A typed answer such as "all but 3 and 7" applies the rest; what is left out joins the questions below. Everything that needs the operator's judgment (whether work is still wanted, an article's accuracy, a decision worth keeping, a capture month) is asked as follows.
 
 Ask 4 questions per call (`AskUserQuestion` under Claude Code; a numbered list per batch under Codex). Each question names the item, gives one line of evidence, and puts your recommendation first, marked `(Recommended)`. Apply each batch's answers before asking the next, so stopping early loses nothing. Apply them in this session, never through a subagent: the approval lives in this conversation, and a permission check that can't see it may refuse the write. After 6 calls (24 questions), ask **Continue** or **Stop here**. Whatever's left is asked first next month: the next inventory ranks the same items oldest first, minus what was answered.
 
