@@ -77,6 +77,8 @@ export interface FakeMachine {
   commands: string[];
   /** What each command in `commands` was run with, in the same order. */
   commandArgs: string[];
+  /** Called as each command runs, so a test can do what the host does at that moment. */
+  onCommand?: (command: string) => void;
   /** CLI calls (`task query`) that exit 1. */
   failing: string[];
   /** CLI calls that never answer, as when the engine stops a clock mid-tick. */
@@ -376,6 +378,7 @@ export const fakeHost = (on: On, host: FakeMachine = machine()): FakeHost => {
   on('command.run', (_$, e) => {
     host.commands.push(e.command);
     host.commandArgs.push(e.args);
+    host.onCommand?.(e.command);
     return {};
   });
   on('ui.render', { component: 'AbovePrompt' }, () => ({ type: 'Box' as const }));

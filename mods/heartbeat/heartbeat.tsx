@@ -226,6 +226,11 @@ async function look($: EngineInterface): Promise<void> {
   });
 }
 
+// When this process last started a brain refresh, and whether that start was the one retry an unfinished refresh gets:
+// a refresh is tried once per window and once more if it never finished, not on every tick. The process keeps it, since
+// a refresh clears the conversation and its session state with it.
+let refreshTry = { at: 0, isRetry: false };
+
 // A brain refresh and the day's first wake clear the conversation first, so the heartbeat's context stays small. A
 // refresh runs sync's maintenance steps, then the look reads the brain it left.
 async function wake($: EngineInterface, now: number, status: HeartbeatStatus, refresh = false): Promise<void> {
@@ -237,13 +242,10 @@ async function wake($: EngineInterface, now: number, status: HeartbeatStatus, re
     await update($, beat, (current) => ({ ...current, clearedId, awaiting: [] }));
     await $.command.run({ command: 'clear' });
   }
-  await update($, beat, (current) => ({
-    ...current,
-    wokeOn: today,
-    ...(refresh
-      ? { refreshTriedAt: now, refreshRetried: insideRetryWindow(current.refreshTriedAt ?? 0, now) }
-      : {})
-  }));
+  if (refresh) {
+    refreshTry = { at: now, isRetry: insideRetryWindow(refreshTry.at, now) };
+  }
+  await update($, beat, (current) => ({ ...current, wokeOn: today }));
   $.clock.after(0, async () => {
     if (refresh) {
       await expectTurn($, 'refresh');
@@ -381,10 +383,7 @@ async function lastUse($: EngineInterface): Promise<number | null> {
 }
 
 async function tick($: EngineInterface, revivedLateMs = 0): Promise<void> {
-  const [{ everyMinutes = 55, nextAt: dueAt, refreshTriedAt = 0, refreshRetried = false }, startedAt] = await Promise.all([
-    read($, beat),
-    $.clock.now()
-  ]);
+  const [{ everyMinutes = 55, nextAt: dueAt }, startedAt] = await Promise.all([read($, beat), $.clock.now()]);
   const lateMs = revivedLateMs || (dueAt !== undefined && isLate(dueAt, startedAt) ? startedAt - dueAt : 0);
   const [status, { isBusy }, owner] = await Promise.all([statusOrWhy($, lateMs), read($, queue), heldToken($)]);
   if (typeof status === 'string') {
@@ -416,8 +415,8 @@ async function tick($: EngineInterface, revivedLateMs = 0): Promise<void> {
   const used = await lastUse($);
   // A refresh waits for something to absorb: a session written since the last sync or refresh.
   const absorbs = used === null || used > refreshedMs(status);
-  const lastTryUnfinished = refreshTriedAt > refreshedMs(status);
-  const mayTry = !insideRetryWindow(refreshTriedAt, now) || (lastTryUnfinished && !refreshRetried);
+  const lastTryUnfinished = refreshTry.at > refreshedMs(status);
+  const mayTry = !insideRetryWindow(refreshTry.at, now) || (lastTryUnfinished && !refreshTry.isRetry);
   const refreshes = status.refreshDue && absorbs && mayTry;
   // A home it can't see is treated as in use, since skipping would stop the heartbeat for good.
   if (!refreshes && used !== null && now - used >= status.heartbeat.everyMinutes * MINUTE_MS) {

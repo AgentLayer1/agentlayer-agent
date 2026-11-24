@@ -57,6 +57,27 @@ const drawnBand = async ($: Engine) =>
     .map((element) => element.text)
     .join('|');
 
+// The heartbeat's session state, held by the test so it can empty it as a /clear does or move a value in it.
+const heartbeatState = (on: On) => {
+  const cell: { value: unknown; version: number } = { value: undefined, version: 0 };
+  const put = (value: unknown) => {
+    cell.value = value;
+    cell.version += 1;
+  };
+  on('state.get', { plugin: PLUGIN, key: 'heartbeat' }, () => ({ value: { ...cell } }));
+  on('state.set', { plugin: PLUGIN, key: 'heartbeat' }, (_$, e) => {
+    if (e.ifVersion !== undefined && e.ifVersion !== cell.version) {
+      return { value: { isSet: false as const, version: cell.version } };
+    }
+    put(e.value);
+    return { value: { isSet: true as const, version: cell.version } };
+  });
+  return {
+    empty: () => put(undefined),
+    patch: (change: Record<string, unknown>) => put({ ...(typeof cell.value === 'object' ? cell.value : {}), ...change })
+  };
+};
+
 describe('the heartbeat', () => {
   test('/message decides a proposal through the CLI with no model turn', async ($, on) => {
     const { host } = heartbeatHost(on);
@@ -725,25 +746,11 @@ describe('notes', () => {
   };
 
   test('after a /clear empties session state, the tab is still the heartbeat', async ($, on) => {
-    // A /clear starts a new conversation, whose session state starts empty: from then on the heartbeat's value lives in
-    // a fresh cell.
-    let cleared = false;
-    const fresh: { value: unknown; version: number } = { value: undefined, version: 0 };
-    on('state.get', { plugin: PLUGIN, key: 'heartbeat' }, (_$, e, next) => (cleared ? { value: { ...fresh } } : next(e)));
-    on('state.set', { plugin: PLUGIN, key: 'heartbeat' }, (_$, e, next) => {
-      if (!cleared) {
-        return next(e);
-      }
-      if (e.ifVersion !== undefined && e.ifVersion !== fresh.version) {
-        return { value: { isSet: false as const, version: fresh.version } };
-      }
-      fresh.value = e.value;
-      fresh.version += 1;
-      return { value: { isSet: true as const, version: fresh.version } };
-    });
+    // A /clear starts a new conversation, whose session state starts empty.
+    const state = heartbeatState(on);
     const { host } = await bound($, on);
     host.notesRoom = 2;
-    cleared = true;
+    state.empty();
     expect((await run($, 'heartbeat', 'status')).text).toStartWith('This session is the heartbeat');
     expect((await run($, 'heartbeat', 'scout')).text).toStartWith('Scouting now');
   });
@@ -909,15 +916,21 @@ describe('brain refresh', () => {
   const refreshes = (host: FakeHost) => host.commands.filter((command) => command === REFRESH).length;
 
   test('a refresh that never finished is tried once more at the next look, then waits out its window', async ($, on) => {
+    const state = heartbeatState(on);
     const { host } = await bound($, on);
+    // A /clear starts a new conversation whose session state is empty, and every refresh clears first.
+    host.onCommand = (command) => {
+      if (command === 'clear') {
+        state.empty();
+      }
+    };
     host.status.refreshDue = true;
     await host.clock.advance(55 * MINUTE);
     expect(host.commands).toEqual(['clear', REFRESH, WAKE]);
     await host.clock.advance(55 * MINUTE);
-    expect(refreshes(host), 'the next tick tries once more').toBe(2);
+    expect(host.commands, 'the next tick tries once more').toEqual(['clear', REFRESH, WAKE, 'clear', REFRESH, WAKE]);
     await host.clock.advance(55 * MINUTE);
-    expect(refreshes(host), 'a second failure only looks').toBe(2);
-    expect(host.commands.at(-1)).toBe(WAKE);
+    expect(host.commands, 'a second failure only looks').toEqual(['clear', REFRESH, WAKE, 'clear', REFRESH, WAKE, WAKE]);
     await host.clock.advance(5 * 55 * MINUTE);
     expect(refreshes(host), '330 minutes after the retry, still inside the window').toBe(2);
     await host.clock.advance(55 * MINUTE);

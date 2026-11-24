@@ -167,10 +167,6 @@ export interface HeartbeatClock {
   notesCap?: number;
   /** How many notes the scouting run under way has sent so far. */
   notesThisWake?: number;
-  /** When this heartbeat last started a brain refresh, epoch ms, so a failed one isn't retried every tick. */
-  refreshTriedAt?: number;
-  /** Set when that start was the one retry an unfinished refresh gets, so a second failure waits out the window. */
-  refreshRetried?: boolean;
   /** When a sync or brain refresh last ran, epoch ms; 0 when never. */
   refreshedAt?: number;
   /** The latest ticks, newest first. */
