@@ -35,7 +35,7 @@ The agent home directory is the single source of truth for memory.
 
 | Kind | Write to |
 |------|----------|
-| Feedback / corrections / rules / preferences | `{{KNOWLEDGE_REL}}/raw/user/feedback.md` (append-only; compiler synthesises into `{{KNOWLEDGE_REL}}/memory/index.md` → `## Learnings`) |
+| Feedback / corrections / rules / preferences | `{{KNOWLEDGE_REL}}/raw/user/feedback.md` (append-only; the compile adds corrections from sessions and synthesises `{{KNOWLEDGE_REL}}/memory/index.md` → `## Learnings`) |
 | Active project facts (deadlines, decisions, blockers) | `{{KNOWLEDGE_REL}}/memory/index.md` → `## Active Threads` and/or `{{PROJECTS_REL}}/<slug>/README.md` |
 | Headline facts about you (intro, communication style, values) | `USER.md` (root) |
 | Durable evolving knowledge about you (facets) | `{{KNOWLEDGE_REL}}/user/{profile,skills,preferences,career,interests}.md` |
@@ -109,7 +109,7 @@ The agent home directory is the single source of truth for memory.
 
 Raw → compiled lifecycle:
 - Sessions auto-captured to `raw/sessions/` by the `SessionEnd` hook
-- Capture any input into `raw/inbox/` (use the `capture` tool, or drop a file directly), correction-style feedback into `raw/user/feedback.md` via `capture --kind=feedback` (or appended directly)
+- Capture any input into `raw/inbox/` (use the `capture` tool, or drop a file directly), and a stated rule or preference into `raw/user/feedback.md` via `capture --kind=feedback`
 - Run `/agentlayer:knowledge-compile` — {{AGENT_NAME}} synthesises wiki articles, updating `{{KNOWLEDGE_REL}}/user/`, `{{KNOWLEDGE_REL}}/concepts/`, `{{KNOWLEDGE_REL}}/memory/`, and occasionally `USER.md`
 - Sessions stay on disk; inbox items archive after compile; feedback hash-tracked
 
@@ -224,7 +224,7 @@ Don't do this by hand. The `setup-worktree` skill does both steps: it pins which
 - A last-minute change gets a real risk pass, and the handoff names the one thing you couldn't prove. Run the wider test suite, not just the directory you touched.
 - A deep problem gets the full picture before code: a research note the operator reviews, built from diverse samples rather than the first one found.
 - A truncated / partial file read is never a basis for a conclusion — when a Read returns a partial view (or you've only seen part of a query, match-set, or config), page through or grep the rest before asserting, labeling, or acting on it.
-- After any correction, write the lesson in the same turn, routed by kind: a working-style correction to the feedback log, a system-level defense to code, a skill, or a hook. "Noted" without a write changes nothing.
+- On a correction, say what was corrected and its scope, then fix the work: no lesson written or announced mid-task; the compile records it. A "remember this" or standing rule is written at once.
 
 ## Engineering Standards
 
