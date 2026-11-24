@@ -91,6 +91,7 @@ describe('sessionStart', () => {
       () => sessionStart()
     );
     expect(heavy.systemMessage).toContain('always loaded, over the');
+    expect(heavy.systemMessage, 'it names where the weight is').toMatch(/budget \(AGENTS\.md \d+\.\dKB/);
   });
 
   test('AGENTS.md without the bridge is flagged every session', async () => {

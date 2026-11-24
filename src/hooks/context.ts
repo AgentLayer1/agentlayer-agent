@@ -35,6 +35,7 @@ import { CLI_PATH } from '@/shared/naming';
 import { isInside } from '@/shared/paths';
 import { listMarkdown, MARKDOWN_RE, readText, readTextAsync } from '@/shared/text';
 import { countOf } from '@/shared/utils';
+import type { Stack } from '@/shared/weight';
 import { importedStack, injectedStack } from '@/shared/weight';
 import { livePins } from '@/status/surfaces';
 import { statusLineDrift } from '@/statusline/setting';
@@ -325,14 +326,24 @@ const welcomePart = (): string => {
   ].join('\n');
 };
 
-const weightNote = (bytes: number): string =>
-  bytes > CONTEXT.ALWAYS_LOADED_BUDGET
-    ? paint(`${formatKB(bytes)} always loaded, over the ${formatKB(CONTEXT.ALWAYS_LOADED_BUDGET)} budget`, ANSI.yellow)
-    : `${formatKB(bytes)} always loaded`;
+// Over budget, the line names the largest files, since those are where a cut pays.
+const weightNote = ({ total, files }: Stack): string => {
+  if (total <= CONTEXT.ALWAYS_LOADED_BUDGET) {
+    return `${formatKB(total)} always loaded`;
+  }
+  const largest = [...files]
+    .sort((a, b) => b.bytes - a.bytes)
+    .slice(0, 3)
+    .map((file) => `${relative(FOLDERS.HOME, file.path).split(sep).join('/')} ${formatKB(file.bytes)}`);
+  return paint(
+    `${formatKB(total)} always loaded, over the ${formatKB(CONTEXT.ALWAYS_LOADED_BUDGET)} budget (${largest.join(', ')})`,
+    ANSI.yellow
+  );
+};
 
-const alwaysLoadedBytes = (host: HostAdapter): number | null => {
+const alwaysLoadedStack = (host: HostAdapter): Stack | null => {
   try {
-    return (host.delivery.kind === 'inject' ? injectedStack() : importedStack()).total;
+    return host.delivery.kind === 'inject' ? injectedStack() : importedStack();
   } catch (err) {
     log.error('always-loaded weight skipped', err);
     return null;
@@ -342,7 +353,7 @@ const alwaysLoadedBytes = (host: HostAdapter): number | null => {
 function renderBanner(
   entries: ManifestEntry[],
   contextBytes: number,
-  alwaysLoaded: number | null,
+  alwaysLoaded: Stack | null,
   notices: readonly Notice[],
   launchIssue: { label: string; banner: string } | null,
   skill: SkillCommand
@@ -662,7 +673,7 @@ export async function assembleContext({
 
   const context = fitContext(parts, CONTEXT.MAX_CHARS);
   const notices = (await pendingNotices).filter((notice) => !promptRow || notice.level === 'hint');
-  const weight = alwaysLoadedBytes(host);
+  const weight = alwaysLoadedStack(host);
   const banner = renderBanner(entries, context.length, weight, notices, launchIssue, host.skill);
   const hasIssues =
     launchIssue !== null || entries.some((entry) => entry.status === 'missing' || entry.status === 'unavailable');

@@ -1726,7 +1726,7 @@ const buildContextBody = (snap: StatusSnapshot): string => {
 
   const overBudget =
     context.alwaysLoadedBytes > context.alwaysLoadedBudget
-      ? ` · over the ${humanBytes(context.alwaysLoadedBudget)} budget`
+      ? ` · ${humanBytes(context.alwaysLoadedBytes)} always loaded, over the ${humanBytes(context.alwaysLoadedBudget)} budget`
       : '';
   return [
     section(

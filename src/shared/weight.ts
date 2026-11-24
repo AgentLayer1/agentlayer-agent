@@ -4,7 +4,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 
-interface Stack {
+export interface Stack {
   files: { path: string; bytes: number }[];
   total: number;
   unresolved: string[];
@@ -75,6 +75,10 @@ const stack = (roots: string[], followImports: boolean): Stack => {
     }
     if (!existsSync(path)) {
       unresolved.push(path);
+      return;
+    }
+    // An import naming a folder loads nothing.
+    if (!statSync(path).isFile()) {
       return;
     }
     seen.add(path);
