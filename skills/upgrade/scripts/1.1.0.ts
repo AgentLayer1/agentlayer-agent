@@ -66,10 +66,8 @@ const readIfThere = (path: string): string | null => (existsSync(path) ? readFil
 
 const retire = ({ file, heading }: typeof RETIRED): Action => {
   const homePath = resolve(HOME, file);
-  if (!existsSync(homePath)) {
-    return 'not-present';
-  }
-  const mine = splitAt(readFileSync(homePath, 'utf-8'), heading);
+  const text = readIfThere(homePath);
+  const mine = text === null ? null : splitAt(text, heading);
   if (!mine) {
     return 'not-present';
   }
@@ -90,12 +88,15 @@ const retire = ({ file, heading }: typeof RETIRED): Action => {
 const sameWording = (a: string, b: string): boolean => wording(a.split('\n')) === wording(b.split('\n'));
 
 const updateXcodeRules = (): Action => {
-  const rules = XCODE_RULES.map((name) => ({
-    home: resolve(HOME, '.claude', 'rules', name),
-    mine: readIfThere(resolve(HOME, '.claude', 'rules', name)),
-    base: readIfThere(resolve(BASE, 'rules', name)),
-    next: readFileSync(resolve(TEMPLATES, 'rules', name), 'utf-8')
-  }));
+  const rules = XCODE_RULES.map((name) => {
+    const home = resolve(HOME, '.claude', 'rules', name);
+    return {
+      home,
+      mine: readIfThere(home),
+      base: readIfThere(resolve(BASE, 'rules', name)),
+      next: readFileSync(resolve(TEMPLATES, 'rules', name), 'utf-8')
+    };
+  });
   if (rules.every(({ mine }) => mine === null)) {
     return 'not-present';
   }
@@ -103,11 +104,11 @@ const updateXcodeRules = (): Action => {
   if (pending.length === 0) {
     return 'current';
   }
-  const present = pending.filter(({ mine }) => mine !== null);
+  const present = pending.flatMap(({ mine, base }) => (mine === null ? [] : [{ mine, base }]));
   if (present.some(({ base }) => base === null)) {
     return 'kept-no-base';
   }
-  if (present.some(({ mine, base }) => !sameWording(mine ?? '', base ?? ''))) {
+  if (present.some(({ mine, base }) => base !== null && !sameWording(mine, base))) {
     return 'kept-edited';
   }
   pending.forEach(({ home, next }) => writeFileSync(home, next));
@@ -125,7 +126,7 @@ try {
       ...(manual.startsWith('kept') ? { ask: RETIRED.ask } : {})
     },
     {
-      file: join('.claude', 'rules', XCODE_RULES.join(', ')),
+      file: XCODE_RULES.map((name) => join('.claude', 'rules', name)).join(', '),
       heading: 'Xcode pack rules',
       action: xcode,
       ...(xcode.startsWith('kept') ? { ask: XCODE_ASK } : {})

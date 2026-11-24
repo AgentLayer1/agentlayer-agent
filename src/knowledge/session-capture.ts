@@ -13,7 +13,7 @@
  */
 import { FOLDERS, KNOWLEDGE, PLUGIN_NAME, isInitialized } from '@/config';
 import type { HostName } from '@/hosts/contract';
-import { ENTRY_SEPARATOR, formatEntryHeader } from '@/knowledge/session-format';
+import { ENTRY_SEPARATOR, escapeTurnMarkers, formatEntryHeader } from '@/knowledge/session-format';
 import {
   adoptLegacyKey,
   diffTurns,
@@ -181,8 +181,7 @@ function formatTurnList(turns: TranscriptTurn[]): string {
   return turns
     .map((turn) => {
       const role = turn.role === 'user' ? 'User' : 'Assistant';
-      // A role label quoted at the start of a line would read as a turn of its own, so its asterisks are escaped.
-      const kept = turn.text.slice(0, KNOWLEDGE.MAX_TURN_CHARS).replace(/^\*\*(User|Assistant):\*\*/gm, '\\*\\*$1:**');
+      const kept = escapeTurnMarkers(turn.text.slice(0, KNOWLEDGE.MAX_TURN_CHARS));
       // A turn cut (or pasted) inside a code fence would swallow every block after it.
       const fence = (kept.match(/^\s*```/gm) ?? []).length % 2 === 1 ? '\n```' : '';
       const truncated =

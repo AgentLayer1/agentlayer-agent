@@ -23,6 +23,7 @@ import {
 import { hashBuffer, redactSecrets, splitFrontmatter } from '@/knowledge/utils';
 import { nowISO, nowTimeCompact, todayDate } from '@/shared/date';
 import { htmlToMarkdown, renderExtracted } from '@/shared/html-to-markdown';
+import { serialQueue } from '@/shared/serial';
 import { slugify } from '@/tasks/mutate';
 import { existsSync, statSync } from 'node:fs';
 import { appendFile, mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
@@ -250,13 +251,7 @@ async function captureToFeedback(opts: CaptureOpts, content: string): Promise<Ca
 
 // Parallel tool calls reach the server together, so feedback is written one entry at a time: a second copy of a
 // keyed statement must find the first before it looks for a duplicate.
-let feedbackWrites: Promise<unknown> = Promise.resolve();
-
-const nextFeedbackWrite = (write: () => Promise<CaptureResult>): Promise<CaptureResult> => {
-  const result = feedbackWrites.then(write, write);
-  feedbackWrites = result.catch(() => undefined);
-  return result;
-};
+const nextFeedbackWrite = serialQueue();
 
 export async function capture(opts: CaptureOpts): Promise<CaptureResult> {
   const kind: CaptureKind = opts.kind ?? 'inbox';

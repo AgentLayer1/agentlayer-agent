@@ -18,6 +18,7 @@ import { FILES, FOLDERS, PLUGIN_NAME } from '@/config';
 import { nowISO, nowTimeCompact, todayDate } from '@/shared/date';
 import { readTextAsync } from '@/shared/text';
 import { yamlScalar } from '@/shared/yaml';
+import { serialQueue } from '@/shared/serial';
 import { writeFileAtomic } from '@/shared/utils';
 import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
@@ -66,18 +67,12 @@ const INDEX_PREAMBLE = `# Reports
 > Auto-maintained by the ${PLUGIN_NAME} \`writeReport\` helper. Newest first within each day.
 `;
 
-let queue: Promise<unknown> = Promise.resolve();
-
 /**
  * Serialise writeReport calls. The index file is read-modify-write; without a
  * mutex two concurrent calls could each read the same baseline and the second
  * write would lose the first call's insertion.
  */
-const enqueue = <T>(fn: () => Promise<T>): Promise<T> => {
-  const next = queue.then(fn, fn);
-  queue = next.catch(() => undefined);
-  return next;
-};
+const enqueue = serialQueue();
 
 export async function writeReport(input: WriteReportInput): Promise<WriteReportResult> {
   return enqueue(() => doWriteReport(input));

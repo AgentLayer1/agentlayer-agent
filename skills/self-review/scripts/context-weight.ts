@@ -10,7 +10,7 @@
  *
  * Usage: context-weight.ts [--home <dir>] [--record]   (--home: else the agent's home variable, else the cwd)
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 
 const args = process.argv.slice(2);
@@ -21,6 +21,8 @@ const { CONTEXT, FOLDERS } = await import('../../../src/config');
 const { agentHomePath, isAgentHome } = await import('../../../src/shared/env');
 const { todayDate } = await import('../../../src/shared/date');
 const { importedStack, injectedStack } = await import('../../../src/shared/weight');
+const { isRecord } = await import('../../../src/shared/json-block');
+const { writeJsonChecked } = await import('../../../src/shared/utils');
 
 const home = agentHomePath();
 if (!isAgentHome(home)) {
@@ -44,17 +46,24 @@ const sizes = (stack: typeof claude): Sizes =>
 const now: Weights = { date: todayDate(), claude: sizes(claude), codex: sizes(codex) };
 
 const reviewPath = join(FOLDERS.DATA, 'review.json');
+// Null when the watermark won't parse as an object: `--record` then leaves it for the operator.
 const review = ((): Record<string, unknown> | null => {
   if (!existsSync(reviewPath)) {
     return {};
   }
   try {
-    return JSON.parse(readFileSync(reviewPath, 'utf-8')) as Record<string, unknown>;
+    const parsed: unknown = JSON.parse(readFileSync(reviewPath, 'utf-8'));
+    return isRecord(parsed) ? parsed : null;
   } catch {
     return null;
   }
 })();
-const previous = review?.weights as Weights | undefined;
+const isSizes = (value: unknown): value is Sizes =>
+  isRecord(value) && Object.values(value).every((bytes) => typeof bytes === 'number');
+// A `weights` this script didn't write, or wrote in another shape, is no baseline.
+const isWeights = (value: unknown): value is Weights =>
+  isRecord(value) && typeof value.date === 'string' && isSizes(value.claude) && isSizes(value.codex);
+const previous = isWeights(review?.weights) ? review.weights : null;
 
 const change = (before: Sizes, after: Sizes) => {
   const files = [...new Set([...Object.keys(before), ...Object.keys(after)])]
@@ -72,11 +81,10 @@ process.stdout.write(
 );
 
 if (args.includes('--record')) {
-  // A watermark that doesn't parse is the operator's to look at; rewriting it would drop every other key.
   if (review === null) {
     console.error(`not recorded: ${reviewPath} does not parse`);
     process.exit(1);
   }
-  writeFileSync(reviewPath, `${JSON.stringify({ ...review, weights: now }, null, 2)}\n`);
+  writeJsonChecked(reviewPath, { ...review, weights: now });
 }
 if (claude.unresolved.length > 0) process.exit(1);

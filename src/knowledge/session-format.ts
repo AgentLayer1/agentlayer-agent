@@ -15,6 +15,10 @@ const ESCAPED_SEPARATOR = ENTRY_SEPARATOR.replace(/\n/g, '\\n');
 /** The bold role label that opens each turn in an entry: `**User:**` or `**Assistant:**`. */
 export const TURN_MARKER = '\\*\\*(?:User|Assistant):\\*\\*';
 
+/** A turn's text with a role label at the start of any line escaped, so a quoted `**User:**` never reads as a turn. */
+export const escapeTurnMarkers = (text: string): string =>
+  text.replace(new RegExp(`^(?=${TURN_MARKER})\\*\\*`, 'gm'), '\\*\\*');
+
 /** Matches an entry header opening (Session or Pre-Compact) at line start. */
 export const ENTRY_HEADER_RE = new RegExp(`^${ENTRY_HEADER_PATTERN}`, 'm');
 

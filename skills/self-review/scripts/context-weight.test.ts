@@ -110,6 +110,14 @@ describe('context-weight', () => {
     expect(growth.claude).toEqual({ total: 16, files: [{ file: 'AGENTS.md', bytes: 16 }] });
   });
 
+  test('weights in another shape are no baseline: no growth, and --record replaces them', () => {
+    const { root, write, run } = home();
+    write(join(RUNTIME_DIR, 'review.json'), '{"weights":{"date":"2026-11-01","claude":{}}}\n');
+    expect(run().out.growth).toBeNull();
+    expect(run('--record').status).toBe(0);
+    expect(JSON.parse(readFileSync(join(root, RUNTIME_DIR, 'review.json'), 'utf-8')).weights.codex).toBeDefined();
+  });
+
   test('--record refuses a watermark that does not parse, and leaves it as it was', () => {
     const { root, write, run } = home();
     write(join(RUNTIME_DIR, 'review.json'), '{"lastRun":');

@@ -413,11 +413,6 @@ async function tick($: EngineInterface, revivedLateMs = 0): Promise<void> {
     return;
   }
   const used = await lastUse($);
-  // A refresh waits for something to absorb: a session written since the last sync or refresh.
-  const absorbs = used === null || used > refreshedMs(status);
-  const lastTryUnfinished = refreshTry.at > refreshedMs(status);
-  const mayTry = !insideRetryWindow(refreshTry.at, now) || (lastTryUnfinished && !refreshTry.isRetry);
-  const refreshes = status.refreshDue && absorbs && mayTry;
   // A wake holds the machine awake while its turns run, so an idle home gets none, a refresh included: one due
   // overnight runs at the first look after the operator is back. A home it can't see is treated as in use, since
   // skipping would stop the heartbeat for good.
@@ -430,8 +425,12 @@ async function tick($: EngineInterface, revivedLateMs = 0): Promise<void> {
     tickOnceSettled($, now);
     return;
   }
+  // A refresh waits for something to absorb: a session written since the last sync or refresh.
+  const absorbs = used === null || used > refreshedMs(status);
+  const lastTryUnfinished = refreshTry.at > refreshedMs(status);
+  const mayTry = !insideRetryWindow(refreshTry.at, now) || (lastTryUnfinished && !refreshTry.isRetry);
   await ticked($, status, now);
-  await wake($, now, status, refreshes);
+  await wake($, now, status, status.refreshDue && absorbs && mayTry);
 }
 
 // Only a process that ran /heartbeat holds a token, so every other session starts without reading its status.
