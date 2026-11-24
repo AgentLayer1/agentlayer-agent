@@ -1,3 +1,4 @@
+import type { SessionStartResult } from '@/hooks/session-start';
 import type { DialectTerm } from '@/hosts/dialect';
 
 /**
@@ -39,10 +40,7 @@ export interface InjectDelivery {
 /**
  * A tool call as the hook layer sees it, whatever the host calls the tool and its arguments.
  */
-export interface ToolCall {
-  kind: 'shell' | 'other';
-  command?: string;
-}
+export type ToolCall = { kind: 'shell'; command: string } | { kind: 'other' };
 
 /**
  * A hook payload in the host-neutral shape the hook verbs read.
@@ -61,12 +59,6 @@ export interface HookReply {
   stdout?: string;
   stderr?: string;
   code: number;
-}
-
-export interface SessionStartReply {
-  systemMessage: string;
-  additionalContext: string;
-  error?: string;
 }
 
 /**
@@ -91,7 +83,7 @@ export interface HostAdapter {
    * The guard's answer: `null` lets the call through.
    */
   guardReply: (refusal: string | null) => HookReply;
-  sessionStartReply: (result: SessionStartReply) => HookReply;
+  sessionStartReply: (result: SessionStartResult) => HookReply;
   /**
    * The folder the session was launched from, where the hook's cwd can drift away from it.
    */

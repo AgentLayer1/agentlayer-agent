@@ -42,7 +42,7 @@ export const runGuard = async (flag: Flag): Promise<number> => {
   const host = hostNamed(flag('hook-protocol') ?? '') ?? DEFAULT_HOST;
   const raw = await Bun.stdin.text();
   const { call, cwd } = raw.trim() ? host.readPayload(raw) : {};
-  if (call?.kind !== 'shell' || call.command === undefined || !cwd) {
+  if (call?.kind !== 'shell' || !cwd) {
     return 0;
   }
   const { shellGuard } = await import('@/hooks/guard');

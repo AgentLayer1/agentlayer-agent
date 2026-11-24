@@ -11,7 +11,7 @@ import { PLUGIN_SOURCE_ROOT } from '../../../src/shared/naming';
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
-export const readJson = (path: string): Record<string, unknown> => {
+const readJson = (path: string): Record<string, unknown> => {
   if (!existsSync(path)) return {};
   try {
     const parsed: unknown = JSON.parse(readFileSync(path, 'utf-8'));
@@ -44,7 +44,7 @@ export const readManifest = (pluginRoot: string): PluginManifest => {
   return { pluginName, claudeServer };
 };
 
-export interface ClaudeSettings {
+interface ClaudeSettings {
   env?: Record<string, unknown>;
   permissions?: { ask?: unknown; deny?: unknown; additionalDirectories?: unknown };
   enabledMcpjsonServers?: unknown;
@@ -130,7 +130,7 @@ export const shellPrefixes = (patterns: string[]): string[] => [
 ];
 
 /** The MCP servers the plugin's packs register in `<home>/.mcp.json`; a host gets a copy of each, owned like the agent's own. */
-export const PACK_SERVERS = ['xcode'];
+const PACK_SERVERS = ['xcode'];
 
 export interface McpRegistration {
   command: string;
