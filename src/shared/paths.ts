@@ -13,13 +13,28 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'nod
 /** Git Bash and Cygwin spell C:\Users as /c/Users or /cygdrive/c/Users; Windows path APIs need the drive form. */
 export const driveForm = (path: string): string => path.replace(/^\/(?:cygdrive\/)?([a-z])(?:\/|$)/i, '$1:/');
 
+/** A path as `platform`'s file APIs take it: Git Bash's `/c/…` becomes `C:/…` on Windows; elsewhere it passes through. */
+export const nativeForm = (path: string, platform: NodeJS.Platform = process.platform): string =>
+  platform === 'win32' ? driveForm(path) : path;
+
 /** A Windows path in Claude Code's rule form, `C:\Users\ada` → `/c/Users/ada`; other paths pass through. */
 export const claudeForm = (path: string): string =>
   path.replace(/\\/g, '/').replace(/^([a-z]):(?=\/|$)/i, (_drive, letter: string) => `/${letter.toLowerCase()}`);
 
-/** Whether two paths name the same file on `platform`: Windows ignores case and takes either separator. */
+/** A path as `platform` compares it: on Windows in rule form and lower case, since its file system ignores case. */
+export const pathKey = (path: string, platform: NodeJS.Platform = process.platform): string =>
+  platform === 'win32' ? claudeForm(path).toLowerCase() : path;
+
+/** Whether two paths name the same file on `platform`. */
 export const samePath = (a: string, b: string, platform: NodeJS.Platform = process.platform): boolean =>
-  platform === 'win32' ? claudeForm(a).toLowerCase() === claudeForm(b).toLowerCase() : a === b;
+  pathKey(a, platform) === pathKey(b, platform);
+
+/** A glob's leading folders, up to its first segment with a wildcard: `/a/b/**\/x` → `/a/b`; empty when it starts with one. */
+export const fixedPrefix = (glob: string): string => {
+  const segments = glob.split('/');
+  const wild = segments.findIndex((segment) => /[*?[\]{}]/.test(segment));
+  return (wild === -1 ? segments : segments.slice(0, wild)).join('/');
+};
 
 /** Expand `~` or `~/foo` to an absolute path under the user's home. Other paths pass through. */
 export const expandTilde = (path: string): string => {
@@ -49,7 +64,11 @@ export const resolvedPath = (path: string): string => {
 };
 
 /** Whether `child` is `parent` or somewhere beneath it (lexical; resolve symlinks first when they matter). */
-export const isInside = (child: string, parent: string): boolean => {
+export const isInside = (child: string, parent: string, platform: NodeJS.Platform = process.platform): boolean => {
+  if (platform === 'win32') {
+    const [path, folder] = [pathKey(child, platform), pathKey(parent, platform).replace(/\/+$/, '')];
+    return path === folder || path.startsWith(`${folder}/`);
+  }
   const rel = relative(parent, child);
   return rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
 };

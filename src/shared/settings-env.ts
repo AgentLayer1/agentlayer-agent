@@ -43,7 +43,9 @@ export const homeAbove = (start: string): string | undefined => {
     const parent = dirname(dir);
     return ownDataDir(dir) ? dir : parent === dir ? undefined : walk(parent);
   };
-  return walk(resolve(start)) ?? walk(resolvedPath(resolve(start)));
+  const spelled = resolve(start);
+  const real = resolvedPath(spelled);
+  return walk(spelled) ?? (real === spelled ? undefined : walk(real));
 };
 
 /** The home a session works in: the first of its workspace folders, then its folder, that sits in one. */

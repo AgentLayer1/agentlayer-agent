@@ -1,20 +1,16 @@
-import { isRecord } from '@/shared/json-block';
+import { isRecord, stringsOf } from '@/shared/json-block';
 import { expandTilde, isInside } from '@/shared/paths';
-import { resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 
 interface RootSettings {
   env?: unknown;
   permissions?: unknown;
+  sandbox?: unknown;
 }
 
 const stringOf = (record: unknown, key: string): string => {
   const value = isRecord(record) ? record[key] : undefined;
   return typeof value === 'string' ? value : '';
-};
-
-const listOf = (record: unknown, key: string): string[] => {
-  const value = isRecord(record) ? record[key] : undefined;
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 };
 
 /**
@@ -27,7 +23,7 @@ export const workRootsOf = (home: string, settings: RootSettings): string[] =>
       [
         stringOf(settings.env, 'AGENT_CODE_PATH'),
         ...stringOf(settings.env, 'AGENT_GIT_REPOS').split(','),
-        ...listOf(settings.permissions, 'additionalDirectories'),
+        ...stringsOf(isRecord(settings.permissions) ? settings.permissions.additionalDirectories : undefined),
         ...['KNOWLEDGE', 'PROJECTS', 'REPORTS'].map((key) => stringOf(settings.env, `AGENT_${key}`))
       ]
         .map((path) => path.trim())
@@ -35,3 +31,11 @@ export const workRootsOf = (home: string, settings: RootSettings): string[] =>
         .map((path) => resolve(home, expandTilde(path)))
     )
   ].filter((path) => !isInside(path, home));
+
+/** The folders the sandbox may write, as the settings' `sandbox.filesystem.allowWrite` names them: absolute, no globs. */
+export const sandboxWritesOf = (settings: RootSettings): string[] => {
+  const filesystem = isRecord(settings.sandbox) ? settings.sandbox.filesystem : undefined;
+  return stringsOf(isRecord(filesystem) ? filesystem.allowWrite : undefined)
+    .map(expandTilde)
+    .filter((path) => isAbsolute(path) && !/[*?[\]{}]/.test(path));
+};

@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { posix, win32 } from 'node:path';
 import type { GuardPolicy } from '@/hosts/contract';
-import { driveForm, existingTarget } from '@/shared/paths';
+import { existingTarget, nativeForm } from '@/shared/paths';
 import { commandWords, scanShell, type ShellCommand, type ShellJoiner, type ShellWord } from './shell-scan';
 
 /** One platform's path rules, with the home and the starting cwd already in that platform's form. */
@@ -16,7 +16,7 @@ interface Paths {
 
 const pathsFor = (cwd: string, home: string, platform: NodeJS.Platform): Paths => {
   const api = platform === 'win32' ? win32 : posix;
-  const native = platform === 'win32' ? driveForm : (path: string) => path;
+  const native = (path: string): string => nativeForm(path, platform);
   const resolvedHome = api.resolve(native(home));
   return { api, native, home: resolvedHome, realHome: existingTarget(resolvedHome), start: api.resolve(native(cwd)) };
 };

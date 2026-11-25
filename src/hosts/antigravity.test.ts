@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { manifestLoads, sandboxOnIn, sandboxProblem, splitPieces } from '@/hosts/antigravity';
+import { manifestLoads, sandboxProblem, splitPieces } from '@/hosts/antigravity';
 
 describe('splitPieces', () => {
   const bytes = (text: string): number => Buffer.byteLength(text);
@@ -57,7 +57,7 @@ describe('manifestLoads', () => {
   });
 });
 
-describe('sandboxOnIn', () => {
+describe('sandboxProblem', () => {
   const scratch = mkdtempSync(join(tmpdir(), 'antigravity-sandbox-'));
   afterAll(() => rmSync(scratch, { recursive: true, force: true }));
   const settings = (name: string, text: string): string => {
@@ -66,12 +66,13 @@ describe('sandboxOnIn', () => {
     return path;
   };
 
-  test('is on only when the settings say true', () => {
-    expect(sandboxOnIn(settings('on.json', JSON.stringify({ enableTerminalSandbox: true })))).toBe(true);
-    expect(sandboxOnIn(settings('off.json', JSON.stringify({ enableTerminalSandbox: false })))).toBe(false);
-    expect(sandboxOnIn(settings('unset.json', JSON.stringify({ trustedWorkspaces: [] })))).toBe(false);
-    expect(sandboxOnIn(join(scratch, 'absent.json'))).toBe(false);
-    expect(sandboxOnIn(settings('broken.json', '{'))).toBe(false);
+  test('the sandbox holds only when the settings say true', () => {
+    const problem = (path: string): string | null => sandboxProblem(path, 'darwin', '25.0.0');
+    expect(problem(settings('on.json', JSON.stringify({ enableTerminalSandbox: true })))).toBeNull();
+    expect(problem(settings('off.json', JSON.stringify({ enableTerminalSandbox: false })))).toContain('is off in');
+    expect(problem(settings('unset.json', JSON.stringify({ trustedWorkspaces: [] })))).toContain('is off in');
+    expect(problem(join(scratch, 'absent.json'))).toContain('is off in');
+    expect(problem(settings('broken.json', '{'))).toContain('is off in');
   });
 
   test('on Windows, a build older than the sandbox needs is a problem even with the setting on', () => {

@@ -17,12 +17,13 @@ import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { readMergedSettings, readSettingsFile } from '../../../src/home/settings-scope';
-import { workRootsOf } from '../../../src/home/work-roots';
+import { sandboxWritesOf, workRootsOf } from '../../../src/home/work-roots';
 import { WIRING } from '../../../src/hooks/policy';
 import { cliSettings, entriesOf, namesCheckout, personalManifest } from '../../../src/hosts/antigravity';
+import { isRecord, stringsOf } from '../../../src/shared/json-block';
 import { PLUGIN_SOURCE_ROOT, RUNTIME_DIR } from '../../../src/shared/naming';
-import { claudeForm, driveForm, isInside, resolvedPath } from '../../../src/shared/paths';
-import { denyGlobs, expandTilde, isRecord, shellPrefixes, stringsOf } from './wiring';
+import { claudeForm, expandTilde, fixedPrefix, isInside, nativeForm, resolvedPath } from '../../../src/shared/paths';
+import { denyGlobs, shellPrefixes } from './wiring';
 
 type Json = Record<string, unknown>;
 
@@ -64,42 +65,43 @@ const outermost = (paths: string[]): string[] => {
 };
 
 /** A Claude deny glob as the path a rule can name: itself, or its fixed folder when that neither holds nor sits in the work. */
-const ruleTarget = (glob: string, work: string[], windows: boolean): string | undefined => {
+const ruleTarget = (glob: string, work: string[], platform: NodeJS.Platform): string | undefined => {
   const pattern = glob.replace(/\/\*\*$/, '');
-  // Claude spells a Windows path `/c/Users/…`; the file system needs `C:/Users/…`.
-  const native = (path: string): string => (windows ? driveForm(path) : path);
   if (!GLOB.test(pattern)) {
-    return isAbsolute(pattern) ? resolvedPath(native(pattern)) : undefined;
+    return isAbsolute(pattern) ? resolvedPath(nativeForm(pattern, platform)) : undefined;
   }
-  const segments = pattern.split('/');
-  const fixed = segments
-    .slice(
-      0,
-      segments.findIndex((segment) => GLOB.test(segment))
-    )
-    .join('/');
+  const fixed = fixedPrefix(pattern);
   if (!fixed || !isAbsolute(fixed)) {
     return undefined;
   }
-  const folder = resolvedPath(native(fixed));
+  const folder = resolvedPath(nativeForm(fixed, platform));
   const broad = [...work, homedir()].some((root) => isInside(root, folder) || isInside(folder, root));
   return broad ? undefined : folder;
 };
 
-/** The files under the roots that a held glob matches: an absolute glob as it stands, a relative one from each root. */
-const matchingFiles = (
-  globs: string[],
+/**
+ * The files a held glob matches today, from one walk of each root: a user-level glob anywhere the agent works, the home's
+ * own in the home. An absolute glob matches the file as it stands, a relative one from its root.
+ */
+const heldFiles = (
+  globs: { user: string[]; home: string[] },
   roots: string[],
+  home: string,
   filesUnder: (root: string) => string[],
   windows: boolean
 ): string[] => {
-  const patterns = globs.map((glob) => ({ absolute: isAbsolute(glob), glob: new Bun.Glob(glob.replace(/^\.\//, '')) }));
+  if (globs.user.length + globs.home.length === 0) {
+    return [];
+  }
+  const compile = (list: string[]) =>
+    list.map((glob) => ({ absolute: isAbsolute(glob), glob: new Bun.Glob(glob.replace(/^\.\//, '')) }));
+  const [user, own] = [compile(globs.user), compile(globs.home)];
   // Globs use forward slashes, and an absolute one names a Windows file in Claude's `/c/…` form.
   const slashed = (path: string): string => (windows ? claudeForm(path) : path);
+  const matches = (patterns: ReturnType<typeof compile>, root: string, file: string): boolean =>
+    patterns.some(({ absolute, glob }) => glob.match(slashed(absolute ? file : relative(root, file))));
   return roots.flatMap((root) =>
-    filesUnder(root).filter((file) =>
-      patterns.some(({ absolute, glob }) => glob.match(slashed(absolute ? file : relative(root, file))))
-    )
+    filesUnder(root).filter((file) => matches(user, root, file) || (isInside(file, home) && matches(own, home, file)))
   );
 };
 
@@ -109,13 +111,9 @@ export const rulePath = (path: string, windows: boolean): string =>
 
 export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
   const { home, checkout } = inputs;
-  const windows = (inputs.platform ?? process.platform) === 'win32';
-  const writable = [
-    ...inputs.codeRoots,
-    ...stringsOf(at(inputs.claudeHome, 'sandbox', 'filesystem', 'allowWrite')).map(expandTilde)
-  ]
-    .filter((path) => isAbsolute(path) && !GLOB.test(path))
-    .map(resolvedPath);
+  const platform = inputs.platform ?? process.platform;
+  const windows = platform === 'win32';
+  const writable = [...inputs.codeRoots, ...sandboxWritesOf(inputs.claudeHome)].map(resolvedPath);
   const work = unique([home, checkout, ...writable].map(resolvedPath));
   const userDenies = stringsOf(at(inputs.claudeUser, 'permissions', 'deny'));
   const readGlobs = denyGlobs(userDenies);
@@ -123,26 +121,28 @@ export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
     .map((rule) => /^(?:Edit|Write)\((.+)\)$/.exec(rule)?.[1] ?? '')
     .filter(Boolean)
     .map(expandTilde);
-  const readTargets = readGlobs.map((glob) => ruleTarget(glob, work, windows));
-  const editTargets = editGlobs.map((glob) => ruleTarget(glob, work, windows));
+  const readTargets = readGlobs.map((glob) => ruleTarget(glob, work, platform));
+  const editTargets = editGlobs.map((glob) => ruleTarget(glob, work, platform));
   const domains = [
     ...stringsOf(at(inputs.claudeUser, 'sandbox', 'network', 'allowedDomains')),
     ...stringsOf(at(inputs.claudeHome, 'sandbox', 'network', 'allowedDomains'))
   ].map((domain) => domain.replace(/^\*\./, ''));
   const heldUser = readGlobs.filter((_glob, index) => readTargets[index] === undefined);
   const heldHome = denyGlobs(stringsOf(at(inputs.claudeHome, 'permissions', 'deny'))).filter(
-    (glob) => ruleTarget(glob, work, windows) === undefined
+    (glob) => ruleTarget(glob, work, platform) === undefined
   );
-  // A user-level glob applies in every folder the agent works in; a home's own, in the home.
-  const heldFiles = [
-    ...matchingFiles(heldUser, outermost(work), inputs.filesUnder, windows),
-    ...matchingFiles(heldHome, [resolvedPath(home)], inputs.filesUnder, windows)
-  ];
+  const matched = heldFiles(
+    { user: heldUser, home: heldHome },
+    outermost(work),
+    resolvedPath(home),
+    inputs.filesUnder,
+    windows
+  );
 
   const unread = outermost([
     resolvedPath(join(home, RUNTIME_DIR, 'secrets')),
     ...readTargets.filter((path): path is string => path !== undefined),
-    ...heldFiles.map(resolvedPath)
+    ...matched.map(resolvedPath)
   ]);
   // A read deny already denies writing there.
   // The rules and the wiring stay unwritable to every program the sandbox runs, not just the file tools the hook sees.
@@ -296,14 +296,15 @@ if (import.meta.main) {
   };
   const claudeUserPath = flag('claude-settings') ?? resolve(homedir(), '.claude', 'settings.json');
   const checkout = resolvedPath(resolve(flag('plugin-root') ?? PLUGIN_SOURCE_ROOT));
+  const homeSettings = readMergedSettings(home).merged;
   const config = buildUserConfig({
     home,
     checkout,
     manifest: readSettingsFile(paths.manifest),
     settings: readSettingsFile(paths.settings),
     claudeUser: readSettingsFile(claudeUserPath),
-    codeRoots: workRootsOf(home, readMergedSettings(home).merged).map(resolvedPath),
-    claudeHome: readMergedSettings(home).merged,
+    codeRoots: workRootsOf(home, homeSettings).map(resolvedPath),
+    claudeHome: homeSettings,
     filesUnder
   });
   const out = flag('out');

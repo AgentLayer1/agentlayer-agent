@@ -1,7 +1,7 @@
 import { CAPABILITIES, type Support } from '@/hosts/contract';
 import type { HostsOverview, HostView, Integration } from '@/hosts/status';
 import { ANSI, paint, stripAnsi } from '@/shared/ansi';
-import { homedir } from 'node:os';
+import { tildifyHome } from '@/status/format';
 
 const MARK: Record<Support['level'], string> = {
   yes: paint('✓', ANSI.green),
@@ -104,11 +104,6 @@ const section = (view: HostView, home: string | undefined, width: number): strin
   ];
 };
 
-const tilde = (path: string): string => {
-  const user = homedir();
-  return path === user || path.startsWith(`${user}/`) ? `~${path.slice(user.length)}` : path;
-};
-
 export interface RenderOptions {
   version: string;
   /** The terminal's width; sections fit it, the matrix stays narrow. */
@@ -119,7 +114,7 @@ export interface RenderOptions {
 /** The hosts overview for a terminal: the capability matrix, then one section per host. */
 export const renderHosts = (overview: HostsOverview, { version, width, color }: RenderOptions): string => {
   const sectionWidth = Math.min(Math.max(width, 48), 72);
-  const where = overview.home === undefined ? 'no agent home here' : tilde(overview.home);
+  const where = overview.home === undefined ? 'no agent home here' : tildifyHome(overview.home);
   const lines = [
     `${paint('agentlayer', ANSI.bold)} ${version} ${paint('·', ANSI.dim)} ${where}`,
     '',

@@ -3,7 +3,7 @@ import { CLAUDE_CODE_ONLY, type HookPayload, type HostAdapter, type ToolCall } f
 import { SKILL_PREFIX } from '@/hosts/dialect';
 import { isRecord } from '@/shared/json-block';
 import { PLUGIN_SOURCE_ROOT, pluginName } from '@/shared/naming';
-import { driveForm, resolvedPath, samePath } from '@/shared/paths';
+import { nativeForm, resolvedPath, samePath } from '@/shared/paths';
 import { homeOfSession } from '@/shared/settings-env';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir, release as osRelease } from 'node:os';
@@ -19,7 +19,7 @@ export const personalManifest = (): string => resolve(homedir(), '.gemini', 'con
 export const cliSettings = (): string => resolve(homedir(), '.gemini', 'antigravity-cli', 'settings.json');
 
 /** Whether CLI settings turn the terminal sandbox on in every mode (it is otherwise on only in auto mode). */
-export const sandboxOnIn = (settingsPath: string): boolean => {
+const sandboxOnIn = (settingsPath: string): boolean => {
   try {
     const parsed: unknown = JSON.parse(readFileSync(settingsPath, 'utf-8'));
     return isRecord(parsed) && parsed.enableTerminalSandbox === true;
@@ -54,7 +54,7 @@ export const entriesOf = (manifest: unknown): string[] => {
 };
 
 /** The folders a discovery manifest file names; none when it is absent or unreadable. */
-export const manifestEntries = (manifest: string): string[] => {
+const manifestEntries = (manifest: string): string[] => {
   try {
     return entriesOf(JSON.parse(readFileSync(manifest, 'utf-8')));
   } catch {
@@ -121,10 +121,6 @@ const toolCallOf = (parsed: AntigravityPayload): ToolCall => {
     : { kind: 'other' };
 };
 
-/** Git Bash's `/c/Users/…` as Windows spells it; elsewhere a path passes through. */
-const nativePath = (path: string | undefined): string | undefined =>
-  path !== undefined && process.platform === 'win32' ? driveForm(path) : path;
-
 const readPayload = (raw: string): HookPayload => {
   const parsed = JSON.parse(raw) as AntigravityPayload;
   // A subagent's hooks carry no user input, and at its start its transcript doesn't exist yet.
@@ -141,7 +137,10 @@ const readPayload = (raw: string): HookPayload => {
         : undefined) ?? parsed.cwd,
     origin: child ? 'child' : 'user',
     call: toolCallOf(parsed),
-    home: homeOfSession({ workspacePaths: parsed.workspacePaths?.map(nativePath), cwd: nativePath(parsed.cwd) }),
+    home: homeOfSession({
+      workspacePaths: parsed.workspacePaths?.map((path) => nativeForm(path)),
+      cwd: parsed.cwd === undefined ? undefined : nativeForm(parsed.cwd)
+    }),
     hostFolders: parsed.artifactDirectoryPath ? [parsed.artifactDirectoryPath] : []
   };
 };

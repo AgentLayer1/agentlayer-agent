@@ -7,13 +7,13 @@
 import { gitParts, plainTexts } from '@/hooks/guard';
 import { commandWords, scanShell, type ShellCommand, type ShellDialect } from '@/hooks/shell-scan';
 import { mergeSettings, readMergedSettings, readSettingsFile } from '@/home/settings-scope';
-import { workRootsOf } from '@/home/work-roots';
+import { sandboxWritesOf, workRootsOf } from '@/home/work-roots';
 import type { PolicyDecision, ToolCall } from '@/hosts/contract';
-import { isRecord } from '@/shared/json-block';
+import { isRecord, stringsOf } from '@/shared/json-block';
 import { PLUGIN_SOURCE_ROOT, pluginName, RUNTIME_DIR } from '@/shared/naming';
-import { claudeForm, driveForm, expandTilde, isInside, resolvedPath } from '@/shared/paths';
+import { fixedPrefix, isInside, nativeForm, pathKey, resolvedPath } from '@/shared/paths';
 import { homedir, tmpdir } from 'node:os';
-import { isAbsolute, join, posix, win32 } from 'node:path';
+import { join, posix, win32 } from 'node:path';
 
 type Json = Record<string, unknown>;
 
@@ -55,16 +55,12 @@ const HOME_WORD: Record<ShellDialect, RegExp> = {
   powershell: /^(?:~|\$HOME|\$\{HOME\}|\$env:USERPROFILE|\$\{env:USERPROFILE\})(?=$|[\\/])/i
 };
 
-const onWindows = (context: PolicyContext): boolean => (context.platform ?? process.platform) === 'win32';
-
-/** A command word as rules name it: its base name, and on Windows without `.exe`. */
-const commandName = (word: string, windows: boolean): string =>
-  windows ? win32.basename(word).replace(/\.exe$/i, '') : posix.basename(word);
+/** A command word as rules name it: its base name, either separator, without Windows' `.exe`. */
+const commandName = (word: string): string => win32.basename(word).replace(/\.exe$/i, '');
 
 /** The script a shell runs (`sh -c 'gh pr list'`, `bash -lc …`, `pwsh -Command …`), when the words are one. */
-const innerScript = (words: string[], windows: boolean): { script: string; dialect: ShellDialect } | undefined => {
-  const name = words[0] ?? '';
-  const shell = SHELLS[windows ? name.toLowerCase() : name];
+const innerScript = (words: string[]): { script: string; dialect: ShellDialect } | undefined => {
+  const shell = SHELLS[(words[0] ?? '').toLowerCase()];
   // PowerShell and cmd run the rest of the line; a POSIX shell runs the one word after its flag.
   const script = shell?.dialect === 'powershell' && words.length > 2 ? words.slice(2).join(' ') : words[2];
   return shell && script !== undefined && shell.flag.test(words[1] ?? '')
@@ -92,62 +88,73 @@ const rulesOf = (settings: Json, list: 'allow' | 'ask' | 'deny'): string[] => {
   if (value !== undefined && !Array.isArray(value)) {
     throw new Error(`the Claude settings' permissions.${list} is not a list`);
   }
-  return (value ?? []).filter((rule): rule is string => typeof rule === 'string');
+  return stringsOf(value);
 };
 
 /** The bodies of one tool's rules: `Read(./x)` → `./x`. */
 const bodies = (rules: string[], tool: string): string[] =>
   rules.flatMap((rule) => (rule.startsWith(`${tool}(`) && rule.endsWith(')') ? [rule.slice(tool.length + 1, -1)] : []));
 
-const pathsOf = (windows: boolean): typeof posix => (windows ? win32 : posix);
+/** How one decision reads and compares paths, settled once from the context. */
+interface Scope {
+  platform: NodeJS.Platform;
+  windows: boolean;
+  dialect: ShellDialect;
+  home: string;
+  /** A path from the call, absolute, symlinks resolved, in the platform's own form. */
+  target: (path: string) => string;
+  /** Symlinks resolve only on the machine the paths belong to; a path spelled for another platform stays as written. */
+  canonical: (path: string) => string;
+  within: (child: string, parent: string) => boolean;
+  join: (...parts: string[]) => string;
+}
 
-/** Symlinks resolve only on the machine the paths belong to; a path spelled for another platform is compared as written. */
-const canonical = (path: string, context: PolicyContext): string =>
-  (context.platform ?? process.platform) === process.platform ? resolvedPath(path) : path;
-
-/** A path as rules compare it: on Windows in Claude's rule form (`/c/Users/…`) and lower case, as its file system ignores case. */
-const comparable = (path: string, windows: boolean): string => (windows ? claudeForm(path).toLowerCase() : path);
-
-const within = (child: string, parent: string, windows: boolean): boolean => {
-  if (!windows) {
-    return isInside(child, parent);
-  }
-  const folder = comparable(parent, true).replace(/\/+$/, '');
-  const path = comparable(child, true);
-  return path === folder || path.startsWith(`${folder}/`);
-};
-
-/** A path from the call, absolute, symlinks resolved, in the platform's own form; Git Bash's `/c/…` is read as `C:\…`. */
-const targetOf = (path: string, context: PolicyContext): string => {
-  const windows = onWindows(context);
-  const native = (spelled: string): string => (windows ? driveForm(spelled) : spelled);
-  return canonical(pathsOf(windows).resolve(native(context.cwd), native(path)), context);
+const scopeOf = (context: PolicyContext): Scope => {
+  const platform = context.platform ?? process.platform;
+  const windows = platform === 'win32';
+  const api = windows ? win32 : posix;
+  const canonical = (path: string): string => (platform === process.platform ? resolvedPath(path) : path);
+  return {
+    platform,
+    windows,
+    dialect: context.shell ?? 'posix',
+    home: canonical(context.home),
+    target: (path) => canonical(api.resolve(nativeForm(context.cwd, platform), nativeForm(path, platform))),
+    canonical,
+    within: (child, parent) => isInside(child, parent, platform),
+    join: (...parts) => api.join(...parts)
+  };
 };
 
 /** A Claude path rule as an absolute glob: `//x` from the root, `~/x` from the user's home, anything else from the home. */
-const absoluteGlob = (rule: string, home: string, windows: boolean): string =>
+const absoluteGlob = (rule: string, scope: Scope): string =>
   rule.startsWith('//')
     ? rule.slice(1)
     : rule.startsWith('~/')
-      ? pathsOf(windows).join(homedir(), rule.slice(2))
+      ? scope.join(homedir(), rule.slice(2))
       : rule.startsWith('**')
         ? rule
-        : pathsOf(windows).join(home, rule);
+        : scope.join(scope.home, rule);
 
 /** A glob with its fixed folders resolved, so a rule written through a symlink matches the resolved path it meets. */
 const resolvedGlob = (glob: string): string => {
-  const segments = glob.split('/');
-  const wild = segments.findIndex((segment) => /[*?[\]{}]/.test(segment));
-  const fixed = (wild === -1 ? segments : segments.slice(0, wild)).join('/');
-  return fixed ? [resolvedPath(fixed), ...(wild === -1 ? [] : segments.slice(wild))].join('/') : glob;
+  const fixed = fixedPrefix(glob);
+  return fixed ? resolvedPath(fixed) + glob.slice(fixed.length) : glob;
 };
 
-// TODO(windows): a rule written through a symlink or junction matches only as spelled; resolving it needs a Windows run.
-const matchesPath = (rule: string, path: string, home: string, windows: boolean): boolean => {
-  const absolute = absoluteGlob(rule, home, windows);
-  const glob = windows ? comparable(absolute, true) : resolvedGlob(absolute);
-  const target = comparable(path, windows);
-  return [glob, glob.replace(/\/?$/, '/**')].some((pattern) => new Bun.Glob(pattern).match(target));
+/**
+ * Path rules compiled once per decision: each glob and the folder form of it, matched against a path in the form the
+ * platform compares. A Windows rule through a symlink or junction matches only as spelled (TODO(windows)).
+ */
+const pathMatcher = (rules: string[], scope: Scope): ((path: string) => boolean) => {
+  const globs = rules
+    .map((rule) => absoluteGlob(rule, scope))
+    .map((glob) => (scope.windows ? pathKey(glob, scope.platform) : resolvedGlob(glob)))
+    .flatMap((glob) => [new Bun.Glob(glob), new Bun.Glob(glob.replace(/\/?$/, '/**'))]);
+  return (path) => {
+    const key = pathKey(path, scope.platform);
+    return globs.some((glob) => glob.match(key));
+  };
 };
 
 /** A Claude MCP rule as a server and a tool (`*` for every tool), the plugin's own server under its plugin name. */
@@ -165,23 +172,23 @@ const matchesMcp = (rules: string[], server: string, tool: string): boolean =>
     .map(mcpRule)
     .some((rule) => rule !== null && rule.server === server && (rule.tool === '*' || rule.tool === tool));
 
-const commandText = (words: string[], windows: boolean): string[] => {
+const commandText = (words: string[]): string[] => {
   const [first = '', ...rest] = words;
-  const name = commandName(first, windows);
-  if (WRAPPERS.has(windows ? name.toLowerCase() : name)) {
+  const name = commandName(first);
+  if (WRAPPERS.has(name.toLowerCase())) {
     const start = rest.findIndex((word) => !WRAPPER_ARGUMENT.test(word));
-    return start < 0 ? [] : commandText(rest.slice(start), windows);
+    return start < 0 ? [] : commandText(rest.slice(start));
   }
   return [name, ...rest];
 };
 
 /** Each command as Claude's rules read it: the command word's base name, wrappers dropped, git's options skipped. */
-const normalized = (commands: ShellCommand[], windows: boolean): string[] =>
+const normalized = (commands: ShellCommand[]): string[] =>
   commands.flatMap((command) => {
-    const words = commandText(plainTexts(command), windows);
-    const inner = innerScript(words, windows);
+    const words = commandText(plainTexts(command));
+    const inner = innerScript(words);
     if (inner !== undefined) {
-      return normalized(scanShell(inner.script, inner.dialect), windows);
+      return normalized(scanShell(inner.script, inner.dialect));
     }
     const { sub, args } = gitParts(command);
     return [(sub === undefined ? words : ['git', sub, ...args]).join(' ')];
@@ -204,48 +211,43 @@ const matchesCommand = (body: string, command: string, ignoreCase: boolean): boo
 };
 
 /** Every word of every command, redirection targets included: the paths a shell command could read. */
-const pathWords = (commands: ShellCommand[], windows: boolean, dialect: ShellDialect): string[] =>
+const pathWords = (commands: ShellCommand[], dialect: ShellDialect): string[] =>
   commands.flatMap((command) => {
-    const inner = innerScript(commandText(plainTexts(command), windows), windows);
+    const inner = innerScript(commandText(plainTexts(command)));
     return inner !== undefined
-      ? pathWords(scanShell(inner.script, inner.dialect), windows, inner.dialect)
+      ? pathWords(scanShell(inner.script, inner.dialect), inner.dialect)
       : commandWords(command)
           .filter((word) => !word.operator)
           .map((word) => fromUserHome(word.text, dialect));
   });
 
-const shellDecision = (command: string, bypass: boolean, context: PolicyContext): PolicyDecision => {
-  const windows = onWindows(context);
-  const dialect = context.shell ?? 'posix';
-  const commands = scanShell(command, dialect);
-  const texts = normalized(commands, windows);
+const shellDecision = (command: string, bypass: boolean, context: PolicyContext, scope: Scope): PolicyDecision => {
+  const commands = scanShell(command, scope.dialect);
+  const texts = normalized(commands);
   // A rule written across a pipe (`curl *|sh*`) reads the whole line; the rest read each command.
   const matched = [command.trim(), ...texts];
-  const powershell = dialect === 'powershell';
+  const powershell = scope.dialect === 'powershell';
   const shellRules = (list: 'ask' | 'deny'): string[] => {
     const rules = rulesOf(context.settings, list);
     return [...bodies(rules, 'Bash'), ...(powershell ? bodies(rules, 'PowerShell') : [])];
   };
-  const denied = matched.find((text) => shellRules('deny').some((body) => matchesCommand(body, text, powershell)));
+  const denies = shellRules('deny');
+  const denied = matched.find((text) => denies.some((body) => matchesCommand(body, text, powershell)));
   if (denied !== undefined) {
     return { decision: 'deny', reason: `\`${denied}\` is denied in this home.` };
   }
-  const home = canonical(context.home, context);
-  const readDenies = bodies(rulesOf(context.settings, 'deny'), 'Read');
-  const secret = pathWords(commands, windows, dialect).find((word) =>
-    readDenies.some((rule) => matchesPath(rule, targetOf(word, context), home, windows))
-  );
+  const readDenied = pathMatcher(bodies(rulesOf(context.settings, 'deny'), 'Read'), scope);
+  const secret = pathWords(commands, scope.dialect).find((word) => readDenied(scope.target(word)));
   if (secret !== undefined) {
     return { decision: 'deny', reason: `\`${secret}\` is a file this home denies reading.` };
   }
-  const asked = matched.find((text) => shellRules('ask').some((body) => matchesCommand(body, text, powershell)));
+  const asks = shellRules('ask');
+  const asked = matched.find((text) => asks.some((body) => matchesCommand(body, text, powershell)));
   if (asked !== undefined) {
     return { decision: 'force_ask', reason: `${FROM_CLAUDE}: \`${asked}\`.` };
   }
   const sandbox = isRecord(context.settings.sandbox) ? context.settings.sandbox : {};
-  const excluded = Array.isArray(sandbox.excludedCommands)
-    ? sandbox.excludedCommands.filter((rule): rule is string => typeof rule === 'string')
-    : [];
+  const excluded = stringsOf(sandbox.excludedCommands);
   if (bypass && !(texts.length === 1 && excluded.some((rule) => matchesCommand(rule, texts[0] ?? '', powershell)))) {
     return { decision: 'force_ask', reason: 'This command asks to run outside the sandbox.' };
   }
@@ -256,21 +258,16 @@ const shellDecision = (command: string, bypass: boolean, context: PolicyContext)
  * An ask for a file outside the folders the home works in: the home, the plugin, the code folders its settings name, the
  * folders the sandbox may write, the temp folder and the host's own, as Claude Code keeps its tools to its working folders.
  */
-const outsideBounds = (target: string, home: string, context: PolicyContext): PolicyDecision => {
-  const sandbox = isRecord(context.settings.sandbox) ? context.settings.sandbox : {};
-  const filesystem = isRecord(sandbox.filesystem) ? sandbox.filesystem : {};
-  const writable = Array.isArray(filesystem.allowWrite)
-    ? filesystem.allowWrite.filter((path): path is string => typeof path === 'string').map(expandTilde)
-    : [];
+const outsideBounds = (target: string, context: PolicyContext, scope: Scope): PolicyDecision => {
   const roots = [
-    home,
+    scope.home,
     PLUGIN_SOURCE_ROOT,
     tmpdir(),
-    ...workRootsOf(home, context.settings),
-    ...writable.filter((path) => isAbsolute(path)),
+    ...workRootsOf(scope.home, context.settings),
+    ...sandboxWritesOf(context.settings),
     ...(context.hostFolders ?? [])
-  ].map((root) => canonical(root, context));
-  return roots.some((root) => within(target, root, onWindows(context)))
+  ];
+  return roots.some((root) => scope.within(target, scope.canonical(root)))
     ? null
     : {
         decision: 'force_ask',
@@ -278,38 +275,36 @@ const outsideBounds = (target: string, home: string, context: PolicyContext): Po
       };
 };
 
-const pathDecision = (kind: 'read' | 'write' | 'search', path: string, context: PolicyContext): PolicyDecision => {
-  const windows = onWindows(context);
-  const target = targetOf(path, context);
-  const home = canonical(context.home, context);
+const pathDecision = (
+  kind: 'read' | 'write' | 'search',
+  path: string,
+  context: PolicyContext,
+  scope: Scope
+): PolicyDecision => {
+  const target = scope.target(path);
   const deny = rulesOf(context.settings, 'deny');
   const readDenies = bodies(deny, 'Read');
-  const outside = outsideBounds(target, home, context);
   if (kind === 'search') {
     const anchors = [
-      pathsOf(windows).join(home, RUNTIME_DIR, 'secrets'),
-      ...readDenies.map((rule) => absoluteGlob(rule, home, windows))
-    ]
-      .filter((anchor) => !/[*?[{]/.test(anchor))
-      .map((anchor) => canonical(windows ? driveForm(anchor) : anchor, context));
-    return anchors.some((anchor) => within(anchor, target, windows))
+      scope.join(scope.home, RUNTIME_DIR, 'secrets'),
+      ...readDenies.map((rule) => absoluteGlob(rule, scope))
+    ].filter((anchor) => !/[*?[{]/.test(anchor));
+    return anchors.some((anchor) => scope.within(scope.canonical(nativeForm(anchor, scope.platform)), target))
       ? { decision: 'deny', reason: 'This search would reach a folder the home denies; search a narrower folder.' }
-      : outside;
+      : outsideBounds(target, context, scope);
   }
-  if (readDenies.some((rule) => matchesPath(rule, target, home, windows))) {
+  if (pathMatcher(readDenies, scope)(target)) {
     return { decision: 'deny', reason: `${target} is denied in this home.` };
   }
   if (kind === 'read') {
-    return outside;
+    return outsideBounds(target, context, scope);
   }
-  if ([...bodies(deny, 'Edit'), ...bodies(deny, 'Write')].some((rule) => matchesPath(rule, target, home, windows))) {
+  if (pathMatcher([...bodies(deny, 'Edit'), ...bodies(deny, 'Write')], scope)(target)) {
     return { decision: 'deny', reason: `Writing ${target} is denied in this home.` };
   }
-  return WIRING.map((name) => canonical(pathsOf(windows).join(home, name), context)).some((folder) =>
-    within(target, folder, windows)
-  )
+  return WIRING.some((name) => scope.within(target, scope.canonical(scope.join(scope.home, name))))
     ? { decision: 'deny', reason: `${target} holds the home's rules or wiring, which only the operator changes.` }
-    : outside;
+    : outsideBounds(target, context, scope);
 };
 
 const mcpDecision = (server: string, tool: string, context: PolicyContext): PolicyDecision => {
@@ -326,11 +321,11 @@ const mcpDecision = (server: string, tool: string, context: PolicyContext): Poli
 export const policyDecision = (call: ToolCall, context: PolicyContext): PolicyDecision => {
   switch (call.kind) {
     case 'shell':
-      return shellDecision(call.command, call.bypass === true, context);
+      return shellDecision(call.command, call.bypass === true, context, scopeOf(context));
     case 'read':
     case 'write':
     case 'search':
-      return pathDecision(call.kind, call.path, context);
+      return pathDecision(call.kind, call.path, context, scopeOf(context));
     case 'mcp':
       return mcpDecision(call.server, call.tool, context);
     default:

@@ -10,6 +10,10 @@ const SCRIPT_UNSAFE = /<\/|<!--/g;
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   Object.prototype.toString.call(value) === '[object Object]';
 
+/** The strings in a value that should be a list of them; anything else is no strings. */
+export const stringsOf = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+
 const assertJson = (value: unknown, path: string): void => {
   if (Array.isArray(value)) {
     value.forEach((item, index) => assertJson(item, `${path}[${index}]`));

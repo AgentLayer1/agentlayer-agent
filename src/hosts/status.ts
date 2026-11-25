@@ -1,9 +1,9 @@
 import type { HostAdapter } from '@/hosts/contract';
 import { SKILL_PREFIX } from '@/hosts/dialect';
 import { HOSTS } from '@/hosts/registry';
-import { isRecord } from '@/shared/json-block';
+import { isRecord, stringsOf } from '@/shared/json-block';
 import { PLUGIN_SOURCE_ROOT } from '@/shared/naming';
-import { checkHosts, type HostStatus } from '@/upgrade/hosts';
+import { binaryOf, checkHosts, type HostStatus } from '@/upgrade/hosts';
 import { resolve } from 'node:path';
 
 export type Integration = 'ready' | 'needs-you' | 'not-set-up' | 'not-installed';
@@ -26,15 +26,10 @@ export interface HostFacts {
   issues: string[];
 }
 
-export interface HostView {
-  host: HostAdapter;
-  cli: HostStatus;
-  wired: boolean;
+export interface HostView extends Omit<HostFacts, 'issues'> {
   state: Integration;
   todos: Todo[];
 }
-
-const binaryOf = (host: HostAdapter): string => host.floor.binary ?? host.name;
 
 /** One host's state and what's left to do, from what was read about it. */
 export const viewOf = ({ host, cli, wired, issues }: HostFacts, registration: Registration): HostView => {
@@ -42,12 +37,12 @@ export const viewOf = ({ host, cli, wired, issues }: HostFacts, registration: Re
     cli.state === 'outdated'
       ? [
           {
-            text: `${binaryOf(host)} ${cli.installed} is older than the ${cli.floor} the plugin needs`,
+            text: `${binaryOf(host.name)} ${cli.installed} is older than the ${cli.floor} the plugin needs`,
             commands: [cli.update]
           }
         ]
       : cli.state === 'absent' && wired
-        ? [{ text: `${binaryOf(host)} isn't on your PATH, and this home is wired for it`, commands: [] }]
+        ? [{ text: `${binaryOf(host.name)} isn't on your PATH, and this home is wired for it`, commands: [] }]
         : [];
   const todos = [
     ...cliTodos,
@@ -56,21 +51,18 @@ export const viewOf = ({ host, cli, wired, issues }: HostFacts, registration: Re
       .map(({ detail, commands }) => ({ text: detail, commands })),
     ...issues.map((text) => ({ text, commands: [] }))
   ];
-  if (todos.length > 0) {
-    return { host, cli, wired, state: 'needs-you', todos };
-  }
-  if (cli.state === 'absent' && !wired) {
-    return { host, cli, wired, state: 'not-installed', todos };
-  }
-  return wired
-    ? { host, cli, wired, state: 'ready', todos }
-    : { host, cli, wired, state: 'not-set-up', todos: [{ text: host.setup, commands: [] }] };
+  const state: Integration =
+    todos.length > 0
+      ? 'needs-you'
+      : cli.state === 'absent' && !wired
+        ? 'not-installed'
+        : wired
+          ? 'ready'
+          : 'not-set-up';
+  return { host, cli, wired, state, todos: state === 'not-set-up' ? [{ text: host.setup, commands: [] }] : todos };
 };
 
 const NO_REGISTRATION: Registration = { findings: [], warnings: [] };
-
-const stringsIn = (value: unknown): string[] =>
-  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 
 /** The upgrade's registration check, run as the upgrade runs it, so both read one implementation. */
 const readRegistration = (home: string): Registration => {
@@ -86,7 +78,7 @@ const readRegistration = (home: string): Registration => {
   const findings = Array.isArray(parsed.findings)
     ? parsed.findings.flatMap((finding: unknown) =>
         isRecord(finding) && typeof finding.host === 'string' && typeof finding.detail === 'string'
-          ? [{ host: finding.host, detail: finding.detail, commands: stringsIn(finding.commands) }]
+          ? [{ host: finding.host, detail: finding.detail, commands: stringsOf(finding.commands) }]
           : []
       )
     : [];
@@ -104,7 +96,7 @@ const readRegistration = (home: string): Registration => {
           : []
       )
     : [];
-  return { findings: [...findings, ...renames], warnings: stringsIn(parsed.warnings) };
+  return { findings: [...findings, ...renames], warnings: stringsOf(parsed.warnings) };
 };
 
 export interface HostsOverview {
