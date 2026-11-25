@@ -4,7 +4,7 @@
  * the two and a local scalar wins. A leaf on purpose (node builtins only), so skill scripts can
  * import it.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 type Json = Record<string, unknown>;
@@ -12,12 +12,28 @@ type Json = Record<string, unknown>;
 const isObject = (value: unknown): value is Json =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** A settings file as an object: `{}` when absent, and a throw when it is not a JSON object. */
-const readSettingsFile = (path: string): Json => {
-  if (!existsSync(path)) {
+/** A settings file as an object: `{}` when there is no file, and a throw naming it when it can't be read or isn't a JSON object. */
+export const readSettingsFile = (path: string): Json => {
+  const text = (() => {
+    try {
+      return readFileSync(path, 'utf-8');
+    } catch (err) {
+      if (typeof err === 'object' && err !== null && 'code' in err && err.code === 'ENOENT') {
+        return undefined;
+      }
+      throw new Error(`${path} can't be read: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  })();
+  if (text === undefined) {
     return {};
   }
-  const parsed: unknown = JSON.parse(readFileSync(path, 'utf-8'));
+  const parsed: unknown = (() => {
+    try {
+      return JSON.parse(text);
+    } catch (err) {
+      throw new Error(`${path} is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  })();
   if (!isObject(parsed)) {
     throw new Error(`${path} is not a JSON object`);
   }

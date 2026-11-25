@@ -1,15 +1,32 @@
 import { claudeProtocol } from '@/hosts/claude-protocol';
-import type { HostAdapter } from '@/hosts/contract';
+import { staticContextFiles } from '@/config';
+import { CLAUDE_CODE_ONLY, type HostAdapter } from '@/hosts/contract';
 import { PLUGIN_SOURCE_ROOT, pluginName } from '@/shared/naming';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 export const codexHost = {
   name: 'codex',
+  title: 'Codex',
+  column: 'Codex',
+  capabilities: {
+    manual: { level: 'yes' },
+    context: { level: 'yes' },
+    capture: { level: 'yes' },
+    guard: { level: 'yes' },
+    rules: { level: 'yes' },
+    tools: { level: 'yes' },
+    skills: { level: 'partial', note: 'Codex runs its own copy, which lags the plugin until it is re-added' },
+    setup: { level: 'yes' },
+    ...CLAUDE_CODE_ONLY
+  },
+  setup: 'Start codex from this home and run $upgrade, which wires the home',
+  machineIssues: () => [],
   ...claudeProtocol,
   launchDir: () => undefined,
   terminal: () => false,
   captureReply: 'json',
+  recordsConversations: false,
   guard: { cdCarries: false, powershellOn: (platform) => platform === 'win32' },
   floor: {
     version: '0.154.0',
@@ -22,6 +39,8 @@ export const codexHost = {
   launchIssue: () => null,
   delivery: {
     kind: 'inject',
+    files: staticContextFiles,
+    glossaryIn: 'context',
     glossary: {
       pluginRoot: `in one of ${pluginName()}'s skills (its \`<path>\` runs through \`${pluginName()}/<version>/skills/\`), \`${PLUGIN_SOURCE_ROOT}\`, the checkout this session's hooks and MCP server run from, since that \`<path>\` is Codex's cached copy and can be an older version; in another plugin's skill, two folders above its SKILL.md`,
       skillDir: `in one of ${pluginName()}'s skills, \`${join(PLUGIN_SOURCE_ROOT, 'skills', '<skill>')}\` with the skill's name for \`<skill>\`; in another plugin's skill, the folder holding its SKILL.md`,

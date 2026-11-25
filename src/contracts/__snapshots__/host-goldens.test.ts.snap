@@ -11,7 +11,7 @@ exports[`session start, per host and home state Claude Code, initialized home 1`
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context:   0.0KB of home files and 0.0KB added today:
+  📚 Context:   0.0KB of home files and <N>KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -25,7 +25,7 @@ exports[`session start, per host and home state Claude Code, initialized home 1`
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context:   0.0KB of home files and 0.0KB added today:
+  📚 Context:   0.0KB of home files and <N>KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -97,7 +97,7 @@ exports[`session start, per host and home state Claude Code in its terminal, ini
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context:   0.0KB of home files and 0.0KB added today:
+  📚 Context:   0.0KB of home files and <N>KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -111,7 +111,7 @@ exports[`session start, per host and home state Claude Code in its terminal, ini
   \\u001b[1m\\u001b[31m⟳\\u001b[0m  Sync:      \\u001b[1mBrain never synced\\u001b[0m · \\u001b[2mrun /agentlayer:sync\\u001b[0m
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context:   0.0KB of home files and 0.0KB added today:
+  📚 Context:   0.0KB of home files and <N>KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -132,7 +132,7 @@ exports[`session start, per host and home state Codex, initialized home 1`] = `
   ⟳  Sync:      Brain never synced · run $sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context:   0.2KB of home files and 0.0KB added today:
+  📚 Context:   0.2KB of home files and <N>KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -145,7 +145,7 @@ exports[`session start, per host and home state Codex, initialized home 1`] = `
   ⟳  Sync:      Brain never synced · run $sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context:   0.2KB of home files and 0.0KB added today:
+  📚 Context:   0.2KB of home files and <N>KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -278,7 +278,7 @@ exports[`session start, per host and home state no protocol, initialized home 1`
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context:   0.0KB of home files and 0.0KB added today:
+  📚 Context:   0.0KB of home files and <N>KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -293,7 +293,7 @@ exports[`session start, per host and home state no protocol, initialized home 1`
   ⟳  Sync:      Brain never synced · run /agentlayer:sync
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context:   0.0KB of home files and 0.0KB added today:
+  📚 Context:   0.0KB of home files and <N>KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -713,6 +713,236 @@ exports[`session capture, per host Claude Code's launch folder wins over the pay
 <TIMESTAMP> INFO  [🪝 session] [capture] saved turns 1–4 → <DATE>.md (session-end)
 "
 ,
+  "stdout": "",
+}
+`;
+
+exports[`session start, per host and home state Antigravity, initialized home 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home-from-payload
+<TIMESTAMP> WARN  [🪝 session] [start] hook fired (antigravity)
+  🦊 Agent:     Nova · v<VERSION>
+  ⚠️ Sandbox:   Antigravity's terminal sandbox is off in <USER>/.gemini/antigravity-cli/settings.json, so shell commands can reach the whole disk. Paste the settings from .state/updates/antigravity-user-config.md there, then restart Antigravity.
+  ↑  Upgrade:   Turn on update tracking · run the upgrade skill
+  ⟳  Sync:      Brain never synced · run the sync skill
+  🧠 Knowledge: <HOME>/knowledge
+  📁 Projects:  <HOME>/projects
+  📚 Context:   0.2KB of home files and <N>KB added today:
+    ○ session tail     0.0KB  (no session in the last week)
+    ○ today's reports  0.0KB  (no reports yet)
+    ○ pinned reports   0.0KB  (none pinned)
+    ○ history          0.0KB  (off · run the history skill)
+"
+,
+  "stdout": 
+"{"injectSteps":[{"systemMessage":{"systemMessage":"<!-- session banner: mention its warnings and notices in your first reply, unless the request asks for a set output format -->
+🦊 Agent:     Nova · v<VERSION>
+  ⚠️ Sandbox:   Antigravity's terminal sandbox is off in <USER>/.gemini/antigravity-cli/settings.json, so shell commands can reach the whole disk. Paste the settings from .state/updates/antigravity-user-config.md there, then restart Antigravity.
+  ↑  Upgrade:   Turn on update tracking · run the upgrade skill
+  ⟳  Sync:      Brain never synced · run the sync skill
+  🧠 Knowledge: <HOME>/knowledge
+  📁 Projects:  <HOME>/projects
+  📚 Context:   0.2KB of home files and <N>KB added today:
+    ○ session tail     0.0KB  (no session in the last week)
+    ○ today's reports  0.0KB  (no reports yet)
+    ○ pinned reports   0.0KB  (none pinned)
+    ○ history          0.0KB  (off · run the history skill)
+
+<!-- agent static context · harness: antigravity · hooks and MCP server run from: <ROOT> · a write refused outside the home and its listed roots is policy, not a prompt: the operator lists the directory in .claude/settings.local.json permissions.additionalDirectories and runs the upgrade skill · delivered by the plugin's SessionStart hook because this host has no @-import -->
+
+<!-- file: AGENTS.md -->
+# AGENTS.md
+
+## Memory Routing
+
+<!-- file: SOUL.md -->
+# Soul
+
+Sharp and kind.
+
+<!-- file: IDENTITY.md -->
+# Identity
+
+- **Name:** Nova
+- **Emoji:** 🦊
+
+<!-- file: USER.md -->
+# About Ada
+
+<!-- file: knowledge/index.md -->
+# Knowledge Index
+
+<!-- file: knowledge/memory/index.md -->
+# Memory
+
+## Active Threads
+
+- none
+
+<!-- file: projects/TASKS.md -->
+# Tasks
+
+<!-- session context (dynamic lane) -->
+## Today
+<WEEKDAY>, <MONTH> <DAY>, <YEAR> (UTC)
+
+---
+
+## ⚠️ Sandbox
+
+Antigravity's terminal sandbox is off in <USER>/.gemini/antigravity-cli/settings.json, so shell commands can reach the whole disk. Paste the settings from .state/updates/antigravity-user-config.md there, then restart Antigravity. **Tell the operator before anything else.** The upgrade skill, run from Claude Code, writes that note.
+"}}]}"
+,
+}
+`;
+
+exports[`session start, per host and home state Antigravity, pre-init home 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home-from-payload
+"
+,
+  "stdout": "",
+}
+`;
+
+exports[`session start, per host and home state Antigravity, stranded home 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home-from-payload
+"
+,
+  "stdout": "",
+}
+`;
+
+exports[`session start, per host and home state an Antigravity subagent's start gets no context 1`] = `
+{
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home-from-payload
+"
+,
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host Antigravity: an ordinary command 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host Antigravity: a home-tree write from outside the home 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "{"decision":"deny","reason":"Blocked: this shell command would write \\"projects/x.md\\" outside the agent home <HOME> (the command's cwd is <SCRATCH>). Home trees (knowledge/, projects/, reports/) take the absolute path under <HOME>, or cd back to the home first."}",
+}
+`;
+
+exports[`the shell guard, per host Antigravity: a cd that carries over 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`the shell guard, per host Antigravity: a history rewrite 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "{"decision":"deny","reason":"Blocked: git commit --amend rewrites or hides history, and git here is forward-only (AGENTS.md, Workflow): fix a commit with a new commit on top, and merge without discarding the other side. The one exception, scrubbing a confidentiality leak from an unpushed commit, is the operator's to run with !."}",
+}
+`;
+
+exports[`session capture, per host Antigravity, session-end 1`] = `
+{
+  "days": 
+"--- <DATE>.md
+# Session Log: <DATE>
+
+### Session (<TIME>) [0d1e2f3a-4b5c-4d6e-8f70-8192a3b4c5d6] · <DATE> · <HOME> · turns 1–6 · antigravity: gemini-test
+
+**User:** antigravity turn 1
+
+**Assistant:** antigravity turn 2
+
+**User:** antigravity turn 3
+
+**Assistant:** antigravity turn 4
+
+**User:** antigravity turn 5
+
+**Assistant:** antigravity turn 6
+
+
+---
+
+"
+,
+  "exit": 0,
+  "stderr": 
+"<TIMESTAMP> INFO  [🤖 system] [cli] session-capture --mode=session-end --hook-protocol=antigravity --home-from-payload
+<TIMESTAMP> INFO  [🪝 session] [capture] saved turns 1–6 → <DATE>.md (session-end)
+"
+,
+  "stdout": 
+"{
+  "saved": true,
+  "turns": 6,
+  "path": "<HOME>/knowledge/raw/sessions/<DATE>.md",
+  "filename": "<DATE>.md"
+}
+"
+,
+}
+`;
+
+exports[`Antigravity's policy hook the guard runs first, then the home decides: a deny, an ask through the host prompt, or the host decides 1`] = `
+{
+  "asked": {
+    "exit": 0,
+    "stderr": "",
+    "stdout": "{"decision":"force_ask","reason":"Claude Code asks before this: \`git push origin main\`."}",
+  },
+  "guarded": {
+    "exit": 0,
+    "stderr": "",
+    "stdout": "{"decision":"deny","reason":"Blocked: git commit --amend rewrites or hides history, and git here is forward-only (AGENTS.md, Workflow): fix a commit with a new commit on top, and merge without discarding the other side. The one exception, scrubbing a confidentiality leak from an unpushed commit, is the operator's to run with !."}",
+  },
+  "hostDecides": {
+    "exit": 0,
+    "stderr": "",
+    "stdout": "",
+  },
+  "secretFile": {
+    "exit": 0,
+    "stderr": "",
+    "stdout": "{"decision":"deny","reason":"\`.env\` is a file this home denies reading."}",
+  },
+}
+`;
+
+exports[`Antigravity's policy hook outside a home the plugin leaves every call to the host 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
+  "stdout": "",
+}
+`;
+
+exports[`Antigravity's policy hook a payload the hook cannot read leaves the call to the host 1`] = `
+{
+  "exit": 0,
+  "stderr": "",
   "stdout": "",
 }
 `;

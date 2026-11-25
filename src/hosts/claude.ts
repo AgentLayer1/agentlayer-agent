@@ -16,11 +16,28 @@ export const subscriptionIssue = (hasSubscription: boolean, marker: string | und
 
 export const claudeHost: HostAdapter = {
   name: 'claude',
+  title: 'Claude Code',
+  column: 'Claude',
+  capabilities: {
+    manual: { level: 'yes' },
+    context: { level: 'yes' },
+    capture: { level: 'yes' },
+    guard: { level: 'yes' },
+    rules: { level: 'yes' },
+    tools: { level: 'yes' },
+    skills: { level: 'yes' },
+    setup: { level: 'yes' },
+    mods: { level: 'yes' },
+    radar: { level: 'yes' }
+  },
+  setup: `Install the plugin with /plugin install agentlayer@agentlayer, then run ${SKILL_PREFIX}init`,
+  machineIssues: () => [],
   ...claudeProtocol,
   launchDir: () => env('CLAUDE_PROJECT_DIR'),
   delivery: { kind: 'import' },
   terminal: () => env('CLAUDE_CODE_ENTRYPOINT') === 'cli',
   captureReply: 'envelope',
+  recordsConversations: false,
   guard: { cdCarries: true, powershellOn: () => false },
   floor: {
     version: '2.1.314',

@@ -28,6 +28,28 @@ describe('plugin manifests', () => {
     expect(codex.interface.defaultPrompt.length).toBeLessThanOrEqual(3);
   });
 
+  test('the Antigravity plugin tracks the Claude one, and its hooks and server take the home from the session', () => {
+    const antigravity = read('.antigravity-plugin/plugin.json');
+    for (const field of ['name', 'version', 'description', 'license', 'repository']) {
+      expect(antigravity[field]).toBe(claude[field]);
+    }
+    expect(existsSync(resolve(ROOT, antigravity.logo))).toBe(true);
+    const groups: Record<string, ({ command: string } | { hooks: { command: string }[] })[]> =
+      read('hooks.json')[claude.name];
+    const commands = Object.values(groups)
+      .flat()
+      .flatMap((item) => ('hooks' in item ? item.hooks : [item]).map((hook) => hook.command));
+    expect(commands.length).toBe(3);
+    commands.forEach((command) => {
+      expect(command).toStartWith(`bun ./${CLI_FILE.replaceAll('\\', '/')} `);
+      expect(command).toEndWith(' --hook-protocol=antigravity --home-from-payload');
+    });
+    expect(read('mcp_config.json').mcpServers[AGENT_SLUG].args).toEqual([
+      '${PLUGIN_ROOT}/src/server.ts',
+      '--home-from-roots'
+    ]);
+  });
+
   test('the Claude Code range the host enforces is the floor upgrade checks', () => {
     const floor = claudeHost.floor.version;
     expect(claude.engines).toEqual({ 'claude-code': `>=${floor}` });

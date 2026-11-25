@@ -20,6 +20,14 @@ async function loadProjectEnv(): Promise<void> {
   const { pinHome } = await import('@/shared/settings-env');
   const home = process.argv.find((arg) => arg.startsWith('--home='))?.slice('--home='.length);
   if (home) pinHome(home);
+  // A host that runs its hooks outside the home (Antigravity runs a plugin's in the plugin's folder) names the home
+  // only in the payload, so the hook reads it first and pins the home the same way.
+  if (process.argv.includes('--home-from-payload')) {
+    const { homeInPayload } = await import('@/shared/settings-env');
+    const { hookStdin } = await import('@/hooks/stdin');
+    const fromPayload = homeInPayload(await hookStdin());
+    if (fromPayload) pinHome(fromPayload);
+  }
   await import('@/bootstrap');
   const { agentHomePath } = await import('@/shared/env');
   agentHomePath();
@@ -81,6 +89,7 @@ Groups:
                                     Show the color pairs an agent can take, each in its own colors; --line prints a choice's
                                     IDENTITY.md Colors value (exit 2 when it isn't a pair number or two codes). Read-only
   hosts                             Check the installed Claude Code / Codex CLIs against the plugin's version floors (--codex: require Codex); exit 1 below a floor
+  hosts status                      Every host the plugin runs in: what each can do, how its wiring stands, and what's left to finish it
   capture                           Capture text / a file / stdin into raw/inbox/ (or feedback.md) for the next compile
   session-capture                   Ingest a session transcript into raw/sessions/<today>.md (called by Claude Code hooks)
   session-start                     Emit dynamic context (today / last session tail / git activity) for the host's SessionStart hook
@@ -119,17 +128,24 @@ Capture commands:
   capture ... --title=X --label=Y   Optional metadata (slug source + frontmatter label)
 
 Hook commands (internal — wired into Claude Code hooks; safe to run manually for testing):
-  session-capture --mode=session-end|pre-compact --hook-protocol=claude
+  session-capture --mode=session-end|pre-compact|turn-end --hook-protocol=claude
                                     Read hook JSON from stdin and append the transcript to raw/sessions/.
   session-capture --mode=... --transcript=PATH --cwd=PATH --session-id=X
                                     Plain-CLI mode — same logic without the hook envelope. Useful for testing.
   session-capture ... --format=claude (default)
-                                    Transcript-format adapter (claude, codex).
-  session-start [--hook-protocol=claude|codex]
+                                    Transcript-format adapter (claude, codex, antigravity).
+  session-start [--hook-protocol=claude|codex|antigravity]
                                     Emit dynamic SessionStart context. Without the flag, prints the structured result for testing.
   session-start|session-capture ... --home=PATH
                                     Pin the agent home from the command line (how the per-home Codex hooks name it)
-  guard [--hook-protocol=claude|codex]
+  session-start|session-capture|policy ... --home-from-payload
+                                    Pin the home the payload's session works in, before any settings load (the Antigravity
+                                    plugin's hooks, which run in the plugin's folder). Outside a home the hook does nothing
+  policy --hook-protocol=antigravity --home-from-payload
+                                    PreToolUse hook on every tool for a host whose own permission rules can't hold the home's:
+                                    the shell guard, then the home's Claude settings: a deny is refused, an ask goes to the
+                                    host's own approval prompt, a granted MCP tool runs without one
+  guard [--hook-protocol=claude|codex|antigravity]
                                     PreToolUse hook: read the tool call from stdin and exit 2 when a shell command
                                     would write a home tree (knowledge/, projects/, reports/) relative to a cwd outside the home,
                                     move the session anywhere but back to the home (claude only: a cd carries over there), find
@@ -282,7 +298,7 @@ async function run(): Promise<void> {
   // MCP-invoked traffic. Lazy-imported because @/shared/log resolves AGENT_HOME
   // and we want loadProjectEnv() to have run first.
   const { log } = await import('@/shared/log');
-  if (group !== 'guard') {
+  if (group !== 'guard' && group !== 'policy') {
     // guard runs before every shell command; logging each run would drown the file.
     log.with('cli').info(`${group}${command ? ` ${command}` : ''}${args.length ? ` ${args.join(' ')}` : ''}`);
   }
@@ -310,6 +326,18 @@ async function run(): Promise<void> {
   }
 
   // Runs before a home exists: init gates on it before scaffolding anything.
+  if (group === 'hosts' && command === 'status') {
+    const [{ PLUGIN_VERSION, isInitialized, FOLDERS }, { gatherHosts }, { renderHosts }, { env }] = await Promise.all([
+      import('@/config'),
+      import('@/hosts/status'),
+      import('@/hosts/status-render'),
+      import('@/shared/env')
+    ]);
+    const overview = gatherHosts(isInitialized() ? FOLDERS.HOME : undefined);
+    const color = process.stdout.isTTY && !env('NO_COLOR');
+    console.log(renderHosts(overview, { version: PLUGIN_VERSION, width: process.stdout.columns ?? 80, color }));
+    return;
+  }
   if (group === 'hosts') {
     const { checkHosts, requiredHosts } = await import('@/upgrade/hosts');
     const report = checkHosts(requiredHosts(FOLDERS.HOME, bool('codex') ? ['codex'] : []));
@@ -335,7 +363,7 @@ async function run(): Promise<void> {
   // there would surface as a hook error on every session started outside a home.
   // `worktree` is exempt because it acts on the repo path it's given, not on
   // home state.
-  const HOMELESS_OK = new Set(['session-start', 'session-capture', 'guard', 'worktree']);
+  const HOMELESS_OK = new Set(['session-start', 'session-capture', 'guard', 'policy', 'worktree']);
   if (!isInitialized() && !HOMELESS_OK.has(group)) {
     console.error(
       `${group}: ${FOLDERS.HOME} is not this agent's home (no ${RUNTIME_DIR}/version.json recording ${PLUGIN} there).\n` +
@@ -571,9 +599,14 @@ async function run(): Promise<void> {
     }
   }
 
-  if (group === 'guard' || group === 'session-start' || group === 'session-capture') {
-    const { runGuard, runSessionCapture, runSessionStart } = await import('@/hooks/handlers');
-    const handler = { guard: runGuard, 'session-start': runSessionStart, 'session-capture': runSessionCapture }[group];
+  if (group === 'guard' || group === 'policy' || group === 'session-start' || group === 'session-capture') {
+    const { runGuard, runPolicy, runSessionCapture, runSessionStart } = await import('@/hooks/handlers');
+    const handler = {
+      guard: runGuard,
+      policy: runPolicy,
+      'session-start': runSessionStart,
+      'session-capture': runSessionCapture
+    }[group];
     const code = await handler(flag);
     if (code) {
       process.exit(code);

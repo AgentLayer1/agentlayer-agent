@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { posix, win32 } from 'node:path';
 import type { GuardPolicy } from '@/hosts/contract';
-import { existingTarget } from '@/shared/paths';
+import { existingTarget, nativeForm } from '@/shared/paths';
 import { commandWords, scanShell, type ShellCommand, type ShellJoiner, type ShellWord } from './shell-scan';
 
 /** One platform's path rules, with the home and the starting cwd already in that platform's form. */
@@ -14,12 +14,9 @@ interface Paths {
   start: string;
 }
 
-/** Git Bash and Cygwin spell C:\Users as /c/Users or /cygdrive/c/Users; Windows path APIs need the drive form. */
-const driveForm = (path: string): string => path.replace(/^\/(?:cygdrive\/)?([a-z])(?=\/|$)/i, '$1:/');
-
 const pathsFor = (cwd: string, home: string, platform: NodeJS.Platform): Paths => {
   const api = platform === 'win32' ? win32 : posix;
-  const native = platform === 'win32' ? driveForm : (path: string) => path;
+  const native = (path: string): string => nativeForm(path, platform);
   const resolvedHome = api.resolve(native(home));
   return { api, native, home: resolvedHome, realHome: existingTarget(resolvedHome), start: api.resolve(native(cwd)) };
 };
@@ -281,12 +278,12 @@ const subcommandAt = (texts: string[], index: number): number =>
     : index;
 
 /** The command's words from its name on, redirections and their targets dropped. */
-const plainTexts = (command: ShellCommand): string[] => {
+export const plainTexts = (command: ShellCommand): string[] => {
   const words = commandWords(command);
   return words.filter((word, index) => !word.operator && !words[index - 1]?.operator).map((word) => word.text);
 };
 
-const gitParts = (command: ShellCommand): { sub: string | undefined; args: string[] } => {
+export const gitParts = (command: ShellCommand): { sub: string | undefined; args: string[] } => {
   const texts = plainTexts(command);
   if (texts[0] !== 'git') {
     return { sub: undefined, args: [] };
@@ -416,7 +413,7 @@ export function shellGuard(
   { platform = process.platform, launch }: GuardOptions = {}
 ): string | undefined {
   const paths = pathsFor(cwd, home, platform);
-  const commands = scanShell(command);
+  const commands = scanShell(command, guard.powershellOn(platform) ? 'powershell' : 'posix');
   const { steps, end } = walk(commands, paths);
   const leak = leakIn(steps, paths);
   if (leak) {

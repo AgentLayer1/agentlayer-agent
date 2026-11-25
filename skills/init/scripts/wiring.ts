@@ -5,7 +5,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { isAbsolute, relative, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { PLUGIN_SOURCE_ROOT } from '../../../src/shared/naming';
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -52,7 +52,7 @@ interface ClaudeSettings {
   enableAllProjectMcpServers?: unknown;
 }
 
-const stringsOf = (list: unknown): string[] =>
+export const stringsOf = (list: unknown): string[] =>
   Array.isArray(list) ? list.filter((item): item is string => typeof item === 'string') : [];
 
 export interface HomeSettings {
@@ -87,27 +87,6 @@ export const readHomeSettings = (homeDir: string): HomeSettings => {
 /** The `permissions.deny` list of the user-level Claude settings, which apply to every project. */
 export const readUserDenies = (claudeUserSettingsPath: string): string[] =>
   stringsOf((readJson(claudeUserSettingsPath) as ClaudeSettings).permissions?.deny);
-
-/** Directories the agent works in outside the home, in the order the settings name them. */
-export const workspaceRootsOf = (homeDir: string, settings: HomeSettings): string[] => {
-  const insideHome = (path: string): boolean => {
-    const fromHome = relative(homeDir, path);
-    return fromHome === '' || (!fromHome.startsWith('..') && !isAbsolute(fromHome));
-  };
-  return [
-    ...new Set(
-      [
-        settings.settingValue('CODE_PATH') ?? '',
-        ...(settings.settingValue('GIT_REPOS') ?? '').split(','),
-        ...settings.settingList('additionalDirectories'),
-        ...['KNOWLEDGE', 'PROJECTS', 'REPORTS'].map((key) => settings.settingValue(key) ?? '')
-      ]
-        .map((path) => path.trim())
-        .filter(Boolean)
-        .map((path) => resolve(homeDir, expandTilde(path)))
-    )
-  ].filter((path) => !insideHome(path));
-};
 
 /** Claude `Read(…)` denies as deny globs: `//x` is filesystem-absolute, `~/x` the user's home, anything else a workspace-relative pattern. */
 export const denyGlobs = (patterns: string[]): string[] => [

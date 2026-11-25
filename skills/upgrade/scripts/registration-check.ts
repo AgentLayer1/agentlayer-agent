@@ -5,11 +5,15 @@
  * never writes, and prints each finding with the exact commands that fix it plus the
  * settings keys the skill flips itself.
  *
- * Usage: registration-check.ts --home <dir> [--plugin-root <dir>] [--claude-dir <dir>] [--codex-dir <dir>]
+ * On Antigravity, which loads the checkout named in the user's personal plugins.json, it reports a manifest naming
+ * another checkout of this plugin, and an installed copy that would load the plugin a second time.
+ *
+ * Usage: registration-check.ts --home <dir> [--plugin-root <dir>] [--claude-dir <dir>] [--codex-dir <dir>] [--gemini-dir <dir>]
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
+import { entriesOf, namesCheckout } from '../../../src/hosts/antigravity';
 import { codexHost } from '../../../src/hosts/codex';
 import type { HostName } from '../../../src/hosts/contract';
 import { PLUGIN_SOURCE_ROOT } from '../../../src/shared/naming';
@@ -24,7 +28,7 @@ const PUBLISHED = {
 
 interface Finding {
   host: HostName;
-  kind: 'renamed-catalog' | 'retired-marketplace' | 'not-installed' | 'stale-copy';
+  kind: 'renamed-catalog' | 'retired-marketplace' | 'not-installed' | 'stale-copy' | 'stale-path' | 'global-copy';
   detail: string;
   commands: string[];
 }
@@ -42,7 +46,7 @@ const flag = (name: string): string | undefined => {
 const home = flag('home');
 if (!home) {
   process.stderr.write(
-    'usage: registration-check.ts --home <dir> [--plugin-root <dir>] [--claude-dir <dir>] [--codex-dir <dir>]\n'
+    'usage: registration-check.ts --home <dir> [--plugin-root <dir>] [--claude-dir <dir>] [--codex-dir <dir>] [--gemini-dir <dir>]\n'
   );
   process.exit(2);
 }
@@ -50,6 +54,7 @@ const homeDir = resolve(home);
 const pluginRoot = resolve(flag('plugin-root') ?? PLUGIN_SOURCE_ROOT);
 const claudeDir = resolve(flag('claude-dir') ?? resolve(homedir(), '.claude'));
 const codexDir = resolve(flag('codex-dir') ?? resolve(homedir(), '.codex'));
+const geminiDir = resolve(flag('gemini-dir') ?? resolve(homedir(), '.gemini'));
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 /** A host registry or home file; one that does not parse is reported, not fatal. */
@@ -216,6 +221,37 @@ findings.push(
     ];
   })
 );
+
+// Antigravity loads the checkout its personal manifest names, in place.
+const pluginsManifest = resolve(geminiDir, 'config', 'plugins.json');
+const manifestPaths = entriesOf(readJson(pluginsManifest));
+// A missing path may have been an old checkout of this plugin or any other plugin, so it is named but never proves one.
+const ownCheckouts = manifestPaths.filter(
+  (path) => readJson(resolve(path, '.antigravity-plugin', 'plugin.json'))?.name === plugin
+);
+const missing = manifestPaths.filter((path) => !existsSync(path));
+const loadsThis = namesCheckout(manifestPaths, pluginRoot);
+if (ownCheckouts.length > 0 && !loadsThis) {
+  findings.push({
+    host: 'antigravity',
+    kind: 'stale-path',
+    detail: `${pluginsManifest} loads ${ownCheckouts.join(', ')}, not this checkout (${pluginRoot}), so Antigravity runs other code than this release. Replace that entry's path with this checkout's (the note the upgrade writes has the line).`,
+    commands: []
+  });
+}
+if (missing.length > 0 && !loadsThis) {
+  warnings.push(
+    `${pluginsManifest} names ${missing.join(', ')}, which no longer exists, and not this checkout (${pluginRoot}). If that was ${plugin}, replace it with this checkout's path (the note the upgrade writes has the line).`
+  );
+}
+if ((loadsThis || ownCheckouts.length > 0) && existsSync(resolve(geminiDir, 'config', 'plugins', plugin))) {
+  findings.push({
+    host: 'antigravity',
+    kind: 'global-copy',
+    detail: `Antigravity also has an installed copy of ${plugin} in ${resolve(geminiDir, 'config', 'plugins', plugin)}, which loads it a second time beside this checkout.`,
+    commands: [`agy plugin uninstall ${plugin}`]
+  });
+}
 
 const ok = findings.length === 0 && Object.keys(settings).length === 0;
 process.stdout.write(`${JSON.stringify({ plugin, ok, findings, settings, warnings }, null, 2)}\n`);

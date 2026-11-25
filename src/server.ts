@@ -10,6 +10,7 @@
  */
 import '@/bootstrap';
 import { AGENT_SLUG, FILES, FOLDERS, isInitialized, MCP_PREFIX, PLUGIN_NAME } from '@/config';
+import { useHomeInRoots } from '@/home/roots';
 import { asks, readMergedSettings } from '@/home/settings-scope';
 import { withCallSignal } from '@/shared/call-signal';
 import { log } from '@/shared/log';
@@ -38,6 +39,30 @@ const server = new McpServer({ name: AGENT_SLUG, version: '0.1.0' });
  */
 const HOMELESS_OK = new Set(['ping', 'setup_worktree', 'list_worktrees', 'remove_worktree']);
 
+/** Resolved once the client's roots have been read, or at once when the home came from the environment. */
+const ROOTS_WAIT_MS = 5_000;
+const fromRoots = process.argv.includes('--home-from-roots');
+const rootsRead = (() => {
+  if (!fromRoots) {
+    return Promise.resolve();
+  }
+  const first = new Promise<void>((done) => {
+    server.server.oninitialized = () => {
+      (async (): Promise<void> => {
+        if (!server.server.getClientCapabilities()?.roots) {
+          return;
+        }
+        const { roots } = await server.server.listRoots();
+        const found = useHomeInRoots(roots.map((root) => root.uri));
+        log.info(found ? `home from MCP roots: ${FOLDERS.HOME}` : 'no MCP root is an agent home');
+      })()
+        .catch((err: unknown) => log.warn(`roots/list failed: ${String(err)}`))
+        .finally(done);
+    };
+  });
+  return Promise.race([first, Bun.sleep(ROOTS_WAIT_MS)]);
+})();
+
 for (const tool of TOOLS) {
   const toolLog = log.with(() => `tool:${tool.name}`);
   server.registerTool(
@@ -46,6 +71,7 @@ for (const tool of TOOLS) {
     async (args, ctx) => {
       toolLog.debug('dispatch', args);
       try {
+        await rootsRead;
         if (!HOMELESS_OK.has(tool.name) && !isInitialized()) {
           toolLog.warn(`refused — ${FOLDERS.HOME} is not this agent's home`);
           return {

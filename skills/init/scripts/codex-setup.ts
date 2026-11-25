@@ -32,6 +32,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
+import { readMergedSettings } from '../../../src/home/settings-scope';
+import { workRootsOf } from '../../../src/home/work-roots';
 import { CLI_FILE, PLUGIN_SOURCE_ROOT, RUNTIME_DIR } from '../../../src/shared/naming';
 import { readTextIfExists } from '../../../src/shared/text';
 import { CODEX_EFFORT, CODEX_MODEL } from './codex-model';
@@ -45,7 +47,6 @@ import {
   readManifest,
   readUserDenies,
   shellPrefixes,
-  workspaceRootsOf
 } from './wiring';
 
 interface HookItem {
@@ -88,7 +89,7 @@ const rulesPath = resolve(homeDir, '.codex', 'rules', `${pluginName}.rules`);
 // ── The home's Claude settings: the posture's source of truth ─────────────────
 const settings = readHomeSettings(homeDir);
 const { settingList, env: settingsEnv } = settings;
-const workspaceRoots = workspaceRootsOf(homeDir, settings);
+const workspaceRoots = workRootsOf(homeDir, readMergedSettings(homeDir).merged);
 const readDenies = denyGlobs(settingList('deny'));
 const askPrefixes = shellPrefixes(settingList('ask'));
 const denyPrefixes = shellPrefixes(settingList('deny'));
@@ -204,7 +205,11 @@ const OWNED_TABLE_KEYS: Record<string, OwnedTableKeys> = {
   },
   // Codex renders every skill's description each turn under a budget of 2% of the model window
   // (5,440 tokens on 272K) and trims them to fit; 10,000 is the most an explicit value may claim.
-  skills: { label: 'the skills context budget', keys: { max_context_tokens: 10_000 } }
+  skills: { label: 'the skills context budget', keys: { max_context_tokens: 10_000 } },
+  // Codex's docs list the keys a project config can't set (otel, notify, providers); these two aren't
+  // among them, so the home turns them off for its own sessions whatever the user's config says.
+  analytics: { label: 'usage analytics', keys: { enabled: false } },
+  feedback: { label: 'feedback uploads', keys: { enabled: false } }
 };
 const isTable = (value: unknown): boolean =>
   Array.isArray(value) ? value.every(isTable) : typeof value === 'object' && value !== null;
@@ -402,7 +407,8 @@ const tableFills = Object.entries(OWNED_TABLE_KEYS).map(([table, { label, keys }
     .filter(([key]) => !(key in existing))
     .map(([key, value]) => tomlScalar(key, value));
   const headerAt = otherLines.findIndex((line) => headerPath(line)?.join('.') === table);
-  const inline = headerAt === -1 && Object.values(existing).some((value) => !isTable(value));
+  const inline =
+    headerAt === -1 && table in existingTables && !otherLines.some((line) => headerPath(line)?.[0] === table);
   return { table, label, hint: `${table}.${Object.keys(keys)[0]}`, missing, headerAt, inline };
 });
 const operatorConfig = tableFills

@@ -25,6 +25,7 @@ const machine = () => {
   mkdirSync(join(root, 'home', '.claude'), { recursive: true });
   mkdirSync(join(root, 'claude', 'plugins'), { recursive: true });
   mkdirSync(join(root, 'codex'), { recursive: true });
+  mkdirSync(join(root, 'gemini'), { recursive: true });
   const run = () => {
     const proc = spawnSync(
       process.execPath,
@@ -37,7 +38,9 @@ const machine = () => {
         '--claude-dir',
         join(root, 'claude'),
         '--codex-dir',
-        join(root, 'codex')
+        join(root, 'codex'),
+        '--gemini-dir',
+        join(root, 'gemini')
       ],
       { encoding: 'utf-8' }
     );
@@ -241,5 +244,39 @@ describe('registration-check', () => {
     expect(run().findings[0].commands[0]).toBe('codex plugin marketplace upgrade agentdev-scout');
     mkdirSync(join(root, 'codex', 'plugins', 'cache', 'agentdev-scout', 'agent-scout', '0.4.1'));
     expect(run().ok).toBe(true);
+  });
+});
+
+describe('registration-check for Antigravity', () => {
+  const antigravity = (run: () => { findings: { host: string; kind: string; commands: string[] }[] }) =>
+    run()
+      .findings.filter((finding) => finding.host === 'antigravity')
+      .map((finding) => [finding.kind, finding.commands]);
+
+  test('a personal manifest naming another checkout of the plugin, and an installed copy beside it, are reported', () => {
+    const { root, write, run } = machine();
+    write('old-checkout/.antigravity-plugin/plugin.json', { name: 'agent-scout' });
+    write('gemini/config/plugins.json', { entries: [{ path: join(root, 'old-checkout') }] });
+    write('gemini/config/plugins/agent-scout/plugin.json', { name: 'agent-scout' });
+    expect(antigravity(run)).toEqual([
+      ['stale-path', []],
+      ['global-copy', ['agy plugin uninstall agent-scout']]
+    ]);
+  });
+
+  test('a missing path proves nothing: a warning, never a stale checkout or an uninstall', () => {
+    const { root, write, run } = machine();
+    write('gemini/config/plugins.json', { entries: [{ path: join(root, 'removed-acme-plugin') }] });
+    write('gemini/config/plugins/agent-scout/plugin.json', { name: 'agent-scout' });
+    const result = run() as { findings: { host: string; kind: string; commands: string[] }[]; warnings: string[] };
+    expect(antigravity(() => result)).toEqual([]);
+    expect(result.warnings).toEqual([expect.stringContaining('removed-acme-plugin')]);
+  });
+
+  test('a manifest naming this checkout, or no manifest, is fine', () => {
+    const current = machine();
+    current.write('gemini/config/plugins.json', { entries: [{ path: join(current.root, 'plugin') }] });
+    expect(antigravity(current.run)).toEqual([]);
+    expect(antigravity(machine().run)).toEqual([]);
   });
 });

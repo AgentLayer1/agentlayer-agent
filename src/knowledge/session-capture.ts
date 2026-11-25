@@ -26,6 +26,7 @@ import {
 import { redactSecrets } from '@/knowledge/utils';
 import { nowTime, todayDate } from '@/shared/date';
 import { log as baseLog } from '@/shared/log';
+import { writeJsonAtomic } from '@/shared/utils';
 import type { CaptureEvent, SessionIndex, TranscriptTurn } from '@/knowledge/types';
 import { existsSync, readFileSync } from 'node:fs';
 import { appendFile, mkdir, readdir, readFile, rename, rm, stat, truncate, utimes, writeFile } from 'node:fs/promises';
@@ -34,7 +35,7 @@ import { relative, resolve } from 'node:path';
 
 const log = baseLog.session.with('capture');
 
-export type CaptureMode = 'session-end' | 'pre-compact';
+export type CaptureMode = 'session-end' | 'pre-compact' | 'turn-end';
 
 interface ModeConfig {
   heading: string;
@@ -43,7 +44,9 @@ interface ModeConfig {
 
 const MODES: Record<CaptureMode, ModeConfig> = {
   'session-end': { heading: 'Session', minTurns: 1 },
-  'pre-compact': { heading: 'Pre-Compact', minTurns: 5 }
+  'pre-compact': { heading: 'Pre-Compact', minTurns: 5 },
+  // A host with no session-end event saves at the end of a turn, once enough has built up.
+  'turn-end': { heading: 'Session', minTurns: 10 }
 };
 
 // ── Transcript extractors ────────────────────────────────────────────
@@ -172,9 +175,38 @@ const codexExtractor: Extractor = (transcriptPath) => {
   return turns;
 };
 
+/**
+ * Antigravity transcript extractor. A transcript is JSONL, one step per line: the operator's turns are `USER_INPUT`
+ * steps whose text sits inside `<USER_REQUEST>` (metadata blocks follow it), and the model's are `PLANNER_RESPONSE`
+ * steps with `content` (empty when the step only calls tools). Tool results, injected context and the host's own
+ * messages are other step types.
+ */
+const antigravityExtractor: Extractor = (transcriptPath) =>
+  readFileSync(transcriptPath, 'utf-8')
+    .split('\n')
+    .flatMap((line): TranscriptTurn[] => {
+      let step: unknown;
+      try {
+        step = JSON.parse(line);
+      } catch {
+        return [];
+      }
+      if (!isRecord(step) || typeof step.content !== 'string') return [];
+      if (step.type === 'USER_INPUT') {
+        const text = (/<USER_REQUEST>\n?([\s\S]*?)\n?<\/USER_REQUEST>/.exec(step.content)?.[1] ?? '').trim();
+        return text ? [{ role: 'user', text }] : [];
+      }
+      const text = step.content.trim();
+      if (step.type !== 'PLANNER_RESPONSE' || !text) return [];
+      return typeof step.model === 'string'
+        ? [{ role: 'assistant', text, model: step.model }]
+        : [{ role: 'assistant', text }];
+    });
+
 const EXTRACTORS: Record<HostName, Extractor> = {
   claude: claudeExtractor,
-  codex: codexExtractor
+  codex: codexExtractor,
+  antigravity: antigravityExtractor
 };
 
 /** Render `cwd` as `~/<relative>` when under `$HOME`, else return unchanged. */
@@ -395,6 +427,118 @@ export async function drainDeferredCaptures(): Promise<void> {
   if (!release) return;
   try {
     await drainPending();
+  } finally {
+    await release();
+  }
+}
+
+// ── Open conversations ───────────────────────────────────────────────
+
+/**
+ * Conversations a host with no session-end event has had in this home, kept until their transcript is saved: the
+ * drain at every host's session start saves what a turn-end capture never reached (a short conversation, an
+ * abandoned one, a turn that ended on a refusal).
+ */
+interface OpenConversation {
+  transcriptPath: string;
+  cwd: string;
+  format: HostName;
+  /** The transcript's size when it was last saved or found to hold nothing new. */
+  ackedSize: number;
+}
+
+/** A transcript written to more recently than this is a conversation still going. */
+const ACTIVE_MS = 10 * 60_000;
+const RETIRE_MS = 14 * 24 * 60 * 60_000;
+/** The drain runs inside a session start, so what it can't reach waits for the next one. */
+const DRAIN_BUDGET_MS = 3_000;
+
+const conversationsPath = (): string => resolve(FOLDERS.DATA, 'conversations', 'open.json');
+
+const readConversations = async (): Promise<Record<string, OpenConversation>> => {
+  try {
+    const parsed: unknown = JSON.parse(await readFile(conversationsPath(), 'utf-8'));
+    return isRecord(parsed) ? (parsed as Record<string, OpenConversation>) : {};
+  } catch {
+    return {};
+  }
+};
+
+/** Add a conversation to the open list when it isn't there yet; the lock is taken only to add one. */
+export async function recordConversation(
+  conversation: { sessionId?: string; transcriptPath?: string; cwd?: string },
+  format: HostName
+): Promise<void> {
+  const { sessionId, transcriptPath } = conversation;
+  if (!isInitialized() || !sessionId || !transcriptPath || sessionId in (await readConversations())) {
+    return;
+  }
+  const release = await acquireCaptureLock(0);
+  if (!release) return;
+  try {
+    const open = await readConversations();
+    if (!(sessionId in open)) {
+      writeJsonAtomic(conversationsPath(), {
+        ...open,
+        [sessionId]: { transcriptPath, cwd: conversation.cwd ?? '', format, ackedSize: 0 }
+      });
+    }
+  } finally {
+    await release();
+  }
+}
+
+/**
+ * Save every open conversation that has gone quiet with turns not yet saved, the oldest first, within the budget;
+ * then retire one idle for two weeks with nothing left to save, and drop one whose transcript is gone.
+ */
+export async function drainOpenConversations(now = Date.now()): Promise<void> {
+  if (!isInitialized() || !existsSync(conversationsPath())) {
+    return;
+  }
+  const release = await acquireCaptureLock(0);
+  if (!release) return;
+  try {
+    const open = await readConversations();
+    const seen = await Promise.all(
+      Object.entries(open).map(async ([sessionId, conversation]) => ({
+        sessionId,
+        conversation,
+        file: await stat(conversation.transcriptPath).catch(() => null)
+      }))
+    );
+    const quietWithNewTurns = seen
+      .flatMap((entry) => (entry.file ? [{ ...entry, file: entry.file }] : []))
+      .filter(({ conversation, file }) => file.size !== conversation.ackedSize && now - file.mtimeMs >= ACTIVE_MS)
+      .sort((a, b) => a.file.mtimeMs - b.file.mtimeMs);
+    const deadline = Date.now() + DRAIN_BUDGET_MS;
+    const acked = new Map<string, number>();
+    for (const { sessionId, conversation, file } of quietWithNewTurns) {
+      if (Date.now() > deadline) break;
+      await utimes(lockDirPath(), new Date(), new Date()).catch(() => {});
+      const result = await captureUnderLock({
+        transcriptPath: conversation.transcriptPath,
+        cwd: conversation.cwd,
+        sessionId,
+        mode: 'session-end',
+        format: conversation.format
+      }).catch((err: unknown) => {
+        log.warn(`open conversation [${sessionId}] not saved: ${err instanceof Error ? err.message : String(err)}`);
+        return null;
+      });
+      if (result?.saved || result?.reason === 'no-new-turns') {
+        acked.set(sessionId, file.size);
+      }
+    }
+    const kept = Object.fromEntries(
+      seen.flatMap(({ sessionId, conversation, file }): [string, OpenConversation][] => {
+        if (!file) return [];
+        const ackedSize = acked.get(sessionId) ?? conversation.ackedSize;
+        const retired = ackedSize === file.size && now - file.mtimeMs >= RETIRE_MS;
+        return retired ? [] : [[sessionId, { ...conversation, ackedSize }]];
+      })
+    );
+    writeJsonAtomic(conversationsPath(), kept);
   } finally {
     await release();
   }

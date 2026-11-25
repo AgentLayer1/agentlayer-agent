@@ -19,6 +19,12 @@ theme = "dark"
 [skills]
 max_context_tokens = 10000
 
+[analytics]
+enabled = false
+
+[feedback]
+enabled = false
+
 [mcp_servers.agentlayer]
 command = "bun"
 args = ["<ROOT>/src/server.ts"]

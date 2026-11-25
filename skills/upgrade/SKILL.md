@@ -143,7 +143,8 @@ bun "$PLUGIN_ROOT/src/cli.ts" hosts            # add --codex when this session r
 
 It prints `{ ok, hosts: [{ name, required, installed, floor, state, update }] }` and exits 1 when
 a required host is below its floor. Claude Code and bun are always required; Codex for a home
-wired for it (`.codex/hooks.json`) or a Codex session (`--codex`); an absent optional host is fine.
+wired for it (`.codex/hooks.json`) or a Codex session (`--codex`); Antigravity (`agy`) when the user's
+`~/.gemini/config/plugins.json` loads this checkout; an absent optional host is fine.
 `ok: true` → continue. Otherwise print each `outdated` or required-`absent` host on its own line
 with its `update` command, tell the operator to update and relaunch, then re-run this, and
 **stop**: nothing below this line runs on an outdated host.
@@ -377,6 +378,20 @@ install lines the operator still owes if the plugin is not installed in Codex ye
 (`codex plugin marketplace add <plugin checkout or marketplace>` then
 `codex plugin add agentlayer@<marketplace>`) and the folder-trust prompt on first launch. Never drop it. An untrusted hook does not run at
 all, silently under `codex exec`, which is a home that stops capturing its Codex sessions.
+
+**antigravity (always, when `agy` is installed)** — Antigravity loads the plugin in place from the
+checkout its user-level `~/.gemini/config/plugins.json` names, so a release reaches it with nothing
+regenerated in the home. What can drift is user-level: the manifest entry (a moved or recloned
+checkout) and the CLI settings (new denies, a new code folder). When `agy --version` answers,
+regenerate the paste-ready note:
+
+```bash
+bun "$PLUGIN_ROOT/skills/init/scripts/antigravity-user-config.ts" --home "$HOME_DIR" --out "$DATA_DIR/updates/antigravity-user-config.md"
+```
+
+Its report says `manifest` (`current`, `missing` or `add-entry`) and the `settings` keys the user
+file lacks. Unless the manifest is `current` and no settings key is missing, add one `manual:` line
+to the Step 6 report naming the note; otherwise stay silent. Never edit either user-level file.
 
 **file (additive)** — copy the template to its HOME destination **only if absent**:
 

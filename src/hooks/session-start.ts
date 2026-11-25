@@ -12,12 +12,12 @@
  * Always returns a result — internal errors are caught and emitted as an
  * empty payload + `error` field so the host never chokes on hook output.
  */
-import { AGENT_SLUG, FILES, FOLDERS, isInitialized, PLUGIN_NAME, staticContextFiles } from '@/config';
+import { AGENT_SLUG, FILES, FOLDERS, isInitialized, PLUGIN_NAME } from '@/config';
 import { assembleContext } from '@/hooks/context';
 import type { HostAdapter, SkillCommand } from '@/hosts/contract';
 import { renderGlossary } from '@/hosts/dialect';
 import { DEFAULT_HOST } from '@/hosts/registry';
-import { drainDeferredCaptures } from '@/knowledge/session-capture';
+import { drainDeferredCaptures, drainOpenConversations } from '@/knowledge/session-capture';
 import { BANNER, BANNER_LINES, BANNER_TAG } from '@/hooks/banner';
 import { stripAnsi } from '@/shared/ansi';
 import { log as baseLog } from '@/shared/log';
@@ -87,7 +87,7 @@ export async function sessionStart({
   color = false
 }: { host?: HostAdapter; promptRow?: boolean; color?: boolean } = {}): Promise<SessionStartResult> {
   const inject = host.delivery.kind === 'inject' ? host.delivery : undefined;
-  const glossary = inject ? [renderGlossary(host.name, inject.glossary)] : [];
+  const glossary = inject?.glossaryIn === 'context' ? [renderGlossary(host.name, inject.glossary)] : [];
   try {
     if (!isInitialized()) {
       // A SOUL.md with no data dir isn't a fresh directory — it's a scaffolded
@@ -108,6 +108,7 @@ export async function sessionStart({
       };
     }
     await drainDeferredCaptures().catch((err: unknown) => log.error('deferred captures not drained', err));
+    await drainOpenConversations().catch((err: unknown) => log.error('open conversations not drained', err));
     const lane = await assembleContext({ promptRow, host }).catch((err: unknown) => {
       log.error(`hook failed (${host.name}): dynamic lane skipped`, err);
       const message = err instanceof Error ? err.message : String(err);
@@ -125,7 +126,8 @@ export async function sessionStart({
     if (!inject) {
       return { systemMessage: '\n' + banner, additionalContext: lane.context, hasIssues: lane.hasIssues };
     }
-    const files = staticContextFiles()
+    const files = inject
+      .files()
       .filter((path) => existsSync(path))
       .map((path) => {
         const name = relative(FOLDERS.HOME, path).split(sep).join('/');

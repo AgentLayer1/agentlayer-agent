@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "agent": {
+      "command": "bun",
+      "args": [
+        "${PLUGIN_ROOT}/src/server.ts",
+        "--home-from-roots"
+      ],
+      "env": {
+        "PLAYWRIGHT_BROWSERS_PATH": "0"
+      }
+    }
+  }
+}

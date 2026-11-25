@@ -20,7 +20,7 @@
 
 ---
 
-It installs as a plugin into the agent CLI you already use, [Claude Code](https://docs.claude.com/en/docs/claude-code) or [Codex](https://developers.openai.com/codex). Everything that makes the agent yours (its character, what it knows about you, your projects and tasks) lives in one folder of plain markdown on your disk. Any model can read it. You can browse it in Obsidian, keep it in git, and take it with you.
+It installs as a plugin into the agent CLI you already use, [Claude Code](https://docs.claude.com/en/docs/claude-code), [Codex](https://developers.openai.com/codex) or [Antigravity](https://antigravity.google/docs/getting-started). Everything that makes the agent yours (its character, what it knows about you, your projects and tasks) lives in one folder of plain markdown on your disk. Any model can read it. You can browse it in Obsidian, keep it in git, and take it with you.
 
 ## Meet Oppi
 
@@ -116,7 +116,7 @@ Everything lives at **[agentlayer.one/docs](https://agentlayer.one/docs)**, also
 
 ## Updating
 
-Pull the new plugin version on your host (`/plugin update agentlayer@agentlayer` in Claude Code; remove and re-add in Codex), then run the `upgrade` skill. The plugin update refreshes code; `upgrade` brings your folder in line, backing up first. On a version from before 1.0, your home moves to a new folder instead. → [Updating](https://agentlayer.one/docs/run/updating)
+Pull the new plugin version on your host (`/plugin update agentlayer@agentlayer` in Claude Code; remove and re-add in Codex; nothing in Antigravity, which loads it in place), then run the `upgrade` skill. The plugin update refreshes code; `upgrade` brings your folder in line, backing up first. On a version from before 1.0, your home moves to a new folder instead. → [Updating](https://agentlayer.one/docs/run/updating)
 
 ## Contributing
 

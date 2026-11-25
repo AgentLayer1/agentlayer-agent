@@ -1,3 +1,5 @@
+import { ownDataDir } from '@/shared/naming';
+import { resolvedPath } from '@/shared/paths';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
@@ -33,4 +35,31 @@ export function loadSettingsEnv(start: string): void {
 /** Pins the home a caller named on its own command line, ahead of anything a settings file says. */
 export const pinHome = (home: string): void => {
   process.env.AGENT_HOME = home;
+};
+
+/** The nearest folder at or above `start` that is this agent's home, read from its marker alone; through a symlink, the home above where it leads. */
+export const homeAbove = (start: string): string | undefined => {
+  const walk = (dir: string): string | undefined => {
+    const parent = dirname(dir);
+    return ownDataDir(dir) ? dir : parent === dir ? undefined : walk(parent);
+  };
+  const spelled = resolve(start);
+  const real = resolvedPath(spelled);
+  return walk(spelled) ?? (real === spelled ? undefined : walk(real));
+};
+
+/** The home a session works in: the first of its workspace folders, then its folder, that sits in one. */
+export const homeOfSession = (session: { workspacePaths?: unknown; cwd?: unknown }): string | undefined =>
+  [...(Array.isArray(session.workspacePaths) ? session.workspacePaths : []), session.cwd]
+    .filter((folder): folder is string => typeof folder === 'string' && folder !== '')
+    .reduce<string | undefined>((found, folder) => found ?? homeAbove(folder), undefined);
+
+/** The home a raw hook payload's session works in, or undefined when it doesn't parse. */
+export const homeInPayload = (raw: string): string | undefined => {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null ? homeOfSession(parsed) : undefined;
+  } catch {
+    return undefined;
+  }
 };

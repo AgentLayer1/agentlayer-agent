@@ -1,0 +1,30 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "agentlayer",
+  "displayName": "AgentLayer",
+  "version": "1.1.0",
+  "description": "An agent that remembers your work, in a folder you own. It captures every session, compiles what it learned into plain markdown, and loads it back before you type. Tasks, briefings, a dashboard, and packs for GitHub, databases, support desks, SEO and a browser. All data stays local.",
+  "logo": "assets/agentlayer-logo.png",
+  "suggestedPrompts": [
+    "Brief me on today",
+    "What should I work on next?",
+    "Capture this as a task"
+  ],
+  "author": {
+    "name": "AgentLayer",
+    "url": "https://agentlayer.one"
+  },
+  "homepage": "https://agentlayer.one",
+  "repository": "https://github.com/AgentLayer1/agentlayer-agent",
+  "license": "Apache-2.0",
+  "keywords": [
+    "personal-ai",
+    "knowledge-base",
+    "task-management",
+    "agentic",
+    "seo",
+    "content",
+    "playwright",
+    "google-search-console"
+  ]
+}

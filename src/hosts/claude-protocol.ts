@@ -25,6 +25,7 @@ const readPayload = (raw: string): HookPayload => {
     sessionId: parsed.session_id,
     transcriptPath: parsed.transcript_path,
     cwd: parsed.cwd,
+    origin: 'user',
     call: typeof command === 'string' ? { kind: 'shell', command } : { kind: 'other' }
   };
 };

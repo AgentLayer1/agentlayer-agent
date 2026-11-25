@@ -1,6 +1,6 @@
 # agentlayer-agent — Agent Guide
 
-The `agentlayer` plugin: an MCP server, hook handlers, a CLI, skills and mods that turn an agent CLI (Claude Code, Codex) into a personal agent with a markdown brain in its home directory. [CONTRIBUTING.md](CONTRIBUTING.md) has the contributor how-tos (adding a skill or a tool, local plugin testing, the demo dashboard); this file is what to know before changing code.
+The `agentlayer` plugin: an MCP server, hook handlers, a CLI, skills and mods that turn an agent CLI (Claude Code, Codex, Antigravity) into a personal agent with a markdown brain in its home directory. [CONTRIBUTING.md](CONTRIBUTING.md) has the contributor how-tos (adding a skill or a tool, local plugin testing, the demo dashboard); this file is what to know before changing code.
 
 ## Layout
 
@@ -21,6 +21,7 @@ The `agentlayer` plugin: an MCP server, hook handlers, a CLI, skills and mods th
 | `mods/` | In-process Claude Code mods; tested with `claude plugin test mods`, not `bun test` |
 | `templates/` | Files scaffolded into a new home |
 | `hooks/claude.json`, `.claude-plugin/`, `.codex-plugin/`, `.agents/plugins/` | Host manifests and marketplaces |
+| `.antigravity-plugin/`, `hooks.json`, `mcp_config.json`, `rules/` | The Antigravity plugin: Antigravity loads the checkout in place, from the plugin root. `rules/antigravity.md` is generated (`bun src/hosts/antigravity-rule.ts sync`) |
 
 ## Tools
 

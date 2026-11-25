@@ -11,6 +11,9 @@ export interface ShellWord {
 
 export type ShellJoiner = '&&' | '||' | ';' | '|' | '&' | '\n';
 
+/** PowerShell escapes with a backtick and reads a backslash as a plain character, the separator in its paths. */
+export type ShellDialect = 'posix' | 'powershell';
+
 export interface ShellCommand {
   words: ShellWord[];
   /** The shells it runs in, outermost first: `[0]` is the session's shell, each subshell or substitution adds an id. */
@@ -57,7 +60,8 @@ const withoutHeredocBodies = (script: string): string => {
  * hold, a subshell or command substitution is its own command one level deeper, and heredoc
  * bodies and comments are dropped. Commands come out in the order they end.
  */
-export function scanShell(script: string): ShellCommand[] {
+export function scanShell(script: string, dialect: ShellDialect = 'posix'): ShellCommand[] {
+  const escape = dialect === 'powershell' ? '`' : '\\';
   const source = withoutHeredocBodies(script);
   const commands: ShellCommand[] = [];
   let lastShell = 0;
@@ -103,9 +107,9 @@ export function scanShell(script: string): ShellCommand[] {
     while (i < source.length) {
       const ch = source[i];
       const next = source[i + 1];
-      if (ch === '\\' && next === '\n') {
+      if (ch === escape && next === '\n') {
         i += 2;
-      } else if (ch === '\\' && (!quoted || '$`"\\'.includes(next ?? ''))) {
+      } else if (ch === escape && (dialect === 'powershell' || !quoted || '$`"\\'.includes(next ?? ''))) {
         text += next ?? '';
         inWord = true;
         i += 2;
@@ -114,7 +118,7 @@ export function scanShell(script: string): ShellCommand[] {
         return i + 1;
       } else if (ch === '$' && next === '(') {
         i = nested(i + 2, ')');
-      } else if (ch === '`') {
+      } else if (ch === '`' && dialect === 'posix') {
         i = nested(i + 1, '`');
       } else if (quoted) {
         quoted = ch !== '"';
