@@ -10,6 +10,17 @@ import { realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
+/** Git Bash and Cygwin spell C:\Users as /c/Users or /cygdrive/c/Users; Windows path APIs need the drive form. */
+export const driveForm = (path: string): string => path.replace(/^\/(?:cygdrive\/)?([a-z])(?:\/|$)/i, '$1:/');
+
+/** A Windows path in Claude Code's rule form, `C:\Users\ada` → `/c/Users/ada`; other paths pass through. */
+export const claudeForm = (path: string): string =>
+  path.replace(/\\/g, '/').replace(/^([a-z]):(?=\/|$)/i, (_drive, letter: string) => `/${letter.toLowerCase()}`);
+
+/** Whether two paths name the same file on `platform`: Windows ignores case and takes either separator. */
+export const samePath = (a: string, b: string, platform: NodeJS.Platform = process.platform): boolean =>
+  platform === 'win32' ? claudeForm(a).toLowerCase() === claudeForm(b).toLowerCase() : a === b;
+
 /** Expand `~` or `~/foo` to an absolute path under the user's home. Other paths pass through. */
 export const expandTilde = (path: string): string => {
   if (path === '~') {

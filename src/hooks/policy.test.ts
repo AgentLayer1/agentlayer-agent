@@ -11,7 +11,7 @@ const SCRATCH = realpathSync(mkdtempSync(join(tmpdir(), 'policy-')));
 const HOME = join(SCRATCH, 'Nova');
 mkdirSync(join(HOME, '.state'), { recursive: true });
 mkdirSync(join(HOME, 'projects', 'acme'), { recursive: true });
-symlinkSync(join(HOME, '.state'), join(SCRATCH, 'linked-state'));
+symlinkSync(join(HOME, '.state'), join(SCRATCH, 'linked-state'), 'junction');
 afterAll(() => rmSync(SCRATCH, { recursive: true, force: true }));
 
 const settings = {
@@ -179,4 +179,43 @@ describe('malformed rules', () => {
 test('a refusal and an ask always carry a reason the operator sees', () => {
   const answers = [decide(shell('gh pr list')), decide(shell('git push')), decide({ kind: 'read', path: '.env' })];
   expect(answers.every((answer) => answer !== null && 'reason' in answer && answer.reason.length > 0)).toBe(true);
+});
+
+describe('on Windows, with PowerShell commands', () => {
+  const NOVA = 'C:\\Users\\ada\\Nova';
+  const windows = { platform: 'win32', shell: 'powershell', home: NOVA, cwd: NOVA } as const;
+
+  test('a denied file is refused however Windows spells it: backslashes, another case, a relative path', () => {
+    expect(verdict({ kind: 'read', path: `${NOVA}\\.state\\secrets\\token` }, windows)).toBe('deny');
+    expect(verdict({ kind: 'read', path: 'projects\\acme\\.env' }, windows)).toBe('deny');
+    expect(verdict({ kind: 'read', path: 'c:\\users\\ada\\nova\\PRIVATE\\notes.md' }, windows)).toBe('deny');
+    expect(verdict({ kind: 'read', path: '/c/Users/ada/Nova/.env' }, windows)).toBe('deny');
+    expect(verdict({ kind: 'read', path: `${NOVA}\\projects\\acme\\README.md` }, windows)).toBe('host decides');
+  });
+
+  test('a shell command naming a denied file keeps its backslashes, so it is refused', () => {
+    expect(verdict(shell(`Get-Content ${NOVA}\\.state\\secrets\\token`), windows)).toBe('deny');
+    expect(verdict(shell('type projects\\acme\\.env'), windows)).toBe('deny');
+    expect(verdict(shell('Get-Content projects\\acme\\README.md'), windows)).toBe('host decides');
+  });
+
+  test("a deny holds through pwsh, powershell and cmd, in any case, and PowerShell's own rules apply", () => {
+    expect(verdict(shell('pwsh -Command gh pr list'), windows)).toBe('deny');
+    expect(verdict(shell('powershell.exe -c "gh pr list"'), windows)).toBe('deny');
+    expect(verdict(shell('cmd /c gh pr list'), windows)).toBe('deny');
+    expect(verdict(shell('GH pr list'), windows)).toBe('deny');
+    const psDeny = { permissions: { deny: ['PowerShell(Remove-Item *)'] } };
+    expect(verdict(shell('remove-item C:\\acme'), { ...windows, settings: psDeny })).toBe('deny');
+    expect(verdict(shell('git push origin main'), windows)).toBe('force_ask');
+  });
+
+  test("writes to the home's rules are refused, and a file elsewhere asks first", () => {
+    expect(verdict({ kind: 'write', path: `${NOVA}\\.claude\\settings.json` }, windows)).toBe('deny');
+    expect(verdict({ kind: 'search', path: NOVA }, windows)).toBe('deny');
+    expect(verdict({ kind: 'read', path: 'D:\\acme\\notes.md' }, windows)).toBe('force_ask');
+  });
+
+  test('a POSIX shell still reads a backslash as an escape and keeps case', () => {
+    expect(verdict(shell('GH pr list'))).toBe('host decides');
+  });
 });

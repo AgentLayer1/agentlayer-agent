@@ -113,7 +113,8 @@ export const runPolicy = async (flag: Flag): Promise<number> => {
           home: FOLDERS.HOME,
           cwd,
           settings: effectiveSettings(FOLDERS.HOME),
-          hostFolders: payload.hostFolders ?? []
+          hostFolders: payload.hostFolders ?? [],
+          shell: host.guard.powershellOn(process.platform) ? 'powershell' : 'posix'
         })
       )
     );

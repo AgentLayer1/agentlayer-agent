@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { posix, win32 } from 'node:path';
 import type { GuardPolicy } from '@/hosts/contract';
-import { existingTarget } from '@/shared/paths';
+import { driveForm, existingTarget } from '@/shared/paths';
 import { commandWords, scanShell, type ShellCommand, type ShellJoiner, type ShellWord } from './shell-scan';
 
 /** One platform's path rules, with the home and the starting cwd already in that platform's form. */
@@ -13,9 +13,6 @@ interface Paths {
   realHome: string;
   start: string;
 }
-
-/** Git Bash and Cygwin spell C:\Users as /c/Users or /cygdrive/c/Users; Windows path APIs need the drive form. */
-const driveForm = (path: string): string => path.replace(/^\/(?:cygdrive\/)?([a-z])(?=\/|$)/i, '$1:/');
 
 const pathsFor = (cwd: string, home: string, platform: NodeJS.Platform): Paths => {
   const api = platform === 'win32' ? win32 : posix;
@@ -416,7 +413,7 @@ export function shellGuard(
   { platform = process.platform, launch }: GuardOptions = {}
 ): string | undefined {
   const paths = pathsFor(cwd, home, platform);
-  const commands = scanShell(command);
+  const commands = scanShell(command, guard.powershellOn(platform) ? 'powershell' : 'posix');
   const { steps, end } = walk(commands, paths);
   const leak = leakIn(steps, paths);
   if (leak) {
