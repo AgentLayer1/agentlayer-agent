@@ -5,7 +5,7 @@
 [ -n "${BASH_VERSION:-}" ] || { echo "install: pipe this to bash, not sh." >&2; exit 1; }
 set -euo pipefail
 
-RELEASE="v1.2.0"
+RELEASE="v1.2.1"
 SOURCE_URL="https://raw.githubusercontent.com/AgentLayer1/agentlayer-agent/$RELEASE/install"
 DOCS_URL="https://agentlayer.one/docs/getting-started/install"
 

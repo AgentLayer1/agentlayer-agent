@@ -52,6 +52,34 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.2.1] - 2026-11-26
+
+Antigravity stops asking about the agent's own tools, and cmux gets a button for each host.
+
+### Added
+- `cmux settings --host=codex,antigravity` recommends a toolbar button for each host beside the
+  Claude Code one: OpenAI Codex runs `codex`, Antigravity runs `agy`. A missing button lands in its
+  place in your tab bar rather than at the end. Init's Codex and Antigravity steps, and configure's
+  walks for them, offer the button when the session runs inside cmux; the cmux pack's own walk adds
+  it for each host already set up.
+
+### Changed
+- In Antigravity, the agent's own tools run unless the home's `permissions.ask` or `deny` names
+  them, as in Codex. A skill reaching for a tool of a pack not set up yet no longer prompts. Another
+  MCP server's tools still need an allow rule.
+- Antigravity can't show the session banner, so the first reply now opens with all of it, word for
+  word, in a text block. In Codex, a `Session context` heading takes the row beside Codex's own hook
+  label, so the banner's lines start together below it.
+
+### Fixed
+- Antigravity no longer asks each time it reads a tool's schema before calling the tool. Reads and
+  searches in its schema folder count as the host's own; a write there still asks.
+- The upgrade's required-hosts test holds on a machine whose Antigravity manifest names the checkout.
+
+### Upgrade
+- `manual: optional` — cmux with Codex or Antigravity set up: run the cmux pack's walk in
+  configure-skills to get the new toolbar buttons, then paste what it shows.
+
 ## [1.2.0] - 2026-11-25
 
 Antigravity is the third host, tax becomes part of a finances skill, and the packs are one numbered
