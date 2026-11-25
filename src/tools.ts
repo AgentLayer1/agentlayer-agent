@@ -12,6 +12,7 @@ import { tools as home } from '@/home/tool';
 import { tools as knowledge } from '@/knowledge/tool';
 import { tools as media } from '@/media/tool';
 import { tools as notes } from '@/notes/tool';
+import { tools as packs } from '@/packs/tool';
 import { tools as proposals } from '@/proposals/tool';
 import { tools as reports } from '@/reports/tool';
 import { tools as seed } from '@/seed/tool';
@@ -34,6 +35,7 @@ export const TOOLS: readonly ToolDef[] = [
   ...knowledge,
   ...media,
   ...notes,
+  ...packs,
   ...proposals,
   ...reports,
   ...seed,

@@ -28,6 +28,7 @@
  * anything else in the home.
  */
 import { FOLDERS, MCP_PREFIX, PLUGIN_NAME } from '@/config';
+import { PACKS as ALL_PACKS, type PackDef } from '@/packs/registry';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -153,7 +154,6 @@ export const validateSeedPath = (path: string): string | null => {
 export const CREDENTIAL_KEY_RE = /(_TOKEN|_KEY|_SECRET|_PASSWORD|_CREDENTIALS?)($|_)/;
 
 const mcp = (names: string[]): string[] => names.map((name) => `${MCP_PREFIX}${name}`);
-const skill = (name: string): string => `Skill(${PLUGIN_NAME}:${name})`;
 
 /**
  * Grant classification for `seed_scan` — mirrors what `/init` pre-grants and
@@ -180,6 +180,7 @@ const CORE_GRANTS = new Set([
     'seed_export',
     'seed_import',
     'seed_scan',
+    'packs_status',
     'setup_worktree',
     'video_frames',
     'media_transcribe',
@@ -209,7 +210,7 @@ const CORE_GRANTS = new Set([
   'Bash(test *)'
 ]);
 
-interface PackDef {
+interface SeedPack {
   grants: string[];
   /** Entries the pack's walk adds to `permissions.deny`, carried with the pack so its routing holds. */
   denies?: string[];
@@ -219,93 +220,18 @@ interface PackDef {
   settingsEnv: string[];
 }
 
-export const PACKS: Record<string, PackDef> = {
-  seo: {
-    grants: mcp([
-      'serpapi_search',
-      'open_page_rank',
-      'gsc_inspect',
-      'gsc_query',
-      'gsc_sites',
-      'google_auth',
-      'page_speed_audit',
-      'page_speed_psi'
-    ]),
-    secretKeys: ['SERPAPI_KEY', 'OPENPAGERANK_API_KEY'],
-    settingsEnv: ['GSC_SITE_URL']
-  },
-  browser: {
-    grants: mcp([
-      'web_search',
-      'browser_screenshot',
-      'browser_pdf',
-      'browser_markdown',
-      'browser_record',
-      'browser_flows'
-    ]),
-    secretKeys: ['PERPLEXITY_API_KEY'],
-    settingsEnv: []
-  },
-  database: {
-    grants: mcp(['database_list', 'database_query', 'database_schema', 'database_fork']),
-    // AGENT_DB_* connection names live in the deny-gated store and can't be enumerated —
-    // the recipient defines their own via the Database pack walk.
-    secretKeys: [],
-    settingsEnv: []
-  },
-  github: {
-    grants: mcp([
-      'github_fast_forward',
-      'github_pr_list',
-      'github_pr_view',
-      'github_pr_comments',
-      'github_pr_diff',
-      'github_pr_checks',
-      'github_run_list',
-      'github_run_view',
-      'github_run_log',
-      'github_issue_list',
-      'github_issue_view',
-      'github_sweep',
-      'github_issue_create',
-      'github_issue_comment',
-      'github_issue_update',
-      'github_pr_update',
-      'github_comment_update'
-    ]),
-    denies: ['Bash(gh)', 'Bash(gh *)'],
-    secretKeys: ['GITHUB_TOKEN'],
-    settingsEnv: []
-  },
-  helpdesk: {
-    grants: mcp(['helpdesk_connections', 'helpdesk_tickets', 'helpdesk_ticket', 'helpdesk_attachment', 'helpdesk_accounts', 'helpdesk_lookups', 'helpdesk_stats', 'helpdesk_note', 'helpdesk_assign']),
-    secretKeys: ['SUPPORTCANDY_APP_PASSWORD', 'PYLON_API_TOKEN'],
-    settingsEnv: ['SUPPORTCANDY_URL', 'SUPPORTCANDY_USERNAME']
-  },
-  appstore: {
-    grants: mcp(['appstore_reviews']),
-    secretKeys: [],
-    settingsEnv: []
-  },
-  slack: {
-    grants: [
-      ...mcp([
-        'slack_whoami',
-        'slack_channels',
-        'slack_history',
-        'slack_batch_history',
-        'slack_thread',
-        'slack_search',
-        'slack_waiting'
-      ]),
-      'WebFetch(domain:slack.com)',
-      skill('slack')
-    ],
-    // Auth is a per-operator OAuth ceremony (the CLI's `slack auth`), not a plantable key.
-    secretKeys: [],
-    settingsEnv: ['AGENT_SLACK_CLIENT_ID']
-  }
-};
+/** The packs a bundle can carry: set up by grants, keys and env alone, so carrying those carries the pack. */
+const SEEDABLE = ['seo', 'browser', 'database', 'github', 'helpdesk', 'appstore', 'slack'] as const;
+
+export const PACKS: Record<string, SeedPack> = Object.fromEntries(
+  SEEDABLE.map((id) => {
+    const def: PackDef = ALL_PACKS[id];
+    return [
+      id,
+      { grants: def.grants, denies: def.denies, secretKeys: def.secretKeys ?? [], settingsEnv: def.settingsEnv ?? [] }
+    ];
+  })
+);
 
 export type GrantClass = 'core' | 'skill' | 'custom' | { pack: string };
 
