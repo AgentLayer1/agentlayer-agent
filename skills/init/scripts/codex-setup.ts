@@ -407,7 +407,8 @@ const tableFills = Object.entries(OWNED_TABLE_KEYS).map(([table, { label, keys }
     .filter(([key]) => !(key in existing))
     .map(([key, value]) => tomlScalar(key, value));
   const headerAt = otherLines.findIndex((line) => headerPath(line)?.join('.') === table);
-  const inline = headerAt === -1 && Object.values(existing).some((value) => !isTable(value));
+  const inline =
+    headerAt === -1 && table in existingTables && !otherLines.some((line) => headerPath(line)?.[0] === table);
   return { table, label, hint: `${table}.${Object.keys(keys)[0]}`, missing, headerAt, inline };
 });
 const operatorConfig = tableFills

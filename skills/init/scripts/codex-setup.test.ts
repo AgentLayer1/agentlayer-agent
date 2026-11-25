@@ -503,6 +503,14 @@ describe('codex-setup mcp registration', () => {
     expect([kept.analytics, kept.feedback]).toEqual([{ enabled: true }, { enabled: false }]);
   });
 
+  test('leaves a table written inline, an empty one included, to the operator, with a note', () => {
+    const home = scratch();
+    seed(home, 'config.toml', 'analytics = {}\n');
+    const { code, json } = run('--home', home, '--plugin-root', PLUGIN, '--write');
+    expect(code).toBe(0);
+    expect(json.notes.some((note: string) => note.includes('analytics without a [analytics] header'))).toBe(true);
+  });
+
   test('escapes backslashes in paths', () => {
     const home = join(scratch(), 'back\\slash');
     const { json } = run('--home', home, '--plugin-root', PLUGIN, '--write');

@@ -148,3 +148,9 @@ test('on Windows a rule names its path as Antigravity checks it: no drive letter
   expect(rulePath('d:/acme/.env', true)).toBe('/acme/.env');
   expect(rulePath('/Users/ada/Nova/.env', false)).toBe('/Users/ada/Nova/.env');
 });
+
+test("a home's own path deny becomes a path rule, as a user-level one does", () => {
+  const claudeHome = { permissions: { deny: [`Read(/${VAULT}/**)`, `Read(/${VAULT}/keys.txt)`] } };
+  const deny = buildUserConfig(inputs({ claudeUser: {}, claudeHome })).settings.permissions?.deny ?? [];
+  expect(deny).toContain(`read_file(${VAULT})`);
+});

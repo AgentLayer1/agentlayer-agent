@@ -181,7 +181,7 @@ export const antigravityHost = {
   capabilities: {
     manual: {
       level: 'partial',
-      note: 'Antigravity reads the first 24 KB itself; the session-start hook sends the rest'
+      note: 'Antigravity reads the first 24 KB itself; the session-start hook sends it whole'
     },
     context: { level: 'yes' },
     capture: { level: 'yes' },

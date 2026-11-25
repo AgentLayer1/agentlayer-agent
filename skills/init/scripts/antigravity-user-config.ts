@@ -128,9 +128,9 @@ export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
     ...stringsOf(at(inputs.claudeHome, 'sandbox', 'network', 'allowedDomains'))
   ].map((domain) => domain.replace(/^\*\./, ''));
   const heldUser = readGlobs.filter((_glob, index) => readTargets[index] === undefined);
-  const heldHome = denyGlobs(stringsOf(at(inputs.claudeHome, 'permissions', 'deny'))).filter(
-    (glob) => ruleTarget(glob, work, platform) === undefined
-  );
+  const homeGlobs = denyGlobs(stringsOf(at(inputs.claudeHome, 'permissions', 'deny')));
+  const homeTargets = homeGlobs.map((glob) => ruleTarget(glob, work, platform));
+  const heldHome = homeGlobs.filter((_glob, index) => homeTargets[index] === undefined);
   const matched = heldFiles(
     { user: heldUser, home: heldHome },
     outermost(work),
@@ -141,7 +141,7 @@ export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
 
   const unread = outermost([
     resolvedPath(join(home, RUNTIME_DIR, 'secrets')),
-    ...readTargets.filter((path): path is string => path !== undefined),
+    ...[...readTargets, ...homeTargets].filter((path): path is string => path !== undefined),
     ...matched.map(resolvedPath)
   ]);
   // A read deny already denies writing there.
