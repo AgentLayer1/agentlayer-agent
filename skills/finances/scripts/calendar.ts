@@ -52,6 +52,11 @@ export interface Account {
   importer?: string;
 }
 
+/** An account as its entity holds it: always in a currency, its own or the entity's. */
+export interface EntityAccount extends Account {
+  currency: string;
+}
+
 export interface Entity {
   slug: string;
   name: string;
@@ -69,7 +74,7 @@ export interface Entity {
   childrenUnder18: number | null;
   startedOn: string | null;
   bookedThrough: string | null;
-  accounts: Account[];
+  accounts: EntityAccount[];
   obligations: Obligation[];
 }
 

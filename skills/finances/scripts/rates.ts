@@ -75,12 +75,7 @@ interface Fetched {
 export const updateRates = async (dir: string, today: string, fetcher: Fetcher = fetchJson): Promise<RatesReport> => {
   const entities = loadEntities(dir);
   const currencies = [
-    ...new Set(
-      entities.flatMap((entity) => [
-        entity.currency,
-        ...entity.accounts.map((account) => account.currency ?? entity.currency)
-      ])
-    )
+    ...new Set(entities.flatMap((entity) => [entity.currency, ...entity.accounts.map((account) => account.currency)]))
   ]
     .filter((currency) => currency !== 'USD')
     .toSorted();

@@ -576,7 +576,7 @@ export const buildFinance = ({
       name: account.name,
       entity: entity.slug,
       type: account.type ?? 'current',
-      currency: account.currency ?? entity.currency,
+      currency: account.currency,
       balance: latest?.closing ?? null,
       asOf: latest?.to ?? null,
       statements: byAccount.get(account.id)?.length ?? 0,

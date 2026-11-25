@@ -28,7 +28,7 @@ import { Check } from './layout';
 const entity = (
   slug: string,
   kind: 'company' | 'individual',
-  accounts: { id: string; name: string; type?: string }[],
+  accounts: { id: string; name: string; type?: string; currency?: string }[],
   extra: Partial<Entity> = {}
 ): Entity => ({
   slug,
@@ -45,9 +45,9 @@ const entity = (
   childrenUnder18: null,
   startedOn: null,
   bookedThrough: null,
-  accounts,
   obligations: [],
-  ...extra
+  ...extra,
+  accounts: accounts.map((account) => ({ ...account, currency: account.currency ?? extra.currency ?? 'MYR' }))
 });
 
 const ENTITIES = [

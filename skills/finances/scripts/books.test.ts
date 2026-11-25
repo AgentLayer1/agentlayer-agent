@@ -23,8 +23,8 @@ const acme: Entity = {
   startedOn: "2025-03-10",
   bookedThrough: "2026-03",
   accounts: [
-    { id: "main", name: "Main current account" },
-    { id: "usd", name: "USD account" },
+    { id: "main", name: "Main current account", currency: "MYR" },
+    { id: "usd", name: "USD account", currency: "USD" },
   ],
   obligations: [],
 };

@@ -12,7 +12,7 @@ import {
 import { basename, dirname, extname, join, relative } from 'node:path';
 import { FOLDERS } from '../../../src/config';
 import { hashBuffer } from '../../../src/knowledge/utils';
-import { type Account, argValue, type Entity, escapeRegExp, loadEntities, refuse, yamlBlock } from './calendar';
+import { argValue, type Entity, type EntityAccount, escapeRegExp, loadEntities, refuse, yamlBlock } from './calendar';
 import { cents, Check, csvFiles, csvLine, DATA, monthOf, readRows } from './layout';
 import { csvRows } from './liability';
 
@@ -339,7 +339,7 @@ const appendRows = (path: string, header: string, lines: string[]): void => {
 };
 
 export interface Located {
-  account: Account;
+  account: EntityAccount;
   entity: Entity;
 }
 
@@ -360,7 +360,7 @@ export const locate = (entities: Entity[], id: string): Located => {
   return hit;
 };
 
-const importerFor = (dir: string, account: Account, file: string, rows: string[][]): Importer => {
+const importerFor = (dir: string, account: EntityAccount, file: string, rows: string[][]): Importer => {
   if (
     extname(file).toLowerCase() === '.csv' &&
     rows[0]?.map(normalizeHeader).join(',').startsWith('date,description,amount')
@@ -445,7 +445,7 @@ const planImport = (options: ImportOptions): Planned => {
   const proof = prove(lines, { opening: options.opening ?? null, closing: options.closing ?? null });
   const from = options.from ?? lines[0]?.date ?? '';
   const to = options.to ?? lines.at(-1)?.date ?? '';
-  const currency = account.currency ?? entity.currency;
+  const currency = account.currency;
   const statements = readRows(DATA.statements(dir));
   const samePeriod = statements.find(
     (row) => row.account === account.id && row.period_start === from && row.period_end === to
