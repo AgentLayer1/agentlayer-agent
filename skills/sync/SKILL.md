@@ -293,7 +293,7 @@ This is the final step — it runs **after** the briefing, on purpose. `dashboar
 First, when `<HOME>/projects/finances/entities/` exists, rebuild the finances page from its statements, so the main dashboard links a current one:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/skills/finances/scripts/calendar.ts" render
+bun "${CLAUDE_PLUGIN_ROOT}/skills/finances/scripts/page.ts"
 ```
 
 Then one call rebuilds both `<HOME>/dashboard.html` and `projects/TASKS.md` — call it once here, nowhere else in sync. It runs even for "sync only" (it just won't have new briefing news to pick up). Pass `sync: true` so the tool records this run as the last sync before it renders: the dashboard's last-sync age and the sync notice (the banner line, or the row above the prompt) both read that stamp.

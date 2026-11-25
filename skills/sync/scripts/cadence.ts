@@ -6,7 +6,7 @@ import { todayDate } from "../../../src/shared/date";
 import { dataDirOf } from "../../../src/shared/naming";
 import { agentHomePath, isAgentHome } from "../../../src/shared/env";
 import { routinesDue } from "../../helpdesk/scripts/profiles";
-import { loadEntities, pendingCloses } from "../../finances/scripts/calendar";
+import { financesDue } from "../../finances/scripts/layout";
 import { importedStack, injectedStack, isOverBudget } from "../../../src/shared/weight";
 import { keptQuietIn, loadedDocs, qualityOf, taskIds } from "../../self-review/scripts/quality";
 import { type BrainQuality, type ReviewWatermark, selfReviewDue } from "./self-review-due";
@@ -104,27 +104,7 @@ const brainQuality = ((): BrainQuality => {
 const review = selfReviewDue(selfReview, todayDate(), feedbackChangedOn, oldestSessionDay, brainQuality);
 if (review) due.push(review);
 
-// The close records are the watermark: an entity is due when last month's record is missing. A
-// profile the tax engine refuses surfaces as its own item rather than dropping every other nudge.
-const taxDir = join(FOLDERS.PROJECTS, "finances");
-if (existsSync(join(taxDir, "entities"))) {
-  try {
-    const closes = pendingCloses(taxDir, loadEntities(taxDir), todayDate());
-    if (closes.length > 0) {
-      const entities = closes.map((close) => close.entity).join(", ");
-      due.push({ invoke: "finances tax close", label: `Tax close for ${closes[0].month} (${entities})`, lastRun: null });
-    }
-  } catch (error) {
-    due.push({ invoke: "finances tax setup", label: `Fix the tax profile: ${error instanceof Error ? error.message : String(error)}`, lastRun: null });
-  }
-}
-
-// Statements waiting in the finances inbox: an import needs the operator (which account, a PDF read), so it nudges.
-const financeInbox = join(FOLDERS.PROJECTS, "finances", "data", "inbox");
-const waiting = existsSync(financeInbox) ? readdirSync(financeInbox).filter((name) => !name.startsWith(".")) : [];
-if (waiting.length > 0) {
-  due.push({ invoke: "finances import", label: `Import ${waiting.length} statement${waiting.length === 1 ? "" : "s"} waiting in the finances inbox`, lastRun: null });
-}
+due.push(...financesDue(join(FOLDERS.PROJECTS, "finances"), todayDate()));
 
 // Each routine a queue profile schedules; its newest report is the watermark.
 due.push(...routinesDue(FOLDERS.PROJECTS, join(FOLDERS.REPORTS, "helpdesk"), todayDate()));

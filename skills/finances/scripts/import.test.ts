@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
   CANONICAL,
-  Check,
   importStatement,
   type Importer,
   lineIds,
@@ -15,6 +14,7 @@ import {
   readLines,
   readXlsx
 } from './import';
+import { Check } from './layout';
 
 const dirs: string[] = [];
 const scratch = (): string => {
@@ -252,6 +252,12 @@ describe('importStatement', () => {
     importStatement({ dir, file: write(dir, 'data/inbox/a.csv', OCTOBER), account: 'acme-main' });
     const again = importStatement({ dir, file: write(dir, 'data/inbox/b.csv', OCTOBER), account: 'acme-main' });
     expect(again).toMatchObject({ alreadyImported: true, added: 0, filed: null });
+    const reexport = importStatement({
+      dir,
+      file: write(dir, 'data/inbox/again.csv', OCTOBER.replace('Account statement', 'Exported 2026-11-25 09:14')),
+      account: 'acme-main'
+    });
+    expect(reexport).toMatchObject({ alreadyImported: true, added: 0, filed: null });
     const longer = OCTOBER.replace(
       'Posting Date,Description,Reference,Withdrawal,Deposit,Balance\n',
       'Posting Date,Description,Reference,Withdrawal,Deposit,Balance\n02/11/2026,Rent,,100.00,,"6,050.00"\n'
@@ -351,5 +357,16 @@ describe('readXlsx', () => {
       ['Posting Date', 'Description', '', 'Balance'],
       ['45658', 'Tea & cake', '', '12.5']
     ]);
+  });
+
+  test.skipIf(!hasZip)('a cell with no position follows the one before it instead of landing in column A', () => {
+    const dir = scratch();
+    write(
+      dir,
+      'book/xl/worksheets/sheet1.xml',
+      '<worksheet><sheetData><row r="1"><c t="inlineStr"><is><t>Date</t></is></c><c t="inlineStr"><is><t>Amount</t></is></c><c r="D1" t="inlineStr"><is><t>Note</t></is></c></row></sheetData></worksheet>'
+    );
+    expect(Bun.spawnSync(['zip', '-qr', join(dir, 'book.xlsx'), 'xl'], { cwd: join(dir, 'book') }).exitCode).toBe(0);
+    expect(readXlsx(join(dir, 'book.xlsx'))).toEqual([['Date', 'Amount', '', 'Note']]);
   });
 });

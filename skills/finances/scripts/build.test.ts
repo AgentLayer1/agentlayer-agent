@@ -21,6 +21,7 @@ import {
 } from './build';
 import type { Entity } from './calendar';
 import { importStatement } from './import';
+import { Check } from './layout';
 
 const entity = (
   slug: string,
@@ -104,14 +105,14 @@ const statement = (account: string, from: string, to: string, extra: Partial<Sta
   currency: 'MYR',
   due: null,
   amountDue: null,
-  check: 'checked',
+  check: Check.Checked,
   ...extra
 });
 
 const STATEMENTS: Statement[] = [
   statement('acme-main', '2026-10-01', '2026-10-31', { opening: 0, closing: 6790 }),
   statement('acme-main', '2026-11-03', '2026-11-30', { opening: 6790, closing: 6790 }),
-  statement('acme-card', '2026-10-01', '2026-10-31', { due: '2026-11-25', amountDue: 200, check: 'unchecked' }),
+  statement('acme-card', '2026-10-01', '2026-10-31', { due: '2026-11-25', amountDue: 200, check: Check.Unchecked }),
   statement('ada-main', '2026-07-01', '2026-11-30')
 ];
 
@@ -203,7 +204,10 @@ describe('detectRecurring', () => {
 describe('buildFinance', () => {
   const data = buildFinance(INPUT);
 
-  test('shows each account at its latest closing, and which are behind', () => {
+  test('shows each account at its latest closing, and is behind only once a cycle and a few days have passed', () => {
+    expect(
+      buildFinance({ ...INPUT, today: '2026-12-05' }).accounts.find((account) => account.id === 'acme-card')?.behind
+    ).toBe(false);
     expect(data.accounts.find((account) => account.id === 'acme-main')).toMatchObject({
       balance: 6790,
       asOf: '2026-11-30',
@@ -212,7 +216,7 @@ describe('buildFinance', () => {
     });
     expect(data.accounts.find((account) => account.id === 'acme-card')?.behind).toBe(false);
     expect(
-      buildFinance({ ...INPUT, today: '2026-12-05' }).accounts.find((account) => account.id === 'acme-card')?.behind
+      buildFinance({ ...INPUT, today: '2026-12-06' }).accounts.find((account) => account.id === 'acme-card')?.behind
     ).toBe(true);
   });
 
@@ -240,10 +244,10 @@ describe('buildFinance', () => {
     const labels = data.insights.map((insight) => insight.label);
     expect(labels).toEqual(
       expect.arrayContaining([
-        'fin:missed:streamco:2026-11',
-        'fin:rising:streamco:2026-10',
+        'fin:missed:ada:streamco:2026-11',
+        'fin:rising:ada:streamco:2026-10',
         'fin:dup:x2',
-        'fin:fee:late-charge:2026-10',
+        'fin:fee:acme:late-charge:2026-10',
         'fin:check:acme-card:2026-10',
         'fin:review:2026-10'
       ])
@@ -280,7 +284,7 @@ describe('fees', () => {
       rules: [{ match: 'SCHOOL', category: 'education' }]
     });
     expect(data.insights.filter((insight) => insight.kind === 'fee').map((insight) => insight.label)).toEqual([
-      'fin:fee:annual-card-fee:2026-10'
+      'fin:fee:ada:annual-card-fee:2026-10'
     ]);
   });
 });
@@ -335,6 +339,29 @@ describe('paid for another entity', () => {
   test('a for naming no entity stops the build', () => {
     expect(() => buildFinance({ ...INPUT, rules: [{ match: 'X', for: 'personal' }] })).toThrow(
       'for: personal is not an entity'
+    );
+  });
+});
+
+describe('insight labels', () => {
+  test('two fees from one new payee in a month, or two unproven statements in a month, are one insight each, and every label is unique', () => {
+    const data = buildFinance({
+      ...INPUT,
+      txns: [
+        txn('f1', '2026-10-05', 'acme-main', -10, 'LATE CHARGE'),
+        txn('f2', '2026-10-25', 'acme-main', -10, 'LATE CHARGE')
+      ],
+      statements: [
+        statement('acme-card', '2026-10-01', '2026-10-15', { check: Check.Unchecked }),
+        statement('acme-card', '2026-10-16', '2026-10-31', { check: Check.Unchecked })
+      ]
+    });
+    const labels = data.insights.map((insight) => insight.label);
+    expect(labels.filter((label) => label === 'fin:fee:acme:late-charge:2026-10')).toHaveLength(1);
+    expect(labels.filter((label) => label === 'fin:check:acme-card:2026-10')).toHaveLength(1);
+    expect(new Set(labels).size).toBe(labels.length);
+    expect(new Set(buildFinance(INPUT).insights.map((insight) => insight.label)).size).toBe(
+      buildFinance(INPUT).insights.length
     );
   });
 });

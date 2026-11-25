@@ -10,16 +10,18 @@
  * there was written by hand, so it moves to `data/design/` rather than being overwritten by the engine.
  *
  * A project's tasks share one id prefix, so tax tasks moving into a finances folder that already has its own are
- * renumbered after its highest id, archive included, and every task file under `projects/` that names an old id is
- * rewritten. The map from old to new ids is appended to the finances README with the tax README's body. A file
+ * renumbered from the task system's next id there, and every task file under `projects/` that names an old id is
+ * rewritten. Each moved task gains the `tax` label the tax engine now reads them by. The map from old to new ids is appended to the finances README with the tax README's body. A file
  * whose destination already holds something different stays where it is and is reported.
  *
  * Run by the upgrade skill via `run_upgrade`. Idempotent: a home without `projects/tax/` is left as it is.
  * Contract: prints a single-line JSON report as its LAST stdout line; exits non-zero on failure.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { reconcileHomeGitignore } from '../../../src/home/gitignore';
+import { stripFrontmatter } from '../../../src/knowledge/utils';
+import { getNextId, getProjectPrefix } from '../../../src/tasks/scan';
 
 const VERSION = '1.2.0';
 const HOME = resolve(process.env.AGENT_HOME?.trim() || process.cwd());
@@ -84,17 +86,32 @@ const removeEmptyDirs = (dir: string): void => {
   }
 };
 
+/** Rewrites a file through `change`, recording it only when something changed. */
+const rewrite = (path: string, change: (text: string) => string, report: Report): void => {
+  const before = readFileSync(path, 'utf-8');
+  const after = change(before);
+  if (after !== before) {
+    writeFileSync(path, after);
+    report.rewritten.push(relative(HOME, path));
+  }
+};
+
 const rewriteLedgerPaths = (report: Report): void =>
   filesUnder(join(FIN, 'data', 'ledger'))
     .filter((path) => path.endsWith('.csv'))
-    .forEach((path) => {
-      const before = readFileSync(path, 'utf-8');
-      const after = before.replace(/(^|,)("?)receipts\//gm, '$1$2data/originals/');
-      if (after !== before) {
-        writeFileSync(path, after);
-        report.rewritten.push(relative(HOME, path));
-      }
-    });
+    .forEach((path) => rewrite(path, (text) => text.replace(/(^|,)("?)receipts\//gm, '$1$2data/originals/'), report));
+
+/** A moved task's frontmatter: the finances project, and the `tax` label added to its flow-style list. */
+const asFinancesTask = (text: string): string =>
+  text.replace(/^project: tax$/m, 'project: finances').replace(/^labels: \[(.*)\]$/m, (line, items: string) => {
+    const labels = items
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item !== '');
+    return labels.some((label) => label.replace(/^["']|["']$/g, '') === 'tax')
+      ? line
+      : `labels: [${['tax', ...labels].join(', ')}]`;
+  });
 
 const taskFiles = (projectDir: string): string[] =>
   [join(projectDir, 'tasks'), join(projectDir, 'tasks', 'archive')]
@@ -105,75 +122,55 @@ const taskFiles = (projectDir: string): string[] =>
         .map((name) => join(dir, name))
     );
 
-const prefixOf = (path: string): string => TASK_NAME.exec(path.split('/').at(-1) ?? '')?.[1] ?? '';
-const numberOf = (path: string): number => Number(TASK_NAME.exec(path.split('/').at(-1) ?? '')?.[2] ?? 0);
-
-/** The finances folder's prefix as the task system reads it: the one most live task files use. */
-const financesPrefix = (): string | null => {
-  const live = taskFiles(FIN).filter((path) => !path.includes(`${join('tasks', 'archive')}/`));
-  const counts = live.reduce(
-    (acc, path) => acc.set(prefixOf(path), (acc.get(prefixOf(path)) ?? 0) + 1),
-    new Map<string, number>()
-  );
-  return [...counts.entries()].toSorted((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-};
-
-const idOf = (path: string): string => {
-  const match = TASK_NAME.exec(path.split('/').at(-1) ?? '');
-  return match ? `${match[1]}-${match[2]}` : '';
-};
+const taskName = (path: string): RegExpExecArray | null => TASK_NAME.exec(basename(path));
+const prefixOf = (path: string): string => taskName(path)?.[1] ?? '';
+const idOf = (path: string): string => `${prefixOf(path)}-${taskName(path)?.[2] ?? ''}`;
 
 const idPattern = (id: string): RegExp => new RegExp(`\\b${id}(?!\\d)`, 'g');
 
 const moveTasks = (report: Report): void => {
   const taxTasks = taskFiles(TAX).toSorted((a, b) => idOf(a).localeCompare(idOf(b)));
-  const prefix = financesPrefix();
-  const highest = Math.max(
-    0,
-    ...taskFiles(FIN)
-      .filter((path) => prefixOf(path) === prefix)
-      .map(numberOf)
-  );
+  const live = existsSync(join(FIN, 'tasks')) && readdirSync(join(FIN, 'tasks')).some((name) => TASK_NAME.test(name));
+  const prefix = live ? getProjectPrefix('finances') : null;
+  const next = prefix === null ? 0 : Number(getNextId('finances').slice(prefix.length + 1));
   const renames = new Map(
     taxTasks
       .filter((path) => prefix !== null && prefixOf(path) !== prefix)
-      .map((path, i) => [idOf(path), `${prefix}-${String(highest + i + 1).padStart(3, '0')}`] as const)
+      .map((path, i) => [idOf(path), `${prefix}-${String(next + i).padStart(3, '0')}`] as const)
   );
   taxTasks.forEach((source) => {
     const oldId = idOf(source);
-    const newId = renames.get(oldId) ?? oldId;
-    const name = (source.split('/').at(-1) ?? '').replace(oldId, newId);
-    const target = join(FIN, relative(TAX, dirname(source)), name);
+    const target = join(
+      FIN,
+      relative(TAX, dirname(source)),
+      basename(source).replace(oldId, renames.get(oldId) ?? oldId)
+    );
     if (existsSync(target)) {
       report.conflicts.push(relative(HOME, source));
       return;
     }
     mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, readFileSync(source, 'utf-8').replace(/^project: tax$/m, 'project: finances'));
+    writeFileSync(target, asFinancesTask(readFileSync(source, 'utf-8')));
     rmSync(source);
     report.moved.push(`${relative(HOME, source)} → ${relative(HOME, target)}`);
   });
-  renames.forEach((newId, oldId) => {
-    report.renumbered[oldId] = newId;
-  });
+  Object.assign(report.renumbered, Object.fromEntries(renames));
   if (renames.size === 0) {
     return;
   }
   readdirSync(PROJECTS)
     .flatMap((project) => taskFiles(join(PROJECTS, project)))
-    .forEach((path) => {
-      const before = readFileSync(path, 'utf-8');
-      const after = [...renames].reduce((text, [oldId, newId]) => text.replace(idPattern(oldId), newId), before);
-      if (after !== before) {
-        writeFileSync(path, after);
-        report.rewritten.push(relative(HOME, path));
-      }
-    });
+    .forEach((path) =>
+      rewrite(
+        path,
+        (text) => [...renames].reduce((acc, [oldId, newId]) => acc.replace(idPattern(oldId), newId), text),
+        report
+      )
+    );
 };
 
 const body = (markdown: string): string =>
-  markdown
-    .replace(/^---\n[\s\S]*?\n---\n/, '')
+  stripFrontmatter(markdown)
     .replace(/^\s*# .*\n/, '')
     .trim();
 

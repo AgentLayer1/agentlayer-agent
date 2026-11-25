@@ -22,7 +22,7 @@ export const tools: ToolDef[] = [
   defineTool({
     name: 'capture',
     description:
-      "Capture any input (a thought, snippet, dropped file, URL) into the agent's raw tree for the next knowledge-compile to absorb. Default kind=inbox writes a timestamped doc to raw/inbox/. kind=feedback appends to raw/user/feedback.md instead (operator-meta — corrections/preferences/rules; compiled into memory/index.md → Learnings). kind=finance copies a bank, card or platform statement or export (file only, byte for byte, original left in place) into projects/finances/data/inbox/ for the finances skill's import playbook. Local-only, secret-redacted (text kinds), atomic, content-hash deduped.",
+      "Capture any input (a thought, snippet, dropped file, URL) into the agent's raw tree for the next knowledge-compile to absorb. Default kind=inbox writes a timestamped doc to raw/inbox/. kind=feedback appends to raw/user/feedback.md instead (operator-meta — corrections/preferences/rules; compiled into memory/index.md → Learnings). kind=finance copies a bank, card or platform statement or export (file only, byte for byte, original left in place) into projects/finances/data/inbox/ for the finances skill's import playbook, which catches one already imported. Local-only, secret-redacted (text kinds), atomic, content-hash deduped.",
     inputSchema: {
       text: z.string().optional().describe('Inline text to capture. Provide one of text, url, or file.'),
       file: z.string().optional().describe('Absolute or relative path to a file to capture. Read fully and ingested.'),

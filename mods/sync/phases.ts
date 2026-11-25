@@ -50,7 +50,7 @@ export const PHASES: readonly Phase[] = [
     reports: [{ category: 'briefings' }]
   }),
   phase('radar', { skills: ['attention'], reports: [{ category: 'radar' }] }),
-  phase('dashboard', { tools: ['dashboard'], scripts: ['calendar.ts'] }),
+  phase('dashboard', { tools: ['dashboard'], scripts: ['page.ts'] }),
   phase('history', { scripts: ['commit-brain.ts'] }),
   phase('next', {
     tools: ['AskUserQuestion'],

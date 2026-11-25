@@ -1,9 +1,20 @@
 #!/usr/bin/env bun
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FOLDERS } from '../../../src/config';
-import { todayDate } from '../../../src/shared/date';
-import { type Entity, EntityKind, type ExistingTask, listBlock, loadEntities, loadExisting } from './calendar';
+import { daysBetween, shiftDate, todayDate } from '../../../src/shared/date';
+import { slugify } from '../../../src/tasks/mutate';
+import { shiftMonth } from './books';
+import {
+  argValue,
+  type Entity,
+  EntityKind,
+  type ExistingTask,
+  listBlock,
+  loadEntities,
+  loadExisting
+} from './calendar';
+import { cents, Check, csvFiles, DATA, monthOf } from './layout';
 import { parseCsv } from './liability';
 
 /**
@@ -35,7 +46,7 @@ export interface Statement {
   currency: string;
   due: string | null;
   amountDue: number | null;
-  check: string;
+  check: Check;
 }
 
 export interface Rule {
@@ -65,18 +76,9 @@ export interface Line extends Txn {
   for: string;
 }
 
-export const CHARITY = new Set(['charity', 'zakat', 'sadaqah', 'donation']);
+const CHARITY = new Set(['charity', 'zakat', 'sadaqah', 'donation']);
 const FEE = /\b(fee|charge|charges|penalty|late|interest|commission)\b/i;
-const DAY = 86_400_000;
 
-const days = (date: string): number => Date.parse(`${date}T00:00:00Z`) / DAY;
-const isoDay = (day: number): string => new Date(day * DAY).toISOString().slice(0, 10);
-const cents = (amount: number): number => Math.round(amount * 100);
-const monthOf = (date: string): string => date.slice(0, 7);
-const shiftMonth = (month: string, by: number): string => {
-  const index = Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7)) - 1 + by;
-  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
-};
 const lastDayOf = (month: string): number =>
   new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate();
 /** The same day a month later, or that month's last day when it is shorter. */
@@ -84,11 +86,6 @@ const nextMonthDay = (date: string): string => {
   const month = shiftMonth(monthOf(date), 1);
   return `${month}-${String(Math.min(Number(date.slice(8, 10)), lastDayOf(month))).padStart(2, '0')}`;
 };
-const slugOf = (text: string): string =>
-  text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
 
 const median = (values: number[]): number => {
   const sorted = values.toSorted((a, b) => a - b);
@@ -105,8 +102,18 @@ export const defaultPayee = (raw: string): string =>
     .trim()
     .slice(0, 40) || raw.slice(0, 40);
 
-const matches = (rule: Rule, text: string): boolean =>
-  rule.match !== undefined && new RegExp(rule.match, 'i').test(text);
+const PATTERNS = new Map<string, RegExp>();
+const patternOf = (source: string): RegExp => {
+  const known = PATTERNS.get(source);
+  if (known !== undefined) {
+    return known;
+  }
+  const compiled = new RegExp(source, 'i');
+  PATTERNS.set(source, compiled);
+  return compiled;
+};
+
+const matches = (rule: Rule, text: string): boolean => rule.match !== undefined && patternOf(rule.match).test(text);
 
 const applies = (rule: Rule, txn: Txn): boolean =>
   (rule.account === undefined || rule.account === txn.account) &&
@@ -140,28 +147,27 @@ export const classify = (txn: Txn, rules: Rule[]): { payee: string; category: st
  * them within three days, oldest first and closest date first, each line in at most one pair. Lines
  * a rule already marked as a transfer or director movement are left to the rule.
  */
-export const pairTransfers = (txns: Txn[], skip: Set<string>): Map<string, string> => {
-  const inflows = txns.filter((txn) => txn.amount > 0 && !skip.has(txn.id));
-  return txns
+const pairTransfers = (txns: Txn[], skip: Set<string>): Map<string, string> => {
+  const bucket = (txn: Txn): string => `${txn.currency}|${Math.abs(cents(txn.amount))}`;
+  const inflows = Map.groupBy(
+    txns.filter((txn) => txn.amount > 0 && !skip.has(txn.id)),
+    bucket
+  );
+  const pairs = new Map<string, string>();
+  txns
     .filter((txn) => txn.amount < 0 && !skip.has(txn.id))
     .toSorted((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
-    .reduce((pairs, out) => {
-      const partner = inflows
-        .filter(
-          (inflow) =>
-            !pairs.has(inflow.id) &&
-            inflow.account !== out.account &&
-            inflow.currency === out.currency &&
-            cents(inflow.amount) === -cents(out.amount) &&
-            Math.abs(days(inflow.date) - days(out.date)) <= 3
-        )
-        .toSorted(
-          (a, b) =>
-            Math.abs(days(a.date) - days(out.date)) - Math.abs(days(b.date) - days(out.date)) ||
-            a.id.localeCompare(b.id)
-        )[0];
-      return partner === undefined ? pairs : new Map([...pairs, [out.id, partner.id], [partner.id, out.id]]);
-    }, new Map<string, string>());
+    .forEach((out) => {
+      const gap = (inflow: Txn): number => Math.abs(daysBetween(out.date, inflow.date));
+      const partner = (inflows.get(bucket(out)) ?? [])
+        .filter((inflow) => !pairs.has(inflow.id) && inflow.account !== out.account && gap(inflow) <= 3)
+        .toSorted((a, b) => gap(a) - gap(b) || a.id.localeCompare(b.id))[0];
+      if (partner !== undefined) {
+        pairs.set(out.id, partner.id);
+        pairs.set(partner.id, out.id);
+      }
+    });
+  return pairs;
 };
 
 const pairKind = (a: Entity | undefined, b: Entity | undefined): Kind => {
@@ -170,6 +176,22 @@ const pairKind = (a: Entity | undefined, b: Entity | undefined): Kind => {
   }
   const companies = [a, b].filter((entity) => entity.kind === EntityKind.Company).length;
   return companies === 1 ? Kind.Director : Kind.Between;
+};
+
+const kindOf = (paired: Kind | null, category: string | null, amount: number): Kind => {
+  if (paired !== null) {
+    return paired;
+  }
+  if (category === 'transfer') {
+    return Kind.Transfer;
+  }
+  if (category === 'director') {
+    return Kind.Director;
+  }
+  if (category !== null && CHARITY.has(category)) {
+    return Kind.Charity;
+  }
+  return amount > 0 ? Kind.Income : Kind.Spend;
 };
 
 /** Every line with its payee, category and kind. */
@@ -191,18 +213,11 @@ export const classifyAll = (txns: Txn[], rules: Rule[], entities: Entity[]): Lin
   const entityOf = (slug: string | undefined): Entity | undefined => entities.find((entity) => entity.slug === slug);
   return classified.map(({ txn, payee, category, for: owner }): Line => {
     const partner = byId.get(pairs.get(txn.id) ?? '');
-    const kind: Kind =
-      partner !== undefined
-        ? pairKind(entityOf(txn.entity), entityOf(partner.entity))
-        : category === 'transfer'
-          ? Kind.Transfer
-          : category === 'director'
-            ? Kind.Director
-            : category !== null && CHARITY.has(category)
-              ? Kind.Charity
-              : txn.amount > 0
-                ? Kind.Income
-                : Kind.Spend;
+    const kind = kindOf(
+      partner === undefined ? null : pairKind(entityOf(txn.entity), entityOf(partner.entity)),
+      category,
+      txn.amount
+    );
     const own = kind === Kind.Spend || kind === Kind.Charity || kind === Kind.Income;
     return { ...txn, payee, category, kind, for: own ? (owner ?? txn.entity) : txn.entity };
   });
@@ -245,8 +260,8 @@ export const detectRecurring = (lines: Line[], coverage: Map<string, string>): R
   );
   return [...groups.values()].flatMap((group): Recurring[] => {
     const sorted = group.toSorted((a, b) => a.date.localeCompare(b.date));
-    const intervals = sorted.slice(1).map((line, i) => days(line.date) - days(sorted[i]?.date ?? line.date));
-    const cadence = (Object.keys(BANDS) as Cadence[]).find((key) => {
+    const intervals = sorted.slice(1).map((line, i) => daysBetween(sorted[i]?.date ?? line.date, line.date));
+    const cadence = Object.values(Cadence).find((key) => {
       const [low, high] = BANDS[key];
       return intervals.filter((gap) => gap >= low && gap <= high).length * 3 >= intervals.length * 2;
     });
@@ -259,7 +274,7 @@ export const detectRecurring = (lines: Line[], coverage: Map<string, string>): R
     if (amounts.filter((amount) => Math.abs(amount - typical) <= typical * 0.2).length * 3 < amounts.length * 2) {
       return [];
     }
-    const next = cadence === Cadence.Monthly ? nextMonthDay(last.date) : isoDay(days(last.date) + 365);
+    const next = cadence === Cadence.Monthly ? nextMonthDay(last.date) : shiftDate(last.date, 365);
     const covered = coverage.get(last.account);
     return [
       {
@@ -273,7 +288,7 @@ export const detectRecurring = (lines: Line[], coverage: Map<string, string>): R
         last: -last.amount,
         lastDate: last.date,
         next,
-        state: covered !== undefined && days(covered) > days(next) + 5 ? BillState.Missed : BillState.Upcoming,
+        state: covered !== undefined && daysBetween(next, covered) > 5 ? BillState.Missed : BillState.Upcoming,
         rising: -last.amount >= typical * 1.15,
         count: sorted.length
       }
@@ -281,7 +296,7 @@ export const detectRecurring = (lines: Line[], coverage: Map<string, string>): R
   });
 };
 
-export interface Check {
+export interface CheckResult {
   id: string;
   label: string;
   ok: boolean;
@@ -309,35 +324,13 @@ export interface Insight {
   due: string | null;
 }
 
-const monthEnd = (month: string): string => `${month}-${String(lastDayOf(month)).padStart(2, '0')}`;
-const previousMonth = (today: string): string => shiftMonth(monthOf(today), -1);
-
-/** The statements of one account in date order, with the gaps between them and the openings that don't follow. */
-const continuity = (statements: Statement[]): { gaps: string[]; breaks: string[] } => {
+/** Each statement of one account beside the one before it, in date order. */
+const adjacent = (statements: Statement[]): { before: Statement; statement: Statement; gap: number }[] => {
   const sorted = statements.toSorted((a, b) => a.from.localeCompare(b.from));
-  return sorted.slice(1).reduce(
-    (acc, statement, i) => {
-      const before = sorted[i];
-      if (before === undefined) {
-        return acc;
-      }
-      const gap =
-        days(statement.from) - days(before.to) > 1
-          ? [`${statement.account}: nothing from ${isoDay(days(before.to) + 1)} to ${isoDay(days(statement.from) - 1)}`]
-          : [];
-      const broken =
-        before.closing !== null &&
-        statement.opening !== null &&
-        days(statement.from) - days(before.to) === 1 &&
-        cents(before.closing) !== cents(statement.opening)
-          ? [
-              `${statement.account}: ${statement.from} opens at ${statement.opening}, the statement before closed at ${before.closing}`
-            ]
-          : [];
-      return { gaps: [...acc.gaps, ...gap], breaks: [...acc.breaks, ...broken] };
-    },
-    { gaps: [] as string[], breaks: [] as string[] }
-  );
+  return sorted.slice(1).flatMap((statement, i) => {
+    const before = sorted[i];
+    return before === undefined ? [] : [{ before, statement, gap: daysBetween(before.to, statement.from) }];
+  });
 };
 
 export interface FinanceInput {
@@ -400,10 +393,12 @@ export interface FinanceData {
     movements: DirectorMovement[];
   }[];
   insights: Insight[];
-  checks: Check[];
+  checks: CheckResult[];
 }
 
 const LINE_MONTHS = 13;
+/** A statement older than this, about one cycle and a few days, means the next one is due. */
+const STALE_DAYS = 35;
 
 export const buildFinance = ({ today, entities, txns, statements, rules }: FinanceInput): FinanceData => {
   const accounts = entities.flatMap((entity) => entity.accounts.map((account) => ({ account, entity })));
@@ -418,7 +413,6 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
         .at(-1) ?? ''
     ])
   );
-  const lastMonthEnd = monthEnd(previousMonth(today));
   const accountViews = accounts.map(({ account, entity }): AccountView => {
     const latest = (byAccount.get(account.id) ?? []).toSorted((a, b) => a.to.localeCompare(b.to)).at(-1);
     return {
@@ -430,7 +424,7 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
       balance: latest?.closing ?? null,
       asOf: latest?.to ?? null,
       statements: byAccount.get(account.id)?.length ?? 0,
-      behind: latest === undefined || latest.to < lastMonthEnd
+      behind: latest === undefined || daysBetween(latest.to, today) > STALE_DAYS
     };
   });
   const recurring = detectRecurring(lines, coverage);
@@ -444,7 +438,7 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
             line.account === statement.account &&
             line.amount > 0 &&
             line.date > statement.to &&
-            days(line.date) <= days(statement.due ?? '') + 3
+            daysBetween(statement.due ?? '', line.date) <= 3
         )
         .reduce((sum, line) => sum + cents(line.amount), 0);
       return {
@@ -503,7 +497,7 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
   ].flatMap((group) =>
     group
       .toSorted((a, b) => a.date.localeCompare(b.date))
-      .filter((line, i, sorted) => i > 0 && days(line.date) - days(sorted[i - 1]?.date ?? line.date) <= 2)
+      .filter((line, i, sorted) => i > 0 && daysBetween(sorted[i - 1]?.date ?? line.date, line.date) <= 2)
   );
   const firstMonth = lines.reduce((first, line) => {
     const key = line.payee.toLowerCase();
@@ -521,20 +515,32 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
     lines.filter((line) => (line.kind === Kind.Spend || line.kind === Kind.Income) && line.category === null),
     (line) => monthOf(line.date)
   );
-  const { gaps, breaks } = [...byAccount.values()]
-    .map(continuity)
-    .reduce((acc, result) => ({ gaps: [...acc.gaps, ...result.gaps], breaks: [...acc.breaks, ...result.breaks] }), {
-      gaps: [] as string[],
-      breaks: [] as string[]
-    });
-  const unchecked = statements
-    .filter((statement) => statement.check !== 'checked')
-    .map((statement) => `${statement.account}: ${statement.from} to ${statement.to}`);
+  const pairs = [...byAccount.values()].flatMap(adjacent);
+  const gaps = pairs
+    .filter(({ gap }) => gap > 1)
+    .map(
+      ({ before, statement }) =>
+        `${statement.account}: nothing from ${shiftDate(before.to, 1)} to ${shiftDate(statement.from, -1)}`
+    );
+  const breaks = pairs
+    .filter(
+      ({ before, statement, gap }) =>
+        gap === 1 &&
+        before.closing !== null &&
+        statement.opening !== null &&
+        cents(before.closing) !== cents(statement.opening)
+    )
+    .map(
+      ({ before, statement }) =>
+        `${statement.account}: ${statement.from} opens at ${statement.opening}, the statement before closed at ${before.closing}`
+    );
+  const unproven = statements.filter((statement) => statement.check !== Check.Checked);
+  const unchecked = unproven.map((statement) => `${statement.account}: ${statement.from} to ${statement.to}`);
   const behind = accountViews
     .filter((account) => account.behind)
     .map((account) => `${account.id}: ${account.asOf === null ? 'no statement yet' : `through ${account.asOf}`}`);
   const reviewCount = [...uncategorized.values()].reduce((sum, group) => sum + group.length, 0);
-  const checks: Check[] = [
+  const checks: CheckResult[] = [
     {
       id: 'proven',
       label: 'Every statement adds up from its opening to its closing',
@@ -550,7 +556,7 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
     },
     {
       id: 'current',
-      label: `Every account has a statement through ${lastMonthEnd}`,
+      label: `Every account has a statement from the last ${STALE_DAYS} days`,
       ok: behind.length === 0,
       items: behind
     },
@@ -561,11 +567,11 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
       items: [...uncategorized].map(([month, group]) => `${month}: ${group.length} to categorise`)
     }
   ];
-  const entityOfAccount = (id: string): string => accounts.find(({ account }) => account.id === id)?.entity.slug ?? '';
-  const accountNameOf = (id: string): string => accounts.find(({ account }) => account.id === id)?.account.name ?? id;
+  const accountById = new Map(accounts.map((item) => [item.account.id, item]));
+  const accountNameOf = (id: string): string => accountById.get(id)?.account.name ?? id;
   const insights: Insight[] = [
     ...dues
-      .filter((due) => !due.paid && days(due.due) - days(today) <= 7)
+      .filter((due) => !due.paid && daysBetween(today, due.due) <= 7)
       .map((due) => ({
         kind: InsightKind.Pay,
         label: `fin:pay:${due.account}:${monthOf(due.due)}`,
@@ -577,7 +583,7 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
       .filter((bill) => bill.state === BillState.Missed)
       .map((bill) => ({
         kind: InsightKind.Missed,
-        label: `fin:missed:${slugOf(bill.payee)}:${monthOf(bill.next)}`,
+        label: `fin:missed:${bill.entity}:${slugify(bill.payee)}:${monthOf(bill.next)}`,
         entity: bill.entity,
         title: `${bill.payee} didn't go out when expected (${bill.next})`,
         due: null
@@ -586,7 +592,7 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
       .filter((bill) => bill.rising)
       .map((bill) => ({
         kind: InsightKind.Rising,
-        label: `fin:rising:${slugOf(bill.payee)}:${monthOf(bill.lastDate)}`,
+        label: `fin:rising:${bill.entity}:${slugify(bill.payee)}:${monthOf(bill.lastDate)}`,
         entity: bill.entity,
         title: `${bill.payee} went up on ${bill.lastDate}`,
         due: null
@@ -598,22 +604,34 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
       title: `Possible double charge from ${line.payee} on ${line.date}`,
       due: null
     })),
-    ...fees.map((line) => ({
-      kind: InsightKind.Fee,
-      label: `fin:fee:${slugOf(line.payee)}:${monthOf(line.date)}`,
-      entity: line.entity,
-      title: `New fee from ${line.payee} on ${line.date}`,
-      due: null
-    })),
-    ...statements
-      .filter((statement) => statement.check !== 'checked')
-      .map((statement) => ({
-        kind: InsightKind.Check,
-        label: `fin:check:${statement.account}:${monthOf(statement.to)}`,
-        entity: entityOfAccount(statement.account),
-        title: `Get a ${accountNameOf(statement.account)} statement for ${monthOf(statement.to)} that shows its balances`,
-        due: null
-      })),
+    ...[...Map.groupBy(fees, (line) => `${line.for}|${slugify(line.payee)}|${monthOf(line.date)}`).values()].flatMap(
+      ([first]) =>
+        first === undefined
+          ? []
+          : [
+              {
+                kind: InsightKind.Fee,
+                label: `fin:fee:${first.for}:${slugify(first.payee)}:${monthOf(first.date)}`,
+                entity: first.for,
+                title: `New fee from ${first.payee} in ${monthOf(first.date)}`,
+                due: null
+              }
+            ]
+    ),
+    ...[...Map.groupBy(unproven, (statement) => `${statement.account}|${monthOf(statement.to)}`).values()].flatMap(
+      ([first]) =>
+        first === undefined
+          ? []
+          : [
+              {
+                kind: InsightKind.Check,
+                label: `fin:check:${first.account}:${monthOf(first.to)}`,
+                entity: accountById.get(first.account)?.entity.slug ?? '',
+                title: `Get a ${accountNameOf(first.account)} statement for ${monthOf(first.to)} that shows its balances`,
+                due: null
+              }
+            ]
+    ),
     ...(reviewCount === 0
       ? []
       : [
@@ -621,26 +639,19 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
             kind: InsightKind.Review,
             label: `fin:review:${[...uncategorized.keys()].toSorted().at(-1) ?? ''}`,
             entity: '',
-            title: `Categorise ${reviewCount} transactions no rule covers yet`,
+            title: `Categorise ${reviewCount} transaction${reviewCount === 1 ? '' : 's'} no rule covers yet`,
             due: null
           }
         ]),
-    ...accounts
-      .filter(({ entity }) => entity.close !== 'monthly')
-      .flatMap(({ account, entity }) => {
-        const view = accountViews.find((item) => item.id === account.id);
-        return view !== undefined && view.statements > 0 && view.behind
-          ? [
-              {
-                kind: InsightKind.Statement,
-                label: `fin:statement:${account.id}:${previousMonth(today)}`,
-                entity: entity.slug,
-                title: `Download the ${account.name} statement for ${previousMonth(today)}`,
-                due: null
-              }
-            ]
-          : [];
-      })
+    ...accountViews
+      .filter((view) => view.behind && view.asOf !== null && accountById.get(view.id)?.entity.close !== 'monthly')
+      .map((view) => ({
+        kind: InsightKind.Statement,
+        label: `fin:statement:${view.id}:${monthOf(nextMonthDay(view.asOf ?? ''))}`,
+        entity: view.entity,
+        title: `Download the ${view.name} statement after ${view.asOf}`,
+        due: null
+      }))
   ];
   const oldest = `${shiftMonth(monthOf(today), 1 - LINE_MONTHS)}-01`;
   return {
@@ -670,13 +681,6 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
   };
 };
 
-const csvFiles = (dir: string): string[] =>
-  existsSync(dir)
-    ? readdirSync(dir, { recursive: true, encoding: 'utf8' })
-        .filter((file) => file.endsWith('.csv'))
-        .map((file) => join(dir, file))
-    : [];
-
 const numberOrNull = (text: string | undefined): number | null =>
   text === undefined || text.trim() === '' ? null : Number(text);
 
@@ -701,13 +705,15 @@ export const parseRules = (raw: string): Rule[] => {
     ...payees.filter(isRule).map(({ category: _category, for: _for, ...rule }) => rule),
     ...categories.filter(isRule)
   ];
-  const badPattern = rules.find((rule) => {
+  const isPattern = (source: string): boolean => {
     try {
-      return rule.match !== undefined && new RegExp(rule.match, 'i') === null;
-    } catch {
+      patternOf(source);
       return true;
+    } catch {
+      return false;
     }
-  });
+  };
+  const badPattern = rules.find((rule) => rule.match !== undefined && !isPattern(rule.match));
   if (badPattern !== undefined) {
     throw new Error(`rules.md: ${badPattern.match} is not a valid pattern`);
   }
@@ -720,7 +726,7 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
   const owner = new Map(
     entities.flatMap((entity) => entity.accounts.map((account) => [account.id, entity.slug] as const))
   );
-  const txns = csvFiles(join(dir, 'data', 'transactions')).flatMap((path) =>
+  const txns = csvFiles(DATA.transactions(dir)).flatMap((path) =>
     parseCsv(readFileSync(path, 'utf8')).map(
       (row): Txn => ({
         id: row.id ?? '',
@@ -733,7 +739,7 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
       })
     )
   );
-  const statementsPath = join(dir, 'data', 'statements.csv');
+  const statementsPath = DATA.statements(dir);
   const statements = existsSync(statementsPath)
     ? parseCsv(readFileSync(statementsPath, 'utf8')).map(
         (row): Statement => ({
@@ -745,7 +751,7 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
           currency: row.currency || 'MYR',
           due: row.due_date || null,
           amountDue: numberOrNull(row.amount_due),
-          check: row.check ?? ''
+          check: row.check === Check.Checked ? Check.Checked : Check.Unchecked
         })
       )
     : [];
@@ -786,11 +792,6 @@ export const financePlan = (insights: Insight[], existing: ExistingTask[]): Fina
     .filter((task) => !insights.some((insight) => insight.label === task.label))
     .map((task) => ({ id: task.id, label: task.label }))
 });
-
-const argValue = (args: string[], flag: string): string | undefined => {
-  const index = args.indexOf(flag);
-  return index === -1 ? undefined : args[index + 1];
-};
 
 if (import.meta.main) {
   const args = process.argv.slice(2);

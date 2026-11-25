@@ -259,32 +259,32 @@ const nextFeedbackWrite = serialQueue();
 
 /**
  * A statement or export copied into the finances inbox as it is: no text decoding and no redaction, which would
- * corrupt a PDF or a workbook. A file already waiting there, or already imported (its hash is in
- * `data/statements.csv`), is reported as a duplicate; the original is never moved.
+ * corrupt a PDF or a workbook. A file already waiting there is reported as a duplicate (the import
+ * catches one already imported); the original is never moved.
  */
 async function captureToFinance(opts: CaptureOpts): Promise<CaptureResult> {
   if (!opts.file) {
     throw new Error('kind "finance" takes a file: the statement or export to import');
   }
   const source = resolve(opts.file);
-  if (!existsSync(source)) throw new Error(`File not found: ${opts.file}`);
+  if (!existsSync(source)) {
+    throw new Error(`File not found: ${opts.file}`);
+  }
   const size = statSync(source).size;
   if (size > MAX_FINANCE_FILE_BYTES) {
     throw new Error(`File too large (${size} > ${MAX_FINANCE_FILE_BYTES} bytes): ${opts.file}`);
   }
   const bytes = await readFile(source);
   const hash = hashBuffer(bytes);
-  const project = join(FOLDERS.PROJECTS, 'finances');
-  const inbox = join(project, 'data', 'inbox');
+  const inbox = join(FOLDERS.PROJECTS, 'finances', 'data', 'inbox');
   await mkdir(inbox, { recursive: true });
   const waiting = await Promise.all(
     (await readdir(inbox, { withFileTypes: true }))
       .filter((entry) => entry.isFile())
-      .map(async (entry) => ({ path: join(inbox, entry.name), hash: hashBuffer(await readFile(join(inbox, entry.name))) }))
+      .map((entry) => join(inbox, entry.name))
+      .map(async (path) => ({ path, hash: hashBuffer(await readFile(path)) }))
   );
-  const statements = join(project, 'data', 'statements.csv');
-  const imported = existsSync(statements) && (await readFile(statements, 'utf-8')).includes(`,${hash}`);
-  const twin = waiting.find((entry) => entry.hash === hash)?.path ?? (imported ? statements : null);
+  const twin = waiting.find((entry) => entry.hash === hash)?.path;
   if (twin) {
     return { ok: true, kind: 'finance', path: twin, relPath: homeRelative(twin), bytes: size, duplicate: true };
   }

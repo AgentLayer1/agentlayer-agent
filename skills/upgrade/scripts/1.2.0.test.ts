@@ -131,6 +131,19 @@ describe('1.2.0 migration', () => {
     expect(read(home, 'projects/finances/tasks/ta-001-file-it.md')).toContain('project: finances');
   });
 
+  test('adds the tax label to a moved task that never had it, so the tax engine still reads it', () => {
+    const home = makeHome({
+      'projects/tax/tasks/ta-001-ask.md': task('ta-001', 'tax').replace(
+        'labels: [tax]',
+        'labels: ["entity:acme", accountant]'
+      ),
+      'projects/tax/tasks/ta-002-filed.md': task('ta-002', 'tax')
+    });
+    run(home);
+    expect(read(home, 'projects/finances/tasks/ta-001-ask.md')).toContain('labels: [tax, "entity:acme", accountant]');
+    expect(read(home, 'projects/finances/tasks/ta-002-filed.md')).toContain('labels: [tax]\n');
+  });
+
   test('a second run changes nothing', () => {
     const home = makeHome(TAX_HOME);
     run(home);

@@ -187,9 +187,9 @@ body.masked iframe.tax:hover { filter: none; }
 
   const esc = (text) => String(text ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
   const symbol = (currency) => (currency === "MYR" ? "RM" : currency);
-  const money = (amount, currency = DATA.base, digits = 0) =>
-    `<span class="amt">${amount < 0 ? "−" : ""}${symbol(currency)} ${Math.abs(amount).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits })}</span>`;
-  const plain = (amount, currency = DATA.base) => `${amount < 0 ? "−" : ""}${symbol(currency)} ${Math.abs(Math.round(amount)).toLocaleString("en-US")}`;
+  const plain = (amount, currency = DATA.base, digits = 0) =>
+    `${amount < 0 ? "−" : ""}${symbol(currency)} ${Math.abs(amount).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+  const money = (amount, currency = DATA.base, digits = 0) => `<span class="amt">${plain(amount, currency, digits)}</span>`;
   const monthLabel = (key, year = true) => `${MONTHS[Number(key.slice(5, 7)) - 1]}${year ? ` ${key.slice(0, 4)}` : ""}`;
   const dateLabel = (date) => `${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1]}`;
   const days = (date) => Date.parse(`${date}T00:00:00Z`) / 86400000;
@@ -198,9 +198,14 @@ body.masked iframe.tax:hover { filter: none; }
   const accountName = (id) => DATA.accounts.find((a) => a.id === id)?.name ?? id;
   const mine = (row) => state.entity === "all" || row.entity === state.entity || row.company === state.entity;
   const sum = (rows, pick) => rows.reduce((total, row) => total + pick(row), 0);
-  const groupBy = (rows, key) => rows.reduce((map, row) => map.set(key(row), [...(map.get(key(row)) ?? []), row]), new Map());
+  const groupBy = (rows, key) => rows.reduce((map, row) => {
+    const k = key(row);
+    const list = map.get(k);
+    if (list) { list.push(row); } else { map.set(k, [row]); }
+    return map;
+  }, new Map());
   const thisMonth = DATA.today.slice(0, 7);
-  const latestMonth = () => DATA.lines.filter(mine).reduce((latest, l) => (l.date.slice(0, 7) > latest ? l.date.slice(0, 7) : latest), "") || thisMonth;
+  const latestMonth = () => DATA.lines.filter(mine).at(-1)?.date.slice(0, 7) ?? thisMonth;
   const shift = (month, by) => { const i = Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7)) - 1 + by; return `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`; };
   const ICONS = {
     good: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="var(--good)"/><path d="M4.8 8.2l2.1 2.1 4.3-4.6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -242,8 +247,9 @@ body.masked iframe.tax:hover { filter: none; }
         const v = s.values[i];
         const h = Math.max(0, y(0) - y(v));
         const x = x0 + j * (barW + 2);
-        return `<path d="M${x},${y(0)} v${-Math.max(0, h - 4)} q0,-4 4,-4 h${barW - 8} q4,0 4,4 v${Math.max(0, h - 4)} z" fill="${s.color}" data-tip="${esc(`${monthLabel(month)}\n${s.name}: ${plain(v)}`)}"${h < 4 ? ' opacity="0"' : ""}/>` +
-          `<rect x="${x - 1}" y="${pad.t}" width="${barW + 2}" height="${y(0) - pad.t}" fill="transparent" data-tip="${esc(`${monthLabel(month)}\n${s.name}: ${plain(v)}`)}"/>`;
+        const tip = esc(`${monthLabel(month)}\n${s.name}: ${plain(v)}`);
+        return `<path d="M${x},${y(0)} v${-Math.max(0, h - 4)} q0,-4 4,-4 h${barW - 8} q4,0 4,4 v${Math.max(0, h - 4)} z" fill="${s.color}" data-tip="${tip}"${h < 4 ? ' opacity="0"' : ""}/>` +
+          `<rect x="${x - 1}" y="${pad.t}" width="${barW + 2}" height="${y(0) - pad.t}" fill="transparent" data-tip="${tip}"/>`;
       }).join("") + `<text x="${pad.l + i * band + band / 2}" y="${H - 8}" text-anchor="middle">${monthLabel(month, month.endsWith("-01") || i === 0)}</text>`;
     }).join("");
     return `<div class="legend">${series.map((s) => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div><svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map((s) => s.name).join(" and "))} by month">${grid}<line class="base" x1="${pad.l}" x2="${W - pad.r}" y1="${y(0)}" y2="${y(0)}"/>${bars}</svg>`;
@@ -261,8 +267,9 @@ body.masked iframe.tax:hover { filter: none; }
       const now = flows(ls.filter((l) => l.date.startsWith(month)));
       const last = flows(ls.filter((l) => l.date.startsWith(shift(month, -1))));
       const accounts = DATA.accounts.filter(mine);
-      const cash = sum(accounts.filter((a) => a.currency === DATA.base && a.balance !== null && a.type !== "card"), (a) => a.balance);
-      const owed = sum(accounts.filter((a) => a.currency === DATA.base && a.balance !== null && a.type === "card"), (a) => a.balance);
+      const priced = accounts.filter((a) => a.currency === DATA.base && a.balance !== null);
+      const cash = sum(priced.filter((a) => a.type !== "card"), (a) => a.balance);
+      const owed = sum(priced.filter((a) => a.type === "card"), (a) => a.balance);
       const foreign = groupBy(accounts.filter((a) => a.currency !== DATA.base && a.balance !== null), (a) => a.currency);
       const director = DATA.director.filter(mine);
       const failing = DATA.checks.filter((c) => !c.ok).length;
@@ -318,16 +325,15 @@ body.masked iframe.tax:hover { filter: none; }
       const dues = DATA.dues.filter(mine).filter((d) => !d.paid);
       const horizon = days(DATA.today) + 30;
       const upcoming = [
-        ...bills.filter((b) => days(b.next) <= horizon).map((b) => ({ date: b.next, name: b.payee, amount: b.last, kind: b.state === "missed" ? "critical" : b.rising ? "warning" : "upcoming", note: b.state === "missed" ? "missed" : b.rising ? "went up" : days(b.next) < days(DATA.today) ? "expected, after your last statement" : b.cadence })),
-        ...dues.filter((d) => days(d.due) <= horizon).map((d) => ({ date: d.due, name: `${accountName(d.account)} statement`, amount: d.amount, kind: days(d.due) < days(DATA.today) ? "critical" : "warning", note: "card to pay" }))
+        ...bills.filter((b) => days(b.next) <= horizon).map((b) => ({ date: b.next, name: b.payee, amount: b.last, missed: b.state === "missed", kind: b.state === "missed" ? "critical" : b.rising ? "warning" : "upcoming", note: b.state === "missed" ? "missed" : b.rising ? "went up" : days(b.next) < days(DATA.today) ? "expected, after your last statement" : b.cadence })),
+        ...dues.filter((d) => days(d.due) <= horizon).map((d) => ({ date: d.due, name: `${accountName(d.account)} statement`, amount: d.amount, missed: false, kind: days(d.due) < days(DATA.today) ? "critical" : "warning", note: "card to pay" }))
       ].sort((a, b) => a.date.localeCompare(b.date));
-      const total = sum(upcoming.filter((u) => u.kind !== "critical" || u.note !== "missed"), (u) => u.amount);
+      const total = sum(upcoming.filter((u) => !u.missed), (u) => u.amount);
       const missed = bills.filter((b) => b.state === "missed");
       const start = Math.min(days(DATA.today), ...upcoming.map((u) => days(u.date)));
       const span = Math.max(30, horizon - start);
       const W = 720, H = 120, max = Math.max(1, ...upcoming.map((u) => u.amount));
       const x = (date) => 20 + ((days(date) - start) / span) * (W - 40);
-      const today = days(DATA.today);
       const color = { critical: "var(--critical)", warning: "var(--warning)", upcoming: "var(--s1)" };
       const timeline = `<svg class="chart" viewBox="0 0 ${W} ${H + 24}" role="img" aria-label="Payments due in the next 30 days"><line class="base" x1="20" x2="${W - 20}" y1="${H}" y2="${H}"/><line class="grid" x1="${x(DATA.today)}" x2="${x(DATA.today)}" y1="0" y2="${H}" stroke-dasharray="3 3"/><text x="${x(DATA.today) + 4}" y="10">today</text>${[0, 0.25, 0.5, 0.75, 1].map((f) => `<text x="${20 + f * (W - 40)}" y="${H + 16}" text-anchor="middle">${dateLabel(new Date((start + f * span) * 86400000).toISOString().slice(0, 10))}</text>`).join("")}${upcoming.map((u) => { const h = Math.max(6, (u.amount / max) * (H - 12)); return `<rect x="${x(u.date) - 4}" y="${H - h}" width="8" height="${h}" rx="3" fill="${color[u.kind]}" data-tip="${esc(`${dateLabel(u.date)} · ${u.name}\n${plain(u.amount)} · ${u.note}`)}"/>`; }).join("")}</svg>`;
       return `<p class="kicker">Bills · next 30 days</p><h1>${money(total)} goes out by ${dateLabel(new Date(horizon * 86400000).toISOString().slice(0, 10))}</h1><p class="lede">Left of the dashed line: payments expected since your latest statement, not yet seen. Recurring payments are found from your statements (the same payee at a steady interval and amount), never typed in. Card statements come from their due dates.</p>

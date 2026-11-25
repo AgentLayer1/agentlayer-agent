@@ -4,7 +4,6 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -13,7 +12,8 @@ import {
 import { basename, dirname, extname, join, relative } from 'node:path';
 import { FOLDERS } from '../../../src/config';
 import { hashBuffer } from '../../../src/knowledge/utils';
-import { type Account, type Entity, loadEntities, yamlBlock } from './calendar';
+import { type Account, argValue, type Entity, escapeRegExp, loadEntities, yamlBlock } from './calendar';
+import { cents, Check, csvFiles, DATA, monthOf } from './layout';
 import { csvRows, parseCsv } from './liability';
 
 /**
@@ -52,25 +52,19 @@ export const CANONICAL: Importer = {
   invert: false
 };
 
-export interface Line {
+export interface StatementLine {
   date: string;
   amount: number;
   raw: string;
   balance: number | null;
 }
 
-export const Check = { Checked: 'checked', Unchecked: 'unchecked' } as const;
-export type Check = (typeof Check)[keyof typeof Check];
-
-export const TRANSACTIONS_HEADER = 'id,date,account,amount,currency,amount_myr,balance,raw,source';
-export const STATEMENTS_HEADER =
-  'account,period_start,period_end,opening,closing,currency,due_date,amount_due,check,file,sha';
+const TRANSACTIONS_HEADER = 'id,date,account,amount,currency,amount_myr,balance,raw,source';
+const STATEMENTS_HEADER = 'account,period_start,period_end,opening,closing,currency,due_date,amount_due,check,file,sha';
 const LEDGER_HEADER =
   'date,type,counterparty,country,currency,amount,amount_myr,tax,reference,category,file,flags,notes';
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-
-const cents = (amount: number): number => Math.round(amount * 100);
 
 /**
  * A money cell as a signed number, or null when blank. Reads thousands commas, a currency code or
@@ -90,8 +84,6 @@ export const parseMoney = (text: string): number | null => {
   }
   return negative ? -value : value;
 };
-
-const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const pad = (n: number): string => String(n).padStart(2, '0');
 
@@ -141,12 +133,12 @@ export const parseDate = (text: string, format: string): string => {
   return `${year}-${pad(month)}-${pad(day)}`;
 };
 
-const asList = (value: unknown): string[] =>
-  Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string')
-    : typeof value === 'string'
-      ? [value]
-      : [];
+const asList = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string');
+  }
+  return typeof value === 'string' ? [value] : [];
+};
 
 const optional = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() !== '' ? value : undefined;
@@ -192,7 +184,7 @@ const normalizeHeader = (cell: string): string => cell.trim().toLowerCase();
  * column the importer names, so a bank's preamble above it is skipped; rows without a date below it
  * (subtotals, footers) are dropped.
  */
-export const readLines = (rows: string[][], importer: Importer): Line[] => {
+export const readLines = (rows: string[][], importer: Importer): StatementLine[] => {
   const wanted = columnsOf(importer).map(normalizeHeader);
   const headerAt = rows.findIndex((row) => wanted.every((column) => row.map(normalizeHeader).includes(column)));
   if (headerAt === -1) {
@@ -201,12 +193,13 @@ export const readLines = (rows: string[][], importer: Importer): Line[] => {
   const header = rows[headerAt]?.map(normalizeHeader) ?? [];
   const cell = (row: string[], column: string | undefined): string =>
     column === undefined ? '' : (row[header.indexOf(normalizeHeader(column))] ?? '').trim();
-  const lines = rows.slice(headerAt + 1).flatMap((row, i): Line[] => {
+  const lines = rows.slice(headerAt + 1).flatMap((row, i): StatementLine[] => {
     const dateText = cell(row, importer.date);
     if (dateText === '') {
       return [];
     }
     try {
+      const sign = importer.invert ? -1 : 1;
       const signed =
         importer.amount !== undefined
           ? (parseMoney(cell(row, importer.amount)) ?? 0)
@@ -215,13 +208,13 @@ export const readLines = (rows: string[][], importer: Importer): Line[] => {
       return [
         {
           date: parseDate(dateText, importer.dateFormat),
-          amount: importer.invert ? -signed : signed,
+          amount: sign * signed,
           raw: importer.description
             .map((column) => cell(row, column))
             .filter((text) => text !== '')
             .join(' ')
             .replace(/\s+/g, ' '),
-          balance: balanceText === '' ? null : (importer.invert ? -1 : 1) * (parseMoney(balanceText) ?? 0)
+          balance: balanceText === '' ? null : sign * (parseMoney(balanceText) ?? 0)
         }
       ];
     } catch (error) {
@@ -245,7 +238,7 @@ export interface Proof {
  * statement's printed figures (given) or its balance column. Throws on the first line that breaks;
  * a statement with no balances at all comes back unchecked.
  */
-export const prove = (lines: Line[], given: { opening: number | null; closing: number | null }): Proof => {
+export const prove = (lines: StatementLine[], given: { opening: number | null; closing: number | null }): Proof => {
   const first = lines[0];
   const last = lines.at(-1);
   const opening =
@@ -273,7 +266,7 @@ export const prove = (lines: Line[], given: { opening: number | null; closing: n
  * One id per line: the same account, date, amount and description, counted within the statement, so
  * two identical charges on one day stay two lines and an overlapping export repeats the same ids.
  */
-export const lineIds = (account: string, lines: Line[]): string[] => {
+export const lineIds = (account: string, lines: StatementLine[]): string[] => {
   const seen = new Map<string, number>();
   return lines.map((line) => {
     const key = `${account}|${line.date}|${cents(line.amount)}|${line.raw}`;
@@ -298,8 +291,9 @@ const unzipEntry = (path: string, entry: string): string => {
   return result.exitCode === 0 ? result.stdout.toString() : '';
 };
 
+/** A cell reference's column (`B7` is 1), or -1 when the cell has none and follows the one before it. */
 const columnIndex = (ref: string): number =>
-  [...(ref.match(/^[A-Z]+/)?.[0] ?? 'A')].reduce((index, letter) => index * 26 + letter.charCodeAt(0) - 64, 0) - 1;
+  [...ref].reduce((index, letter) => index * 26 + letter.charCodeAt(0) - 64, 0) - 1;
 
 const texts = (xml: string): string =>
   [...xml.matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((match) => decodeXml(match[1] ?? '')).join('');
@@ -350,13 +344,6 @@ const appendRows = (path: string, header: string, lines: string[]): void => {
   }
   appendFileSync(path, lines.map((line) => `${line}\n`).join(''));
 };
-
-const csvFiles = (dir: string): string[] =>
-  existsSync(dir)
-    ? readdirSync(dir, { recursive: true, encoding: 'utf8' })
-        .filter((file) => file.endsWith('.csv'))
-        .map((file) => join(dir, file))
-    : [];
 
 export interface Located {
   account: Account;
@@ -429,19 +416,24 @@ export interface ImportReport {
   dryRun: boolean;
 }
 
-const monthOf = (date: string): string => date.slice(0, 7);
+const isInside = (dir: string, path: string): boolean => !relative(dir, path).startsWith('..');
 
-/**
- * Imports one statement. Every write happens after every check, so a refused file leaves data/
- * exactly as it was.
- */
-export const importStatement = (options: ImportOptions): ImportReport => {
+interface Planned {
+  report: ImportReport;
+  rows: { year: string; line: string }[];
+  statement: string;
+  ledger: { path: string; line: string } | null;
+  original: string;
+  filed: string | null;
+  staged: string | null;
+}
+
+/** Everything one import would write, worked out before anything is written. */
+const planImport = (options: ImportOptions): Planned => {
   const { dir } = options;
   const { account, entity } = locate(loadEntities(dir), options.account);
   const original = options.original ?? options.file;
   const sha = hashBuffer(readFileSync(original));
-  const statementsPath = join(dir, 'data', 'statements.csv');
-  const imported = existsSync(statementsPath) ? parseCsv(readFileSync(statementsPath, 'utf8')) : [];
   const rows =
     extname(options.file).toLowerCase() === '.xlsx'
       ? readXlsx(options.file, options.sheet)
@@ -454,27 +446,28 @@ export const importStatement = (options: ImportOptions): ImportReport => {
   const from = options.from ?? lines[0]?.date ?? '';
   const to = options.to ?? lines.at(-1)?.date ?? '';
   const currency = account.currency ?? 'MYR';
-  const ids = lineIds(account.id, lines);
+  const alreadyImported = (
+    existsSync(DATA.statements(dir)) ? parseCsv(readFileSync(DATA.statements(dir), 'utf8')) : []
+  ).some(
+    (row) => row.sha === sha || (row.account === account.id && row.period_start === from && row.period_end === to)
+  );
   const known = new Set(
-    csvFiles(join(dir, 'data', 'transactions', entity.slug)).flatMap((path) =>
+    csvFiles(DATA.transactions(dir, entity.slug)).flatMap((path) =>
       parseCsv(readFileSync(path, 'utf8')).map((row) => row.id)
     )
   );
-  const fresh = lines.map((line, i) => ({ line, id: ids[i] ?? '' })).filter(({ id }) => !known.has(id));
-  const alreadyImported = imported.some((row) => row.sha === sha);
-  const ledgerPath = join(dir, 'data', 'ledger', entity.slug, `${to.slice(0, 4)}.csv`);
+  const ids = lineIds(account.id, lines);
+  const fresh = alreadyImported
+    ? []
+    : lines.map((line, i) => ({ line, id: ids[i] ?? '' })).filter(({ id }) => !known.has(id));
+  const ledgerPath = DATA.ledger(dir, entity.slug, to.slice(0, 4));
   const ledgerHas =
     existsSync(ledgerPath) &&
     parseCsv(readFileSync(ledgerPath, 'utf8')).some(
       (row) => row.type === 'statement' && row.category === account.id && monthOf(row.date ?? '') === monthOf(to)
     );
-  const inbox = join(dir, 'data', 'inbox');
   const target = join(
-    dir,
-    'data',
-    'originals',
-    entity.slug,
-    monthOf(to),
+    DATA.originals(dir, entity.slug, monthOf(to)),
     `${to} ${account.id} statement${extname(original).toLowerCase()}`
   );
   const filed = alreadyImported
@@ -482,49 +475,39 @@ export const importStatement = (options: ImportOptions): ImportReport => {
     : existsSync(target)
       ? target.replace(/(\.[^.]+)$/, ` ${sha.slice(0, 6)}$1`)
       : target;
-  const report: ImportReport = {
-    account: account.id,
-    entity: entity.slug,
-    from,
-    to,
-    check: proof.check,
-    opening: proof.opening,
-    closing: proof.closing,
-    lines: lines.length,
-    added: alreadyImported ? 0 : fresh.length,
-    repeated: alreadyImported ? lines.length : lines.length - fresh.length,
-    filed: filed === null ? null : relative(dir, filed),
-    ledger: ledgerHas || alreadyImported ? 'present' : 'added',
-    alreadyImported,
-    dryRun: options.dryRun === true
-  };
-  if (options.dryRun === true || alreadyImported) {
-    return report;
-  }
   const source = relative(dir, filed ?? target);
-  fresh
-    .reduce((byYear, { line, id }) => {
-      const year = line.date.slice(0, 4);
-      return byYear.set(year, [
-        ...(byYear.get(year) ?? []),
-        csvLine([
-          id,
-          line.date,
-          account.id,
-          line.amount,
-          currency,
-          currency === 'MYR' ? line.amount : null,
-          line.balance,
-          line.raw,
-          source
-        ])
-      ]);
-    }, new Map<string, string[]>())
-    .forEach((rowsOfYear, year) =>
-      appendRows(join(dir, 'data', 'transactions', entity.slug, `${year}.csv`), TRANSACTIONS_HEADER, rowsOfYear)
-    );
-  appendRows(statementsPath, STATEMENTS_HEADER, [
-    csvLine([
+  return {
+    report: {
+      account: account.id,
+      entity: entity.slug,
+      from,
+      to,
+      check: proof.check,
+      opening: proof.opening,
+      closing: proof.closing,
+      lines: lines.length,
+      added: fresh.length,
+      repeated: lines.length - fresh.length,
+      filed: filed === null ? null : relative(dir, filed),
+      ledger: ledgerHas || alreadyImported ? 'present' : 'added',
+      alreadyImported,
+      dryRun: options.dryRun === true
+    },
+    rows: fresh.map(({ line, id }) => ({
+      year: line.date.slice(0, 4),
+      line: csvLine([
+        id,
+        line.date,
+        account.id,
+        line.amount,
+        currency,
+        currency === 'MYR' ? line.amount : null,
+        line.balance,
+        line.raw,
+        source
+      ])
+    })),
+    statement: csvLine([
       account.id,
       from,
       to,
@@ -536,45 +519,70 @@ export const importStatement = (options: ImportOptions): ImportReport => {
       proof.check,
       source,
       sha
-    ])
-  ]);
-  if (!ledgerHas) {
-    appendRows(ledgerPath, LEDGER_HEADER, [
-      csvLine([
-        to,
-        'statement',
-        account.name,
-        null,
-        currency,
-        proof.closing ?? 0,
-        null,
-        0,
-        `${from} to ${to}`,
-        account.id,
-        source,
-        null,
-        'imported'
-      ])
-    ]);
-  }
-  if (filed !== null) {
-    mkdirSync(dirname(filed), { recursive: true });
-    const inInbox = !relative(inbox, original).startsWith('..');
-    if (inInbox) {
-      renameSync(original, filed);
-    } else {
-      copyFileSync(original, filed);
-    }
-  }
-  if (options.original !== undefined && !relative(inbox, options.file).startsWith('..')) {
-    rmSync(options.file);
-  }
-  return report;
+    ]),
+    ledger:
+      ledgerHas || alreadyImported
+        ? null
+        : {
+            path: ledgerPath,
+            line: csvLine([
+              to,
+              'statement',
+              account.name,
+              null,
+              currency,
+              proof.closing ?? 0,
+              null,
+              0,
+              `${from} to ${to}`,
+              account.id,
+              source,
+              null,
+              'imported'
+            ])
+          },
+    original,
+    filed,
+    staged: options.original === undefined ? null : options.file
+  };
 };
 
-const argValue = (args: string[], flag: string): string | undefined => {
-  const index = args.indexOf(flag);
-  return index === -1 ? undefined : args[index + 1];
+const writeImport = (dir: string, plan: Planned): void => {
+  const entity = plan.report.entity;
+  Map.groupBy(plan.rows, (row) => row.year).forEach((rows, year) =>
+    appendRows(
+      join(DATA.transactions(dir, entity), `${year}.csv`),
+      TRANSACTIONS_HEADER,
+      rows.map((row) => row.line)
+    )
+  );
+  appendRows(DATA.statements(dir), STATEMENTS_HEADER, [plan.statement]);
+  if (plan.ledger !== null) {
+    appendRows(plan.ledger.path, LEDGER_HEADER, [plan.ledger.line]);
+  }
+  if (plan.filed !== null) {
+    mkdirSync(dirname(plan.filed), { recursive: true });
+    if (isInside(DATA.inbox(dir), plan.original)) {
+      renameSync(plan.original, plan.filed);
+    } else {
+      copyFileSync(plan.original, plan.filed);
+    }
+  }
+  if (plan.staged !== null && isInside(DATA.inbox(dir), plan.staged)) {
+    rmSync(plan.staged);
+  }
+};
+
+/**
+ * Imports one statement. Every write happens after every check, so a refused file leaves data/
+ * exactly as it was; a dry run, or a statement already imported, writes nothing.
+ */
+export const importStatement = (options: ImportOptions): ImportReport => {
+  const plan = planImport(options);
+  if (options.dryRun !== true && !plan.report.alreadyImported) {
+    writeImport(options.dir, plan);
+  }
+  return plan.report;
 };
 
 const numberArg = (args: string[], flag: string): number | undefined => {

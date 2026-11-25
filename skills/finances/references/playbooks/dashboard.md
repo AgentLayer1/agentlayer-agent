@@ -2,7 +2,7 @@
 
 **You own that the finances page tells the truth about the statements behind it, and that every line has a home.** "Refresh my finances", "open the finances dashboard", "categorise the new transactions", "why was October's spending high?", or the end of an [import](import.md).
 
-1. **Render:** `bun "${CLAUDE_SKILL_DIR}/scripts/calendar.ts" render` rebuilds `dashboard.html` from `data/` and `rules.md` (it is *render* in the tax playbooks too: one page, the tax view on its Tax tab). Never edit the page or the data block by hand; change the input and render again.
+1. **Render:** `bun "${CLAUDE_SKILL_DIR}/scripts/page.ts"` rebuilds `dashboard.html` from `data/` and `rules.md` (it is *render* in the tax playbooks too: one page, the tax view on its Tax tab). Never edit the page or the data block by hand; change the input and render again.
 2. **Read the checks first.** The page's data block (`finance-data`) carries `checks` and `insights`; read them from the rendered file rather than recomputing. A FALSE check is said before any figure: a statement that doesn't add up, days missing between statements, an opening that doesn't follow the closing before it, an account behind. Name the fix (the statement to download, the month to re-import).
 3. **Categorise what no rule covers.** List the uncategorised lines (the `lines` with no `category`, grouped by payee) and propose one rule per payee, never one per line, in `rules.md`:
    - a rename under `## Payees` when the bank's description is noisy: `- { match: "^STREAMCO", payee: Streamco }`

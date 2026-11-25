@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { FOLDERS } from "../../../src/config";
 import { todayDate } from "../../../src/shared/date";
@@ -8,13 +8,12 @@ import { parseFrontmatter } from "../../../src/tasks/schema";
 /**
  * Deadline engine for the finances skill's tax playbook. Reads entity profiles from
  * <projects>/finances/entities/*.md, expands each obligation into dated occurrences, matches them
- * against existing tasks by their `obl:` label, and renders <projects>/finances/dashboard.html.
- * Never creates tasks itself.
+ * against existing tasks by their `obl:` label. Never creates tasks itself; page.ts renders the
+ * dashboard.
  *
  * Usage: bun calendar.ts plan [--today YYYY-MM-DD]       prints { missing, existing, pendingCloses }
  *        bun calendar.ts liability [--today YYYY-MM-DD]  prints each entity's tax position
  *        bun calendar.ts books [--today YYYY-MM-DD]      prints each company's bookkeeping state
- *        bun calendar.ts render [--today YYYY-MM-DD]     writes the finances dashboard.html, prints its path
  */
 
 export const DueFrom = { Start: "start", End: "end" } as const;
@@ -209,7 +208,7 @@ const isObligation = (value: unknown): value is Obligation =>
   (value.period.anchor === "fye" || typeof value.period.anchor === "number") &&
   isDue(value.due);
 
-const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
  * The flat frontmatter of a markdown file as a record, or null when it has none.
@@ -458,7 +457,7 @@ export const stateOf = (occurrence: Occurrence, existing: ExistingTask[], today:
   return occurrence.due < today ? TaskState.Overdue : TaskState.Open;
 };
 
-const argValue = (args: string[], flag: string): string | undefined => {
+export const argValue = (args: string[], flag: string): string | undefined => {
   const index = args.indexOf(flag);
   return index === -1 ? undefined : args[index + 1];
 };
@@ -471,12 +470,7 @@ if (import.meta.main) {
     console.error(`no entity profiles at ${taxDir}: run the finances skill's tax setup playbook first`);
     process.exit(1);
   }
-  if (command === "render") {
-    const { renderFinances } = await import("./page");
-    const path = join(taxDir, "dashboard.html");
-    writeFileSync(path, renderFinances(taxDir, today));
-    console.log(path);
-  } else if (command === "liability") {
+  if (command === "liability") {
     const { positions } = await import("./liability");
     const countriesDir = join(import.meta.dir, "..", "references", "countries");
     console.log(JSON.stringify(positions(taxDir, countriesDir, loadEntities(taxDir), today), null, 2));
@@ -486,7 +480,7 @@ if (import.meta.main) {
   } else if (command === "plan") {
     console.log(JSON.stringify(plan(taxDir, today), null, 2));
   } else {
-    console.error(`unknown command: ${command} (use plan, liability, books or render)`);
+    console.error(`unknown command: ${command} (use plan, liability or books; the page is page.ts)`);
     process.exit(1);
   }
 }

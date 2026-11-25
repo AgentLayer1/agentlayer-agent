@@ -2,7 +2,6 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { hashBuffer } from '@/knowledge/utils';
 import { HOME_MARKER_FILES, RUNTIME_DIR, pluginName } from '@/shared/naming';
 
 const HOME = mkdtempSync(resolve(tmpdir(), 'capture-finance-'));
@@ -52,17 +51,6 @@ describe('capture kind finance', () => {
     const other = await capture({ kind: 'finance', file: download('october.pdf', 'date,description,amount\n') });
     expect(other.duplicate).toBe(false);
     expect(other.relPath).toMatch(/^projects\/finances\/data\/inbox\/october-[0-9a-f]{6}\.pdf$/);
-  });
-
-  test('a file already imported is a duplicate, by the hash the importer records', async () => {
-    const bytes = 'date,description,amount\n2026-10-01,x,-1\n';
-    writeFileSync(
-      resolve(HOME, 'projects', 'finances', 'data', 'statements.csv'),
-      `account,period_start,period_end,opening,closing,currency,due_date,amount_due,check,file,sha\nmain,2026-10-01,2026-10-31,,,MYR,,,unchecked,data/originals/x.csv,${hashBuffer(Buffer.from(bytes))}\n`
-    );
-    const result = await capture({ kind: 'finance', file: download('old.csv', bytes) });
-    expect(result).toMatchObject({ duplicate: true, relPath: 'projects/finances/data/statements.csv' });
-    expect(existsSync(resolve(INBOX, 'old.csv'))).toBe(false);
   });
 
   test('takes a file only', async () => {
