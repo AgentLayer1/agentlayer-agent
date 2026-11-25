@@ -76,7 +76,7 @@ export const parseMoney = (text: string): number | null => {
     return null;
   }
   const debit = /\bDR$/i.test(trimmed);
-  const negative = debit || /^\(.*\)$/.test(trimmed) || /^-/.test(trimmed) || /-$/.test(trimmed);
+  const negative = debit || /^\(.*\)$/.test(trimmed) || /^[^0-9]*-/.test(trimmed) || /-$/.test(trimmed);
   const digits = trimmed.replace(/\b(DR|CR)$/i, '').replace(/[^0-9.]/g, '');
   const value = Number(digits);
   if (digits === '' || !Number.isFinite(value)) {
@@ -312,7 +312,7 @@ export const readXlsx = (path: string, sheet = 1): string[][] => {
   );
   return [...xml.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)]
     .map((row) =>
-      [...(row[1] ?? '').matchAll(/<c ([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)].reduce<string[]>((cells, cell) => {
+      [...(row[1] ?? '').matchAll(/<c(?:\s([^>]*?))?(?:\/>|>([\s\S]*?)<\/c>)/g)].reduce<string[]>((cells, cell) => {
         const attributes = cell[1] ?? '';
         const inner = cell[2] ?? '';
         const type = attributes.match(/\bt="([^"]+)"/)?.[1];
@@ -570,6 +570,14 @@ const dropRows = (path: string, header: string, column: string, file: string): v
 const writeImport = (dir: string, plan: Planned): void => {
   const entity = plan.report.entity;
   const replaced = plan.report.replaced;
+  if (plan.filed !== null) {
+    mkdirSync(dirname(plan.filed), { recursive: true });
+    if (isInside(DATA.inbox(dir), plan.original)) {
+      renameSync(plan.original, plan.filed);
+    } else {
+      copyFileSync(plan.original, plan.filed);
+    }
+  }
   if (replaced !== null) {
     csvFiles(DATA.transactions(dir, entity)).forEach((path) => dropRows(path, TRANSACTIONS_HEADER, 'source', replaced));
     dropRows(DATA.statements(dir), STATEMENTS_HEADER, 'file', replaced);
@@ -584,18 +592,11 @@ const writeImport = (dir: string, plan: Planned): void => {
       rows.map((row) => row.line)
     )
   );
-  appendRows(DATA.statements(dir), STATEMENTS_HEADER, [plan.statement]);
   if (plan.ledger !== null) {
     appendRows(plan.ledger.path, LEDGER_HEADER, [plan.ledger.line]);
   }
-  if (plan.filed !== null) {
-    mkdirSync(dirname(plan.filed), { recursive: true });
-    if (isInside(DATA.inbox(dir), plan.original)) {
-      renameSync(plan.original, plan.filed);
-    } else {
-      copyFileSync(plan.original, plan.filed);
-    }
-  }
+  // Last: a retry reads the statement row as the import being complete.
+  appendRows(DATA.statements(dir), STATEMENTS_HEADER, [plan.statement]);
   if (plan.staged !== null && isInside(DATA.inbox(dir), plan.staged)) {
     rmSync(plan.staged);
   }

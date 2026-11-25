@@ -101,6 +101,8 @@ describe('parseMoney', () => {
     expect(parseMoney('RM 5.00 DR')).toBe(-5);
     expect(parseMoney('5.00 CR')).toBe(5);
     expect(parseMoney('-7')).toBe(-7);
+    expect(parseMoney('MYR -12.34')).toBe(-12.34);
+    expect(parseMoney('RM-12.34')).toBe(-12.34);
     expect(parseMoney(' ')).toBeNull();
   });
 
@@ -272,6 +274,16 @@ describe('importStatement', () => {
     expect(readFileSync(join(dir, 'data/transactions/acme/2026.csv'), 'utf8').trim().split('\n')).toHaveLength(6);
   });
 
+  test('an original that cannot be filed leaves no statement, so the retry imports it', () => {
+    const dir = home();
+    write(dir, 'data/originals/acme', 'a file where the folder goes');
+    const file = write(dir, 'data/inbox/october.csv', OCTOBER);
+    expect(() => importStatement({ dir, file, account: 'acme-main' })).toThrow();
+    expect(existsSync(join(dir, 'data/statements.csv'))).toBe(false);
+    rmSync(join(dir, 'data/originals/acme'));
+    expect(importStatement({ dir, file, account: 'acme-main' })).toMatchObject({ alreadyImported: false, added: 4 });
+  });
+
   test('a statement with balances replaces an export of the same period that had none', () => {
     const dir = home();
     const period = { from: '2026-10-01', to: '2026-10-31' };
@@ -407,5 +419,16 @@ describe('readXlsx', () => {
     );
     expect(Bun.spawnSync(['zip', '-qr', join(dir, 'book.xlsx'), 'xl'], { cwd: join(dir, 'book') }).exitCode).toBe(0);
     expect(readXlsx(join(dir, 'book.xlsx'))).toEqual([['Date', 'Amount', '', 'Note']]);
+  });
+
+  test.skipIf(!hasZip)('a cell with no attributes at all keeps its value', () => {
+    const dir = scratch();
+    write(
+      dir,
+      'book/xl/worksheets/sheet1.xml',
+      '<worksheet><sheetData><row r="1"><c r="A1"><v>1</v></c><c><v>2</v></c><c r="C1"><v>3</v></c></row></sheetData></worksheet>'
+    );
+    expect(Bun.spawnSync(['zip', '-qr', join(dir, 'book.xlsx'), 'xl'], { cwd: join(dir, 'book') }).exitCode).toBe(0);
+    expect(readXlsx(join(dir, 'book.xlsx'))).toEqual([['1', '2', '3']]);
   });
 });
