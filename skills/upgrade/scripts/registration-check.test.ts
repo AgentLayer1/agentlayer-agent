@@ -264,6 +264,15 @@ describe('registration-check for Antigravity', () => {
     ]);
   });
 
+  test('a missing path proves nothing: a warning, never a stale checkout or an uninstall', () => {
+    const { root, write, run } = machine();
+    write('gemini/config/plugins.json', { entries: [{ path: join(root, 'removed-acme-plugin') }] });
+    write('gemini/config/plugins/agent-scout/plugin.json', { name: 'agent-scout' });
+    const result = run() as { findings: { host: string; kind: string; commands: string[] }[]; warnings: string[] };
+    expect(antigravity(() => result)).toEqual([]);
+    expect(result.warnings).toEqual([expect.stringContaining('removed-acme-plugin')]);
+  });
+
   test('a manifest naming this checkout, or no manifest, is fine', () => {
     const current = machine();
     current.write('gemini/config/plugins.json', { entries: [{ path: join(current.root, 'plugin') }] });

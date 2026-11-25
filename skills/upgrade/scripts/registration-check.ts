@@ -225,9 +225,11 @@ findings.push(
 // Antigravity loads the checkout its personal manifest names, in place.
 const pluginsManifest = resolve(geminiDir, 'config', 'plugins.json');
 const manifestPaths = entriesOf(readJson(pluginsManifest));
+// A missing path may have been an old checkout of this plugin or any other plugin, so it is named but never proves one.
 const ownCheckouts = manifestPaths.filter(
-  (path) => readJson(resolve(path, '.antigravity-plugin', 'plugin.json'))?.name === plugin || !existsSync(path)
+  (path) => readJson(resolve(path, '.antigravity-plugin', 'plugin.json'))?.name === plugin
 );
+const missing = manifestPaths.filter((path) => !existsSync(path));
 const loadsThis = namesCheckout(manifestPaths, pluginRoot);
 if (ownCheckouts.length > 0 && !loadsThis) {
   findings.push({
@@ -236,6 +238,11 @@ if (ownCheckouts.length > 0 && !loadsThis) {
     detail: `${pluginsManifest} loads ${ownCheckouts.join(', ')}, not this checkout (${pluginRoot}), so Antigravity runs other code than this release. Replace that entry's path with this checkout's (the note the upgrade writes has the line).`,
     commands: []
   });
+}
+if (missing.length > 0 && !loadsThis) {
+  warnings.push(
+    `${pluginsManifest} names ${missing.join(', ')}, which no longer exists, and not this checkout (${pluginRoot}). If that was ${plugin}, replace it with this checkout's path (the note the upgrade writes has the line).`
+  );
 }
 if ((loadsThis || ownCheckouts.length > 0) && existsSync(resolve(geminiDir, 'config', 'plugins', plugin))) {
   findings.push({
