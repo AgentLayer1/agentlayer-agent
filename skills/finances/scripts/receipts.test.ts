@@ -52,7 +52,9 @@ describe('receipts', () => {
       entity: 'ada'
     });
     expect(first.added).toBe(true);
-    expect(first.receipt.file).toBe('data/receipts/ada/2026-10/2026-10-02 acme-grocer 82.4 MYR.jpg');
+    expect(first.receipt.file).toBe(
+      `data/receipts/ada/2026-10/2026-10-02 acme-grocer 82.4 MYR ${first.receipt.id.slice(0, 8)}.jpg`
+    );
     expect(existsSync(file)).toBe(false);
     const again = write('data/inbox/again.jpg', 'jpeg bytes');
     expect(
@@ -73,6 +75,17 @@ describe('receipts', () => {
     expect(buildFinance(loadFinance(dir, TODAY)).lines.find((line) => line.date === '2026-10-03')?.receipt).toBe(
       first.receipt.file
     );
+  });
+
+  test('two different receipts with the same date, merchant and amount are both kept', () => {
+    const { dir, write } = project();
+    const add = (file: string) =>
+      addReceipt(dir, { file, date: '2026-10-04', merchant: 'Cafe One', amount: 12, currency: 'MYR', entity: 'ada' });
+    const first = add(write('data/inbox/a.pdf', 'first coffee'));
+    const second = add(write('data/inbox/b.pdf', 'second coffee'));
+    expect(first.receipt.file).not.toBe(second.receipt.file);
+    expect(readFileSync(join(dir, first.receipt.file), 'utf8')).toBe('first coffee');
+    expect(readFileSync(join(dir, second.receipt.file), 'utf8')).toBe('second coffee');
   });
 
   test('two lines that fit, or none, are left for the agent to ask about', () => {

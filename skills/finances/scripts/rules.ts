@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { FOLDERS } from '../../../src/config';
 import { todayDate } from '../../../src/shared/date';
 import { isRecord } from '../../../src/shared/json-block';
-import { classifyAll, learnedBounds, learnedRules, loadFinance, type Rule, ruleKey } from './build';
-import { argValue, positionals, refuse } from './calendar';
+import { classifyAll, learnedBounds, learnedRules, loadFinance, parseRules, type Rule, ruleKey } from './build';
+import { argValue, loadEntities, positionals, refuse } from './calendar';
 import { DATA } from './layout';
 
 /**
@@ -239,7 +239,8 @@ export const parseSuggestions = (text: string): Suggestions => {
 /**
  * Adds the agent's suggestions as unconfirmed rules, after the ones already there. A suggestion for a
  * payee or pattern that already has a rule is skipped: an existing decision or suggestion is never
- * overwritten by a new guess.
+ * overwritten by a new guess. A batch the build couldn't read (a broken pattern, an unknown `for`)
+ * is refused whole, so RULES.md is never left unreadable.
  */
 export const addSuggestions = (
   dir: string,
@@ -264,7 +265,9 @@ export const addSuggestions = (
   const skipped =
     (suggestions.payees?.length ?? 0) + (suggestions.categories?.length ?? 0) - newPayees.length - newCategories.length;
   if (newPayees.length + newCategories.length > 0 || !existsSync(DATA.rules(dir))) {
-    writeFileSync(DATA.rules(dir), withLearned(text, [...payees, ...newPayees], [...categories, ...newCategories]));
+    const next = withLearned(text, [...payees, ...newPayees], [...categories, ...newCategories]);
+    classifyAll([], parseRules(next), loadEntities(dir));
+    writeFileSync(DATA.rules(dir), next);
   }
   return { payees: newPayees.length, categories: newCategories.length, skipped };
 };

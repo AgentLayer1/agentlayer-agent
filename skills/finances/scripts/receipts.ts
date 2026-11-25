@@ -56,7 +56,7 @@ export const addReceipt = (dir: string, input: NewReceipt): { receipt: Receipt; 
     'receipts',
     input.entity,
     monthOf(input.date),
-    `${input.date} ${slugify(input.merchant)} ${input.amount} ${input.currency}${extname(input.file).toLowerCase()}`
+    `${input.date} ${slugify(input.merchant)} ${input.amount} ${input.currency} ${id.slice(0, 8)}${extname(input.file).toLowerCase()}`
   );
   mkdirSync(dirname(target), { recursive: true });
   if (relative(DATA.inbox(dir), input.file).startsWith('..')) {

@@ -236,4 +236,15 @@ describe('addSuggestions', () => {
   test('refuses an entry that is neither a rename nor a category rule', () => {
     expect(() => parseSuggestions('{"categories":[{"category":"food"}]}')).toThrow('not a suggestion');
   });
+
+  test('refuses a batch the build could not read, and leaves RULES.md as it was', () => {
+    const dir = project();
+    const before = readFileSync(join(dir, 'RULES.md'), 'utf8');
+    expect(() => addSuggestions(dir, { payees: [{ match: '*GRAB', payee: 'Grab' }] })).toThrow('not a valid pattern');
+    expect(() => addSuggestions(dir, { categories: [{ payee: 'Resto', category: 'food', for: 'nobody' }] })).toThrow(
+      'is not an entity'
+    );
+    expect(readFileSync(join(dir, 'RULES.md'), 'utf8')).toBe(before);
+    expect(lines(dir).length).toBeGreaterThan(0);
+  });
 });
