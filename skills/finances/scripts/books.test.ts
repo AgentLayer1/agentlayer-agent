@@ -12,6 +12,8 @@ const acme: Entity = {
   name: "Acme Sdn. Bhd.",
   kind: "company",
   country: "my",
+  currency: "MYR",
+  currencyPinned: true,
   fye: "12-31",
   close: "monthly",
   sme: false,
@@ -21,8 +23,8 @@ const acme: Entity = {
   startedOn: "2025-03-10",
   bookedThrough: "2026-03",
   accounts: [
-    { id: "main", name: "Main current account" },
-    { id: "usd", name: "USD account" },
+    { id: "main", name: "Main current account", currency: "MYR" },
+    { id: "usd", name: "USD account", currency: "USD" },
   ],
   obligations: [],
 };

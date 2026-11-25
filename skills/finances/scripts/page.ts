@@ -10,12 +10,14 @@ import { escapeHtml } from '../../../src/status/html-primitives';
 import { buildFinance, loadFinance } from './build';
 import { argValue } from './calendar';
 import { renderDashboard } from './dashboard';
+import { updateRates } from './rates';
 
 /**
  * The finances dashboard: the template with this build's data in its `finance-data` block and the
  * tax page framed on its Tax tab. Pure for a given folder and `today`.
  *
- * Usage: bun page.ts [--today YYYY-MM-DD]   writes <projects>/finances/dashboard.html, prints its path
+ * Usage: bun page.ts [--today YYYY-MM-DD]   fetches any exchange rates missing (rates.ts), then
+ *        writes <projects>/finances/dashboard.html and prints its path
  */
 
 const TEMPLATE = join(import.meta.dir, '..', 'references', 'dashboard.html');
@@ -42,7 +44,10 @@ if (import.meta.main) {
     console.error(`no finances project at ${dir}`);
     process.exit(1);
   }
+  const today = argValue(args, '--today') ?? todayDate();
+  const rates = await updateRates(dir, today);
+  rates.missing.forEach((line) => console.error(`no exchange rates for ${line}`));
   const path = join(dir, 'dashboard.html');
-  writeFileSync(path, renderFinances(dir, argValue(args, '--today') ?? todayDate()));
+  writeFileSync(path, renderFinances(dir, today));
   console.log(path);
 }

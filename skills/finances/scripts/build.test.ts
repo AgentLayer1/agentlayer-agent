@@ -28,13 +28,15 @@ import { Check } from './layout';
 const entity = (
   slug: string,
   kind: 'company' | 'individual',
-  accounts: { id: string; name: string; type?: string }[],
+  accounts: { id: string; name: string; type?: string; currency?: string }[],
   extra: Partial<Entity> = {}
 ): Entity => ({
   slug,
   name: slug,
   kind,
   country: 'my',
+  currency: 'MYR',
+  currencyPinned: true,
   fye: '12-31',
   close: kind === 'company' ? 'monthly' : 'none',
   sme: false,
@@ -43,9 +45,9 @@ const entity = (
   childrenUnder18: null,
   startedOn: null,
   bookedThrough: null,
-  accounts,
   obligations: [],
-  ...extra
+  ...extra,
+  accounts: accounts.map((account) => ({ ...account, currency: account.currency ?? extra.currency ?? 'MYR' }))
 });
 
 const ENTITIES = [
@@ -132,7 +134,7 @@ describe('classify', () => {
   });
 
   test('a rename matches the payee a line would otherwise get, not only the raw text', () => {
-    const raw = 'JOMPAY||88231120|99120034|D17|ACME TELCO';
+    const raw = 'JOMPAY||12345678|87654321|D17|ACME TELCO';
     expect(
       classify(txn('j', '2026-10-01', 'ada-main', -1, raw), [{ match: '^JOMPAY D17 ACME', payee: 'Acme Telco' }]).payee
     ).toBe('Acme Telco');
@@ -156,7 +158,7 @@ describe('classify', () => {
 
   test('a default payee drops reference numbers', () => {
     expect(defaultPayee('STREAMCO*884412 KL')).toBe('STREAMCO KL');
-    expect(defaultPayee('DUITNOW TO ACCOUNT||88231120|ACME TRADING|Fund Transfer||')).toBe(
+    expect(defaultPayee('DUITNOW TO ACCOUNT||12345678|ACME TRADING|Fund Transfer||')).toBe(
       'DUITNOW TO ACCOUNT ACME TRADING Fund Tra'
     );
   });
@@ -268,7 +270,9 @@ describe('buildFinance', () => {
             currency: 'MYR',
             payee: 'TRANSFER TO ADA',
             category: null,
-            why: 'transfer'
+            why: 'transfer',
+            inCompany: 1000,
+            owed: 6000
           }
         ]
       }
@@ -303,6 +307,12 @@ describe('buildFinance', () => {
     expect(checks.gaps).toMatchObject({ ok: false, items: ['acme-main: nothing from 2026-11-01 to 2026-11-02'] });
     expect(checks.openings?.ok).toBe(true);
     expect(checks.categories?.ok).toBe(false);
+    expect(checks.currencies?.ok).toBe(true);
+    const unpinned = buildFinance({
+      ...INPUT,
+      entities: [entity('acme', 'company', [], { currencyPinned: false })]
+    }).checks.find((check) => check.id === 'currencies');
+    expect(unpinned).toMatchObject({ ok: false, items: ['acme: MYR from its country; add currency to its profile'] });
   });
 
   test('keeps five years of lines for the page', () => {
@@ -387,14 +397,37 @@ describe('paid for another entity', () => {
     expect(acme?.balance).toBe(5000 + 4200 + 1000 + 180 - 300);
   });
 
-  test('money paid for the operator in another currency is listed in it and left out of the balance', () => {
+  test("money paid for the operator in another currency counts at its month's rate, and without one is listed but left out", () => {
     const usd = { ...txn('u1', '2026-10-05', 'acme-main', -100, 'SCHOOL ONLINE USD'), currency: 'USD' };
-    const [acme] = buildFinance({ ...INPUT, txns: [...txns, usd], rules }).director;
-    expect(acme?.movements.find((movement) => movement.date === '2026-10-05')).toMatchObject({
+    const without = buildFinance({ ...INPUT, txns: [...txns, usd], rules }).director[0];
+    expect(without?.movements.find((movement) => movement.date === '2026-10-05')).toMatchObject({
       amount: 100,
-      currency: 'USD'
+      currency: 'USD',
+      inCompany: null
     });
-    expect(acme).toMatchObject({ currency: 'MYR', balance: 5000 + 4200 + 1000 + 180 - 300 });
+    expect(without).toMatchObject({ currency: 'MYR', balance: 5000 + 4200 + 1000 + 180 - 300 });
+    const priced = buildFinance({ ...INPUT, txns: [...txns, usd], rules, rates: { '2026-10': { MYR: 4.1 } } });
+    expect(priced.director[0]?.balance).toBeCloseTo(5000 + 4200 + 410 + 1000 + 180 - 300, 6);
+  });
+
+  test("a company in another currency keeps its director balance in its own currency, and the home currency is the operator's", () => {
+    const usCompany = entity(
+      'acme',
+      'company',
+      [
+        { id: 'acme-main', name: 'Acme current' },
+        { id: 'acme-card', name: 'Acme card', type: 'card' }
+      ],
+      { currency: 'USD' }
+    );
+    const ada = entity('ada', 'individual', [{ id: 'ada-main', name: 'Ada current' }]);
+    const data = buildFinance({ ...INPUT, entities: [usCompany, ada], txns, rules });
+    expect(data.director[0]).toMatchObject({ currency: 'USD', balance: 5000 });
+    expect(data.home).toBe('MYR');
+    expect(data.entities.map((entity) => [entity.slug, entity.currency])).toEqual([
+      ['acme', 'USD'],
+      ['ada', 'MYR']
+    ]);
   });
 
   test('a for naming no entity stops the build', () => {
@@ -420,7 +453,9 @@ describe('a loan seen only from the personal side', () => {
         currency: 'MYR',
         payee: 'DUITNOW LOAN ACME SDN BHD',
         category: 'director',
-        why: 'transfer'
+        why: 'transfer',
+        inCompany: 2000,
+        owed: 7000
       }
     ]);
     expect(data.lines[0]).toMatchObject({ entity: 'ada', paidBy: null, kind: Kind.Director });
@@ -576,7 +611,7 @@ describe('loadFinance', () => {
     };
     write(
       'entities/acme.md',
-      '---\nname: Acme\nkind: company\nclose: monthly\n---\n\n## Accounts\n\n```yaml\n- { id: acme-main, name: Acme current }\n```\n'
+      '---\nname: Acme\nkind: company\nclose: monthly\ncurrency: MYR\n---\n\n## Accounts\n\n```yaml\n- { id: acme-main, name: Acme current }\n```\n'
     );
     write('RULES.md', '## Learned\n\n### Categories\n\n```yaml\n- { match: HOSTING, category: software }\n```\n');
     importStatement({
@@ -600,7 +635,7 @@ describe('loadFinance', () => {
     dirs.push(dir);
     mkdirSync(join(dir, 'entities'), { recursive: true });
     mkdirSync(join(dir, 'data'), { recursive: true });
-    writeFileSync(join(dir, 'entities/acme.md'), '---\nname: Acme\nkind: company\nclose: none\n---\n');
+    writeFileSync(join(dir, 'entities/acme.md'), '---\nname: Acme\nkind: company\nclose: none\ncurrency: MYR\n---\n');
     writeFileSync(
       join(dir, 'data/director.csv'),
       'company,balance,on,source\nacme,7000,2026-09-30,books-q3.xlsx\nacme,5000,2026-06-30,books-q2.xlsx\n'

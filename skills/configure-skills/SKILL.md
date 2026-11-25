@@ -839,11 +839,13 @@ Try it now:    /heartbeat scout, in the heartbeat's tab
 
 Sets up the finances project: a profile per company and for the operator, their tax obligations and accounts, and the categorising rules. No keys or permissions; the `finances` skill is granted at init.
 
-**(1) Profiles.** Open `${CLAUDE_PLUGIN_ROOT}/skills/finances/references/playbooks/tax/setup.md` and follow it from its first step. It creates `$PROJECTS/finances/` with an `entities/<slug>.md` per entity and runs the calendar. For a half-done pack, `packs_status` names what's left ("acme's bank accounts"): do only that part of the playbook.
+**(1) Exchange rates.** The page's summaries switch between each entity's currency and USD at monthly central-bank reference rates from Frankfurter (no key; only currency codes and dates are sent). Add `api.frankfurter.dev` to `sandbox.network.allowedDomains` in `$PROJECT_SETTINGS` when it's missing (union, never replace), before anything renders the page. A refusal or an offline machine only means the USD view leaves lines out until the next render.
 
-**(2) Categorising rules.** When `projects/finances/RULES.md` is absent, run `bun "${CLAUDE_PLUGIN_ROOT}/skills/finances/scripts/rules.ts" init` and tell the operator the file is where their plain-language rules go ("Grab rides are transport").
+**(2) Profiles.** Open `${CLAUDE_PLUGIN_ROOT}/skills/finances/references/playbooks/tax/setup.md` and follow it from its first step. It creates `$PROJECTS/finances/` with an `entities/<slug>.md` per entity and runs the calendar. For a half-done pack, `packs_status` names what's left ("acme's bank accounts"): do only that part of the playbook.
 
-**(3) Summary:**
+**(3) Categorising rules.** When `projects/finances/RULES.md` is absent, run `bun "${CLAUDE_PLUGIN_ROOT}/skills/finances/scripts/rules.ts" init` and tell the operator the file is where their plain-language rules go ("Grab rides are transport").
+
+**(4) Summary:**
 
 ```
 ✅ Finances set up.

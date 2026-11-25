@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Entity } from "./calendar";
-import { bandTax, type LedgerRow, parseCsv, parseRates, periodFor, position, toLedgerRow } from "./liability";
+import { bandTax, type LedgerRow, parseCsv, parseRates, periodFor, position, positions, toLedgerRow } from "./liability";
 
 const rates = parseRates(readFileSync(join(import.meta.dir, "..", "references", "countries", "my.md"), "utf8"));
 
@@ -11,6 +12,8 @@ const company: Entity = {
   name: "Acme Sdn. Bhd.",
   kind: "company",
   country: "my",
+  currency: "MYR",
+  currencyPinned: true,
   fye: "12-31",
   close: "monthly",
   sme: false,
@@ -63,6 +66,17 @@ describe("rates", () => {
   test("SME tiers tax the first RM150k at 15% and the next slice at 17%", () => {
     expect(bandTax(200000, rates.company.sme)).toBeCloseTo(150000 * 0.15 + 50000 * 0.17, 2);
   });
+});
+
+test("an entity in a country with no tax rules here has no position, and never stops the others", () => {
+  const dir = mkdtempSync(join(tmpdir(), "finances-positions-"));
+  try {
+    const countries = join(import.meta.dir, "..", "references", "countries");
+    const us = { ...company, slug: "acme-us", country: "us", currency: "USD" };
+    expect(positions(dir, countries, [us, company], "2026-11-25").map((item) => item.entity)).toEqual(["acme"]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 describe("periodFor", () => {

@@ -52,11 +52,20 @@ export interface Account {
   importer?: string;
 }
 
+/** An account as its entity holds it: always in a currency, its own or the entity's. */
+export interface EntityAccount extends Account {
+  currency: string;
+}
+
 export interface Entity {
   slug: string;
   name: string;
   kind: EntityKind;
   country: string;
+  /** Where its tax is paid or it is registered: the currency its own views total in. */
+  currency: string;
+  /** False when the profile has no `currency` and it came from the country. */
+  currencyPinned: boolean;
   fye: string;
   close: "monthly" | "none";
   sme: boolean;
@@ -65,7 +74,7 @@ export interface Entity {
   childrenUnder18: number | null;
   startedOn: string | null;
   bookedThrough: string | null;
-  accounts: Account[];
+  accounts: EntityAccount[];
   obligations: Obligation[];
 }
 
@@ -244,6 +253,14 @@ export const listBlock = (file: string, raw: string, heading: string): unknown[]
 
 const FYE_RE = /^(\d{2})-(\d{2})$/;
 
+/** Each country's currency, offered when a profile doesn't pin its own. */
+const COUNTRY_CURRENCY: Record<string, string> = {
+  my: "MYR", sg: "SGD", us: "USD", gb: "GBP", ca: "CAD", au: "AUD", ae: "AED", sa: "SAR", in: "INR", id: "IDR",
+  de: "EUR", fr: "EUR", nl: "EUR", ie: "EUR", es: "EUR", it: "EUR", be: "EUR", at: "EUR", pt: "EUR", fi: "EUR",
+};
+
+const countryCurrency = (country: string): string => COUNTRY_CURRENCY[country.toLowerCase()] ?? "USD";
+
 // A non-leap year, so 29 February is refused: a year that ends on the last day of February is 02-28.
 const isFye = (fye: string): boolean => {
   const match = fye.match(FYE_RE);
@@ -311,12 +328,20 @@ export const parseEntity = (slug: string, raw: string): Entity => {
   if (accounts.some((item) => !isAccount(item))) {
     throw new Error(`entities/${slug}.md: every entry under ## Accounts needs an id and a name`);
   }
+  const country = typeof data.country === "string" ? data.country : "my";
+  const pinned = typeof data.currency === "string" ? data.currency.trim().toUpperCase() : null;
+  if (pinned !== null && !/^[A-Z]{3}$/.test(pinned)) {
+    throw new Error(`entities/${slug}.md: currency must be a three-letter code such as USD or MYR`);
+  }
+  const currency = pinned ?? countryCurrency(country);
   const dates = [dateField(data, "incorporated"), dateField(data, "commenced")].filter((date): date is string => date !== null).sort();
   return {
     slug,
     name: typeof data.name === "string" ? data.name : slug,
     kind: data.kind === EntityKind.Individual ? EntityKind.Individual : EntityKind.Company,
-    country: typeof data.country === "string" ? data.country : "my",
+    country,
+    currency,
+    currencyPinned: pinned !== null,
     fye,
     close: data.close === "monthly" ? "monthly" : "none",
     sme: data.sme === true,
@@ -325,7 +350,7 @@ export const parseEntity = (slug: string, raw: string): Entity => {
     childrenUnder18: typeof data.children_under_18 === "number" ? data.children_under_18 : null,
     startedOn: dates[0] ?? null,
     bookedThrough: monthField(slug, data, "booked_through"),
-    accounts: accounts.filter(isAccount),
+    accounts: accounts.filter(isAccount).map((account) => ({ ...account, currency: account.currency ?? currency })),
     obligations: obligations.filter(isObligation),
   };
 };

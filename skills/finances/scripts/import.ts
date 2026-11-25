@@ -12,9 +12,9 @@ import {
 import { basename, dirname, extname, join, relative } from 'node:path';
 import { FOLDERS } from '../../../src/config';
 import { hashBuffer } from '../../../src/knowledge/utils';
-import { type Account, argValue, type Entity, escapeRegExp, loadEntities, refuse, yamlBlock } from './calendar';
-import { cents, Check, csvFiles, csvLine, DATA, monthOf } from './layout';
-import { csvRows, parseCsv } from './liability';
+import { argValue, type Entity, type EntityAccount, escapeRegExp, loadEntities, refuse, yamlBlock } from './calendar';
+import { cents, Check, csvFiles, csvLine, DATA, monthOf, readRows } from './layout';
+import { csvRows } from './liability';
 
 /**
  * Statement importer for the finances skill. Reads one bank, card or platform export (CSV or XLSX
@@ -59,7 +59,7 @@ export interface StatementLine {
   balance: number | null;
 }
 
-const TRANSACTIONS_HEADER = 'id,date,account,amount,currency,amount_myr,balance,raw,source';
+const TRANSACTIONS_HEADER = 'id,date,account,amount,currency,balance,raw,source';
 const STATEMENTS_HEADER = 'account,period_start,period_end,opening,closing,currency,due_date,amount_due,check,file,sha';
 const LEDGER_HEADER =
   'date,type,counterparty,country,currency,amount,amount_myr,tax,reference,category,file,flags,notes';
@@ -339,7 +339,7 @@ const appendRows = (path: string, header: string, lines: string[]): void => {
 };
 
 export interface Located {
-  account: Account;
+  account: EntityAccount;
   entity: Entity;
 }
 
@@ -360,7 +360,7 @@ export const locate = (entities: Entity[], id: string): Located => {
   return hit;
 };
 
-const importerFor = (dir: string, account: Account, file: string, rows: string[][]): Importer => {
+const importerFor = (dir: string, account: EntityAccount, file: string, rows: string[][]): Importer => {
   if (
     extname(file).toLowerCase() === '.csv' &&
     rows[0]?.map(normalizeHeader).join(',').startsWith('date,description,amount')
@@ -423,13 +423,15 @@ interface Planned {
   staged: string | null;
 }
 
-const readRows = (path: string): Record<string, string>[] =>
-  existsSync(path) ? parseCsv(readFileSync(path, 'utf8')) : [];
-
 /** Everything one import would write, worked out before anything is written. */
 const planImport = (options: ImportOptions): Planned => {
   const { dir } = options;
   const { account, entity } = locate(loadEntities(dir), options.account);
+  if (!entity.currencyPinned) {
+    throw new Error(
+      `entities/${entity.slug}.md has no currency yet: add currency (where it pays tax or is registered, such as ${entity.currency}) so its lines are saved in the right one`
+    );
+  }
   const original = options.original ?? options.file;
   const sha = hashBuffer(readFileSync(original));
   const rows =
@@ -443,7 +445,7 @@ const planImport = (options: ImportOptions): Planned => {
   const proof = prove(lines, { opening: options.opening ?? null, closing: options.closing ?? null });
   const from = options.from ?? lines[0]?.date ?? '';
   const to = options.to ?? lines.at(-1)?.date ?? '';
-  const currency = account.currency ?? 'MYR';
+  const currency = account.currency;
   const statements = readRows(DATA.statements(dir));
   const samePeriod = statements.find(
     (row) => row.account === account.id && row.period_start === from && row.period_end === to
@@ -502,17 +504,7 @@ const planImport = (options: ImportOptions): Planned => {
     },
     rows: fresh.map(({ line, id }) => ({
       year: line.date.slice(0, 4),
-      line: csvLine([
-        id,
-        line.date,
-        account.id,
-        line.amount,
-        currency,
-        currency === 'MYR' ? line.amount : null,
-        line.balance,
-        line.raw,
-        source
-      ])
+      line: csvLine([id, line.date, account.id, line.amount, currency, line.balance, line.raw, source])
     })),
     statement: csvLine([
       account.id,

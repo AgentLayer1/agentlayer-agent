@@ -16,8 +16,9 @@ import {
   loadEntities,
   loadExisting
 } from './calendar';
-import { cents, Check, csvFiles, DATA, loadReceipts, monthOf } from './layout';
+import { cents, Check, csvFiles, DATA, LINE_MONTHS, loadReceipts, monthOf } from './layout';
 import { parseCsv } from './liability';
+import { readRates, type UsdRates } from './rates';
 
 /**
  * The finances dashboard's data, built from what the importer wrote under data/ and the rules in
@@ -452,6 +453,8 @@ export interface FinanceInput {
   receipts?: Map<string, string>;
   /** Each company's director balance as its accountant last stated it, from data/director.csv. */
   openings?: Map<string, DirectorOpening>;
+  /** Each month's units of each currency per US dollar, from data/rates.csv. */
+  rates?: UsdRates;
 }
 
 export interface DirectorOpening {
@@ -488,12 +491,26 @@ export interface DirectorMovement {
   payee: string;
   category: string | null;
   why: Why;
+  /** The amount in the company's currency at its month's rate; null when there's no rate, so it isn't counted. */
+  inCompany: number | null;
+  /** What the operator owes the company after this movement, in the company's currency. */
+  owed: number;
 }
+
+/** An amount in another currency at that month's rate per US dollar, or null without a rate for either. */
+const convertAt = (rates: UsdRates, amount: number, from: string, to: string, month: string): number | null => {
+  const perUsd = (currency: string): number | undefined => (currency === 'USD' ? 1 : rates[month]?.[currency]);
+  const [a, b] = [perUsd(from), perUsd(to)];
+  return from === to ? amount : a !== undefined && b !== undefined ? (amount * b) / a : null;
+};
 
 export interface FinanceData {
   today: string;
-  base: string;
-  entities: { slug: string; name: string; kind: string }[];
+  /** The operator's own currency: the All view's local currency. Each entity's own is on `entities`. */
+  home: string;
+  /** Each month's units of each currency per US dollar, for converting summaries; USD is 1 and never listed. */
+  rates: UsdRates;
+  entities: { slug: string; name: string; kind: string; currency: string }[];
   accounts: AccountView[];
   /** `entity` is whose expense or income the line is; `paidBy` names the entity whose account paid, when another. */
   lines: {
@@ -532,11 +549,7 @@ export interface FinanceData {
   approval: { approved: number; suggested: number; uncategorised: number };
 }
 
-/** Five years of lines: enough for the year view, small enough to embed. */
-const LINE_MONTHS = 60;
 /** A statement older than this, about one cycle and a few days, means the next one is due. */
-/** The currency every total is in; money in another stays on its own lines, never converted. */
-const BASE = 'MYR';
 const STALE_DAYS = 35;
 /** Fees and double charges older than this are history, not something to act on. */
 const RECENT_DAYS = 60;
@@ -549,7 +562,8 @@ export const buildFinance = ({
   rules,
   categories = [],
   receipts = new Map(),
-  openings = new Map()
+  openings = new Map(),
+  rates = {}
 }: FinanceInput): FinanceData => {
   const accounts = entities.flatMap((entity) => entity.accounts.map((account) => ({ account, entity })));
   const lines = classifyAll(txns, rules, entities);
@@ -562,7 +576,7 @@ export const buildFinance = ({
       name: account.name,
       entity: entity.slug,
       type: account.type ?? 'current',
-      currency: account.currency ?? 'MYR',
+      currency: account.currency,
       balance: latest?.closing ?? null,
       asOf: latest?.to ?? null,
       statements: byAccount.get(account.id)?.length ?? 0,
@@ -597,10 +611,10 @@ export const buildFinance = ({
     .flatMap((company) => {
       const kindOf = (slug: string): string | undefined => entities.find((entity) => entity.slug === slug)?.kind;
       const opening = openings.get(company.slug);
-      const movements = lines
+      const moves = lines
         .filter((line) => opening === undefined || line.date > opening.on)
         .toSorted((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
-        .flatMap((line): DirectorMovement[] => {
+        .flatMap((line): Omit<DirectorMovement, 'inCompany' | 'owed'>[] => {
           const base = { date: line.date, currency: line.currency, payee: line.payee, category: line.category };
           if (line.entity === company.slug && line.kind === Kind.Director) {
             return [{ ...base, amount: -line.amount, why: Why.Transfer }];
@@ -625,20 +639,21 @@ export const buildFinance = ({
           }
           return [];
         });
+      const movements = moves.reduce<DirectorMovement[]>((done, move) => {
+        const inCompany = convertAt(rates, move.amount, move.currency, company.currency, monthOf(move.date));
+        const owed = (done.at(-1)?.owed ?? opening?.balance ?? 0) + (inCompany ?? 0);
+        return [...done, { ...move, inCompany, owed }];
+      }, []);
       if (movements.length === 0 && opening === undefined) {
         return [];
       }
       return [
         {
           company: company.slug,
-          currency: BASE,
+          currency: company.currency,
           opening: opening?.balance ?? null,
           openingOn: opening?.on ?? null,
-          balance:
-            (opening?.balance ?? 0) +
-            movements
-              .filter((movement) => movement.currency === BASE)
-              .reduce((sum, movement) => sum + movement.amount, 0),
+          balance: movements.at(-1)?.owed ?? opening?.balance ?? 0,
           movements
         }
       ];
@@ -712,6 +727,14 @@ export const buildFinance = ({
       label: 'Every line has a category',
       ok: reviewCount === 0,
       items: [...uncategorized].map(([month, group]) => `${month}: ${group.length} to categorise`)
+    },
+    {
+      id: 'currencies',
+      label: 'Every entity has its currency pinned',
+      ok: entities.every((entity) => entity.currencyPinned),
+      items: entities
+        .filter((entity) => !entity.currencyPinned)
+        .map((entity) => `${entity.slug}: ${entity.currency} from its country; add currency to its profile`)
     }
   ];
   const accountById = new Map(accounts.map((item) => [item.account.id, item]));
@@ -813,8 +836,14 @@ export const buildFinance = ({
   );
   return {
     today,
-    base: BASE,
-    entities: entities.map((entity) => ({ slug: entity.slug, name: entity.name, kind: entity.kind })),
+    home: entities.find((entity) => entity.kind === EntityKind.Individual)?.currency ?? entities[0]?.currency ?? 'USD',
+    rates: Object.fromEntries(Object.entries(rates).filter(([month]) => month >= oldest.slice(0, 7))),
+    entities: entities.map((entity) => ({
+      slug: entity.slug,
+      name: entity.name,
+      kind: entity.kind,
+      currency: entity.currency
+    })),
     accounts: accountViews,
     lines: lines
       .filter((line) => line.date >= oldest)
@@ -952,7 +981,7 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
         account: row.account ?? '',
         entity: owner.get(row.account ?? '') ?? '',
         amount: Number(row.amount),
-        currency: row.currency || 'MYR',
+        currency: row.currency ?? '',
         raw: row.raw ?? ''
       })
     )
@@ -966,7 +995,7 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
           to: row.period_end ?? '',
           opening: numberOrNull(row.opening),
           closing: numberOrNull(row.closing),
-          currency: row.currency || 'MYR',
+          currency: row.currency ?? '',
           due: row.due_date || null,
           amountDue: numberOrNull(row.amount_due),
           check: row.check === Check.Checked ? Check.Checked : Check.Unchecked
@@ -998,7 +1027,8 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
       stated
         .toSorted((a, b) => a.on.localeCompare(b.on))
         .map(({ company, balance, on }) => [company, { balance, on }] as const)
-    )
+    ),
+    rates: readRates(dir)
   };
 };
 

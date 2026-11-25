@@ -25,6 +25,8 @@ allowed-tools:
 
 Keep the operator's money legible: every entity they file for (companies and their own return) ahead of its deadlines, with books a tax agent can work from. The agent prepares, tracks, and drafts. The operator and their tax agent file, pay, and sign.
 
+Each entity pins its own currency (where it pays tax or is registered), and each account keeps its own, so statements import in any currency. The page totals every summary in an entity's currency or USD at each month's central-bank rate, while transaction lines stay as the bank wrote them. Tax rules ship for Malaysia so far (`references/countries/`); statements, categories and the page work for any country.
+
 ## Help
 
 `/finances help` (or "what can finances do?") asks for the menu: reply with [help](references/help.md) exactly as written and stop.
@@ -67,6 +69,7 @@ $PROJECTS/finances/
     ├── receipts/<slug>/<YYYY-MM>/     filed receipts; receipts.csv links each to the line it paid for
     ├── reviews/<YYYY-MM-DD>-<topic>.md books reviews, with the accountant's figures
     ├── director.csv                   each company's director balance as its books stated it
+    ├── rates.csv                      each month's rate per US dollar, for the page's summaries (rates.ts update)
     ├── statements.csv                 one row per imported statement: period, balances, check
     ├── transactions/<slug>/<YYYY>.csv every statement line, as the bank wrote it
     └── ledger/<slug>/<YYYY>.csv       the tax ledger: one row per document or stated figure

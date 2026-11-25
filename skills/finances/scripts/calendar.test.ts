@@ -21,6 +21,8 @@ const acme: Entity = {
   name: "Acme Sdn. Bhd.",
   kind: "company",
   country: "my",
+  currency: "MYR",
+  currencyPinned: true,
   fye: "12-31",
   close: "monthly",
   sme: false,
@@ -141,6 +143,18 @@ describe("parseEntity", () => {
   test("keeps frontmatter flat: obligations there are refused with a pointer to the body block", () => {
     const nested = "---\nname: Acme\nobligations:\n  - { id: form-c }\n---\n";
     expect(() => parseEntity("acme", nested)).toThrow(/## Obligations/);
+  });
+
+  test("pins the currency its profile names, else takes its country's, and every account defaults to it", () => {
+    const us = parseEntity(
+      "acme-us",
+      "---\nname: Acme Inc\ncountry: us\n---\n\n## Accounts\n\n```yaml\n- { id: us-main, name: Main }\n- { id: us-gbp, name: Pounds, currency: GBP }\n```\n"
+    );
+    expect([us.currency, us.currencyPinned]).toEqual(["USD", false]);
+    expect(us.accounts.map((account) => account.currency)).toEqual(["USD", "GBP"]);
+    const pinned = parseEntity("ada", "---\nname: Ada\nkind: individual\ncountry: my\ncurrency: cad\n---\n");
+    expect([pinned.currency, pinned.currencyPinned]).toEqual(["CAD", true]);
+    expect(() => parseEntity("ada", "---\nname: Ada\ncurrency: dollars\n---\n")).toThrow("three-letter code");
   });
 
   test("a profile with no obligations section has none", () => {
