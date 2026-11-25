@@ -72,8 +72,13 @@ export interface Line extends Txn {
   payee: string;
   category: string | null;
   kind: Kind;
-  /** Whose expense or income it is: the account's entity unless a rule's `for` says otherwise. */
+  /**
+   * Whose expense or income it is: the account's entity unless a rule's `for` says otherwise. For a director
+   * movement on the operator's own account, the company on the other side.
+   */
   for: string;
+  /** Matched with the other half of a transfer between the operator's accounts. */
+  paired: boolean;
 }
 
 const CHARITY = new Set(['charity', 'zakat', 'sadaqah', 'donation']);
@@ -97,7 +102,7 @@ const median = (values: number[]): number => {
 export const defaultPayee = (raw: string): string =>
   raw
     .replace(/\b[\w-]*\d{4,}[\w-]*\b/g, ' ')
-    .replace(/[*#/]+/g, ' ')
+    .replace(/[*#/|]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 40) || raw.slice(0, 40);
@@ -145,7 +150,8 @@ export const classify = (txn: Txn, rules: Rule[]): { payee: string; category: st
 /**
  * Pairs money leaving one of the operator's accounts with the same amount arriving in another of
  * them within three days, oldest first and closest date first, each line in at most one pair. Lines
- * a rule already marked as a transfer or director movement are left to the rule.
+ * a rule marked as a transfer, or as paid for another entity, are left to the rule; a line marked
+ * director still pairs, so a loan seen from both sides counts once.
  */
 const pairTransfers = (txns: Txn[], skip: Set<string>): Map<string, string> => {
   const bucket = (txn: Txn): string => `${txn.currency}|${Math.abs(cents(txn.amount))}`;
@@ -205,10 +211,12 @@ export const classifyAll = (txns: Txn[], rules: Rule[], entities: Entity[]): Lin
   const classified = txns.map((txn) => ({ txn, ...classify(txn, rules) }));
   const ruled = new Set(
     classified
-      .filter((line) => line.category === 'transfer' || line.category === 'director' || line.for !== null)
+      .filter((line) => line.category === 'transfer' || (line.for !== null && line.category !== 'director'))
       .map((line) => line.txn.id)
   );
   const pairs = pairTransfers(txns, ruled);
+  const companies = entities.filter((entity) => entity.kind === EntityKind.Company);
+  const soleCompany = companies.length === 1 ? (companies[0]?.slug ?? null) : null;
   const byId = new Map(txns.map((txn) => [txn.id, txn]));
   const entityOf = (slug: string | undefined): Entity | undefined => entities.find((entity) => entity.slug === slug);
   return classified.map(({ txn, payee, category, for: owner }): Line => {
@@ -219,7 +227,17 @@ export const classifyAll = (txns: Txn[], rules: Rule[], entities: Entity[]): Lin
       txn.amount
     );
     const own = kind === Kind.Spend || kind === Kind.Charity || kind === Kind.Income;
-    return { ...txn, payee, category, kind, for: own ? (owner ?? txn.entity) : txn.entity };
+    const personal = entityOf(txn.entity)?.kind === EntityKind.Individual;
+    const counterparty =
+      kind === Kind.Director && partner === undefined && personal ? (owner ?? soleCompany ?? txn.entity) : txn.entity;
+    return {
+      ...txn,
+      payee,
+      category,
+      kind,
+      for: own ? (owner ?? txn.entity) : counterparty,
+      paired: partner !== undefined
+    };
   });
 };
 
@@ -399,6 +417,8 @@ export interface FinanceData {
 const LINE_MONTHS = 13;
 /** A statement older than this, about one cycle and a few days, means the next one is due. */
 const STALE_DAYS = 35;
+/** Fees and double charges older than this are history, not something to act on. */
+const RECENT_DAYS = 60;
 
 export const buildFinance = ({ today, entities, txns, statements, rules }: FinanceInput): FinanceData => {
   const accounts = entities.flatMap((entity) => entity.accounts.map((account) => ({ account, entity })));
@@ -462,6 +482,14 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
           if (line.entity === company.slug && line.kind === Kind.Director) {
             return [{ ...base, amount: -line.amount, why: Why.Transfer }];
           }
+          if (
+            line.kind === Kind.Director &&
+            !line.paired &&
+            line.for === company.slug &&
+            line.entity !== company.slug
+          ) {
+            return [{ ...base, amount: line.amount, why: Why.Transfer }];
+          }
           if (line.entity === company.slug && line.for !== company.slug && kindOf(line.for) === EntityKind.Individual) {
             return [{ ...base, amount: -line.amount, why: Why.PaidForYou }];
           }
@@ -489,28 +517,17 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
         }
       ];
     });
+  const recentSpend = lines.filter(
+    (line) => line.amount < 0 && line.kind === Kind.Spend && daysBetween(line.date, today) <= RECENT_DAYS
+  );
   const duplicates = [
-    ...Map.groupBy(
-      lines.filter((line) => line.amount < 0 && line.kind === Kind.Spend),
-      (line) => `${line.account}|${cents(line.amount)}|${line.payee.toLowerCase()}`
-    ).values()
+    ...Map.groupBy(recentSpend, (line) => `${line.account}|${cents(line.amount)}|${line.raw}`).values()
   ].flatMap((group) =>
     group
       .toSorted((a, b) => a.date.localeCompare(b.date))
-      .filter((line, i, sorted) => i > 0 && daysBetween(sorted[i - 1]?.date ?? line.date, line.date) <= 2)
+      .filter((line, i, sorted) => i > 0 && daysBetween(sorted[i - 1]?.date ?? line.date, line.date) <= 1)
   );
-  const firstMonth = lines.reduce((first, line) => {
-    const key = line.payee.toLowerCase();
-    const month = monthOf(line.date);
-    return (first.get(key) ?? month) < month ? first : first.set(key, month);
-  }, new Map<string, string>());
-  const fees = lines.filter(
-    (line) =>
-      line.amount < 0 &&
-      line.kind === Kind.Spend &&
-      (line.category === 'fees' || (line.category === null && FEE.test(line.raw))) &&
-      firstMonth.get(line.payee.toLowerCase()) === monthOf(line.date)
-  );
+  const fees = recentSpend.filter((line) => line.category === 'fees' || (line.category === null && FEE.test(line.raw)));
   const uncategorized = Map.groupBy(
     lines.filter((line) => (line.kind === Kind.Spend || line.kind === Kind.Income) && line.category === null),
     (line) => monthOf(line.date)
@@ -604,20 +621,20 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
       title: `Possible double charge from ${line.payee} on ${line.date}`,
       due: null
     })),
-    ...[...Map.groupBy(fees, (line) => `${line.for}|${slugify(line.payee)}|${monthOf(line.date)}`).values()].flatMap(
-      ([first]) =>
-        first === undefined
-          ? []
-          : [
-              {
-                kind: InsightKind.Fee,
-                label: `fin:fee:${first.for}:${slugify(first.payee)}:${monthOf(first.date)}`,
-                entity: first.for,
-                title: `New fee from ${first.payee} in ${monthOf(first.date)}`,
-                due: null
-              }
-            ]
-    ),
+    ...[...Map.groupBy(fees, (line) => `${line.account}|${monthOf(line.date)}`).values()].flatMap((group) => {
+      const first = group[0];
+      return first === undefined
+        ? []
+        : [
+            {
+              kind: InsightKind.Fee,
+              label: `fin:fee:${first.account}:${monthOf(first.date)}`,
+              entity: first.for,
+              title: `${group.length === 1 ? 'A fee' : `${group.length} fees`} on ${accountNameOf(first.account)} in ${monthOf(first.date)}`,
+              due: null
+            }
+          ];
+    }),
     ...[...Map.groupBy(unproven, (statement) => `${statement.account}|${monthOf(statement.to)}`).values()].flatMap(
       ([first]) =>
         first === undefined
@@ -662,17 +679,20 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
     lines: lines
       .filter((line) => line.date >= oldest)
       .toSorted((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
-      .map((line) => ({
-        date: line.date,
-        account: line.account,
-        entity: line.for,
-        paidBy: line.for === line.entity ? null : line.entity,
-        amount: line.amount,
-        currency: line.currency,
-        payee: line.payee,
-        category: line.category,
-        kind: line.kind
-      })),
+      .map((line) => {
+        const own = line.kind === Kind.Spend || line.kind === Kind.Charity || line.kind === Kind.Income;
+        return {
+          date: line.date,
+          account: line.account,
+          entity: own ? line.for : line.entity,
+          paidBy: own && line.for !== line.entity ? line.entity : null,
+          amount: line.amount,
+          currency: line.currency,
+          payee: line.payee,
+          category: line.category,
+          kind: line.kind
+        };
+      }),
     recurring,
     dues,
     director,

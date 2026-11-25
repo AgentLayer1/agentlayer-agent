@@ -184,6 +184,11 @@ describe('readLines', () => {
 describe('prove', () => {
   const line = (amount: number, balance: number | null) => ({ date: '2026-10-01', amount, raw: 'x', balance });
 
+  test('works out the opening to the cent, never a float remainder', () => {
+    expect(prove([line(-1000, 1200)], { opening: null, closing: null }).opening).toBe(2200);
+    expect(prove([line(-0.1, 235.03 - 0.1)], { opening: null, closing: null }).opening).toBe(235.03);
+  });
+
   test('checks every running balance and the closing', () => {
     expect(prove([line(-10, 90), line(5, 95)], { opening: null, closing: null })).toEqual({
       check: Check.Checked,

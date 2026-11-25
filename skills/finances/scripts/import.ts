@@ -242,7 +242,7 @@ export const prove = (lines: StatementLine[], given: { opening: number | null; c
   const first = lines[0];
   const last = lines.at(-1);
   const opening =
-    given.opening ?? (first !== undefined && first.balance !== null ? first.balance - first.amount : null);
+    given.opening ?? (first !== undefined && first.balance !== null ? cents(first.balance - first.amount) / 100 : null);
   const closing = given.closing ?? last?.balance ?? null;
   lines.reduce<number | null>((before, line, i) => {
     if (before !== null && line.balance !== null && cents(before + line.amount) !== cents(line.balance)) {

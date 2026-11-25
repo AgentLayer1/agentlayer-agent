@@ -143,6 +143,9 @@ describe('classify', () => {
 
   test('a default payee drops reference numbers', () => {
     expect(defaultPayee('STREAMCO*884412 KL')).toBe('STREAMCO KL');
+    expect(defaultPayee('DUITNOW TO ACCOUNT||88231120|ACME TRADING|Fund Transfer||')).toBe(
+      'DUITNOW TO ACCOUNT ACME TRADING Fund Tra'
+    );
   });
 });
 
@@ -247,7 +250,7 @@ describe('buildFinance', () => {
         'fin:missed:ada:streamco:2026-11',
         'fin:rising:ada:streamco:2026-10',
         'fin:dup:x2',
-        'fin:fee:acme:late-charge:2026-10',
+        'fin:fee:acme-main:2026-10',
         'fin:check:acme-card:2026-10',
         'fin:review:2026-10'
       ])
@@ -274,7 +277,7 @@ describe('buildFinance', () => {
 });
 
 describe('fees', () => {
-  test('a categorised payment named "fees" is not a bank fee; an uncategorised charge is', () => {
+  test('a categorised payment named "fees" is not a bank fee; an uncategorised charge is, and an old one is history', () => {
     const data = buildFinance({
       ...INPUT,
       txns: [
@@ -284,8 +287,15 @@ describe('fees', () => {
       rules: [{ match: 'SCHOOL', category: 'education' }]
     });
     expect(data.insights.filter((insight) => insight.kind === 'fee').map((insight) => insight.label)).toEqual([
-      'fin:fee:ada:annual-card-fee:2026-10'
+      'fin:fee:ada-main:2026-10'
     ]);
+    expect(
+      buildFinance({
+        ...INPUT,
+        today: '2027-01-15',
+        txns: [txn('t3', '2026-10-03', 'ada-main', -15, 'ANNUAL CARD FEE')]
+      }).insights.filter((insight) => insight.kind === 'fee')
+    ).toEqual([]);
   });
 });
 
@@ -343,6 +353,38 @@ describe('paid for another entity', () => {
   });
 });
 
+describe('a loan seen only from the personal side', () => {
+  const loan = txn('l1', '2026-11-03', 'ada-main', 2000, 'DUITNOW LOAN ACME SDN BHD');
+
+  test('a rule marking it director with for the company moves what the operator owes it', () => {
+    const data = buildFinance({
+      ...INPUT,
+      txns: [loan],
+      rules: [{ match: 'LOAN ACME', category: 'director', for: 'acme' }]
+    });
+    expect(data.director[0]?.movements).toEqual([
+      { date: '2026-11-03', amount: 2000, payee: 'DUITNOW LOAN ACME SDN BHD', category: 'director', why: 'transfer' }
+    ]);
+    expect(data.lines[0]).toMatchObject({ entity: 'ada', paidBy: null, kind: Kind.Director });
+  });
+
+  test('with one company, the rule needs no for', () => {
+    const data = buildFinance({ ...INPUT, txns: [loan], rules: [{ match: 'LOAN ACME', category: 'director' }] });
+    expect(data.director[0]?.balance).toBe(5000 + 2000);
+  });
+
+  test("once the company's side is imported too, the pair counts once, from the company's side", () => {
+    const data = buildFinance({
+      ...INPUT,
+      txns: [txn('c1', '2026-11-02', 'acme-main', -2000, 'LOAN TO ADA'), loan],
+      rules: [{ match: 'LOAN', category: 'director', for: 'acme' }]
+    });
+    expect(data.director[0]?.movements.map((movement) => [movement.date, movement.amount])).toEqual([
+      ['2026-11-02', 2000]
+    ]);
+  });
+});
+
 describe('insight labels', () => {
   test('two fees from one new payee in a month, or two unproven statements in a month, are one insight each, and every label is unique', () => {
     const data = buildFinance({
@@ -357,7 +399,7 @@ describe('insight labels', () => {
       ]
     });
     const labels = data.insights.map((insight) => insight.label);
-    expect(labels.filter((label) => label === 'fin:fee:acme:late-charge:2026-10')).toHaveLength(1);
+    expect(labels.filter((label) => label === 'fin:fee:acme-main:2026-10')).toHaveLength(1);
     expect(labels.filter((label) => label === 'fin:check:acme-card:2026-10')).toHaveLength(1);
     expect(new Set(labels).size).toBe(labels.length);
     expect(new Set(buildFinance(INPUT).insights.map((insight) => insight.label)).size).toBe(
