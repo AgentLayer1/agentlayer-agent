@@ -19,6 +19,8 @@ const company: Entity = {
   childrenUnder18: null,
   startedOn: null,
   bookedThrough: null,
+  directorBalance: null,
+  directorBalanceOn: null,
   accounts: [],
   obligations: [],
 };

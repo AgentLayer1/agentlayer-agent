@@ -14,7 +14,7 @@ import { parseFrontmatter } from "../../../src/tasks/schema";
  * Usage: bun calendar.ts plan [--today YYYY-MM-DD]       prints { missing, existing, pendingCloses }
  *        bun calendar.ts liability [--today YYYY-MM-DD]  prints each entity's tax position
  *        bun calendar.ts books [--today YYYY-MM-DD]      prints each company's bookkeeping state
- *        bun calendar.ts render [--today YYYY-MM-DD]     writes dashboard.html, prints its path
+ *        bun calendar.ts render [--today YYYY-MM-DD]     writes the finances dashboard.html, prints its path
  */
 
 export const DueFrom = { Start: "start", End: "end" } as const;
@@ -66,6 +66,8 @@ export interface Entity {
   childrenUnder18: number | null;
   startedOn: string | null;
   bookedThrough: string | null;
+  directorBalance: number | null;
+  directorBalanceOn: string | null;
   accounts: Account[];
   obligations: Obligation[];
 }
@@ -326,6 +328,8 @@ export const parseEntity = (slug: string, raw: string): Entity => {
     childrenUnder18: typeof data.children_under_18 === "number" ? data.children_under_18 : null,
     startedOn: dates[0] ?? null,
     bookedThrough: monthField(slug, data, "booked_through"),
+    directorBalance: typeof data.director_balance === "number" ? data.director_balance : null,
+    directorBalanceOn: dateField(data, "director_balance_on"),
     accounts: accounts.filter(isAccount),
     obligations: obligations.filter(isObligation),
   };
@@ -468,9 +472,9 @@ if (import.meta.main) {
     process.exit(1);
   }
   if (command === "render") {
-    const { renderDashboard } = await import("./dashboard");
+    const { renderFinances } = await import("./page");
     const path = join(taxDir, "dashboard.html");
-    writeFileSync(path, renderDashboard(taxDir, today));
+    writeFileSync(path, renderFinances(taxDir, today));
     console.log(path);
   } else if (command === "liability") {
     const { positions } = await import("./liability");

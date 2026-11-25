@@ -152,6 +152,22 @@ describe('readLines', () => {
     ]);
   });
 
+  test("turns a card's charges and the balance owed into money out when the importer inverts them", () => {
+    const card = readLines(
+      [
+        ['date', 'description', 'amount', 'balance'],
+        ['2026-10-03', 'Shop', '20.00', '120.00'],
+        ['2026-10-09', 'Payment', '-120.00', '0.00']
+      ],
+      { ...CANONICAL, invert: true }
+    );
+    expect(card.map((line) => [line.amount, line.balance])).toEqual([
+      [-20, -120],
+      [120, -0]
+    ]);
+    expect(prove(card, { opening: null, closing: null }).check).toBe(Check.Checked);
+  });
+
   test("turns a card's charges into money out when the importer inverts them", () => {
     const rows = [
       ['date', 'description', 'amount'],

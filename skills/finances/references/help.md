@@ -8,6 +8,12 @@ Your companies and your own money, kept legible and ahead of their deadlines. I 
 |---|---|---|
 | "Import this statement", "import ~/Downloads/october.csv", `/finances import` | **import** | Each statement filed once, proven against its own balances, its lines added to your accounts, and the month marked in for the books |
 
+### 📊 Your money
+
+| Ask | Playbook | You get |
+|---|---|---|
+| "Refresh my finances", "categorise the new transactions", "why was October high?" | **dashboard** | The finances page rebuilt (cash per entity, cash flow, spending, bills, the director balance, charity, checks), rules for what no rule covered, and answers from your statements |
+
 ### 📅 Tax deadlines
 
 | Ask | Playbook | You get |

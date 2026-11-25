@@ -29,6 +29,8 @@ const acme: Entity = {
   childrenUnder18: null,
   startedOn: null,
   bookedThrough: null,
+  directorBalance: null,
+  directorBalanceOn: null,
   accounts: [],
   obligations: [
     { id: "cp204", title: "CP204 estimate", period: { months: 12, anchor: "fye" }, due: { from: "start", days: -31 } },

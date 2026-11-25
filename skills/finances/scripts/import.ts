@@ -221,7 +221,7 @@ export const readLines = (rows: string[][], importer: Importer): Line[] => {
             .filter((text) => text !== '')
             .join(' ')
             .replace(/\s+/g, ' '),
-          balance: balanceText === '' ? null : parseMoney(balanceText)
+          balance: balanceText === '' ? null : (importer.invert ? -1 : 1) * (parseMoney(balanceText) ?? 0)
         }
       ];
     } catch (error) {
