@@ -245,7 +245,7 @@ describe('importStatement', () => {
     expect(readFileSync(join(dir, report.filed ?? ''), 'utf8')).toBe(OCTOBER);
     const transactions = readFileSync(join(dir, 'data/transactions/acme/2026.csv'), 'utf8').trim().split('\n');
     expect(transactions).toHaveLength(5);
-    expect(transactions[4]).toContain(',2026-10-31,acme-main,5000,MYR,5000,6150,Transfer from client INV-7,');
+    expect(transactions[4]).toContain(',2026-10-31,acme-main,5000,MYR,6150,Transfer from client INV-7,');
     expect(readFileSync(join(dir, 'data/statements.csv'), 'utf8')).toContain(
       'acme-main,2026-10-01,2026-10-31,2200,6150,MYR,,,checked,'
     );
@@ -284,6 +284,25 @@ describe('importStatement', () => {
     expect(importStatement({ dir, file, account: 'acme-main' })).toMatchObject({ alreadyImported: false, added: 4 });
   });
 
+  test('each account imports in its own currency, whatever the entity pins', () => {
+    const dir = home();
+    write(
+      dir,
+      'entities/acme.md',
+      PROFILE.replace(
+        'currency: MYR }\n- { id: acme-card',
+        'currency: MYR }\n- { id: acme-gbp, name: Acme pounds, currency: GBP }\n- { id: acme-card'
+      )
+    );
+    importStatement({
+      dir,
+      account: 'acme-gbp',
+      file: write(dir, 'data/inbox/gbp.csv', 'date,description,amount,balance\n2026-10-02,Hosting,-12.50,87.50\n')
+    });
+    const rows = readFileSync(join(dir, 'data/transactions/acme/2026.csv'), 'utf8').trim().split('\n');
+    expect(rows[1]?.split(',').slice(2, 5)).toEqual(['acme-gbp', '-12.5', 'GBP']);
+  });
+
   test('a statement with balances replaces an export of the same period that had none', () => {
     const dir = home();
     const period = { from: '2026-10-01', to: '2026-10-31' };
@@ -309,7 +328,7 @@ describe('importStatement', () => {
     expect(statements).toHaveLength(2);
     expect(statements[1]).toContain('acme-main,2026-10-01,2026-10-31,100,90,MYR,,,checked,');
     const transactions = readFileSync(join(dir, 'data/transactions/acme/2026.csv'), 'utf8').trim().split('\n');
-    expect(transactions.slice(1).map((row) => row.split(',')[7])).toEqual(['SHOP A KUALA LUMPUR']);
+    expect(transactions.slice(1).map((row) => row.split(',')[6])).toEqual(['SHOP A KUALA LUMPUR']);
     const ledger = readFileSync(join(dir, 'data/ledger/acme/2026.csv'), 'utf8').trim().split('\n');
     expect(ledger.slice(1).filter((row) => row.includes(',statement,'))).toHaveLength(1);
     expect(ledger.at(-1)).toContain(',90,');

@@ -274,9 +274,9 @@ body.masked iframe.tax:hover { filter: none; }
 
   const esc = (text) => String(text ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
   const symbol = (currency) => (currency === "MYR" ? "RM" : currency);
-  const plain = (amount, currency = DATA.base, digits = 0) =>
+  const plain = (amount, currency = DATA.home, digits = 0) =>
     `${amount < 0 ? "−" : ""}${symbol(currency)} ${Math.abs(amount).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
-  const money = (amount, currency = DATA.base, digits = 0) => `<span class="amt">${plain(amount, currency, digits)}</span>`;
+  const money = (amount, currency = DATA.home, digits = 0) => `<span class="amt">${plain(amount, currency, digits)}</span>`;
   const monthLabel = (key, year = true) => `${MONTHS[Number(key.slice(5, 7)) - 1]}${year ? ` ${key.slice(0, 4)}` : ""}`;
   const dateLabel = (date) => `${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1]}`;
   const days = (date) => Date.parse(`${date}T00:00:00Z`) / 86400000;
@@ -305,7 +305,7 @@ body.masked iframe.tax:hover { filter: none; }
       .map((row) => `<tr>${row.map((cell, i) => `<td${i ? ' class="num"' : ""}>${cell}</td>`).join("")}</tr>`)
       .join("")}</tbody></table></details>`;
 
-  const myr = (rows) => rows.filter((row) => row.currency === DATA.base);
+  const myr = (rows) => rows.filter((row) => row.currency === DATA.home);
   const lines = () => DATA.lines.filter(mine);
   const flows = (rows) => ({
     in: sum(rows.filter((l) => l.kind === "income"), (l) => l.amount),
@@ -431,7 +431,7 @@ body.masked iframe.tax:hover { filter: none; }
   const plural = (n, word, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
   const COLOURS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--c6)", "var(--c7)", "var(--c8)"];
   const rank = (() => {
-    const totals = DATA.lines.filter((l) => isSpend(l) && l.category !== null && l.currency === DATA.base)
+    const totals = DATA.lines.filter((l) => isSpend(l) && l.category !== null && l.currency === DATA.home)
       .reduce((map, l) => map.set(l.category, (map.get(l.category) ?? 0) - l.amount), new Map());
     return [...totals].sort((a, b) => b[1] - a[1]).map(([name]) => name);
   })();
@@ -471,10 +471,10 @@ body.masked iframe.tax:hover { filter: none; }
       const now = flows(ls.filter((l) => l.date.startsWith(month)));
       const last = flows(ls.filter((l) => l.date.startsWith(shift(month, -1))));
       const accounts = DATA.accounts.filter(mine);
-      const priced = accounts.filter((a) => a.currency === DATA.base && a.balance !== null);
+      const priced = accounts.filter((a) => a.currency === DATA.home && a.balance !== null);
       const cash = sum(priced.filter((a) => a.type !== "card"), (a) => a.balance);
       const owed = sum(priced.filter((a) => a.type === "card"), (a) => a.balance);
-      const foreign = groupBy(accounts.filter((a) => a.currency !== DATA.base && a.balance !== null), (a) => a.currency);
+      const foreign = groupBy(accounts.filter((a) => a.currency !== DATA.home && a.balance !== null), (a) => a.currency);
       const director = DATA.director.filter(mine);
       const failing = DATA.checks.filter((c) => !c.ok).length;
       const insights = DATA.insights.filter(mine);
@@ -503,7 +503,7 @@ body.masked iframe.tax:hover { filter: none; }
       const months = monthsShown();
       const ls = myr(lines());
       const by = months.map((m) => flows(ls.filter((l) => l.date.startsWith(m))));
-      return `<p class="kicker">Cash flow</p><h1>Money in and out, month by month</h1><p class="lede">${DATA.base} only; other currencies stay on their accounts. Spending includes charity.</p>
+      return `<p class="kicker">Cash flow</p><h1>Money in and out, month by month</h1><p class="lede">${DATA.home} only; other currencies stay on their accounts. Spending includes charity.</p>
         <div class="card">${barsChart(months, [{ name: "In", color: "var(--s1)", values: by.map((f) => f.in) }, { name: "Out", color: "var(--s2)", values: by.map((f) => f.out) }])}
         ${tableOf(["Month", "In", "Out", "Net"], months.map((m, i) => [monthLabel(m), money(by[i].in), money(by[i].out), money(by[i].in - by[i].out)]))}</div>`;
     },
@@ -511,7 +511,7 @@ body.masked iframe.tax:hover { filter: none; }
       const mode = state.period;
       const anchor = anchorOf(mode);
       const all = viewed().filter(mine);
-      const base = all.filter((l) => isSpend(l) && l.currency === DATA.base);
+      const base = all.filter((l) => isSpend(l) && l.currency === DATA.home);
       const end = P.end(mode, anchor);
       const partial = through < end && P.key(mode, through) === anchor;
       const cutoff = partial ? days(through) - days(P.start(mode, anchor)) : null;
@@ -545,7 +545,7 @@ body.masked iframe.tax:hover { filter: none; }
           <span class="num">${money(g.amount)}</span><span class="share">${pct(g.amount, total)}%</span>
           ${deltaTag(g.amount, prevBy.get(g.category) ?? 0)}<span class="spark-cell">${spark(trendOf(g.category), colour)}</span></button>`;
       const approvedAmount = spent(cur.filter((l) => l.approved));
-      const foreign = [...groupBy(all.filter((l) => isSpend(l) && l.currency !== DATA.base && P.key(mode, l.date) === anchor), (l) => l.currency)];
+      const foreign = [...groupBy(all.filter((l) => isSpend(l) && l.currency !== DATA.home && P.key(mode, l.date) === anchor), (l) => l.currency)];
       const modeBtn = (m, label) => `<button data-act="mode" data-mode="${m}" aria-pressed="${mode === m}">${label}</button>`;
       const periodbar = `<div class="periodbar"><div class="seg" role="group" aria-label="Period">${modeBtn("week", "Week")}${modeBtn("month", "Month")}${modeBtn("year", "Year")}</div>
         <div class="stepper"><button data-act="step" data-by="-1" aria-label="Previous ${mode}"${hasPrev ? "" : " disabled"}>‹</button><button data-act="step" data-by="1" aria-label="Next ${mode}"${canFwd ? "" : " disabled"}>›</button></div>
@@ -636,7 +636,7 @@ body.masked iframe.tax:hover { filter: none; }
         const status = rs.some((l) => l.category === null) ? "none" : rs.some((l) => !l.approved) ? "suggested" : "approved";
         const cats = [...groupBy(rs.filter((l) => l.category !== null), (l) => l.category)].sort((a, b) => b[1].length - a[1].length);
         const keys = [...new Set(rs.filter((l) => !l.approved && l.rule !== null).map((l) => l.rule))];
-        return { k, payee: rs[0].payee, rs, state: status, category: cats[0]?.[0] ?? null, mixed: cats.length > 1, keys, out: -sum(rs.filter((l) => l.amount < 0 && l.currency === DATA.base), (l) => l.amount), inn: sum(rs.filter((l) => l.amount > 0 && l.currency === DATA.base), (l) => l.amount), pending: rs.some((l) => l.pending) };
+        return { k, payee: rs[0].payee, rs, state: status, category: cats[0]?.[0] ?? null, mixed: cats.length > 1, keys, out: -sum(rs.filter((l) => l.amount < 0 && l.currency === DATA.home), (l) => l.amount), inn: sum(rs.filter((l) => l.amount > 0 && l.currency === DATA.home), (l) => l.amount), pending: rs.some((l) => l.pending) };
       });
       const count = (t) => groupsAll.filter((g) => g.state === t).length;
       const q = state.query.trim().toLowerCase();
@@ -656,7 +656,7 @@ body.masked iframe.tax:hover { filter: none; }
         ${catList()}${editBar()}`;
     },
     bills() {
-      const bills = DATA.recurring.filter(mine).filter((b) => b.currency === DATA.base);
+      const bills = DATA.recurring.filter(mine).filter((b) => b.currency === DATA.home);
       const dues = DATA.dues.filter(mine).filter((d) => !d.paid);
       const horizon = days(DATA.today) + 30;
       const upcoming = [

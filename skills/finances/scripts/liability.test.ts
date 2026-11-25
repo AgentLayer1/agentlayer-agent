@@ -11,6 +11,8 @@ const company: Entity = {
   name: "Acme Sdn. Bhd.",
   kind: "company",
   country: "my",
+  currency: "MYR",
+  currencyPinned: true,
   fye: "12-31",
   close: "monthly",
   sme: false,

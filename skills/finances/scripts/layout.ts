@@ -116,7 +116,7 @@ export const loadReceipts = (dir: string): Receipt[] =>
         date: row.date ?? '',
         merchant: row.merchant ?? '',
         amount: Number(row.amount),
-        currency: row.currency || 'MYR',
+        currency: row.currency ?? '',
         items: row.items ?? '',
         entity: row.entity ?? '',
         file: row.file ?? '',

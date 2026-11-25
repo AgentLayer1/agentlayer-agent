@@ -59,7 +59,7 @@ export interface StatementLine {
   balance: number | null;
 }
 
-const TRANSACTIONS_HEADER = 'id,date,account,amount,currency,amount_myr,balance,raw,source';
+const TRANSACTIONS_HEADER = 'id,date,account,amount,currency,balance,raw,source';
 const STATEMENTS_HEADER = 'account,period_start,period_end,opening,closing,currency,due_date,amount_due,check,file,sha';
 const LEDGER_HEADER =
   'date,type,counterparty,country,currency,amount,amount_myr,tax,reference,category,file,flags,notes';
@@ -443,7 +443,7 @@ const planImport = (options: ImportOptions): Planned => {
   const proof = prove(lines, { opening: options.opening ?? null, closing: options.closing ?? null });
   const from = options.from ?? lines[0]?.date ?? '';
   const to = options.to ?? lines.at(-1)?.date ?? '';
-  const currency = account.currency ?? 'MYR';
+  const currency = account.currency ?? entity.currency;
   const statements = readRows(DATA.statements(dir));
   const samePeriod = statements.find(
     (row) => row.account === account.id && row.period_start === from && row.period_end === to
@@ -502,17 +502,7 @@ const planImport = (options: ImportOptions): Planned => {
     },
     rows: fresh.map(({ line, id }) => ({
       year: line.date.slice(0, 4),
-      line: csvLine([
-        id,
-        line.date,
-        account.id,
-        line.amount,
-        currency,
-        currency === 'MYR' ? line.amount : null,
-        line.balance,
-        line.raw,
-        source
-      ])
+      line: csvLine([id, line.date, account.id, line.amount, currency, line.balance, line.raw, source])
     })),
     statement: csvLine([
       account.id,

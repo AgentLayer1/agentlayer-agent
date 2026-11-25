@@ -35,6 +35,8 @@ const entity = (
   name: slug,
   kind,
   country: 'my',
+  currency: 'MYR',
+  currencyPinned: true,
   fye: '12-31',
   close: kind === 'company' ? 'monthly' : 'none',
   sme: false,
@@ -303,6 +305,12 @@ describe('buildFinance', () => {
     expect(checks.gaps).toMatchObject({ ok: false, items: ['acme-main: nothing from 2026-11-01 to 2026-11-02'] });
     expect(checks.openings?.ok).toBe(true);
     expect(checks.categories?.ok).toBe(false);
+    expect(checks.currencies?.ok).toBe(true);
+    const unpinned = buildFinance({
+      ...INPUT,
+      entities: [entity('acme', 'company', [], { currencyPinned: false })]
+    }).checks.find((check) => check.id === 'currencies');
+    expect(unpinned).toMatchObject({ ok: false, items: ['acme: MYR from its country; add currency to its profile'] });
   });
 
   test('keeps five years of lines for the page', () => {
@@ -395,6 +403,26 @@ describe('paid for another entity', () => {
       currency: 'USD'
     });
     expect(acme).toMatchObject({ currency: 'MYR', balance: 5000 + 4200 + 1000 + 180 - 300 });
+  });
+
+  test("a company in another currency keeps its director balance in its own currency, and the home currency is the operator's", () => {
+    const usCompany = entity(
+      'acme',
+      'company',
+      [
+        { id: 'acme-main', name: 'Acme current' },
+        { id: 'acme-card', name: 'Acme card', type: 'card' }
+      ],
+      { currency: 'USD' }
+    );
+    const ada = entity('ada', 'individual', [{ id: 'ada-main', name: 'Ada current' }]);
+    const data = buildFinance({ ...INPUT, entities: [usCompany, ada], txns, rules });
+    expect(data.director[0]).toMatchObject({ currency: 'USD', balance: 5000 });
+    expect(data.home).toBe('MYR');
+    expect(data.entities.map((entity) => [entity.slug, entity.currency])).toEqual([
+      ['acme', 'USD'],
+      ['ada', 'MYR']
+    ]);
   });
 
   test('a for naming no entity stops the build', () => {

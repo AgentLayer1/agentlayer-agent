@@ -492,8 +492,9 @@ export interface DirectorMovement {
 
 export interface FinanceData {
   today: string;
-  base: string;
-  entities: { slug: string; name: string; kind: string }[];
+  /** The operator's own currency: the All view's local currency. Each entity's own is on `entities`. */
+  home: string;
+  entities: { slug: string; name: string; kind: string; currency: string }[];
   accounts: AccountView[];
   /** `entity` is whose expense or income the line is; `paidBy` names the entity whose account paid, when another. */
   lines: {
@@ -535,8 +536,6 @@ export interface FinanceData {
 /** Five years of lines: enough for the year view, small enough to embed. */
 const LINE_MONTHS = 60;
 /** A statement older than this, about one cycle and a few days, means the next one is due. */
-/** The currency every total is in; money in another stays on its own lines, never converted. */
-const BASE = 'MYR';
 const STALE_DAYS = 35;
 /** Fees and double charges older than this are history, not something to act on. */
 const RECENT_DAYS = 60;
@@ -562,7 +561,7 @@ export const buildFinance = ({
       name: account.name,
       entity: entity.slug,
       type: account.type ?? 'current',
-      currency: account.currency ?? 'MYR',
+      currency: account.currency ?? entity.currency,
       balance: latest?.closing ?? null,
       asOf: latest?.to ?? null,
       statements: byAccount.get(account.id)?.length ?? 0,
@@ -631,13 +630,13 @@ export const buildFinance = ({
       return [
         {
           company: company.slug,
-          currency: BASE,
+          currency: company.currency,
           opening: opening?.balance ?? null,
           openingOn: opening?.on ?? null,
           balance:
             (opening?.balance ?? 0) +
             movements
-              .filter((movement) => movement.currency === BASE)
+              .filter((movement) => movement.currency === company.currency)
               .reduce((sum, movement) => sum + movement.amount, 0),
           movements
         }
@@ -712,6 +711,14 @@ export const buildFinance = ({
       label: 'Every line has a category',
       ok: reviewCount === 0,
       items: [...uncategorized].map(([month, group]) => `${month}: ${group.length} to categorise`)
+    },
+    {
+      id: 'currencies',
+      label: 'Every entity has its currency pinned',
+      ok: entities.every((entity) => entity.currencyPinned),
+      items: entities
+        .filter((entity) => !entity.currencyPinned)
+        .map((entity) => `${entity.slug}: ${entity.currency} from its country; add currency to its profile`)
     }
   ];
   const accountById = new Map(accounts.map((item) => [item.account.id, item]));
@@ -813,8 +820,13 @@ export const buildFinance = ({
   );
   return {
     today,
-    base: BASE,
-    entities: entities.map((entity) => ({ slug: entity.slug, name: entity.name, kind: entity.kind })),
+    home: entities.find((entity) => entity.kind === EntityKind.Individual)?.currency ?? entities[0]?.currency ?? 'USD',
+    entities: entities.map((entity) => ({
+      slug: entity.slug,
+      name: entity.name,
+      kind: entity.kind,
+      currency: entity.currency
+    })),
     accounts: accountViews,
     lines: lines
       .filter((line) => line.date >= oldest)
@@ -944,6 +956,11 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
   const owner = new Map(
     entities.flatMap((entity) => entity.accounts.map((account) => [account.id, entity.slug] as const))
   );
+  const currencyOf = new Map(
+    entities.flatMap((entity) =>
+      entity.accounts.map((account) => [account.id, account.currency ?? entity.currency] as const)
+    )
+  );
   const txns = csvFiles(DATA.transactions(dir)).flatMap((path) =>
     parseCsv(readFileSync(path, 'utf8')).map(
       (row): Txn => ({
@@ -952,7 +969,7 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
         account: row.account ?? '',
         entity: owner.get(row.account ?? '') ?? '',
         amount: Number(row.amount),
-        currency: row.currency || 'MYR',
+        currency: row.currency || (currencyOf.get(row.account ?? '') ?? ''),
         raw: row.raw ?? ''
       })
     )
@@ -966,7 +983,7 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
           to: row.period_end ?? '',
           opening: numberOrNull(row.opening),
           closing: numberOrNull(row.closing),
-          currency: row.currency || 'MYR',
+          currency: row.currency || (currencyOf.get(row.account ?? '') ?? ''),
           due: row.due_date || null,
           amountDue: numberOrNull(row.amount_due),
           check: row.check === Check.Checked ? Check.Checked : Check.Unchecked

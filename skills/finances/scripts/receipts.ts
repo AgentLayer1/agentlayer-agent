@@ -183,7 +183,10 @@ if (import.meta.main) {
             date,
             merchant,
             amount,
-            currency: argValue(rest, '--currency') ?? 'MYR',
+            currency:
+              argValue(rest, '--currency') ??
+              loadEntities(dir).find((item) => item.slug === entity)?.currency ??
+              refuse(new Error(`no entity ${entity}`)),
             items: argValue(rest, '--items'),
             entity
           }),
