@@ -2,7 +2,8 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { manifestLoads, sandboxProblem, splitPieces } from '@/hosts/antigravity';
+import { policyDecision } from '@/hooks/policy';
+import { antigravityHost, manifestLoads, sandboxProblem, splitPieces, toolSchemas } from '@/hosts/antigravity';
 
 describe('splitPieces', () => {
   const bytes = (text: string): number => Buffer.byteLength(text);
@@ -81,5 +82,23 @@ describe('sandboxProblem', () => {
     expect(sandboxProblem(on, 'win32', '10.0.26100')).toBeNull();
     expect(sandboxProblem(on, 'darwin', '25.0.0')).toBeNull();
     expect(sandboxProblem(settings('off-win.json', '{}'), 'win32', '10.0.26100')).toContain('is off in');
+  });
+});
+
+describe("Antigravity's tool schemas", () => {
+  const home = mkdtempSync(join(tmpdir(), 'agy-schemas-'));
+  afterAll(() => rmSync(home, { recursive: true, force: true }));
+  const schema = join(toolSchemas(), 'agentlayer-agent_agent', 'task_query.json');
+  const decisionFor = (name: string, args: Record<string, unknown>) => {
+    const payload = antigravityHost.readPayload(JSON.stringify({ cwd: home, toolCall: { name, args } }));
+    return policyDecision(payload.call, { home, cwd: home, settings: {}, hostFolders: payload.hostFolders });
+  };
+
+  test('reading one before a tool call is the host’s own business, not an ask', () => {
+    expect(decisionFor('view_file', { AbsolutePath: schema })).toBeNull();
+  });
+
+  test('writing one still asks first', () => {
+    expect(decisionFor('write_to_file', { TargetFile: schema })?.decision).toBe('force_ask');
   });
 });

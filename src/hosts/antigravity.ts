@@ -18,6 +18,9 @@ export const personalManifest = (): string => resolve(homedir(), '.gemini', 'con
 /** The Antigravity CLI's user settings, the only place it keeps permission rules and the sandbox switch. */
 export const cliSettings = (): string => resolve(homedir(), '.gemini', 'antigravity-cli', 'settings.json');
 
+/** Where the CLI keeps each MCP tool's schema, which it reads with its file tool before calling the tool. */
+export const toolSchemas = (): string => resolve(homedir(), '.gemini', 'antigravity-cli', 'mcp');
+
 /** Whether CLI settings turn the terminal sandbox on in every mode (it is otherwise on only in auto mode). */
 const sandboxOnIn = (settingsPath: string): boolean => {
   try {
@@ -123,6 +126,9 @@ const toolCallOf = (parsed: AntigravityPayload): ToolCall => {
 
 const readPayload = (raw: string): HookPayload => {
   const parsed = JSON.parse(raw) as AntigravityPayload;
+  const call = toolCallOf(parsed);
+  // Reads only: a rewritten schema would change what a tool tells the model it does.
+  const schemas = call.kind === 'read' || call.kind === 'search' ? [toolSchemas()] : [];
   // A subagent's hooks carry no user input, and at its start its transcript doesn't exist yet.
   const child =
     parsed.lastUserInput === '' &&
@@ -136,12 +142,12 @@ const readPayload = (raw: string): HookPayload => {
         ? parsed.toolCall.args.Cwd
         : undefined) ?? parsed.cwd,
     origin: child ? 'child' : 'user',
-    call: toolCallOf(parsed),
+    call,
     home: homeOfSession({
       workspacePaths: parsed.workspacePaths?.map((path) => nativeForm(path)),
       cwd: parsed.cwd === undefined ? undefined : nativeForm(parsed.cwd)
     }),
-    hostFolders: parsed.artifactDirectoryPath ? [parsed.artifactDirectoryPath] : []
+    hostFolders: [...(parsed.artifactDirectoryPath ? [parsed.artifactDirectoryPath] : []), ...schemas]
   };
 };
 
