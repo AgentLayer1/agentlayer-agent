@@ -76,6 +76,13 @@ table that starts from what the home already has.
   operator approves, and edits made on the page paste back into a session. Sync nudges an import when
   the inbox has files, files what the page raises as tasks, and keeps the page current. `capture`
   takes `kind: finance` with a file and copies it byte for byte into the inbox.
+- Currencies: each entity profile pins the currency it pays tax or is registered in, and each account
+  keeps its own, so statements import in any currency. The page's summaries (overview, cash flow,
+  where it goes, bills, the director balance, charity) switch between the entity's currency and USD
+  at each month's central-bank rate, fetched from Frankfurter with no key (only currency codes and
+  dates leave the machine) into `data/rates.csv`; transaction lines stay as the bank wrote them. Tax
+  rules ship for Malaysia so far, and entities elsewhere get statements and the page without a tax
+  view.
 - `packs_status`: every optional pack, its group and blurb, and whether this home has it (`new`,
   `partial` with what's missing, or `ready`). It reads settings, `.mcp.json`, home files and the
   secret store's key names, never a value. One registry in the code now holds all fourteen packs.
@@ -104,6 +111,11 @@ table that starts from what the home already has.
 - `settings: mandatory` — add `mcp__plugin_agentlayer_agent__packs_status` to `permissions.allow`.
   `Skill(agentlayer:tax)` becomes `Skill(agentlayer:finances)` where it sits.
 - `deps: required` — `cmux-custom-manager` moves to `b135877`; run `bun install` in the plugin root.
+- `settings: optional` — add `api.frankfurter.dev` to `sandbox.network.allowedDomains`, so the
+  finances page can fetch exchange rates for its USD view.
+- `manual: optional` — finances only: add `currency:` (such as `MYR`) to each profile in
+  `projects/finances/entities/`. An import into an entity without one is refused until it's added,
+  so a currency guessed from the country is never saved.
 - `manual: optional` — Antigravity only: when `agy` is installed, paste the note the upgrade writes
   to `.state/updates/antigravity-user-config.md` into `~/.gemini/config/plugins.json` and
   `~/.gemini/antigravity-cli/settings.json`, then start `agy` from the home.
