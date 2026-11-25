@@ -81,7 +81,7 @@ h2 { font-size: 15px; font-weight: 650; margin: 0 0 12px; }
 section.page { display: none; }
 section.page.on { display: block; }
 .card { background: var(--surface); border: 1px solid var(--ring); border-radius: 14px; padding: 18px 20px; margin-bottom: 18px; }
-.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; margin-bottom: 18px; }
 .grid2 > .card { margin-bottom: 0; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0; background: var(--surface); border: 1px solid var(--ring); border-radius: 14px; margin-bottom: 18px; overflow: hidden; }
 .tile { padding: 16px 20px; border-left: 1px solid var(--ring); }
@@ -300,11 +300,18 @@ body.masked iframe.tax:hover { filter: none; }
       const to = latestMonth();
       const from = shift(to, -2);
       const recent = ls.filter((l) => l.date.slice(0, 7) >= from);
-      const cats = [...groupBy(recent, (l) => l.category ?? "uncategorised")].map(([name, rows]) => ({ name, value: -sum(rows, (l) => l.amount) })).sort((a, b) => b.value - a.value);
-      const payees = [...groupBy(recent, (l) => l.payee)].map(([name, rows]) => ({ name, value: -sum(rows, (l) => l.amount), count: rows.length })).sort((a, b) => b.value - a.value).slice(0, 15);
-      return `<p class="kicker">Spending · ${esc(monthLabel(from))} to ${esc(monthLabel(to))}</p><h1>${money(sum(cats, (c) => c.value))} across ${cats.length} categories</h1><p class="lede">Categories come from rules.md. "Uncategorised" is what no rule names yet; ask your agent to categorise it and the rule it writes covers every month.</p>
-        <div class="grid2"><div class="card"><h2>By category</h2>${hbars(cats.slice(0, 14))}</div>
-        <div class="card"><h2>Biggest payees</h2>${payees.length ? `<table><thead><tr><th>Payee</th><th class="num">Times</th><th class="num">Total</th></tr></thead><tbody>${payees.map((p) => `<tr><td>${esc(p.name)}</td><td class="num">${p.count}</td><td class="num">${money(p.value)}</td></tr>`).join("")}</tbody></table>` : '<p class="empty">Nothing yet.</p>'}</div></div>`;
+      const whose = DATA.entities.filter((e) => recent.some((l) => l.entity === e.slug));
+      const card = (entity) => {
+        const own = recent.filter((l) => l.entity === entity.slug);
+        const cats = [...groupBy(own, (l) => l.category ?? "uncategorised")].map(([name, rows]) => ({ name, value: -sum(rows, (l) => l.amount) })).sort((a, b) => b.value - a.value);
+        const paidElsewhere = [...groupBy(own.filter((l) => l.paidBy), (l) => l.paidBy)];
+        const paidForOthers = [...groupBy(recent.filter((l) => l.paidBy === entity.slug), (l) => l.entity)];
+        return `<div class="card"><h2><span class="dot" style="background:${entityColor(entity.slug)}"></span> ${esc(entity.name)} · ${money(sum(cats, (c) => c.value))}</h2>${hbars(cats.slice(0, 14), entityColor(entity.slug))}${paidElsewhere.map(([payer, rows]) => `<p class="note">Includes ${money(-sum(rows, (l) => l.amount))} paid from ${esc(entityName(payer))}'s accounts, counted on the Director page.</p>`).join("")}${paidForOthers.map(([owner, rows]) => `<p class="note">Leaves out ${money(-sum(rows, (l) => l.amount))} its accounts paid for ${esc(entityName(owner))}, counted there.</p>`).join("")}</div>`;
+      };
+      const payees = [...groupBy(recent, (l) => `${l.entity}|${l.payee}`)].map(([, rows]) => ({ name: rows[0].payee, entity: rows[0].entity, paidBy: rows.find((l) => l.paidBy)?.paidBy ?? null, value: -sum(rows, (l) => l.amount), count: rows.length })).sort((a, b) => b.value - a.value).slice(0, 15);
+      return `<p class="kicker">Spending · ${esc(monthLabel(from))} to ${esc(monthLabel(to))}</p><h1>${whose.length > 1 ? whose.map((e) => `${money(-sum(recent.filter((l) => l.entity === e.slug), (l) => l.amount))} ${esc(e.kind === "individual" ? "personal" : e.name)}`).join(", ") : `${money(-sum(recent, (l) => l.amount))} spent`}</h1><p class="lede">Each expense counts for whoever it was for, whichever account paid: a rule's <code>for</code> moves a company payment that was really personal (or the reverse) to the right side, and the Director page keeps the balance between you. Categories come from rules.md; "uncategorised" is what no rule names yet.</p>
+        <div class="grid2">${whose.length ? whose.map(card).join("") : '<div class="card"><p class="empty">Nothing yet.</p></div>'}</div>
+        <div class="card"><h2>Biggest payees</h2>${payees.length ? `<table><thead><tr><th>Payee</th><th>For</th><th class="num">Times</th><th class="num">Total</th></tr></thead><tbody>${payees.map((p) => `<tr><td>${esc(p.name)}</td><td><span class="dot" style="background:${entityColor(p.entity)}"></span> ${esc(entityName(p.entity))}${p.paidBy ? ` <span class="chip">paid by ${esc(entityName(p.paidBy))}</span>` : ""}</td><td class="num">${p.count}</td><td class="num">${money(p.value)}</td></tr>`).join("")}</tbody></table>` : '<p class="empty">Nothing yet.</p>'}</div>`;
     },
     bills() {
       const bills = DATA.recurring.filter(mine).filter((b) => b.currency === DATA.base);
@@ -334,11 +341,11 @@ body.masked iframe.tax:hover { filter: none; }
       if (rows.length === 0) {
         return `<p class="kicker">Director</p><h1>No money between a company and you</h1><p class="lede">Transfers between a company's account and yours show here as they're imported. Add <code>director_balance</code> and <code>director_balance_on</code> to a company's profile to start from the accountant's figure.</p>`;
       }
-      return `<p class="kicker">Director</p><h1>${rows.map((d) => `${money(d.balance, d.currency)} owed to ${esc(entityName(d.company))}`).join(", ")}</h1><p class="lede">Money a company paid you, or for you, raises what you owe it; money you put back lowers it. Your accountant's books decide the figure; this is the running view between their closes.</p>` +
+      return `<p class="kicker">Director</p><h1>${rows.map((d) => `${money(d.balance, d.currency)} owed to ${esc(entityName(d.company))}`).join(", ")}</h1><p class="lede">Money a company paid you, or paid for you (a line a rule marks <code>for</code> you), raises what you owe it; money you put back, or a company cost you paid, lowers it. Your accountant's books decide the figure; this is the running view between their closes.</p>` +
         rows.map((d) => {
           const points = d.movements.reduce((acc, m) => [...acc, { ...m, balance: (acc.at(-1)?.balance ?? d.opening ?? 0) + m.amount }], []);
           return `<div class="card"><h2><span class="dot" style="background:${entityColor(d.company)}"></span> ${esc(entityName(d.company))}</h2>
-            <table><thead><tr><th>Date</th><th>What</th><th class="num">Change</th><th class="num">You owe</th></tr></thead><tbody>${d.opening !== null ? `<tr><td>${dateLabel(d.openingOn)}</td><td>Opening, from the accountant</td><td class="num"></td><td class="num">${money(d.opening, d.currency)}</td></tr>` : ""}${points.map((p) => `<tr><td>${dateLabel(p.date)}</td><td>${esc(p.payee)}</td><td class="num">${money(p.amount, d.currency)}</td><td class="num">${money(p.balance, d.currency)}</td></tr>`).join("")}</tbody></table></div>`;
+            <table><thead><tr><th>Date</th><th>What</th><th>Why</th><th class="num">Change</th><th class="num">You owe</th></tr></thead><tbody>${d.opening !== null ? `<tr><td>${dateLabel(d.openingOn)}</td><td>Opening, from the accountant</td><td></td><td class="num"></td><td class="num">${money(d.opening, d.currency)}</td></tr>` : ""}${points.map((p) => `<tr><td>${dateLabel(p.date)}</td><td>${esc(p.payee)}</td><td>${esc({ "transfer": "Transfer", "paid-for-you": `Paid for you${p.category ? ` · ${p.category}` : ""}`, "paid-for-company": `You paid it${p.category ? ` · ${p.category}` : ""}` }[p.why] ?? "")}</td><td class="num">${money(p.amount, d.currency)}</td><td class="num">${money(p.balance, d.currency)}</td></tr>`).join("")}</tbody></table></div>`;
         }).join("");
     },
     charity() {

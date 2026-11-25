@@ -43,6 +43,8 @@ export interface Rule {
   payee?: string;
   category?: string;
   account?: string;
+  date?: string;
+  for?: string;
 }
 
 export const Kind = {
@@ -59,6 +61,8 @@ export interface Line extends Txn {
   payee: string;
   category: string | null;
   kind: Kind;
+  /** Whose expense or income it is: the account's entity unless a rule's `for` says otherwise. */
+  for: string;
 }
 
 export const CHARITY = new Set(['charity', 'zakat', 'sadaqah', 'donation']);
@@ -104,28 +108,31 @@ export const defaultPayee = (raw: string): string =>
 const matches = (rule: Rule, text: string): boolean =>
   rule.match !== undefined && new RegExp(rule.match, 'i').test(text);
 
-const applies = (rule: Rule, txn: Txn): boolean => rule.account === undefined || rule.account === txn.account;
+const applies = (rule: Rule, txn: Txn): boolean =>
+  (rule.account === undefined || rule.account === txn.account) &&
+  (rule.date === undefined || txn.date.startsWith(rule.date));
 
 /**
  * Rules run in two passes, in file order: the first rule naming a payee whose pattern fits the raw
  * description renames it, then the first rule naming a category that fits the payee (by name or
- * pattern) or the raw description sets it.
+ * pattern) or the raw description sets it, and the first naming a `for` the same way says whose
+ * expense the line is. `account` and `date` (a day or a month) narrow any rule.
  */
-export const classify = (txn: Txn, rules: Rule[]): { payee: string; category: string | null } => {
+export const classify = (txn: Txn, rules: Rule[]): { payee: string; category: string | null; for: string | null } => {
   const payee =
     rules.find(
       (rule) => rule.payee !== undefined && rule.category === undefined && applies(rule, txn) && matches(rule, txn.raw)
     )?.payee ?? defaultPayee(txn.raw);
-  const category =
-    rules.find(
-      (rule) =>
-        rule.category !== undefined &&
-        applies(rule, txn) &&
-        ((rule.payee !== undefined && rule.payee.toLowerCase() === payee.toLowerCase()) ||
-          matches(rule, txn.raw) ||
-          matches(rule, payee))
-    )?.category ?? null;
-  return { payee, category };
+  const fits = (rule: Rule): boolean =>
+    applies(rule, txn) &&
+    ((rule.payee !== undefined && rule.payee.toLowerCase() === payee.toLowerCase()) ||
+      matches(rule, txn.raw) ||
+      matches(rule, payee));
+  return {
+    payee,
+    category: rules.find((rule) => rule.category !== undefined && fits(rule))?.category ?? null,
+    for: rules.find((rule) => rule.for !== undefined && fits(rule))?.for ?? null
+  };
 };
 
 /**
@@ -167,14 +174,22 @@ const pairKind = (a: Entity | undefined, b: Entity | undefined): Kind => {
 
 /** Every line with its payee, category and kind. */
 export const classifyAll = (txns: Txn[], rules: Rule[], entities: Entity[]): Line[] => {
+  const unknown = rules.find((rule) => rule.for !== undefined && !entities.some((entity) => entity.slug === rule.for));
+  if (unknown !== undefined) {
+    throw new Error(
+      `rules.md: for: ${unknown.for} is not an entity (use a profile's slug: ${entities.map((entity) => entity.slug).join(', ')})`
+    );
+  }
   const classified = txns.map((txn) => ({ txn, ...classify(txn, rules) }));
   const ruled = new Set(
-    classified.filter((line) => line.category === 'transfer' || line.category === 'director').map((line) => line.txn.id)
+    classified
+      .filter((line) => line.category === 'transfer' || line.category === 'director' || line.for !== null)
+      .map((line) => line.txn.id)
   );
   const pairs = pairTransfers(txns, ruled);
   const byId = new Map(txns.map((txn) => [txn.id, txn]));
   const entityOf = (slug: string | undefined): Entity | undefined => entities.find((entity) => entity.slug === slug);
-  return classified.map(({ txn, payee, category }): Line => {
+  return classified.map(({ txn, payee, category, for: owner }): Line => {
     const partner = byId.get(pairs.get(txn.id) ?? '');
     const kind: Kind =
       partner !== undefined
@@ -188,7 +203,8 @@ export const classifyAll = (txns: Txn[], rules: Rule[], entities: Entity[]): Lin
               : txn.amount > 0
                 ? Kind.Income
                 : Kind.Spend;
-    return { ...txn, payee, category, kind };
+    const own = kind === Kind.Spend || kind === Kind.Charity || kind === Kind.Income;
+    return { ...txn, payee, category, kind, for: own ? (owner ?? txn.entity) : txn.entity };
   });
 };
 
@@ -225,7 +241,7 @@ const BANDS: Record<Cadence, [number, number]> = { monthly: [25, 35], yearly: [3
 export const detectRecurring = (lines: Line[], coverage: Map<string, string>): Recurring[] => {
   const groups = Map.groupBy(
     lines.filter((line) => line.amount < 0 && (line.kind === Kind.Spend || line.kind === Kind.Charity)),
-    (line) => `${line.entity}|${line.currency}|${line.payee.toLowerCase()}`
+    (line) => `${line.for}|${line.currency}|${line.payee.toLowerCase()}`
   );
   return [...groups.values()].flatMap((group): Recurring[] => {
     const sorted = group.toSorted((a, b) => a.date.localeCompare(b.date));
@@ -247,7 +263,7 @@ export const detectRecurring = (lines: Line[], coverage: Map<string, string>): R
     const covered = coverage.get(last.account);
     return [
       {
-        entity: last.entity,
+        entity: last.for,
         account: last.account,
         payee: last.payee,
         category: last.category,
@@ -344,15 +360,29 @@ export interface AccountView {
   behind: boolean;
 }
 
+export const Why = { Transfer: 'transfer', PaidForYou: 'paid-for-you', PaidForCompany: 'paid-for-company' } as const;
+export type Why = (typeof Why)[keyof typeof Why];
+
+/** One change to what the operator owes a company: positive raises it. */
+export interface DirectorMovement {
+  date: string;
+  amount: number;
+  payee: string;
+  category: string | null;
+  why: Why;
+}
+
 export interface FinanceData {
   today: string;
   base: string;
   entities: { slug: string; name: string; kind: string }[];
   accounts: AccountView[];
+  /** `entity` is whose expense or income the line is; `paidBy` names the entity whose account paid, when another. */
   lines: {
     date: string;
     account: string;
     entity: string;
+    paidBy: string | null;
     amount: number;
     currency: string;
     payee: string;
@@ -367,7 +397,7 @@ export interface FinanceData {
     opening: number | null;
     openingOn: string | null;
     balance: number;
-    movements: { date: string; amount: number; payee: string }[];
+    movements: DirectorMovement[];
   }[];
   insights: Insight[];
   checks: Check[];
@@ -429,10 +459,27 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
   const director = entities
     .filter((entity) => entity.kind === EntityKind.Company)
     .flatMap((company) => {
+      const kindOf = (slug: string): string | undefined => entities.find((entity) => entity.slug === slug)?.kind;
       const movements = lines
-        .filter((line) => line.entity === company.slug && line.kind === Kind.Director)
         .filter((line) => company.directorBalanceOn === null || line.date > company.directorBalanceOn)
-        .map((line) => ({ date: line.date, amount: -line.amount, payee: line.payee }));
+        .toSorted((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
+        .flatMap((line): DirectorMovement[] => {
+          const base = { date: line.date, payee: line.payee, category: line.category };
+          if (line.entity === company.slug && line.kind === Kind.Director) {
+            return [{ ...base, amount: -line.amount, why: Why.Transfer }];
+          }
+          if (line.entity === company.slug && line.for !== company.slug && kindOf(line.for) === EntityKind.Individual) {
+            return [{ ...base, amount: -line.amount, why: Why.PaidForYou }];
+          }
+          if (
+            line.for === company.slug &&
+            line.entity !== company.slug &&
+            kindOf(line.entity) === EntityKind.Individual
+          ) {
+            return [{ ...base, amount: line.amount, why: Why.PaidForCompany }];
+          }
+          return [];
+        });
       if (movements.length === 0 && company.directorBalance === null) {
         return [];
       }
@@ -604,15 +651,16 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
     lines: lines
       .filter((line) => line.date >= oldest)
       .toSorted((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
-      .map(({ date, account, entity, amount, currency, payee, category, kind }) => ({
-        date,
-        account,
-        entity,
-        amount,
-        currency,
-        payee,
-        category,
-        kind
+      .map((line) => ({
+        date: line.date,
+        account: line.account,
+        entity: line.for,
+        paidBy: line.for === line.entity ? null : line.entity,
+        amount: line.amount,
+        currency: line.currency,
+        payee: line.payee,
+        category: line.category,
+        kind: line.kind
       })),
     recurring,
     dues,
@@ -635,7 +683,7 @@ const numberOrNull = (text: string | undefined): number | null =>
 const isRule = (value: unknown): value is Rule =>
   typeof value === 'object' &&
   value !== null &&
-  ['match', 'payee', 'category', 'account'].every(
+  ['match', 'payee', 'category', 'account', 'date', 'for'].every(
     (key) => !(key in value) || typeof (value as Record<string, unknown>)[key] === 'string'
   );
 
@@ -645,9 +693,14 @@ export const parseRules = (raw: string): Rule[] => {
   const categories = listBlock('rules.md', raw, 'Categories');
   const bad = [...payees, ...categories].find((rule) => !isRule(rule));
   if (bad !== undefined) {
-    throw new Error(`rules.md: ${JSON.stringify(bad)} is not a rule (match, payee, category and account are text)`);
+    throw new Error(
+      `rules.md: ${JSON.stringify(bad)} is not a rule (match, payee, category, account, date and for are text)`
+    );
   }
-  const rules = [...payees.filter(isRule).map(({ category: _ignored, ...rule }) => rule), ...categories.filter(isRule)];
+  const rules = [
+    ...payees.filter(isRule).map(({ category: _category, for: _for, ...rule }) => rule),
+    ...categories.filter(isRule)
+  ];
   const badPattern = rules.find((rule) => {
     try {
       return rule.match !== undefined && new RegExp(rule.match, 'i') === null;

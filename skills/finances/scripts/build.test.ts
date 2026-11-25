@@ -125,10 +125,11 @@ const INPUT: FinanceInput = {
 
 describe('classify', () => {
   test('renames the payee first, then sets the category from the payee or the description', () => {
-    expect(classify(TXNS[0] as Txn, RULES)).toEqual({ payee: 'Streamco', category: 'subscriptions' });
+    expect(classify(TXNS[0] as Txn, RULES)).toEqual({ payee: 'Streamco', category: 'subscriptions', for: null });
     expect(classify(txn('z', '2026-10-01', 'ada-main', -1, 'ZAKAT'), RULES)).toEqual({
       payee: 'ZAKAT',
-      category: 'zakat'
+      category: 'zakat',
+      for: null
     });
     expect(classify(txn('n', '2026-10-01', 'ada-main', -1, 'SHOP 99'), RULES).category).toBeNull();
   });
@@ -223,7 +224,7 @@ describe('buildFinance', () => {
         opening: 5000,
         openingOn: '2026-09-30',
         balance: 6000,
-        movements: [{ date: '2026-10-10', amount: 1000, payee: 'TRANSFER TO ADA' }]
+        movements: [{ date: '2026-10-10', amount: 1000, payee: 'TRANSFER TO ADA', category: null, why: 'transfer' }]
       }
     ]);
   });
@@ -284,10 +285,64 @@ describe('fees', () => {
   });
 });
 
+describe('paid for another entity', () => {
+  const rules: Rule[] = [
+    ...RULES,
+    { match: 'SCHOOL', category: 'education', for: 'ada' },
+    { match: 'RESTO', date: '2026-10-14', account: 'acme-card', category: 'dining', for: 'ada' },
+    { match: 'CLOUDHOST', category: 'software', for: 'acme' }
+  ];
+  const txns = [
+    ...TXNS,
+    txn('p1', '2026-10-02', 'acme-main', -4200, 'SCHOOL FEES TERM 3'),
+    txn('p2', '2026-10-14', 'acme-card', -180, 'RESTO X'),
+    txn('p3', '2026-10-20', 'acme-card', -90, 'RESTO X'),
+    txn('p4', '2026-10-21', 'ada-main', -300, 'CLOUDHOST*1122')
+  ];
+  const data = buildFinance({ ...INPUT, txns, rules });
+  const line = (date: string, payee: string) =>
+    data.lines.find((item) => item.date === date && item.payee.startsWith(payee));
+
+  test("a company's payment marked for the operator counts in their spending, under its category, and says who paid", () => {
+    expect(line('2026-10-02', 'SCHOOL')).toMatchObject({
+      entity: 'ada',
+      paidBy: 'acme',
+      category: 'education',
+      kind: Kind.Spend
+    });
+    expect(line('2026-10-14', 'RESTO')).toMatchObject({ entity: 'ada', paidBy: 'acme', category: 'dining' });
+  });
+
+  test('a rule limited to a day leaves the same payee on other days with the account that paid', () => {
+    expect(line('2026-10-20', 'RESTO')).toMatchObject({ entity: 'acme', paidBy: null });
+  });
+
+  test("a business cost the operator paid counts as the company's", () => {
+    expect(line('2026-10-21', 'CLOUDHOST')).toMatchObject({ entity: 'acme', paidBy: 'ada', category: 'software' });
+  });
+
+  test('both move what the operator owes the company, and say why', () => {
+    const [acme] = data.director;
+    expect(acme?.movements.map((movement) => [movement.date, movement.amount, movement.why])).toEqual([
+      ['2026-10-02', 4200, 'paid-for-you'],
+      ['2026-10-10', 1000, 'transfer'],
+      ['2026-10-14', 180, 'paid-for-you'],
+      ['2026-10-21', -300, 'paid-for-company']
+    ]);
+    expect(acme?.balance).toBe(5000 + 4200 + 1000 + 180 - 300);
+  });
+
+  test('a for naming no entity stops the build', () => {
+    expect(() => buildFinance({ ...INPUT, rules: [{ match: 'X', for: 'personal' }] })).toThrow(
+      'for: personal is not an entity'
+    );
+  });
+});
+
 describe('parseRules', () => {
-  test('reads payees then categories, and a payee rule never sets a category', () => {
+  test('reads payees then categories, and a payee rule never sets a category or whose expense it is', () => {
     const raw =
-      '## Payees\n\n```yaml\n- { match: "^GRAB", payee: Grab, category: ignored }\n```\n\n## Categories\n\n```yaml\n- { payee: Grab, category: transport }\n```\n';
+      '## Payees\n\n```yaml\n- { match: "^GRAB", payee: Grab, category: ignored, for: ignored }\n```\n\n## Categories\n\n```yaml\n- { payee: Grab, category: transport }\n```\n';
     expect(parseRules(raw)).toEqual([
       { match: '^GRAB', payee: 'Grab' },
       { payee: 'Grab', category: 'transport' }
