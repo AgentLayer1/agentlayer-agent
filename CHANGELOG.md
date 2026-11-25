@@ -78,7 +78,7 @@ table that starts from what the home already has.
   takes `kind: finance` with a file and copies it byte for byte into the inbox.
 - `packs_status`: every optional pack, its group and blurb, and whether this home has it (`new`,
   `partial` with what's missing, or `ready`). It reads settings, `.mcp.json`, home files and the
-  secret store's key names, never a value. One registry in the code now holds all fourteen packs.
+  secret store's key names, never a value. One registry in the code now holds all sixteen packs.
 
 ### Changed
 - The `tax` skill folds into `finances` as its tax playbook, with a new playbook for reviewing an
@@ -86,12 +86,25 @@ table that starts from what the home already has.
   `tax`, so other finances tasks stay off the tax calendar.
 - configure-skills opens with what the home has: install something new, finish or change what's set
   up, or remove a pack, each from one numbered table per group (reply with numbers, a group, or
-  `recommended`). A half-done pack resumes at what's missing. Finances is a pack. Init's pack step
-  is the same table.
+  `recommended`). A half-done pack resumes at what's missing. Finances is a pack, and so are Codex
+  and Antigravity: each shows in the Code group when its CLI is installed, and picking it wires the
+  host as init does. Init's pack step is the same table, without the two hosts it has just asked
+  about.
 - Codex: the home's own Codex sessions send no usage analytics and no `/feedback` uploads, and init
   asks about Codex only when Codex is installed.
 - The cmux sidebar reads in light mode as well as dark, with one palette for both, and the Needs you
   and Inbox cards are tinted (cmux-custom-manager `b135877`).
+
+### Fixed
+- A settings file that exists but can't be read is an error naming the file; only a missing file
+  reads as empty.
+- A capture hook whose payload can't be read ends quietly on every host.
+- On Windows, the version checks for Claude Code, Codex and `agy` run through a shell, so npm's
+  `.cmd` shims are found.
+- On Windows, the shell guard reads a command with PowerShell's quoting, where a backslash separates
+  path parts rather than escaping. The guard serves Codex on Windows too.
+- A code folder reached through a link inside the home stays in Codex's workspace roots.
+- Codex setup handles an empty inline table (`tui = {}`, `skills = {}`) in the home's config.
 
 ### Upgrade
 - `script: required` — run skills/upgrade/scripts/1.2.0.ts: moves `projects/tax/` into
@@ -104,9 +117,10 @@ table that starts from what the home already has.
 - `settings: mandatory` — add `mcp__plugin_agentlayer_agent__packs_status` to `permissions.allow`.
   `Skill(agentlayer:tax)` becomes `Skill(agentlayer:finances)` where it sits.
 - `deps: required` — `cmux-custom-manager` moves to `b135877`; run `bun install` in the plugin root.
-- `manual: optional` — Antigravity only: when `agy` is installed, paste the note the upgrade writes
-  to `.state/updates/antigravity-user-config.md` into `~/.gemini/config/plugins.json` and
-  `~/.gemini/antigravity-cli/settings.json`, then start `agy` from the home.
+- `manual: optional` — Antigravity only: when `agy` 1.5.16 or later is installed
+  (`agy update`), paste the note the upgrade writes to `.state/updates/antigravity-user-config.md`
+  into `~/.gemini/config/plugins.json` and `~/.gemini/antigravity-cli/settings.json`, then start
+  `agy` from the home.
 
 ## [1.1.0] - 2026-11-24
 
