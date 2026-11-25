@@ -148,7 +148,7 @@ describe('retired tools', () => {
   });
 });
 
-describe.each(['attention', 'briefing', 'engineer', 'goals', 'helpdesk', 'media', 'project', 'seed', 'self-review', 'seo', 'tax'])(
+describe.each(['attention', 'briefing', 'engineer', 'goals', 'helpdesk', 'media', 'project', 'seed', 'self-review', 'seo', 'finances'])(
   '%s help',
   (skill) => {
     test('lists every playbook the router names', () => {

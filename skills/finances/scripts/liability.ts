@@ -279,7 +279,7 @@ export const toLedgerRow = (record: Record<string, string>): LedgerRow => ({
 });
 
 export const loadLedger = (taxDir: string, slug: string): LedgerRow[] => {
-  const dir = join(taxDir, "ledger", slug);
+  const dir = join(taxDir, "data", "ledger", slug);
   if (!existsSync(dir)) {
     return [];
   }
@@ -291,7 +291,7 @@ export const loadLedger = (taxDir: string, slug: string): LedgerRow[] => {
         try {
           return toLedgerRow(record);
         } catch (error) {
-          throw new Error(`ledger/${slug}/${file} row ${i + 2}: ${error instanceof Error ? error.message : String(error)}`);
+          throw new Error(`data/ledger/${slug}/${file} row ${i + 2}: ${error instanceof Error ? error.message : String(error)}`);
         }
       })
     );

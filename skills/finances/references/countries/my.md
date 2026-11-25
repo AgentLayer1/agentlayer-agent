@@ -171,7 +171,7 @@ Copy an entry into the entity profile's `## Obligations` yaml block (never its f
 
 ## Event-driven obligations
 
-These have no calendar; a document or event starts them. [capture](../playbooks/capture.md) raises them.
+These have no calendar; a document or event starts them. [capture](../playbooks/tax/capture.md) raises them.
 
 | Event | Obligation | Deadline | Source |
 |---|---|---|---|

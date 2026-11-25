@@ -19,6 +19,11 @@ certificates/
 !.state/knowledge.json
 !.state/version.json
 
+# finances: statements, receipts, the ledger and the dashboard built from them carry every
+# account number and amount, so they stay on this machine and out of history
+projects/finances/data/
+projects/finances/dashboard.html
+
 # playwright capture artifacts (screenshots, pdfs, recordings — binary, regenerable)
 reports/captures/
 

@@ -6,7 +6,7 @@ import { todayDate } from "../../../src/shared/date";
 import { dataDirOf } from "../../../src/shared/naming";
 import { agentHomePath, isAgentHome } from "../../../src/shared/env";
 import { routinesDue } from "../../helpdesk/scripts/profiles";
-import { loadEntities, pendingCloses } from "../../tax/scripts/calendar";
+import { loadEntities, pendingCloses } from "../../finances/scripts/calendar";
 import { importedStack, injectedStack, isOverBudget } from "../../../src/shared/weight";
 import { keptQuietIn, loadedDocs, qualityOf, taskIds } from "../../self-review/scripts/quality";
 import { type BrainQuality, type ReviewWatermark, selfReviewDue } from "./self-review-due";
@@ -106,16 +106,16 @@ if (review) due.push(review);
 
 // The close records are the watermark: an entity is due when last month's record is missing. A
 // profile the tax engine refuses surfaces as its own item rather than dropping every other nudge.
-const taxDir = join(FOLDERS.PROJECTS, "tax");
+const taxDir = join(FOLDERS.PROJECTS, "finances");
 if (existsSync(join(taxDir, "entities"))) {
   try {
     const closes = pendingCloses(taxDir, loadEntities(taxDir), todayDate());
     if (closes.length > 0) {
       const entities = closes.map((close) => close.entity).join(", ");
-      due.push({ invoke: "tax close", label: `Tax close for ${closes[0].month} (${entities})`, lastRun: null });
+      due.push({ invoke: "finances tax close", label: `Tax close for ${closes[0].month} (${entities})`, lastRun: null });
     }
   } catch (error) {
-    due.push({ invoke: "tax", label: `Fix the tax profile: ${error instanceof Error ? error.message : String(error)}`, lastRun: null });
+    due.push({ invoke: "finances tax setup", label: `Fix the tax profile: ${error instanceof Error ? error.message : String(error)}`, lastRun: null });
   }
 }
 

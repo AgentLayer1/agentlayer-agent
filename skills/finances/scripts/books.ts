@@ -70,7 +70,7 @@ export const monthRange = (from: string, to: string): string[] =>
 export const shiftMonth = (month: string, by: number): string => monthOf(monthIndex(month) + by);
 
 /**
- * Open tax tasks the accountant is waiting on: labelled `accountant` or `bookkeeping` and
+ * Open tax tasks the accountant is waiting on: labelled `tax`, `accountant` or `bookkeeping`, and
  * `entity:<slug>`.
  */
 export const loadAsks = (taxDir: string, slug: string): Ask[] => {
@@ -86,6 +86,7 @@ export const loadAsks = (taxDir: string, slug: string): Ask[] => {
       (task) =>
         task.status !== "done" &&
         task.status !== "cancelled" &&
+        task.labels.includes("tax") &&
         task.labels.includes(`entity:${slug}`) &&
         task.labels.some((label) => ACCOUNTANT_LABELS.has(label))
     )

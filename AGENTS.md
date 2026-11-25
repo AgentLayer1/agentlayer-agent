@@ -34,7 +34,7 @@ Each domain exports one `tools: ToolDef[]` from `src/<domain>/tool.ts`, built wi
 
 ## Paths that never move
 
-Installed homes store absolute paths to `src/cli.ts` and `src/server.ts` (the status line in `.claude/settings.local.json`, the Codex hooks and MCP registration in `.codex/`), and `statusline/setting.ts` and `skills/init/scripts/codex-setup.ts` match `src/cli.ts` literally to recognise their own entries. Moving either breaks every existing home. `const HELP` stays in `cli.ts`, since the dashboard parses it from the file. `src/config.ts` is imported by path from skill scripts and from the `tax` skill.
+Installed homes store absolute paths to `src/cli.ts` and `src/server.ts` (the status line in `.claude/settings.local.json`, the Codex hooks and MCP registration in `.codex/`), and `statusline/setting.ts` and `skills/init/scripts/codex-setup.ts` match `src/cli.ts` literally to recognise their own entries. Moving either breaks every existing home. `const HELP` stays in `cli.ts`, since the dashboard parses it from the file. `src/config.ts` is imported by path from skill scripts and from the `finances` skill.
 
 Skill scripts import plugin source by relative path (`../../../src/shared/naming`), so a moved `src/` module means updating them too; typecheck covers `skills/**/*.ts`.
 
