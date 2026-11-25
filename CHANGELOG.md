@@ -52,6 +52,62 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.2.0] - 2026-11-25
+
+Antigravity is the third host, tax becomes part of a finances skill, and the packs are one numbered
+table that starts from what the home already has.
+
+### Added
+- Antigravity (`agy`) is a third host. It loads the plugin in place from the checkout as a plugin of
+  its own: the skills, an always-on rule with their glossary, the hooks and the MCP server, which
+  learns its home from the session's folder (`--home-from-roots`). A `policy` hook applies the home's
+  Claude rules to every Antigravity tool, asks through Antigravity's own prompt where Claude Code
+  would ask, and has file tools ask before leaving the home's folders. Antigravity has no session-end
+  event, so each conversation is recorded as it runs and saved at the next session start. Init and
+  upgrade write a paste-ready note for the two user-level files Antigravity reads; neither is edited
+  for you. Windows is offered and labelled unverified.
+- `hosts status` in the CLI shows every host the plugin runs in, what each can do, and what's left
+  to finish its wiring.
+- The `finances` skill: bank, card and platform statements imported and proven against their own
+  balances (a statement that doesn't add up is refused), receipts filed and matched to the line they
+  paid for, and a finances page built from the imported lines: where the money goes by week, month
+  or year, cash flow, bills, the director balance, charity and checks, with a Hide amounts switch.
+  Categories learn: rules live in the finances project's `RULES.md`, the agent suggests and the
+  operator approves, and edits made on the page paste back into a session. Sync nudges an import when
+  the inbox has files, files what the page raises as tasks, and keeps the page current. `capture`
+  takes `kind: finance` with a file and copies it byte for byte into the inbox.
+- `packs_status`: every optional pack, its group and blurb, and whether this home has it (`new`,
+  `partial` with what's missing, or `ready`). It reads settings, `.mcp.json`, home files and the
+  secret store's key names, never a value. One registry in the code now holds all fourteen packs.
+
+### Changed
+- The `tax` skill folds into `finances` as its tax playbook, with a new playbook for reviewing an
+  accountant's management accounts and general ledger. The tax engine counts only tasks labelled
+  `tax`, so other finances tasks stay off the tax calendar.
+- configure-skills opens with what the home has: install something new, finish or change what's set
+  up, or remove a pack, each from one numbered table per group (reply with numbers, a group, or
+  `recommended`). A half-done pack resumes at what's missing. Finances is a pack. Init's pack step
+  is the same table.
+- Codex: the home's own Codex sessions send no usage analytics and no `/feedback` uploads, and init
+  asks about Codex only when Codex is installed.
+- The cmux sidebar reads in light mode as well as dark, with one palette for both, and the Needs you
+  and Inbox cards are tinted (cmux-custom-manager `b135877`).
+
+### Upgrade
+- `script: required` — run skills/upgrade/scripts/1.2.0.ts: moves `projects/tax/` into
+  `projects/finances/`. Profiles, closes, estimates and reviews keep their place; the ledger,
+  receipts and inbox go under `projects/finances/data/`, which the home's `.gitignore` keeps out of
+  history (reconciled with the template first). Tax tasks are renumbered into the finances prefix,
+  gain the `tax` label, and every task file that names an old id is rewritten; the old-to-new id map
+  is appended to the finances README. A file whose destination already holds something different
+  stays where it is and is reported. A home without `projects/tax/` is untouched.
+- `settings: mandatory` — add `mcp__plugin_agentlayer_agent__packs_status` to `permissions.allow`.
+  `Skill(agentlayer:tax)` becomes `Skill(agentlayer:finances)` where it sits.
+- `deps: required` — `cmux-custom-manager` moves to `b135877`; run `bun install` in the plugin root.
+- `manual: optional` — Antigravity only: when `agy` is installed, paste the note the upgrade writes
+  to `.state/updates/antigravity-user-config.md` into `~/.gemini/config/plugins.json` and
+  `~/.gemini/antigravity-cli/settings.json`, then start `agy` from the home.
+
 ## [1.1.0] - 2026-11-24
 
 Less loads into every session, and the brain's upkeep is measured instead of guessed.
