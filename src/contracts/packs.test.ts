@@ -5,6 +5,7 @@ import { PACKS } from '@/packs/registry';
 import { PLUGIN_SOURCE_ROOT } from '@/shared/naming';
 
 const CONFIGURE = readFileSync(join(PLUGIN_SOURCE_ROOT, 'skills', 'configure-skills', 'SKILL.md'), 'utf-8');
+const README = readFileSync(join(PLUGIN_SOURCE_ROOT, 'README.md'), 'utf-8');
 const DESCRIPTION = /^description: (.*)$/m.exec(CONFIGURE)?.[1] ?? '';
 const packs = Object.values(PACKS);
 const labels = packs.map((pack) => pack.label);
@@ -34,6 +35,11 @@ describe('the pack registry and configure-skills', () => {
 
   test("configure-skills' description names every pack, so asking for one by name finds it", () => {
     expect(labels.filter((label) => !DESCRIPTION.includes(label))).toEqual([]);
+  });
+
+  test("the README's packs line names every pack", () => {
+    const line = README.split('\n').find((text) => text.includes('Opt-in [packs]')) ?? '';
+    expect(labels.filter((label) => !line.includes(label))).toEqual([]);
   });
 
   test('every "configure-skills → <pack>" pointer in the code names a real pack', () => {
