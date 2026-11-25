@@ -10,6 +10,7 @@ import {
   classifyAll,
   defaultPayee,
   detectRecurring,
+  financePlan,
   type FinanceInput,
   Kind,
   loadFinance,
@@ -331,5 +332,30 @@ describe('loadFinance', () => {
       ['software', Kind.Spend],
       [null, Kind.Income]
     ]);
+  });
+});
+
+describe('financePlan', () => {
+  const insights = buildFinance(INPUT).insights;
+
+  test('files each insight no task carries yet, labelled to be found again, with payments first', () => {
+    const plan = financePlan(insights, [{ id: 'fp-001', label: 'fin:dup:x2', status: 'open' }]);
+    expect(plan.missing.map((task) => task.label)).not.toContain('fin:dup:x2');
+    expect(plan.missing.find((task) => task.kind === 'pay')).toMatchObject({
+      priority: 'P1',
+      due: '2026-11-25',
+      labels: ['finances', 'entity:acme', 'fin:pay:acme-card:2026-11']
+    });
+    expect(plan.missing.find((task) => task.kind === 'review')?.labels).toEqual(['finances', 'fin:review:2026-10']);
+  });
+
+  test('a task done or cancelled on purpose is never filed again, and an open one whose insight is gone is closed', () => {
+    const plan = financePlan(insights, [
+      { id: 'fp-002', label: 'fin:dup:x2', status: 'cancelled' },
+      { id: 'fp-003', label: 'fin:pay:acme-card:2026-10', status: 'open' },
+      { id: 'fp-004', label: 'fin:pay:acme-card:2026-09', status: 'done' }
+    ]);
+    expect(plan.missing.map((task) => task.label)).not.toContain('fin:dup:x2');
+    expect(plan.resolved).toEqual([{ id: 'fp-003', label: 'fin:pay:acme-card:2026-10' }]);
   });
 });

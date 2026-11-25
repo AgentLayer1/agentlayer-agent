@@ -12,6 +12,7 @@ allowed-tools:
   - Read
   - Write
   - Edit
+  - mcp__plugin_agentlayer_agent__capture
   - mcp__plugin_agentlayer_agent__task_create
   - mcp__plugin_agentlayer_agent__task_query
   - mcp__plugin_agentlayer_agent__task_get

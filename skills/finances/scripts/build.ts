@@ -1,7 +1,9 @@
 #!/usr/bin/env bun
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { type Entity, EntityKind, listBlock, loadEntities } from './calendar';
+import { FOLDERS } from '../../../src/config';
+import { todayDate } from '../../../src/shared/date';
+import { type Entity, EntityKind, type ExistingTask, listBlock, loadEntities, loadExisting } from './calendar';
 import { parseCsv } from './liability';
 
 /**
@@ -9,6 +11,9 @@ import { parseCsv } from './liability';
  * rules.md. Payee, category and kind are worked out here on every build, never stored, so a rule
  * changed today re-reads every line. Pure apart from `loadFinance`: identical inputs and `today`
  * give identical data.
+ *
+ * Usage: bun build.ts plan [--today YYYY-MM-DD]   prints { missing, resolved }: the insights to file
+ *        as tasks and the open fin: tasks to close
  */
 
 export interface Txn {
@@ -700,3 +705,46 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
     rules: existsSync(rulesPath) ? parseRules(readFileSync(rulesPath, 'utf8')) : []
   };
 };
+
+export interface PlannedTask extends Insight {
+  priority: 'P1' | 'P2';
+  labels: string[];
+}
+
+export interface FinancePlan {
+  missing: PlannedTask[];
+  resolved: { id: string; label: string }[];
+}
+
+/**
+ * The insights no task carries yet, each with the labels and priority to file it under, and the open
+ * tasks whose insight is gone (the bill was paid, the statement came in), to close.
+ */
+export const financePlan = (insights: Insight[], existing: ExistingTask[]): FinancePlan => ({
+  missing: insights
+    .filter((insight) => !existing.some((task) => task.label === insight.label))
+    .map((insight) => ({
+      ...insight,
+      priority: insight.kind === InsightKind.Pay || insight.kind === InsightKind.Missed ? 'P1' : 'P2',
+      labels: ['finances', ...(insight.entity === '' ? [] : [`entity:${insight.entity}`]), insight.label]
+    })),
+  resolved: existing
+    .filter((task) => task.status !== 'done' && task.status !== 'cancelled')
+    .filter((task) => !insights.some((insight) => insight.label === task.label))
+    .map((task) => ({ id: task.id, label: task.label }))
+});
+
+const argValue = (args: string[], flag: string): string | undefined => {
+  const index = args.indexOf(flag);
+  return index === -1 ? undefined : args[index + 1];
+};
+
+if (import.meta.main) {
+  const args = process.argv.slice(2);
+  const dir = argValue(args, '--dir') ?? join(FOLDERS.PROJECTS, 'finances');
+  const today = argValue(args, '--today') ?? todayDate();
+  const plan: FinancePlan = existsSync(join(dir, 'data'))
+    ? financePlan(buildFinance(loadFinance(dir, today)).insights, loadExisting(dir, 'fin:'))
+    : { missing: [], resolved: [] };
+  console.log(JSON.stringify(plan, null, 2));
+}

@@ -197,11 +197,20 @@ Returns a JSON array of `{ invoke, label, lastRun }` for each due item (`invoke`
 - **goals month** — a new calendar month has begun since `lastRun`.
 - **goals year** — a new calendar quarter has begun since `lastRun`.
 - **finances tax close** — the home has a finances project with entity profiles and an entity with `close: monthly` has no close record for last month. Sync only nudges (`/agentlayer:finances tax close`): a close needs the operator's statements and receipts, so it never runs unattended. The close records are its watermark.
+- **finances import** — files are waiting in `projects/finances/data/inbox/`. Sync only nudges (`/agentlayer:finances import`): an import may need the operator to name the account or confirm a PDF's reading, so it never runs unattended. The inbox emptying is its watermark.
 - **roadmap** — not a calendar: due whenever `<HOME>/roadmap.html` doesn't exist.
 - **helpdesk routines** — each `<routine>:<cadence>` in a queue profile's `schedule` (`projects/<slug>/helpdesk.md`; the pulse or the profile's own `## Workflow:` routines) whose newest `reports/helpdesk/*-<routine>-<slug>.md` falls before the current day, ISO week or month (or doesn't exist), as `helpdesk <routine> <slug>`. The report files are its watermark. A profile that won't parse comes back as `helpdesk setup <slug>` with the problem in its label. Sync only nudges a routine: it reads untrusted ticket text against tight rate limits, which doesn't belong in an unattended run. The queue counts below are the exception, since they carry no ticket text.
 - **self-review** — the brain pass is monthly: due when `brainLastRun` is 30 or more days old, or absent on a home whose oldest session day-file is a month old (a fresh init stays quiet). The rules pass keeps its feedback rule: new entries in `raw/user/feedback.md` since `lastRun` and that run over 14 days old, or 30 days regardless. It is also due 7 days after `lastRun` when the files a session loads have slipped: 5 or more lines the brain audit finds duplicated, closed but live, or buried in detail, or a total over its budget; the label says which. `invoke` names what's due (`self-review`, `self-review brain`, `self-review rules`). `snoozeUntil` (Tomorrow) and `skippedOn` (Skip this month) hold it off; step 13 asks it first, on its own.
 
 Watermarks live in `.state/cadence.json` (`goals-week`, `goals-month`, `goals-year` → last-run date, stamped by each goals playbook once its block is written) and `.state/review.json` (`lastRun` and `brainLastRun`, owned by self-review; `snoozeUntil`, `skippedOn` and `skips`, written by step 13). The check creates nothing; a missing watermark just reads as "due". Surface due items in the `📅 Cadence` output block — a nudge with the slash command, nothing more.
+
+**Also file what the statements raised.** When `<HOME>/projects/finances/data/` exists, run the finances skill's plan:
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/skills/finances/scripts/build.ts" plan
+```
+
+It returns `{ missing, resolved }` from the imported statements: a card statement to pay, a recurring bill that went up or didn't go out, a possible double charge, a new fee, a statement that doesn't add up, transactions to categorise, a personal statement to download. File each `missing` entry with `task_create` (`project: finances`, its `title`, `due` when set, `priority`, and its `labels` exactly as printed: the `fin:` label is the key that stops it being filed twice). Close each `resolved` task with `task_close` and a thread line saying the statements no longer show it. Never edit a `fin:` label, and never re-file one the operator cancelled. Report the counts in the `💰 Finances` line of the output.
 
 **Also count the support queues.** `helpdesk_connections` lists the configured connections; when it lists none, skip this and the `🎫 Support` block. Otherwise call `helpdesk_stats` once per queue, with its default 24-hour window:
 
@@ -281,7 +290,13 @@ To run a sync with no briefing at all, say so explicitly (e.g. "sync only").
 
 This is the final step — it runs **after** the briefing, on purpose. `dashboard.html`'s News section is harvested from `reports/briefings/*.md`, and the Reports tab reads `reports/index.md` — both of which step 10 just wrote. Rendering here (rather than before the briefing) is what lets the dashboard show the current run's news and report entry instead of the previous run's. By now every upstream producer has run: compile, lint, flywheel mutations, scan, the session radar, and the briefing.
 
-One call rebuilds both `<HOME>/dashboard.html` and `projects/TASKS.md` — call it once here, nowhere else in sync. It runs even for "sync only" (it just won't have new briefing news to pick up). Pass `sync: true` so the tool records this run as the last sync before it renders: the dashboard's last-sync age and the sync notice (the banner line, or the row above the prompt) both read that stamp.
+First, when `<HOME>/projects/finances/entities/` exists, rebuild the finances page from its statements, so the main dashboard links a current one:
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/skills/finances/scripts/calendar.ts" render
+```
+
+Then one call rebuilds both `<HOME>/dashboard.html` and `projects/TASKS.md` — call it once here, nowhere else in sync. It runs even for "sync only" (it just won't have new briefing news to pick up). Pass `sync: true` so the tool records this run as the last sync before it renders: the dashboard's last-sync age and the sync notice (the banner line, or the row above the prompt) both read that stamp.
 
 ```
 mcp__plugin_agentlayer_agent__dashboard  { sync: true }
@@ -331,7 +346,7 @@ Apply the stalled-task answers first, so nothing below can skip them. Then honor
 - **Act now** → do the picks this session, one after another in the order they were offered. External/outbound actions (emails, messages, public posts, `git push`, anything that leaves the machine) still confirm first per the operating rules — an interview pick is not standing authorization for those.
 - **Queue as tasks** → for each pick: if it maps to an existing task, `task_thread` a note and bump priority/status as fitting; otherwise `task_create` one. Confirm each id/title back in one line, then stop.
 
-**Cadence and upgrade picks:** a due goals cadence picked with **Act now** runs through the Skill tool (`agentlayer:goals` with the rest of `invoke` as its argument, e.g. `week interview`), a due `roadmap` runs `agentlayer:roadmap` the same way, and **Queue as tasks** files it like any other pick. A tax close needs the operator's documents, a helpdesk routine (the reviews check included) reads untrusted ticket or review text, and `upgrade` chains sync itself, so sync invoking it would recurse: for those three, both answers collapse to the same thing — surface the exact slash command for the operator to type.
+**Cadence and upgrade picks:** a due goals cadence picked with **Act now** runs through the Skill tool (`agentlayer:goals` with the rest of `invoke` as its argument, e.g. `week interview`), a due `roadmap` runs `agentlayer:roadmap` the same way, and **Queue as tasks** files it like any other pick. A tax close needs the operator's documents, a finances import may need them to name an account or confirm a PDF, a helpdesk routine (the reviews check included) reads untrusted ticket or review text, and `upgrade` chains sync itself, so sync invoking it would recurse: for those four, both answers collapse to the same thing — surface the exact slash command for the operator to type.
 
 **The GitHub sweep pick:** **Act now** runs the engineer skill through the Skill tool (`agentlayer:engineer` with `sweep`), which drafts the replies and posts nothing; **Queue as tasks** files it like any other pick.
 
@@ -382,6 +397,11 @@ One block, tight. Skip empty sections — don't pad.
   - <project slug | no project | <connection>, no profile yet>, last 24h: <total, or total+ when more is true> <open | all-status> tickets active (<status> <n> · …) · <n> unassigned · <n> opened in the window
     Tags: <tag> <n> · … (top six, then other <n>)   (omit when the count is zero)
     Reviews, last 24h: <total> · ★5 <n> · ★4 <n> · ★3 <n> · ★2 <n> · ★1 <n>   (only for a profile with an App Store app; every bucket shown, zeros too; "Apple's feed was blank; not counted" when nothing was read; <n> new since <since> when the new-since read found any)
+
+💰 Finances (omit entirely when the home has no projects/finances/data/)
+  - <n> filed · <n> closed as resolved   (the plan's missing and resolved; "nothing new" when both are empty)
+  - <title> (<id>)   (one line per task filed, payments first)
+  - Page: <HOME>/projects/finances/dashboard.html
 
 📊 Dashboard — <HOME>/dashboard.html refreshed
 

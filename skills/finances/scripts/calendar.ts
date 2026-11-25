@@ -347,10 +347,10 @@ export const loadEntities = (taxDir: string): Entity[] => {
 };
 
 /**
- * Tasks carrying an `obl:` label, from tasks/ and tasks/archive/ alike, so an obligation that was
- * done and archived, or cancelled on purpose, is never created again.
+ * Tasks carrying a label with this prefix (`obl:` by default), from tasks/ and tasks/archive/
+ * alike, so an obligation that was done and archived, or cancelled on purpose, is never created again.
  */
-export const loadExisting = (taxDir: string): ExistingTask[] =>
+export const loadExisting = (taxDir: string, prefix = "obl:"): ExistingTask[] =>
   [join(taxDir, "tasks"), join(taxDir, "tasks", "archive")]
     .filter((dir) => existsSync(dir))
     .flatMap((dir) =>
@@ -362,7 +362,7 @@ export const loadExisting = (taxDir: string): ExistingTask[] =>
       frontmatter === null
         ? []
         : frontmatter.labels
-            .filter((label) => label.startsWith("obl:"))
+            .filter((label) => label.startsWith(prefix))
             .map((label): ExistingTask => ({ id: frontmatter.id, label, status: frontmatter.status }))
     );
 

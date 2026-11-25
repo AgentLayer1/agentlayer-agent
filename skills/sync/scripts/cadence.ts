@@ -119,6 +119,13 @@ if (existsSync(join(taxDir, "entities"))) {
   }
 }
 
+// Statements waiting in the finances inbox: an import needs the operator (which account, a PDF read), so it nudges.
+const financeInbox = join(FOLDERS.PROJECTS, "finances", "data", "inbox");
+const waiting = existsSync(financeInbox) ? readdirSync(financeInbox).filter((name) => !name.startsWith(".")) : [];
+if (waiting.length > 0) {
+  due.push({ invoke: "finances import", label: `Import ${waiting.length} statement${waiting.length === 1 ? "" : "s"} waiting in the finances inbox`, lastRun: null });
+}
+
 // Each routine a queue profile schedules; its newest report is the watermark.
 due.push(...routinesDue(FOLDERS.PROJECTS, join(FOLDERS.REPORTS, "helpdesk"), todayDate()));
 
