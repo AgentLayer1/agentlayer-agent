@@ -1,3 +1,4 @@
+import { antigravityHost } from '@/hosts/antigravity';
 import { HOST_FLOORS, checkHosts, hostIssues, parseHostVersion, requiredHosts, type ToolName } from '@/upgrade/hosts';
 import { describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
@@ -60,10 +61,12 @@ describe('hosts', () => {
 
   test('codex is required for a wired home or when the caller says so', () => {
     const home = mkdtempSync(join(tmpdir(), 'hosts-'));
-    expect([...requiredHosts(home)]).toEqual(['claude', 'bun']);
-    expect([...requiredHosts(home, ['codex'])]).toEqual(['claude', 'codex', 'bun']);
+    // Antigravity counts from the user's own plugin manifest, which is this machine's, not the test's.
+    const machine: ToolName[] = antigravityHost.usedBy() ? ['antigravity'] : [];
+    expect([...requiredHosts(home)]).toEqual(['claude', ...machine, 'bun']);
+    expect([...requiredHosts(home, ['codex'])]).toEqual(['claude', 'codex', ...machine, 'bun']);
     mkdirSync(join(home, '.codex'));
     writeFileSync(join(home, '.codex', 'hooks.json'), '{}');
-    expect([...requiredHosts(home)]).toEqual(['claude', 'codex', 'bun']);
+    expect([...requiredHosts(home)]).toEqual(['claude', 'codex', ...machine, 'bun']);
   });
 });
