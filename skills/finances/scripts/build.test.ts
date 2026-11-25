@@ -269,9 +269,11 @@ describe('buildFinance', () => {
     expect(checks.categories?.ok).toBe(false);
   });
 
-  test('keeps thirteen months of lines for the page', () => {
-    expect(data.lines.some((line) => line.date === '2025-01-02')).toBe(false);
-    expect(data.lines).toHaveLength(TXNS.length - 1);
+  test('keeps five years of lines for the page', () => {
+    expect(data.lines.some((line) => line.date === '2025-01-02')).toBe(true);
+    expect(buildFinance({ ...INPUT, today: '2030-02-01' }).lines.some((line) => line.date === '2025-01-02')).toBe(
+      false
+    );
   });
 
   test('is the same every time for the same inputs', () => {

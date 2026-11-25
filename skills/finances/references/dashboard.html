@@ -33,6 +33,10 @@
   --critical: #d03b3b;
   --accent: #b456a8;
   --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+  --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100; --c5: #e87ba4; --c6: #008300; --c7: #6250d6; --c8: #e34948;
+  --c-other: #b5b3ab;
+  --up: #b42f2f;
 }
 html[data-theme="dark"] {
   color-scheme: dark;
@@ -50,6 +54,9 @@ html[data-theme="dark"] {
   --s3: #199e70;
   --s1-wash: rgba(57, 135, 229, 0.14);
   --good-text: #0ca30c;
+  --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #0ca30c; --c7: #9085e9; --c8: #e66767;
+  --c-other: #5e5d58;
+  --up: #e66767;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--sans); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
@@ -124,6 +131,79 @@ details.table summary { cursor: pointer; color: var(--muted); font-size: 12px; }
 .note { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
 #tip { position: fixed; pointer-events: none; background: var(--raised); color: var(--ink); border: 1px solid var(--ring); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12); border-radius: 8px; padding: 6px 10px; font-size: 12px; white-space: pre; display: none; z-index: 9; }
 iframe.tax { width: 100%; height: calc(100vh - 140px); border: 1px solid var(--ring); border-radius: 14px; background: var(--surface); }
+
+/* Where your money goes, and Categorise */
+.periodbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 26px; }
+.stepper { display: inline-flex; gap: 4px; }
+.stepper button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--ring); background: var(--surface); cursor: pointer; color: var(--ink-2); }
+.stepper button:disabled { opacity: 0.35; cursor: default; }
+.period-name { font-weight: 600; min-width: 11ch; }
+.answer { font-family: var(--serif); font-weight: 500; font-size: clamp(27px, 3.4vw, 38px); line-height: 1.16; letter-spacing: -0.012em; margin: 0 0 10px; max-width: 26ch; }
+.answer-sub { color: var(--ink-2); margin: 0 0 26px; max-width: 64ch; }
+.ribbon { display: flex; gap: 2px; height: 18px; border-radius: 6px; overflow: hidden; margin: 0 0 10px; }
+.ribbon button { border: 0; padding: 0; height: 100%; min-width: 3px; cursor: pointer; }
+.ribbon-key { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--ink-2); margin: 0 0 30px; }
+.ribbon-key span { display: inline-flex; align-items: center; gap: 6px; }
+.ribbon-key i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.section-title { font-size: 15px; font-weight: 650; margin: 0 0 4px; }
+.section-note { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+.cats { margin: 0 0 30px; }
+.cat-row { display: grid; grid-template-columns: 12px minmax(120px, 1.1fr) minmax(80px, 2fr) 104px 52px 112px 88px; gap: 14px; align-items: center; padding: 9px 8px; border-bottom: 1px solid var(--grid); border-radius: 8px; cursor: pointer; width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; text-align: left; color: inherit; font: inherit; }
+.cat-row:hover, .cat-row:focus-visible { background: var(--s1-wash); outline: none; }
+.cat-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-row .num, .cat-row .share { text-align: right; white-space: nowrap; }
+.cat-row .share { color: var(--muted); font-size: 12px; }
+.swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.track { height: 8px; }
+.fill { height: 8px; border-radius: 0 4px 4px 0; min-width: 2px; }
+.delta { font-size: 12px; text-align: right; white-space: nowrap; }
+.delta.up { color: var(--up); }
+.delta.down { color: var(--good-text); }
+.delta.flat { color: var(--muted); }
+.spark { width: 88px; height: 22px; display: block; }
+.cat-row.none .name { color: var(--ink-2); font-style: italic; }
+.cat-row.none .fill { background: repeating-linear-gradient(135deg, var(--c-other) 0 3px, transparent 3px 6px); }
+.more { border: 0; background: none; color: var(--s1); cursor: pointer; padding: 8px; font: inherit; }
+.movers { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px; margin: 0 0 30px; }
+.mover { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 9px 0; border-bottom: 1px solid var(--grid); }
+.mover .why { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 28px; margin: 0 0 30px; }
+.split h3 { font-size: 14px; font-weight: 600; margin: 0 0 8px; display: flex; gap: 8px; align-items: center; }
+.crumbs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+.crumbs button { border: 0; background: none; padding: 0; color: var(--s1); cursor: pointer; font: inherit; }
+.picker { font: inherit; font-size: 13px; padding: 4px 8px; border: 1px solid var(--ring); border-radius: 8px; background: var(--surface); color: var(--ink); width: 150px; }
+.picker:focus-visible, select.picker:focus-visible { outline: 2px solid var(--s1); outline-offset: 1px; }
+select.picker { width: auto; }
+.tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.tag.approved { background: var(--s1-wash); color: var(--ink); }
+.tag.suggested { border: 1px dashed var(--axis); color: var(--ink-2); }
+.tag.none { color: var(--muted); }
+.tag.pending { border: 1px solid var(--accent); color: var(--ink); }
+.btn { border: 1px solid var(--ring); background: var(--surface); color: var(--ink); padding: 5px 12px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 13px; }
+.btn.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.btn:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.work { margin: 0 0 90px; }
+.work-row { display: grid; grid-template-columns: minmax(160px, 1.6fr) 90px 110px minmax(130px, 1fr) auto; gap: 14px; align-items: center; padding: 11px 6px; border-bottom: 1px solid var(--grid); }
+.work-row .who { min-width: 0; }
+.work-row .who strong { display: block; font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.work-row .who small { color: var(--muted); font-size: 12px; }
+.work-row .acts { display: flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.work-lines { padding: 4px 6px 14px 22px; border-bottom: 1px solid var(--grid); }
+.work-lines table td { font-size: 13px; }
+.toggle { border: 0; background: none; cursor: pointer; color: var(--muted); padding: 0 4px; font: inherit; }
+.search { font: inherit; padding: 6px 12px; border: 1px solid var(--ring); border-radius: 999px; background: var(--surface); color: var(--ink); width: 220px; }
+.editbar { position: sticky; bottom: 18px; display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 12px 16px; background: var(--raised); border: 1px solid var(--ring); border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.10); margin-top: 18px; z-index: 5; }
+.editbar .what { flex: 1; min-width: 200px; }
+.editbar pre { width: 100%; margin: 4px 0 0; padding: 10px; background: var(--page); border-radius: 8px; font-size: 11px; white-space: pre-wrap; word-break: break-all; }
+.zero-note { color: var(--muted); font-size: 12px; margin: 10px 0 0; }
+.zero-note button { border: 0; background: none; color: var(--s1); cursor: pointer; font: inherit; padding: 0; }
+@media (max-width: 860px) {
+  .cat-row { grid-template-columns: 12px 1fr 96px 88px; }
+  .cat-row .bar, .cat-row .share, .cat-row .spark-cell { display: none; }
+  .work-row { grid-template-columns: 1fr auto; }
+  .work-row .count, .work-row .total { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) { .ribbon button { transition: filter 120ms; } .ribbon button:hover { filter: brightness(1.12); } }
 body.masked .amt { filter: blur(7px); }
 body.masked .amt:hover { filter: none; }
 body.masked iframe.tax { filter: blur(8px); }
@@ -148,6 +228,7 @@ body.masked iframe.tax:hover { filter: none; }
     <section class="page" id="overview"></section>
     <section class="page" id="cashflow"></section>
     <section class="page" id="spending"></section>
+    <section class="page" id="categorise"></section>
     <section class="page" id="bills"></section>
     <section class="page" id="director"></section>
     <section class="page" id="charity"></section>
@@ -175,15 +256,21 @@ body.masked iframe.tax:hover { filter: none; }
 (() => {
   const DATA = JSON.parse(document.getElementById("finance-data").textContent);
   const PAGES = [
-    ["overview", "Overview"], ["cashflow", "Cash flow"], ["spending", "Spending"], ["bills", "Bills"],
+    ["overview", "Overview"], ["spending", "Where it goes"], ["categorise", "Categorise"], ["cashflow", "Cash flow"], ["bills", "Bills"],
     ["director", "Director"], ["charity", "Charity"], ["checks", "Checks"], ["tax", "Tax"], ["how", "How it works"]
   ];
   const SERIES = ["var(--s1)", "var(--s2)", "var(--s3)"];
   const KEY = "finances-view";
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const saved = (() => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; } })();
-  const state = { entity: DATA.entities.some((e) => e.slug === saved.entity) ? saved.entity : "all", masked: saved.masked === true };
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+  const state = {
+    entity: DATA.entities.some((e) => e.slug === saved.entity) ? saved.entity : "all",
+    masked: saved.masked === true,
+    period: ["week", "month", "year"].includes(saved.period) ? saved.period : "month",
+    showZero: saved.showZero === true,
+    anchor: {}, drill: null, showOther: false, tab: "none", query: "", open: new Set(), copied: false
+  };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ entity: state.entity, masked: state.masked, period: state.period, showZero: state.showZero })); } catch (e) {} };
 
   const esc = (text) => String(text ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
   const symbol = (currency) => (currency === "MYR" ? "RM" : currency);
@@ -260,6 +347,117 @@ body.masked iframe.tax:hover { filter: none; }
     return rows.length === 0 ? '<p class="empty">Nothing here yet.</p>' : rows.map((r) => `<div class="hbar" data-tip="${esc(`${r.name}: ${plain(r.value)}`)}"><span class="name">${esc(r.name)}</span><span class="track"><span class="fill" style="display:block;width:${(100 * r.value) / max}%;background:${color}"></span></span><span class="num">${money(r.value)}</span></div>`).join("");
   };
 
+
+  // Edits made on this page wait here until they are pasted into a session; each build drops the ones it applied.
+  const EDITS = "finances-edits";
+  const OWN = new Set(["spend", "charity", "income"]);
+  const CHARITY_CATS = new Set(["charity", "zakat", "sadaqah", "donation"]);
+  const ruleBy = new Map(DATA.rules.map((rule) => [rule.key, rule]));
+  const sameLines = (op) => DATA.lines.filter((l) => (op.scope === "line" ? l.id === op.line : l.payee.toLowerCase() === op.payee.toLowerCase()));
+  const store = {
+    ops: (() => { try { return JSON.parse(localStorage.getItem(EDITS) || "[]"); } catch (e) { return []; } })().filter((op) =>
+      op.op === "approve"
+        ? ruleBy.has(op.key) && !ruleBy.get(op.key).confirmed
+        : !sameLines(op).every((l) => l.category === op.category && l.approved && (op.for === undefined || l.entity === op.for))
+    )
+  };
+  const saveOps = () => { try { localStorage.setItem(EDITS, JSON.stringify(store.ops)); } catch (e) {} };
+  const derived = () => {
+    const approve = new Set(store.ops.filter((op) => op.op === "approve").map((op) => op.key));
+    const byPayee = new Map(); const byLine = new Map();
+    store.ops.filter((op) => op.op === "set").forEach((op) => (op.scope === "line" ? byLine.set(op.line, op) : byPayee.set(op.payee.toLowerCase(), op)));
+    return { approve, byPayee, byLine };
+  };
+  const viewOf = (d) => (l) => {
+    const fix = OWN.has(l.kind) ? (d.byLine.get(l.id) ?? d.byPayee.get(l.payee.toLowerCase())) : undefined;
+    if (fix) {
+      const owner = l.paidBy ?? l.entity;
+      const entity = fix.for ?? l.entity;
+      const kind = CHARITY_CATS.has(fix.category) ? "charity" : l.amount > 0 ? "income" : "spend";
+      return { ...l, category: fix.category, kind, entity, paidBy: owner !== entity ? owner : null, approved: true, pending: true };
+    }
+    return l.rule !== null && d.approve.has(l.rule) ? { ...l, approved: true, pending: true } : l;
+  };
+  const viewed = () => DATA.lines.map(viewOf(derived()));
+  const covers = () => {
+    const d = derived();
+    const ids = new Set([
+      ...DATA.lines.filter((l) => l.rule !== null && d.approve.has(l.rule)).map((l) => l.id),
+      ...DATA.lines.filter((l) => OWN.has(l.kind) && (d.byLine.has(l.id) || d.byPayee.has(l.payee.toLowerCase()))).map((l) => l.id)
+    ]);
+    return ids.size;
+  };
+  const editsBlock = () => {
+    const d = derived();
+    const set = [...d.byPayee.values(), ...d.byLine.values()].map((op) => ({ line: op.line, category: op.category, ...(op.for ? { for: op.for } : {}), scope: op.scope }));
+    return `Apply my finances dashboard edits:\n\n\`\`\`finances-edits\n${JSON.stringify({ v: 1, built: DATA.today, approve: [...d.approve], set })}\n\`\`\`\n`;
+  };
+
+  // Periods: ISO weeks (Monday first), calendar months, years.
+  const dayMs = 86400000;
+  const isoDate = (ms) => new Date(ms).toISOString().slice(0, 10);
+  const addDays = (date, n) => isoDate(Date.parse(`${date}T00:00:00Z`) + n * dayMs);
+  const weekOf = (date) => {
+    const monday = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
+    const thursday = addDays(date, 3 - monday);
+    const jan4 = `${thursday.slice(0, 4)}-01-04`;
+    const offset = (new Date(`${jan4}T00:00:00Z`).getUTCDay() + 6) % 7;
+    return `${thursday.slice(0, 4)}-W${String(1 + Math.round((days(thursday) - days(jan4) - 3 + offset) / 7)).padStart(2, "0")}`;
+  };
+  const weekStart = (key) => {
+    const [year, week] = key.split("-W").map(Number);
+    const jan4 = `${year}-01-04`;
+    return addDays(jan4, -((new Date(`${jan4}T00:00:00Z`).getUTCDay() + 6) % 7) + (week - 1) * 7);
+  };
+  const P = {
+    key: (mode, date) => (mode === "week" ? weekOf(date) : mode === "month" ? date.slice(0, 7) : date.slice(0, 4)),
+    start: (mode, key) => (mode === "week" ? weekStart(key) : mode === "month" ? `${key}-01` : `${key}-01-01`),
+    end: (mode, key) => (mode === "week" ? addDays(weekStart(key), 6) : mode === "month" ? addDays(`${shift(key, 1)}-01`, -1) : `${key}-12-31`),
+    step: (mode, key, n) => (mode === "week" ? weekOf(addDays(weekStart(key), 7 * n)) : mode === "month" ? shift(key, n) : String(Number(key) + n)),
+    long: (mode, key) => (mode === "week" ? `the week of ${dateLabel(weekStart(key))}` : mode === "month" ? `${["January","February","March","April","May","June","July","August","September","October","November","December"][Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}` : key),
+    short: (mode, key) => (mode === "week" ? dateLabel(weekStart(key)) : mode === "month" ? monthLabel(key, key.endsWith("-01")) : key),
+    noun: (mode) => mode
+  };
+  // The latest date every account's statements reach: a period past it is still filling in.
+  const through = DATA.accounts.filter((a) => a.asOf).map((a) => a.asOf).sort()[0] ?? DATA.today;
+  const firstDate = DATA.lines[0]?.date ?? through;
+  const anchorOf = (mode) => state.anchor[mode] ?? P.key(mode, through);
+
+  // A category keeps its colour everywhere: slots go by all-time spending, so no filter repaints them.
+  const COLOURS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--c6)", "var(--c7)", "var(--c8)"];
+  const rank = (() => {
+    const totals = DATA.lines.filter((l) => (l.kind === "spend" || l.kind === "charity") && l.amount < 0 && l.category !== null && l.currency === DATA.base)
+      .reduce((map, l) => map.set(l.category, (map.get(l.category) ?? 0) - l.amount), new Map());
+    return [...totals].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+  })();
+  const colourOf = (category) => (category === null ? "var(--grid)" : COLOURS[rank.indexOf(category)] ?? "var(--c-other)");
+  const pct = (part, whole) => (whole === 0 ? 0 : Math.round((100 * part) / whole));
+  const deltaTag = (now, before) => {
+    if (before === 0 && now === 0) { return '<span class="delta flat">—</span>'; }
+    if (before === 0) { return '<span class="delta up">new</span>'; }
+    const diff = now - before;
+    const cls = Math.abs(diff) < 0.5 ? "flat" : diff > 0 ? "up" : "down";
+    return `<span class="delta ${cls}">${cls === "up" ? "▲" : cls === "down" ? "▼" : ""} ${money(Math.abs(diff))}</span>`;
+  };
+  const spark = (values, colour) => {
+    const max = Math.max(1, ...values);
+    const pts = values.map((v, i) => `${(i * 84) / Math.max(1, values.length - 1) + 2},${20 - (v / max) * 17}`).join(" ");
+    return `<svg class="spark" viewBox="0 0 88 22" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${colour}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+  };
+  const isSpend = (l) => (l.kind === "spend" || l.kind === "charity") && l.amount < 0;
+  const catName = (c) => (c === null ? "Uncategorised" : c.charAt(0).toUpperCase() + c.slice(1));
+  const entityPicker = (current, attrs) =>
+    DATA.entities.length < 2 ? "" : `<select class="picker" ${attrs} aria-label="Whose expense">${DATA.entities.map((e) => `<option value="${esc(e.slug)}"${e.slug === current ? " selected" : ""}>${esc(e.name)}</option>`).join("")}</select>`;
+  const catPicker = (attrs, placeholder = "Set category") => `<input class="picker" list="cat-list" ${attrs} placeholder="${esc(placeholder)}" aria-label="${esc(placeholder)}">`;
+  const catList = () => `<datalist id="cat-list">${[...new Set([...DATA.categories, ...store.ops.filter((op) => op.op === "set").map((op) => op.category)])].map((c) => `<option value="${esc(c)}"></option>`).join("")}</datalist>`;
+  const tagOf = (l) => l.pending ? `<span class="tag pending">${esc(l.category ?? "")}, not pasted yet</span>` : l.category === null ? '<span class="tag none">No category</span>' : `<span class="tag ${l.approved ? "approved" : "suggested"}">${esc(l.category)}</span>`;
+  const editBar = () => {
+    if (store.ops.length === 0) { return ""; }
+    const d = derived();
+    const n = { approve: d.approve.size, fix: d.byPayee.size + d.byLine.size };
+    const parts = [n.approve ? `${n.approve} approval${n.approve === 1 ? "" : "s"}` : "", n.fix ? `${n.fix} fix${n.fix === 1 ? "" : "es"}` : ""].filter(Boolean).join(" and ");
+    return `<div class="editbar" role="region" aria-label="Your edits"><span class="what">${state.copied ? "Copied. Paste it into a session with your agent; this page rebuilds with your changes." : `${parts}, covering ${covers()} lines. They count here now and become permanent once pasted into a session.`}</span><button class="btn" data-act="undo">Undo last</button><button class="btn" data-act="clear">Discard</button><button class="btn primary" data-act="copy">Copy changes</button>${state.copied ? `<pre>${esc(editsBlock())}</pre>` : ""}</div>`;
+  };
   const pages = {
     overview() {
       const ls = myr(lines());
@@ -274,8 +472,9 @@ body.masked iframe.tax:hover { filter: none; }
       const director = DATA.director.filter(mine);
       const failing = DATA.checks.filter((c) => !c.ok).length;
       const insights = DATA.insights.filter(mine);
+      const zeroCount = accounts.filter((a) => a.balance === 0).length;
       const rows = DATA.entities.filter((e) => state.entity === "all" || e.slug === state.entity).map((e) => {
-        const own = accounts.filter((a) => a.entity === e.slug);
+        const own = accounts.filter((a) => a.entity === e.slug && (state.showZero || a.balance !== 0));
         return own.length === 0 ? "" : `<tr class="group"><td colspan="5"><span class="dot" style="background:${entityColor(e.slug)}"></span> ${esc(e.name)}</td></tr>` + own.map((a) =>
           `<tr><td>${esc(a.name)}<div class="note" style="margin:0">${esc(a.type)}</div></td><td class="num">${a.balance === null ? "—" : money(a.balance, a.currency, 2)}</td><td class="num">${a.asOf ? dateLabel(a.asOf) : "—"}</td><td class="num">${a.statements}</td><td class="num">${a.statements === 0 ? '<span class="chip">no statement yet</span>' : a.behind ? status("warning", "behind") : status("good", "current")}</td></tr>`).join("");
       }).join("");
@@ -291,7 +490,7 @@ body.masked iframe.tax:hover { filter: none; }
         </div>
         <div class="grid2">
           <div class="card"><h2>Needs you</h2>${insights.length === 0 ? '<p class="empty">Nothing right now.</p>' : `<ul class="list">${insights.slice(0, 12).map((i) => `<li><span class="what">${esc(i.title)}</span><span class="when">${esc(entityName(i.entity))}${i.due ? ` · due ${dateLabel(i.due)}` : ""}</span></li>`).join("")}</ul>`}</div>
-          <div class="card"><h2>Accounts</h2>${rows ? `<table><thead><tr><th>Account</th><th class="num">Balance</th><th class="num">As of</th><th class="num">Statements</th><th class="num"></th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="empty">No accounts yet: list them under ## Accounts in each entity profile.</p>'}</div>
+          <div class="card"><h2>Accounts</h2>${rows ? `<table><thead><tr><th>Account</th><th class="num">Balance</th><th class="num">As of</th><th class="num">Statements</th><th class="num"></th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="empty">No accounts yet: list them under ## Accounts in each entity profile.</p>'}${zeroCount ? `<p class="zero-note">${state.showZero ? "Showing" : "Hiding"} ${zeroCount} account${zeroCount === 1 ? "" : "s"} at zero. <button data-act="zero">${state.showZero ? "Hide them" : "Show them"}</button></p>` : ""}</div>
         </div>`;
     },
     cashflow() {
@@ -303,22 +502,159 @@ body.masked iframe.tax:hover { filter: none; }
         ${tableOf(["Month", "In", "Out", "Net"], months.map((m, i) => [monthLabel(m), money(by[i].in), money(by[i].out), money(by[i].in - by[i].out)]))}</div>`;
     },
     spending() {
-      const ls = myr(lines()).filter((l) => (l.kind === "spend" || l.kind === "charity") && l.amount < 0);
-      const to = latestMonth();
-      const from = shift(to, -2);
-      const recent = ls.filter((l) => l.date.slice(0, 7) >= from);
-      const whose = DATA.entities.filter((e) => recent.some((l) => l.entity === e.slug));
-      const card = (entity) => {
-        const own = recent.filter((l) => l.entity === entity.slug);
-        const cats = [...groupBy(own, (l) => l.category ?? "uncategorised")].map(([name, rows]) => ({ name, value: -sum(rows, (l) => l.amount) })).sort((a, b) => b.value - a.value);
-        const paidElsewhere = [...groupBy(own.filter((l) => l.paidBy), (l) => l.paidBy)];
-        const paidForOthers = [...groupBy(recent.filter((l) => l.paidBy === entity.slug), (l) => l.entity)];
-        return `<div class="card"><h2><span class="dot" style="background:${entityColor(entity.slug)}"></span> ${esc(entity.name)} · ${money(sum(cats, (c) => c.value))}</h2>${hbars(cats.slice(0, 14), entityColor(entity.slug))}${paidElsewhere.map(([payer, rows]) => `<p class="note">Includes ${money(-sum(rows, (l) => l.amount))} paid from ${esc(entityName(payer))}'s accounts, counted on the Director page.</p>`).join("")}${paidForOthers.map(([owner, rows]) => `<p class="note">Leaves out ${money(-sum(rows, (l) => l.amount))} its accounts paid for ${esc(entityName(owner))}, counted there.</p>`).join("")}</div>`;
+      const mode = state.period;
+      const anchor = anchorOf(mode);
+      const all = viewed().filter(mine);
+      const base = all.filter((l) => isSpend(l) && l.currency === DATA.base);
+      const end = P.end(mode, anchor);
+      const partial = through < end && P.key(mode, through) === anchor;
+      const cutoff = partial ? days(through) - days(P.start(mode, anchor)) : null;
+      const within = (key, rows, limit) => rows.filter((l) => P.key(mode, l.date) === key && (limit === null || days(l.date) - days(P.start(mode, key)) <= limit));
+      const prevKey = P.step(mode, anchor, -1);
+      const cur = within(anchor, base, null);
+      const prev = within(prevKey, base, cutoff);
+      const spent = (rows) => -sum(rows, (l) => l.amount);
+      const total = spent(cur);
+      const before = spent(prev);
+      const history = [1, 2, 3, 4, 5, 6].map((i) => P.step(mode, anchor, -i)).filter((k) => P.end(mode, k) >= firstDate).map((k) => spent(within(k, base, null)));
+      const usual = history.length ? sum(history, (v) => v) / history.length : null;
+      const hasPrev = P.end(mode, prevKey) >= firstDate;
+      const canBack = P.end(mode, prevKey) >= firstDate;
+      const canFwd = P.start(mode, P.step(mode, anchor, 1)) <= (DATA.lines.at(-1)?.date ?? through);
+      const sentence = total === 0
+        ? `Nothing went out in ${P.long(mode, anchor)}`
+        : `${money(total)} went out in ${P.long(mode, anchor)}${partial ? " so far" : ""}${hasPrev && before > 0 ? `, ${Math.abs(pct(total - before, before))}% ${total > before ? "more" : "less"} than ${partial ? "the same days of " : ""}${P.short(mode, prevKey)}` : ""}`;
+      const groups = (rows) => [...groupBy(rows, (l) => l.category)].map(([category, rs]) => ({ category, rows: rs, amount: spent(rs) })).sort((a, b) => (a.category === null) - (b.category === null) || b.amount - a.amount);
+      const curCats = groups(cur);
+      const prevBy = new Map(groups(prev).map((g) => [g.category, g.amount]));
+      const trendOf = (category) => [5, 4, 3, 2, 1, 0].map((i) => spent(within(P.step(mode, anchor, -i), base, null).filter((l) => l.category === category)));
+      const named = curCats.filter((g) => g.category !== null);
+      const top = state.showOther ? named : named.slice(0, 8);
+      const rest = named.slice(8);
+      const none = curCats.find((g) => g.category === null);
+      const max = Math.max(1, ...curCats.map((g) => g.amount));
+      const row = (g, label, colour) => `<button class="cat-row${g.category === null ? " none" : ""}" data-act="drill" data-category="${esc(g.category ?? "")}" data-tip="${esc(`${label}: ${plain(g.amount)}, ${g.rows.length} payment${g.rows.length === 1 ? "" : "s"}`)}">
+          <span class="swatch" style="background:${colour}"></span><span class="name">${esc(label)}</span>
+          <span class="bar track"><span class="fill" style="display:block;width:${(100 * g.amount) / max}%;background:${colour}"></span></span>
+          <span class="num">${money(g.amount)}</span><span class="share">${pct(g.amount, total)}%</span>
+          ${deltaTag(g.amount, prevBy.get(g.category) ?? 0)}<span class="spark-cell">${spark(trendOf(g.category), colour)}</span></button>`;
+      const approvedAmount = spent(cur.filter((l) => l.approved));
+      const foreign = [...groupBy(all.filter((l) => isSpend(l) && l.currency !== DATA.base && P.key(mode, l.date) === anchor), (l) => l.currency)];
+      const modeBtn = (m, label) => `<button data-act="mode" data-mode="${m}" aria-pressed="${mode === m}">${label}</button>`;
+      const periodbar = `<div class="periodbar"><div class="seg" role="group" aria-label="Period">${modeBtn("week", "Week")}${modeBtn("month", "Month")}${modeBtn("year", "Year")}</div>
+        <div class="stepper"><button data-act="step" data-by="-1" aria-label="Previous ${mode}"${canBack ? "" : " disabled"}>‹</button><button data-act="step" data-by="1" aria-label="Next ${mode}"${canFwd ? "" : " disabled"}>›</button></div>
+        <span class="period-name">${esc(P.long(mode, anchor).replace(/^the week of/, "Week of"))}</span>${partial ? `<span class="note" style="margin:0">statements run to ${dateLabel(through)}</span>` : ""}</div>`;
+
+      if (state.drill) {
+        const d = state.drill;
+        const inCat = cur.filter((l) => (l.category ?? "") === d.category);
+        const crumbs = `<div class="crumbs"><button data-act="undrill">All categories</button> › ${d.payee === undefined ? `<span>${esc(catName(d.category || null))}</span>` : `<button data-act="drill" data-category="${esc(d.category)}">${esc(catName(d.category || null))}</button> › <span>${esc(d.payee)}</span>`}</div>`;
+        if (d.payee === undefined) {
+          const payees = [...groupBy(inCat, (l) => l.payee)].map(([payee, rs]) => ({ payee, rs, amount: spent(rs) })).sort((a, b) => b.amount - a.amount);
+          const prevPayee = new Map([...groupBy(prev.filter((l) => (l.category ?? "") === d.category), (l) => l.payee)].map(([payee, rs]) => [payee, spent(rs)]));
+          const pmax = Math.max(1, ...payees.map((x) => x.amount));
+          return `${periodbar}${crumbs}<h1 class="answer">${money(spent(inCat))} on ${esc(catName(d.category || null).toLowerCase())}</h1><p class="answer-sub">${payees.length} payee${payees.length === 1 ? "" : "s"} in ${esc(P.long(mode, anchor))}. Change a payee's category here and every line from it follows.</p>
+            <div class="cats">${payees.map((x) => `<div class="work-row"><div class="who"><button class="toggle" data-act="drill-payee" data-payee="${esc(x.payee)}" style="padding:0;color:var(--ink);text-align:left"><strong>${esc(x.payee)}</strong></button><small>${x.rs.length} payment${x.rs.length === 1 ? "" : "s"}${x.rs.some((l) => l.paidBy) ? `, paid by ${esc(entityName(x.rs.find((l) => l.paidBy).paidBy))}` : ""}</small></div>
+              <span class="track" style="grid-column:span 1"><span class="fill" style="display:block;width:${(100 * x.amount) / pmax}%;background:${colourOf(d.category || null)}"></span></span>
+              <span class="num">${money(x.amount)}</span>${deltaTag(x.amount, prevPayee.get(x.payee) ?? 0)}
+              <span class="acts">${catPicker(`data-fix="payee" data-line="${esc(x.rs[0].id)}" data-payee="${esc(x.payee)}"`, "Recategorise")}${entityPicker(x.rs[0].entity, `data-for-of="${esc(x.rs[0].id)}"`)}</span></div>`).join("")}</div>${catList()}${editBar()}`;
+        }
+        const rows = inCat.filter((l) => l.payee === d.payee);
+        return `${periodbar}${crumbs}<h1 class="answer">${money(spent(rows))} to ${esc(d.payee)}</h1><p class="answer-sub">${rows.length} payment${rows.length === 1 ? "" : "s"} in ${esc(P.long(mode, anchor))}. Fix one line here when it differs from the rest.</p>
+          <table><thead><tr><th>Date</th><th>Account</th><th>For</th><th class="num">Amount</th><th>Category</th><th></th></tr></thead><tbody>${rows.map((l) => `<tr><td>${dateLabel(l.date)}</td><td>${esc(accountName(l.account))}</td><td>${esc(entityName(l.entity))}${l.paidBy ? ` <span class="chip">paid by ${esc(entityName(l.paidBy))}</span>` : ""}</td><td class="num">${money(-l.amount, l.currency, 2)}</td><td>${tagOf(l)}</td><td>${catPicker(`data-fix="line" data-line="${esc(l.id)}" data-payee="${esc(l.payee)}"`, "Just this line")}${entityPicker(l.entity, `data-for-of="${esc(l.id)}"`)}</td></tr>`).join("")}</tbody></table>${catList()}${editBar()}`;
+      }
+
+      const ribbon = curCats.filter((g) => g.amount > 0).map((g) => `<button style="flex:${g.amount};background:${colourOf(g.category)}" data-act="drill" data-category="${esc(g.category ?? "")}" data-tip="${esc(`${catName(g.category)}: ${plain(g.amount)} (${pct(g.amount, total)}%)`)}" aria-label="${esc(catName(g.category))}"></button>`).join("");
+      const key = curCats.slice(0, 6).map((g) => `<span><i style="background:${colourOf(g.category)}"></i>${esc(catName(g.category))} ${pct(g.amount, total)}%</span>`).join("");
+      const entitiesHere = state.entity === "all" ? DATA.entities.filter((e) => cur.some((l) => l.entity === e.slug)) : [];
+      const split = entitiesHere.length < 2 ? "" : `<div class="split">${entitiesHere.map((e) => {
+        const mine2 = groups(cur.filter((l) => l.entity === e.slug)).filter((g) => g.category !== null).slice(0, 5);
+        const emax = Math.max(1, ...mine2.map((g) => g.amount));
+        return `<div><h3><span class="dot" style="background:${entityColor(e.slug)}"></span>${esc(e.name)} <span class="num" style="margin-left:auto;font-weight:500">${money(spent(cur.filter((l) => l.entity === e.slug)))}</span></h3>${mine2.map((g) => `<div class="hbar"><span class="name">${esc(catName(g.category))}</span><span class="track"><span class="fill" style="display:block;width:${(100 * g.amount) / emax}%;background:${colourOf(g.category)}"></span></span><span class="num">${money(g.amount)}</span></div>`).join("")}</div>`;
+      }).join("")}</div>`;
+      const moverRows = (items) => items.length === 0 ? '<p class="empty">Nothing moved much.</p>' : items.map((m) => `<div class="mover"><span>${esc(m.name)}</span>${deltaTag(m.now, m.before)}<span class="why">${m.why}</span></div>`).join("");
+      const catMovers = [...new Set([...curCats.map((g) => g.category), ...prevBy.keys()])].filter((c) => c !== null)
+        .map((c) => {
+          const nowRows = cur.filter((l) => l.category === c); const beforeRows = prev.filter((l) => l.category === c);
+          const byPayee = [...new Set([...nowRows, ...beforeRows].map((l) => l.payee))].map((payee) => ({ payee, diff: spent(nowRows.filter((l) => l.payee === payee)) - spent(beforeRows.filter((l) => l.payee === payee)) })).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))[0];
+          return { name: catName(c), now: spent(nowRows), before: spent(beforeRows), why: byPayee ? `Mostly ${esc(byPayee.payee)} (${byPayee.diff >= 0 ? "+" : "−"}${money(Math.abs(byPayee.diff))})` : "" };
+        })
+        .filter((m) => Math.abs(m.now - m.before) >= 1).sort((a, b) => Math.abs(b.now - b.before) - Math.abs(a.now - a.before)).slice(0, 3);
+      const payMovers = [...new Set([...cur, ...prev].map((l) => l.payee))]
+        .map((payee) => {
+          const n = cur.filter((l) => l.payee === payee); const b = prev.filter((l) => l.payee === payee);
+          const why = esc(b.length === 0 ? `New: ${n.length} payment${n.length === 1 ? "" : "s"}` : n.length === 0 ? `None this ${mode}, ${b.length} the ${mode} before` : `${n.length} payment${n.length === 1 ? "" : "s"}, ${b.length} the ${mode} before`);
+          return { name: payee, now: spent(n), before: spent(b), why };
+        })
+        .filter((m) => Math.abs(m.now - m.before) >= 1).sort((a, b) => Math.abs(b.now - b.before) - Math.abs(a.now - a.before)).slice(0, 3);
+      const span = mode === "year" ? 5 : 12;
+      const keys = Array.from({ length: span }, (_, i) => P.step(mode, anchor, i - span + 1)).filter((k) => P.end(mode, k) >= firstDate);
+      const stackCats = [...rank.slice(0, 6)];
+      const stackOf = (k) => {
+        const rows = within(k, base, null);
+        const parts = [...stackCats.map((c) => ({ c, v: spent(rows.filter((l) => l.category === c)) })), { c: "__other", v: spent(rows.filter((l) => l.category !== null && !stackCats.includes(l.category))) }, { c: null, v: spent(rows.filter((l) => l.category === null)) }];
+        return { k, parts, total: sum(parts, (x) => x.v) };
       };
-      const payees = [...groupBy(recent, (l) => `${l.entity}|${l.payee}`)].map(([, rows]) => ({ name: rows[0].payee, entity: rows[0].entity, paidBy: rows.find((l) => l.paidBy)?.paidBy ?? null, value: -sum(rows, (l) => l.amount), count: rows.length })).sort((a, b) => b.value - a.value).slice(0, 15);
-      return `<p class="kicker">Spending · ${esc(monthLabel(from))} to ${esc(monthLabel(to))}</p><h1>${whose.length > 1 ? whose.map((e) => `${money(-sum(recent.filter((l) => l.entity === e.slug), (l) => l.amount))} ${esc(e.kind === "individual" ? "personal" : e.name)}`).join(", ") : `${money(-sum(recent, (l) => l.amount))} spent`}</h1><p class="lede">Each expense counts for whoever it was for, whichever account paid: a rule's <code>for</code> moves a company payment that was really personal (or the reverse) to the right side, and the Director page keeps the balance between you. Categories come from rules.md; "uncategorised" is what no rule names yet.</p>
-        <div class="grid2">${whose.length ? whose.map(card).join("") : '<div class="card"><p class="empty">Nothing yet.</p></div>'}</div>
-        <div class="card"><h2>Biggest payees</h2>${payees.length ? `<table><thead><tr><th>Payee</th><th>For</th><th class="num">Times</th><th class="num">Total</th></tr></thead><tbody>${payees.map((p) => `<tr><td>${esc(p.name)}</td><td><span class="dot" style="background:${entityColor(p.entity)}"></span> ${esc(entityName(p.entity))}${p.paidBy ? ` <span class="chip">paid by ${esc(entityName(p.paidBy))}</span>` : ""}</td><td class="num">${p.count}</td><td class="num">${money(p.value)}</td></tr>`).join("")}</tbody></table>` : '<p class="empty">Nothing yet.</p>'}</div>`;
+      const stacks = keys.map(stackOf);
+      const W = 720, H = 220, pad = { l: 56, r: 8, t: 10, b: 26 };
+      const top2 = Math.max(1, ...stacks.map((x) => x.total));
+      const stepv = Math.pow(10, Math.floor(Math.log10(top2)));
+      const maxv = Math.ceil(top2 / stepv) * stepv;
+      const band = (W - pad.l - pad.r) / Math.max(1, stacks.length);
+      const bw = Math.min(34, band - 8);
+      const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - v / maxv);
+      const colourFor = (c) => (c === "__other" ? "var(--c-other)" : colourOf(c));
+      const columns = stacks.map((x, i) => {
+        const x0 = pad.l + i * band + (band - bw) / 2;
+        const segs = x.parts.filter((part) => part.v > 0).reduce((acc, part) => {
+          const top = acc.at(-1)?.top ?? y(0);
+          const h = y(0) - y(part.v);
+          return [...acc, { ...part, top: top - h, h }];
+        }, []);
+        return segs.map((sg) => `<rect x="${x0}" y="${sg.top + 1}" width="${bw}" height="${Math.max(0, sg.h - 2)}" rx="2" fill="${colourFor(sg.c)}" data-tip="${esc(`${P.short(mode, x.k)}\n${sg.c === "__other" ? "Other" : catName(sg.c)}: ${plain(sg.v)}\nTotal: ${plain(x.total)}`)}"/>`).join("") +
+          `<text x="${x0 + bw / 2}" y="${H - 8}" text-anchor="middle"${x.k === anchor ? ' style="fill:var(--ink);font-weight:600"' : ""}>${esc(P.short(mode, x.k))}</text>`;
+      }).join("");
+      const ticks = [0, 0.5, 1].map((f) => f * maxv).map((t) => `<line class="grid" x1="${pad.l}" x2="${W - pad.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${pad.l - 8}" y="${y(t) + 4}" text-anchor="end" class="amt">${esc(plain(t))}</text>`).join("");
+      const legend = `<div class="legend">${[...stackCats, "__other", null].map((c) => `<span><i style="background:${colourFor(c)}"></i>${c === "__other" ? "Other" : esc(catName(c))}</span>`).join("")}</div>`;
+
+      return `${periodbar}
+        <h1 class="answer">${sentence}.</h1>
+        <p class="answer-sub">${usual === null ? "" : `Your usual ${mode} is about ${money(usual)}. `}${total > 0 ? `${pct(approvedAmount, total)}% of it is in categories you approved${approvedAmount < total ? `; <a href="#categorise">review the rest</a>` : ""}.` : ""}${foreign.length ? ` Also ${foreign.map(([c, rs]) => money(spent(rs), c)).join(", ")} in other currencies, never converted.` : ""}</p>
+        ${total > 0 ? `<div class="ribbon" role="img" aria-label="Spending by category">${ribbon}</div><div class="ribbon-key">${key}</div>` : ""}
+        ${split}
+        <h2 class="section-title">By category</h2><p class="section-note">Change is against ${partial ? "the same days of " : ""}${esc(P.short(mode, prevKey))}; the line is the last six ${mode}s. Select a category to see who was paid.</p>
+        <div class="cats">${top.map((g) => row(g, catName(g.category), colourOf(g.category))).join("")}${!state.showOther && rest.length ? `<button class="more" data-act="other">Show ${rest.length} more categories</button>` : ""}${none ? row(none, "Uncategorised", "var(--c-other)") : ""}${curCats.length === 0 ? '<p class="empty">No spending in this period.</p>' : ""}</div>
+        <div class="movers"><div><h2 class="section-title">Categories that moved</h2>${moverRows(catMovers)}</div><div><h2 class="section-title">Payees that moved</h2>${moverRows(payMovers)}</div></div>
+        <h2 class="section-title">Over time</h2><p class="section-note">The last ${keys.length} ${mode}s, by your six biggest categories.</p>
+        <div class="card">${legend}<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Spending by ${mode} and category">${ticks}<line class="base" x1="${pad.l}" x2="${W - pad.r}" y1="${y(0)}" y2="${y(0)}"/>${columns}</svg>
+        ${tableOf([mode.charAt(0).toUpperCase() + mode.slice(1), ...stackCats.map(catName), "Other", "Uncategorised", "Total"], stacks.map((x) => [esc(P.short(mode, x.k)), ...x.parts.map((part) => money(part.v)), money(x.total)]))}</div>
+        ${catList()}${editBar()}`;
+    },
+    categorise() {
+      const rows = viewed().filter(mine).filter((l) => OWN.has(l.kind));
+      const groupsAll = [...groupBy(rows, (l) => l.payee.toLowerCase())].map(([k, rs]) => {
+        const state2 = rs.some((l) => l.category === null) ? "none" : rs.some((l) => !l.approved) ? "suggested" : "approved";
+        const cats = [...groupBy(rs.filter((l) => l.category !== null), (l) => l.category)].sort((a, b) => b[1].length - a[1].length);
+        const keys = [...new Set(rs.filter((l) => !l.approved && l.rule !== null).map((l) => l.rule))];
+        return { k, payee: rs[0].payee, rs, state: state2, category: cats[0]?.[0] ?? null, mixed: cats.length > 1, keys, out: -sum(rs.filter((l) => l.amount < 0 && l.currency === DATA.base), (l) => l.amount), inn: sum(rs.filter((l) => l.amount > 0 && l.currency === DATA.base), (l) => l.amount), pending: rs.some((l) => l.pending) };
+      });
+      const count = (t) => groupsAll.filter((g) => g.state === t).length;
+      const q = state.query.trim().toLowerCase();
+      const shown = groupsAll.filter((g) => g.state === state.tab && (q === "" || g.payee.toLowerCase().includes(q) || (g.category ?? "").includes(q))).sort((a, b) => b.out + b.inn - (a.out + a.inn));
+      const tab = (t, label) => `<button data-act="tab" data-tab="${t}" aria-pressed="${state.tab === t}">${label} ${count(t)}</button>`;
+      const lineCount = (g) => g.keys.reduce((n, k) => n + (ruleBy.get(k)?.lines ?? 0), 0);
+      const tagFor = (g) => g.pending ? `<span class="tag pending">${esc(g.category ?? "")}, not pasted yet</span>` : g.state === "none" ? '<span class="tag none">No category</span>' : g.state === "suggested" ? `<span class="tag suggested">${esc(g.category)}${g.mixed ? " and others" : ""}</span>` : `<span class="tag approved">${esc(g.category)}${g.mixed ? " and others" : ""}</span>`;
+      const list = shown.slice(0, 200).map((g) => `<div class="work-row"><div class="who"><strong>${esc(g.payee)}</strong><small>${[...new Set(g.rs.map((l) => l.entity))].map((e) => esc(entityName(e))).join(", ")}</small></div>
+          <span class="count note" style="margin:0">${g.rs.length} line${g.rs.length === 1 ? "" : "s"}</span><span class="total num">${g.out ? money(g.out) : money(g.inn)}</span>
+          <span>${tagFor(g)}</span>
+          <span class="acts">${g.state === "suggested" && g.keys.length ? `<button class="btn" data-act="approve" data-keys="${esc(g.keys.join(","))}" title="Approves ${lineCount(g)} lines">Approve</button>` : ""}${catPicker(`data-fix="payee" data-line="${esc(g.rs[0].id)}" data-payee="${esc(g.payee)}"`, g.state === "none" ? "Set category" : "Change")}${entityPicker(g.rs[0].entity, `data-for-of="${esc(g.rs[0].id)}"`)}<button class="toggle" data-act="open" data-k="${esc(g.k)}" aria-expanded="${state.open.has(g.k)}" aria-label="Show lines">${state.open.has(g.k) ? "▾" : "▸"}</button></span></div>
+          ${state.open.has(g.k) ? `<div class="work-lines"><table><tbody>${g.rs.slice(-30).reverse().map((l) => `<tr><td>${dateLabel(l.date)} ${l.date.slice(0, 4)}</td><td>${esc(accountName(l.account))}</td><td class="num">${money(l.amount, l.currency, 2)}</td><td>${tagOf(l)}</td><td>${catPicker(`data-fix="line" data-line="${esc(l.id)}" data-payee="${esc(l.payee)}"`, "Just this line")}</td></tr>`).join("")}</tbody></table>${g.rs.length > 30 ? `<p class="note">The latest 30 of ${g.rs.length}.</p>` : ""}</div>` : ""}`).join("");
+      const a = DATA.approval;
+      return `<h1 class="answer">${count("none") ? `${count("none")} payee${count("none") === 1 ? "" : "s"} need a category` : count("suggested") ? `${count("suggested")} suggestion${count("suggested") === 1 ? "" : "s"} to check` : "Everything is categorised and approved"}</h1>
+        <p class="answer-sub">Approving a payee teaches every line from it, past and future; "Just this line" fixes one. Your edits count on this page straight away, and become permanent when you copy them into a session. ${a.approved} of ${a.approved + a.suggested + a.uncategorised} lines are approved so far.</p>
+        <div class="periodbar"><div class="seg" role="group" aria-label="Show">${tab("none", "Needs a category")}${tab("suggested", "Suggested")}${tab("approved", "Approved")}</div><input class="search" type="search" data-search placeholder="Find a payee or category" value="${esc(state.query)}" aria-label="Find a payee or category"></div>
+        <div class="work">${list || `<p class="empty">${state.tab === "none" ? "Nothing needs a category." : state.tab === "suggested" ? "No suggestions waiting." : "Nothing approved yet."}</p>`}${shown.length > 200 ? `<p class="note">The first 200 of ${shown.length}; search to narrow.</p>` : ""}</div>
+        ${catList()}${editBar()}`;
     },
     bills() {
       const bills = DATA.recurring.filter(mine).filter((b) => b.currency === DATA.base);
@@ -370,10 +706,13 @@ body.masked iframe.tax:hover { filter: none; }
     }
   };
 
-  const counts = { overview: DATA.insights.length, checks: DATA.checks.filter((c) => !c.ok).length, bills: DATA.recurring.filter((b) => b.state === "missed").length };
+  const toReview = () => new Set(viewed().filter((l) => OWN.has(l.kind) && !l.approved).map((l) => l.payee.toLowerCase())).size;
+  const counts = { categorise: toReview(), overview: DATA.insights.length, checks: DATA.checks.filter((c) => !c.ok).length, bills: DATA.recurring.filter((b) => b.state === "missed").length };
   const current = () => (PAGES.some(([id]) => `#${id}` === location.hash) ? location.hash.slice(1) : "overview");
   const render = () => {
     const page = current();
+    counts.categorise = toReview();
+    const searching = document.activeElement?.hasAttribute?.("data-search");
     document.getElementById("nav").innerHTML = PAGES.map(([id, label]) => `<li><a href="#${id}"${id === page ? ' aria-current="page"' : ""}>${label}${counts[id] ? `<span class="count">${counts[id]}</span>` : ""}</a></li>`).join("");
     document.getElementById("entities").innerHTML = [{ slug: "all", name: "All" }, ...DATA.entities].map((e) => `<button data-entity="${esc(e.slug)}" aria-pressed="${state.entity === e.slug}">${e.slug === "all" ? "" : `<span class="dot" style="background:${entityColor(e.slug)}"></span>`}${esc(e.name)}</button>`).join("");
     document.querySelectorAll("section.page").forEach((section) => section.classList.toggle("on", section.id === page));
@@ -382,7 +721,54 @@ body.masked iframe.tax:hover { filter: none; }
     }
     document.body.classList.toggle("masked", state.masked);
     document.getElementById("mask").setAttribute("aria-pressed", String(state.masked));
+    const search = document.querySelector("[data-search]");
+    if (searching && search) { search.focus(); search.setSelectionRange(search.value.length, search.value.length); }
   };
+  const push = (op) => { store.ops.push(op); state.copied = false; saveOps(); render(); };
+  const original = new Map(DATA.lines.map((l) => [l.id, l]));
+  const forOf = (el, id) => {
+    const picked = [...(el.closest(".work-row, tr")?.querySelectorAll("[data-for-of]") ?? [])].find((x) => x.dataset.forOf === id)?.value;
+    return picked && picked !== original.get(id)?.entity ? picked : undefined;
+  };
+  const copyText = (text) => (navigator.clipboard?.writeText ? navigator.clipboard.writeText(text) : Promise.reject(new Error("no clipboard"))).catch(() => {
+    const area = document.createElement("textarea");
+    area.value = text; document.body.appendChild(area); area.select();
+    try { document.execCommand?.("copy"); } finally { area.remove(); }
+  });
+  const ACTS = {
+    mode: (el) => { state.period = el.dataset.mode; save(); render(); },
+    step: (el) => { state.anchor[state.period] = P.step(state.period, anchorOf(state.period), Number(el.dataset.by)); render(); },
+    drill: (el) => { state.drill = { category: el.dataset.category }; render(); window.scrollTo(0, 0); },
+    "drill-payee": (el) => { state.drill = { ...state.drill, payee: el.dataset.payee }; render(); window.scrollTo(0, 0); },
+    undrill: () => { state.drill = null; render(); },
+    other: () => { state.showOther = true; render(); },
+    tab: (el) => { state.tab = el.dataset.tab; render(); },
+    open: (el) => { const k = el.dataset.k; if (state.open.has(k)) { state.open.delete(k); } else { state.open.add(k); } render(); },
+    approve: (el) => { el.dataset.keys.split(",").filter(Boolean).forEach((key) => store.ops.push({ op: "approve", key })); state.copied = false; saveOps(); render(); },
+    undo: () => { store.ops.pop(); state.copied = false; saveOps(); render(); },
+    clear: () => { store.ops = []; state.copied = false; saveOps(); render(); },
+    copy: () => { copyText(editsBlock()).finally(() => { state.copied = true; render(); }); },
+    zero: () => { state.showZero = !state.showZero; save(); render(); }
+  };
+  document.addEventListener("click", (event) => {
+    const el = event.target.closest("[data-act]");
+    if (el && ACTS[el.dataset.act]) { event.preventDefault(); ACTS[el.dataset.act](el); }
+  });
+  document.addEventListener("change", (event) => {
+    const fix = event.target.closest("[data-fix]");
+    if (fix && fix.value.trim() !== "") {
+      push({ op: "set", scope: fix.dataset.fix, line: fix.dataset.line, payee: fix.dataset.payee, category: fix.value.trim().toLowerCase(), for: forOf(fix, fix.dataset.line) });
+      return;
+    }
+    const who = event.target.closest("[data-for-of]");
+    const line = who ? viewed().find((l) => l.id === who.dataset.forOf) : undefined;
+    if (who && line && line.category !== null) {
+      push({ op: "set", scope: who.closest("tr") ? "line" : "payee", line: line.id, payee: line.payee, category: line.category, for: who.value });
+    }
+  });
+  document.addEventListener("input", (event) => {
+    if (event.target.hasAttribute?.("data-search")) { state.query = event.target.value; render(); }
+  });
   document.getElementById("entities").addEventListener("click", (event) => {
     const button = event.target.closest("button[data-entity]");
     if (button) { state.entity = button.dataset.entity; save(); render(); }

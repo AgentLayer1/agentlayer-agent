@@ -476,7 +476,8 @@ export interface FinanceData {
   approval: { approved: number; suggested: number; uncategorised: number };
 }
 
-const LINE_MONTHS = 13;
+/** Five years of lines: enough for the year view, small enough to embed. */
+const LINE_MONTHS = 60;
 /** A statement older than this, about one cycle and a few days, means the next one is due. */
 const STALE_DAYS = 35;
 /** Fees and double charges older than this are history, not something to act on. */

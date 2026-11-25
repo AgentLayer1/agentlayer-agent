@@ -1,11 +1,13 @@
 import { afterAll, describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { JSDOM, VirtualConsole } from 'jsdom';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { readJsonBlock } from '../../../src/shared/json-block';
 import { THEME_BLOCK } from '../../../src/shared/theme';
 import { importStatement } from './import';
 import { renderFinances } from './page';
+import { applyEdits, parseEdits } from './rules';
 
 const dirs: string[] = [];
 afterAll(() => dirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
@@ -70,5 +72,121 @@ describe('renderFinances', () => {
     const empty = mkdtempSync(join(tmpdir(), 'finances-page-'));
     dirs.push(empty);
     expect(renderFinances(empty, '2026-11-02')).toContain('No entity profiles yet');
+  });
+});
+
+describe('the page in a browser', () => {
+  const PROSE = '# Finances rules\n\n## How I categorise\n\n- Streamco is a subscription.\n';
+  const setup = () => {
+    const dir = mkdtempSync(join(tmpdir(), 'finances-page-dom-'));
+    dirs.push(dir);
+    const write = (file: string, body: string): string => {
+      mkdirSync(dirname(join(dir, file)), { recursive: true });
+      writeFileSync(join(dir, file), body);
+      return join(dir, file);
+    };
+    write(
+      'entities/ada.md',
+      '---\nname: Personal\nkind: individual\nclose: none\n---\n\n## Accounts\n\n```yaml\n- { id: ada-main, name: Ada current }\n- { id: ada-old, name: Ada old savings }\n```\n'
+    );
+    write(
+      'RULES.md',
+      `${PROSE}\n## Learned\n\n### Payees\n\n\`\`\`yaml\n[]\n\`\`\`\n\n### Categories\n\n\`\`\`yaml\n- { payee: "STREAMCO KL", category: "entertainment" }\n\`\`\`\n`
+    );
+    importStatement({
+      dir,
+      account: 'ada-main',
+      file: write(
+        'data/inbox/s.csv',
+        'date,description,amount,balance\n2026-09-05,STREAMCO*884412 KL,-45,955\n2026-10-05,STREAMCO*884413 KL,-45,910\n2026-10-14,RESTO X,-80,830\n2026-10-20,RESTO X,-60,770\n2026-10-31,SALARY,1000,1770\n'
+      )
+    });
+    importStatement({
+      dir,
+      account: 'ada-old',
+      file: write('data/inbox/o.csv', 'date,description,amount,balance\n2026-10-01,CLOSING,-5,0\n')
+    });
+    return dir;
+  };
+  const open = (html: string, hash: string) => {
+    const errors: string[] = [];
+    const virtualConsole = new VirtualConsole();
+    virtualConsole.on('jsdomError', (error) => errors.push(error.message));
+    const dom = new JSDOM(html, {
+      runScripts: 'dangerously',
+      url: `https://pages.test/dashboard.html${hash}`,
+      virtualConsole,
+      beforeParse: (window) => {
+        window.matchMedia = (query: string) =>
+          ({ matches: false, media: query, addEventListener: () => undefined }) as unknown as MediaQueryList;
+        window.scrollTo = () => undefined;
+      }
+    });
+    const doc = dom.window.document;
+    const click = (selector: string): void => {
+      const el = doc.querySelector(selector);
+      if (el === null) {
+        throw new Error(`no ${selector}`);
+      }
+      el.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    };
+    return { dom, doc, click, errors };
+  };
+
+  test('where your money goes renders for a week, a month and a year without errors', () => {
+    const { doc, click, errors } = open(renderFinances(setup(), '2026-11-02'), '#spending');
+    expect(doc.querySelector('h1.answer')?.textContent).toContain('went out in October 2026');
+    click('button[data-mode="week"]');
+    click('button[data-act="step"][data-by="-1"]');
+    click('button[data-mode="year"]');
+    expect(doc.querySelector('h1.answer')?.textContent).toContain('2026');
+    click('.cat-row');
+    expect(doc.querySelector('.crumbs')?.textContent).toContain('All categories');
+    expect(errors).toEqual([]);
+  });
+
+  test('accounts at zero are hidden until asked for', () => {
+    const { doc, click } = open(renderFinances(setup(), '2026-11-02'), '#overview');
+    expect(doc.querySelector('#overview')?.textContent).not.toContain('Ada old savings');
+    expect(doc.querySelector('.zero-note')?.textContent).toContain('Hiding 1 account at zero');
+    click('button[data-act="zero"]');
+    expect(doc.querySelector('#overview')?.textContent).toContain('Ada old savings');
+  });
+
+  test('an approval and a fix made on the page, copied and applied, come back approved after the rebuild', async () => {
+    const dir = setup();
+    const { dom, doc, click, errors } = open(renderFinances(dir, '2026-11-02'), '#categorise');
+    click('button[data-tab="suggested"]');
+    click('button[data-act="approve"]');
+    click('button[data-tab="none"]');
+    const row = [...doc.querySelectorAll('.work-row')].find((el) => el.textContent?.includes('RESTO X'));
+    const input = row?.querySelector('input[data-fix="payee"]');
+    if (!(input instanceof dom.window.HTMLInputElement)) {
+      throw new Error('no picker for RESTO X');
+    }
+    input.value = 'Food';
+    input.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    expect(doc.querySelector('.editbar .what')?.textContent).toContain('1 approval and 1 fix, covering 4 lines');
+    click('button[data-act="copy"]');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const pasted = doc.querySelector('.editbar pre')?.textContent ?? '';
+    expect(pasted).toContain('```finances-edits');
+    expect(applyEdits(dir, parseEdits(pasted), '2026-11-02')).toMatchObject({ approved: 1, set: 1, unknown: [] });
+    const rebuilt = readJsonBlock(renderFinances(dir, '2026-11-02'), 'finance-data');
+    const lines =
+      rebuilt?.kind === 'data'
+        ? (rebuilt.data as { lines: { payee: string; category: string | null; approved: boolean }[] }).lines
+        : [];
+    expect(
+      lines.filter((line) => line.payee !== 'SALARY').map((line) => [line.payee, line.category, line.approved])
+    ).toEqual([
+      ['STREAMCO KL', 'entertainment', true],
+      ['CLOSING', null, false],
+      ['STREAMCO KL', 'entertainment', true],
+      ['RESTO X', 'food', true],
+      ['RESTO X', 'food', true]
+    ]);
+    expect(readFileSync(join(dir, 'RULES.md'), 'utf8').startsWith(PROSE)).toBe(true);
+    expect(errors).toEqual([]);
   });
 });
