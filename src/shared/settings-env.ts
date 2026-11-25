@@ -1,4 +1,5 @@
 import { ownDataDir } from '@/shared/naming';
+import { resolvedPath } from '@/shared/paths';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
@@ -36,11 +37,13 @@ export const pinHome = (home: string): void => {
   process.env.AGENT_HOME = home;
 };
 
-/** The nearest folder at or above `start` that is this agent's home, read from its marker alone. */
+/** The nearest folder at or above `start` that is this agent's home, read from its marker alone; through a symlink, the home above where it leads. */
 export const homeAbove = (start: string): string | undefined => {
-  const dir = resolve(start);
-  const parent = dirname(dir);
-  return ownDataDir(dir) ? dir : parent === dir ? undefined : homeAbove(parent);
+  const walk = (dir: string): string | undefined => {
+    const parent = dirname(dir);
+    return ownDataDir(dir) ? dir : parent === dir ? undefined : walk(parent);
+  };
+  return walk(resolve(start)) ?? walk(resolvedPath(resolve(start)));
 };
 
 /** The home a session works in: the first of its workspace folders, then its folder, that sits in one. */

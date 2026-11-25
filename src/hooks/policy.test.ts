@@ -136,6 +136,23 @@ describe('MCP', () => {
   });
 });
 
+describe('a rule or a workspace spelled through a symlink', () => {
+  test('a deny written through a linked folder matches the file it names, by file tool and by shell', () => {
+    const linkedDeny = { permissions: { deny: [`Read(/${join(SCRATCH, 'linked-state')}/**)`] } };
+    expect(verdict({ kind: 'read', path: join(HOME, '.state', 'token') }, { settings: linkedDeny })).toBe('deny');
+    expect(verdict(shell(`cat ${join(HOME, '.state', 'token')}`), { settings: linkedDeny })).toBe('deny');
+  });
+});
+
+describe('malformed rules', () => {
+  test('a permissions field of the wrong kind throws, so the hook fails closed, while an absent one is no rules', () => {
+    const read = { kind: 'read', path: '.env' } as const;
+    expect(() => decide(read, { settings: { permissions: { deny: 'Read(**/.env)' } } })).toThrow('permissions.deny');
+    expect(() => decide(read, { settings: { permissions: null } })).toThrow('permissions');
+    expect(verdict(read, { settings: {} })).toBe('host decides');
+  });
+});
+
 test('a refusal and an ask always carry a reason the operator sees', () => {
   const answers = [decide(shell('gh pr list')), decide(shell('git push')), decide({ kind: 'read', path: '.env' })];
   expect(answers.every((answer) => answer !== null && 'reason' in answer && answer.reason.length > 0)).toBe(true);

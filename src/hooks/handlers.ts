@@ -97,7 +97,6 @@ export const runPolicy = async (flag: Flag): Promise<number> => {
     return 0;
   }
   try {
-    await recordFor(host, payload);
     const { call } = payload;
     const cwd = payload.cwd ?? FOLDERS.HOME;
     if (call.kind === 'shell') {

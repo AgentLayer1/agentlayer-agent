@@ -45,9 +45,20 @@ const fromUserHome = (word: string): string => word.replace(/^(?:~|\$HOME|\$\{HO
 export const effectiveSettings = (home: string): Json =>
   mergeSettings(readSettingsFile(join(homedir(), '.claude', 'settings.json')), readMergedSettings(home).merged);
 
+/** One permissions list; a list or a `permissions` that is there but malformed throws, so the check fails closed. */
 const rulesOf = (settings: Json, list: 'allow' | 'ask' | 'deny'): string[] => {
-  const value = isRecord(settings.permissions) ? settings.permissions[list] : undefined;
-  return Array.isArray(value) ? value.filter((rule): rule is string => typeof rule === 'string') : [];
+  const { permissions } = settings;
+  if (permissions === undefined) {
+    return [];
+  }
+  if (!isRecord(permissions)) {
+    throw new Error("the Claude settings' permissions is not an object");
+  }
+  const value = permissions[list];
+  if (value !== undefined && !Array.isArray(value)) {
+    throw new Error(`the Claude settings' permissions.${list} is not a list`);
+  }
+  return (value ?? []).filter((rule): rule is string => typeof rule === 'string');
 };
 
 /** The bodies of one tool's rules: `Read(./x)` → `./x`. */
@@ -64,8 +75,16 @@ const absoluteGlob = (rule: string, home: string): string =>
         ? rule
         : join(home, rule);
 
+/** A glob with its fixed folders resolved, so a rule written through a symlink matches the resolved path it meets. */
+const resolvedGlob = (glob: string): string => {
+  const segments = glob.split('/');
+  const wild = segments.findIndex((segment) => /[*?[\]{}]/.test(segment));
+  const fixed = (wild === -1 ? segments : segments.slice(0, wild)).join('/');
+  return fixed ? [resolvedPath(fixed), ...(wild === -1 ? [] : segments.slice(wild))].join('/') : glob;
+};
+
 const matchesPath = (rule: string, path: string, home: string): boolean => {
-  const glob = absoluteGlob(rule, home);
+  const glob = resolvedGlob(absoluteGlob(rule, home));
   return [glob, glob.replace(/\/?$/, '/**')].some((pattern) => new Bun.Glob(pattern).match(path));
 };
 
