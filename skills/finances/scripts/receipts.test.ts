@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { buildFinance, loadFinance } from './build';
 import { importStatement } from './import';
-import { addReceipt, linkReceipt, loadReceipts, matchReceipts } from './receipts';
+import { loadReceipts } from './layout';
+import { addReceipt, linkReceipt, matchReceipts } from './receipts';
 
 const dirs: string[] = [];
 afterAll(() => dirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
@@ -99,6 +100,32 @@ describe('receipts', () => {
     ]);
     expect(report.unmatched).toEqual([wrongAmount.receipt.id]);
     expect(existsSync(join(dir, 'a.pdf'))).toBe(true);
+  });
+
+  test('two receipts that fit the same line are both left for the agent, never both linked', () => {
+    const { dir, write } = project();
+    const photo = addReceipt(dir, {
+      file: write('a.jpg', 'photo'),
+      date: '2026-10-20',
+      merchant: 'City Pharmacy',
+      amount: 30,
+      currency: 'MYR',
+      entity: 'ada'
+    });
+    const email = addReceipt(dir, {
+      file: write('b.pdf', 'email'),
+      date: '2026-10-20',
+      merchant: 'City Pharmacy',
+      amount: 30,
+      currency: 'MYR',
+      entity: 'ada'
+    });
+    const report = matchReceipts(dir, TODAY);
+    expect(report.matched).toEqual([]);
+    expect(report.ambiguous.map((entry) => entry.receipt).toSorted()).toEqual(
+      [photo.receipt.id, email.receipt.id].toSorted()
+    );
+    expect(loadReceipts(dir).every((receipt) => receipt.line === '')).toBe(true);
   });
 
   test('a match the operator confirmed is recorded, and an unknown receipt or line refused', () => {

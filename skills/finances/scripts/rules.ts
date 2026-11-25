@@ -3,8 +3,9 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FOLDERS } from '../../../src/config';
 import { todayDate } from '../../../src/shared/date';
-import { classifyAll, learnedRules, loadFinance, type Rule, ruleKey } from './build';
-import { argValue } from './calendar';
+import { isRecord } from '../../../src/shared/json-block';
+import { classifyAll, learnedBounds, learnedRules, loadFinance, type Rule, ruleKey } from './build';
+import { argValue, positionals, refuse } from './calendar';
 import { DATA } from './layout';
 
 /**
@@ -42,8 +43,6 @@ export interface ApplyReport {
   unknown: string[];
   changed: boolean;
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 
 const isFix = (value: unknown): value is Fix =>
   isRecord(value) &&
@@ -90,12 +89,11 @@ const block = (rules: Rule[]): string =>
  * everything else as it was; a file without the section gets one at its end.
  */
 export const withLearned = (text: string, payees: Rule[], categories: Rule[]): string => {
-  const start = text.search(/^## Learned[ \t]*$/m);
-  if (start === -1) {
+  const bounds = learnedBounds(text);
+  if (bounds === null) {
     return `${text.trimEnd()}\n\n## Learned\n\n### Payees\n\n${block(payees)}\n\n### Categories\n\n${block(categories)}\n`;
   }
-  const after = text.slice(start + 1).search(/^## /m);
-  const end = after === -1 ? text.length : start + 1 + after;
+  const { start, end } = bounds;
   const swap = (section: string, heading: string, rules: Rule[]): string => {
     const pattern = new RegExp(
       `(^### ${heading}[ \\t]*\\r?\\n(?:(?!^#{2,3} )[\\s\\S])*?)\`\`\`ya?ml\\r?\\n[\\s\\S]*?\`\`\``,
@@ -110,16 +108,16 @@ export const withLearned = (text: string, payees: Rule[], categories: Rule[]): s
   return `${text.slice(0, start)}${learned.trimEnd()}\n${tail === '' ? '' : `\n${tail}`}`;
 };
 
-const samePayee = (rule: Rule, payee: string): boolean =>
-  rule.payee !== undefined &&
-  rule.payee.toLowerCase() === payee.toLowerCase() &&
-  rule.id === undefined &&
-  rule.account === undefined &&
-  rule.date === undefined &&
-  rule.match === undefined;
+/** Whether two rules select the same lines: the same pattern, payee, account, date and line, case aside. */
+const sameTarget = (a: Rule, b: Rule): boolean =>
+  (a.match ?? '').toLowerCase() === (b.match ?? '').toLowerCase() &&
+  (a.payee ?? '').toLowerCase() === (b.payee ?? '').toLowerCase() &&
+  a.account === b.account &&
+  a.date === b.date &&
+  a.id === b.id;
 
 /** RULES.md as it is, or the template when the project has none yet. */
-export const readRules = (dir: string): string =>
+const readRules = (dir: string): string =>
   readFileSync(existsSync(DATA.rules(dir)) ? DATA.rules(dir) : TEMPLATE, 'utf8');
 
 /**
@@ -141,22 +139,21 @@ export const applyEdits = (dir: string, edits: Edits, today: string): ApplyRepor
   const unknownFixes = edits.set
     .filter((fix) => !usable.includes(fix))
     .map((fix) => (lines.has(fix.line) ? `for: ${fix.for ?? ''}` : `line ${fix.line}`));
-  const fixed = usable.reduce((rules, fix) => {
-    const line = lines.get(fix.line);
-    if (line === undefined) {
-      return rules;
-    }
-    const target = fix.scope === Scope.Line ? { id: line.id } : { payee: line.payee };
-    const rule: Rule = {
-      ...target,
-      category: fix.category,
-      ...(fix.for === undefined ? {} : { for: fix.for }),
-      confirmed: true
-    };
-    const overridden = (other: Rule): boolean =>
-      fix.scope === Scope.Line ? other.id === line.id : samePayee(other, line.payee);
-    return [rule, ...rules.filter((other) => !overridden(other))];
-  }, approved);
+  const fixed = usable
+    .flatMap((fix) => {
+      const line = lines.get(fix.line);
+      return line === undefined ? [] : [{ fix, line }];
+    })
+    .reduce((rules, { fix, line }) => {
+      const target: Rule = fix.scope === Scope.Line ? { id: line.id } : { payee: line.payee };
+      const rule: Rule = {
+        ...target,
+        category: fix.category,
+        ...(fix.for === undefined ? {} : { for: fix.for }),
+        confirmed: true
+      };
+      return [rule, ...rules.filter((other) => !sameTarget(other, target))];
+    }, approved);
   const next = withLearned(text, payees, fixed);
   const changed = next !== text || !existsSync(DATA.rules(dir));
   if (changed) {
@@ -250,15 +247,7 @@ export const addSuggestions = (
 ): { payees: number; categories: number; skipped: number } => {
   const text = readRules(dir);
   const { payees, categories } = learnedRules(text);
-  const known = (rule: Rule, rules: Rule[]): boolean =>
-    rules.some(
-      (other) =>
-        (rule.match !== undefined && other.match === rule.match) ||
-        (rule.payee !== undefined &&
-          rule.match === undefined &&
-          other.payee?.toLowerCase() === rule.payee.toLowerCase() &&
-          other.match === undefined)
-    );
+  const known = (rule: Rule, rules: Rule[]): boolean => rules.some((other) => sameTarget(other, rule));
   const newPayees = (suggestions.payees ?? [])
     .filter((rule) => !known(rule, payees))
     .map(({ match, payee }) => ({ match, payee }));
@@ -283,44 +272,31 @@ export const addSuggestions = (
 if (import.meta.main) {
   const [command, ...rest] = process.argv.slice(2);
   const dir = argValue(rest, '--dir') ?? join(FOLDERS.PROJECTS, 'finances');
-  if (command === 'init') {
-    if (!existsSync(DATA.rules(dir))) {
-      writeFileSync(DATA.rules(dir), readFileSync(TEMPLATE, 'utf8'));
-    }
-    console.log(DATA.rules(dir));
-  } else if (command === 'apply') {
-    const file = rest.find((arg, i) => !arg.startsWith('--') && !rest[i - 1]?.startsWith('--'));
-    const text = file === undefined ? await Bun.stdin.text() : readFileSync(file, 'utf8');
-    try {
-      console.log(JSON.stringify(applyEdits(dir, parseEdits(text), argValue(rest, '--today') ?? todayDate()), null, 2));
-    } catch (error) {
-      console.error(`refused: ${error instanceof Error ? error.message : String(error)}`);
+  const today = argValue(rest, '--today') ?? todayDate();
+  const input = async (): Promise<string> => {
+    const file = positionals(rest)[0];
+    return file === undefined ? Bun.stdin.text() : readFileSync(file, 'utf8');
+  };
+  try {
+    if (command === 'init') {
+      if (!existsSync(DATA.rules(dir))) {
+        writeFileSync(DATA.rules(dir), readFileSync(TEMPLATE, 'utf8'));
+      }
+      console.log(DATA.rules(dir));
+    } else if (command === 'apply') {
+      console.log(JSON.stringify(applyEdits(dir, parseEdits(await input()), today), null, 2));
+    } else if (command === 'review') {
+      const limit = argValue(rest, '--limit');
+      console.log(
+        JSON.stringify(reviewUncategorised(dir, today, limit === undefined ? undefined : Number(limit)), null, 2)
+      );
+    } else if (command === 'suggest') {
+      console.log(JSON.stringify(addSuggestions(dir, parseSuggestions(await input())), null, 2));
+    } else {
+      console.error('usage: bun rules.ts <apply [file] | review | suggest [file] | init> [--dir <finances dir>]');
       process.exit(1);
     }
-  } else if (command === 'review') {
-    const limit = argValue(rest, '--limit');
-    console.log(
-      JSON.stringify(
-        reviewUncategorised(
-          dir,
-          argValue(rest, '--today') ?? todayDate(),
-          limit === undefined ? undefined : Number(limit)
-        ),
-        null,
-        2
-      )
-    );
-  } else if (command === 'suggest') {
-    const file = rest.find((arg, i) => !arg.startsWith('--') && !rest[i - 1]?.startsWith('--'));
-    const text = file === undefined ? await Bun.stdin.text() : readFileSync(file, 'utf8');
-    try {
-      console.log(JSON.stringify(addSuggestions(dir, parseSuggestions(text)), null, 2));
-    } catch (error) {
-      console.error(`refused: ${error instanceof Error ? error.message : String(error)}`);
-      process.exit(1);
-    }
-  } else {
-    console.error('usage: bun rules.ts <apply [file] | review | suggest [file] | init> [--dir <finances dir>]');
-    process.exit(1);
+  } catch (error) {
+    refuse(error);
   }
 }

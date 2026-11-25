@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FOLDERS } from '../../../src/config';
 import { hashBuffer } from '../../../src/knowledge/utils';
+import { isRecord } from '../../../src/shared/json-block';
 import { daysBetween, shiftDate, todayDate } from '../../../src/shared/date';
 import { slugify } from '../../../src/tasks/mutate';
 import { shiftMonth } from './books';
@@ -15,7 +16,7 @@ import {
   loadEntities,
   loadExisting
 } from './calendar';
-import { cents, Check, csvFiles, DATA, monthOf } from './layout';
+import { cents, Check, csvFiles, DATA, loadReceipts, monthOf } from './layout';
 import { parseCsv } from './liability';
 
 /**
@@ -98,9 +99,21 @@ export interface Line extends Txn {
   /** The key of the rule that set the category, and whether the operator approved it. */
   rule: string | null;
   approved: boolean;
+  /** Set by a fix for this one line, which a payee-wide rule never overrides. */
+  pinned: boolean;
 }
 
 const CHARITY = new Set(['charity', 'zakat', 'sadaqah', 'donation']);
+
+/** The categories that set a line's kind, for the page to preview an edit the way a build would. */
+export const CATEGORY_KINDS: Readonly<Record<string, Kind>> = {
+  ...Object.fromEntries([...CHARITY].map((category) => [category, Kind.Charity])),
+  transfer: Kind.Transfer,
+  director: Kind.Director
+};
+
+/** Spending, charity and income: the lines a category is about. */
+const isOwn = (kind: Kind): boolean => kind === Kind.Spend || kind === Kind.Charity || kind === Kind.Income;
 const FEE = /\b(fee|charge|charges|penalty|late|interest|commission)\b/i;
 
 const lastDayOf = (month: string): number =>
@@ -151,6 +164,7 @@ export interface Classified {
   /** The key of the rule that set the category, and whether the operator approved it. */
   rule: string | null;
   approved: boolean;
+  pinned: boolean;
 }
 
 /**
@@ -181,7 +195,8 @@ export const classify = (txn: Txn, rules: Rule[]): Classified => {
     category: categoryRule?.category ?? null,
     for: rules.find((rule) => rule.for !== undefined && fits(rule))?.for ?? null,
     rule: categoryRule === undefined ? null : ruleKey(categoryRule),
-    approved: categoryRule?.confirmed === true
+    approved: categoryRule?.confirmed === true,
+    pinned: categoryRule?.id !== undefined
   };
 };
 
@@ -258,14 +273,14 @@ export const classifyAll = (txns: Txn[], rules: Rule[], entities: Entity[]): Lin
   const soleCompany = companies.length === 1 ? (companies[0]?.slug ?? null) : null;
   const byId = new Map(txns.map((txn) => [txn.id, txn]));
   const entityOf = (slug: string | undefined): Entity | undefined => entities.find((entity) => entity.slug === slug);
-  return classified.map(({ txn, payee, category, for: owner, rule, approved }): Line => {
+  return classified.map(({ txn, payee, category, for: owner, rule, approved, pinned }): Line => {
     const partner = byId.get(pairs.get(txn.id) ?? '');
     const kind = kindOf(
       partner === undefined ? null : pairKind(entityOf(txn.entity), entityOf(partner.entity)),
       category,
       txn.amount
     );
-    const own = kind === Kind.Spend || kind === Kind.Charity || kind === Kind.Income;
+    const own = isOwn(kind);
     const personal = entityOf(txn.entity)?.kind === EntityKind.Individual;
     const counterparty =
       kind === Kind.Director && partner === undefined && personal ? (owner ?? soleCompany ?? txn.entity) : txn.entity;
@@ -277,7 +292,8 @@ export const classifyAll = (txns: Txn[], rules: Rule[], entities: Entity[]): Lin
       for: own ? (owner ?? txn.entity) : counterparty,
       paired: partner !== undefined,
       rule,
-      approved
+      approved,
+      pinned
     };
   });
 };
@@ -410,16 +426,6 @@ export interface RuleView extends Rule {
   lines: number;
 }
 
-/** ISO 8601 week of a date, `2026-W43`: weeks start on Monday, and week 1 holds the year's first Thursday. */
-export const isoWeek = (date: string): string => {
-  const monday = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
-  const thursday = shiftDate(date, 3 - monday);
-  const firstThursday = `${thursday.slice(0, 4)}-01-04`;
-  const offset = (new Date(`${firstThursday}T00:00:00Z`).getUTCDay() + 6) % 7;
-  const week = 1 + Math.round((daysBetween(firstThursday, thursday) - 3 + offset) / 7);
-  return `${thursday.slice(0, 4)}-W${String(week).padStart(2, '0')}`;
-};
-
 export interface AccountView {
   id: string;
   name: string;
@@ -453,7 +459,6 @@ export interface FinanceData {
   lines: {
     id: string;
     date: string;
-    week: string;
     account: string;
     entity: string;
     paidBy: string | null;
@@ -464,6 +469,7 @@ export interface FinanceData {
     kind: Kind;
     rule: string | null;
     approved: boolean;
+    pinned: boolean;
     /** The matched receipt's file, relative to the finances project. */
     receipt: string | null;
   }[];
@@ -481,6 +487,7 @@ export interface FinanceData {
   checks: CheckResult[];
   rules: RuleView[];
   categories: string[];
+  kinds: Readonly<Record<string, Kind>>;
   /** Spending, charity and income lines: how many are approved, only suggested, or have no category. */
   approval: { approved: number; suggested: number; uncategorised: number };
 }
@@ -637,12 +644,8 @@ export const buildFinance = ({
     .filter((account) => account.behind)
     .map((account) => `${account.id}: ${account.asOf === null ? 'no statement yet' : `through ${account.asOf}`}`);
   const reviewCount = [...uncategorized.values()].reduce((sum, group) => sum + group.length, 0);
-  const suggestedLines = lines.filter(
-    (line) =>
-      (line.kind === Kind.Spend || line.kind === Kind.Charity || line.kind === Kind.Income) &&
-      line.category !== null &&
-      !line.approved
-  );
+  const counted = lines.filter((line) => isOwn(line.kind));
+  const suggestedLines = counted.filter((line) => line.category !== null && !line.approved);
   const suggestedCount = suggestedLines.length;
   const suggestedMonths = suggestedLines.map((line) => monthOf(line.date));
   const checks: CheckResult[] = [
@@ -765,9 +768,6 @@ export const buildFinance = ({
       }))
   ];
   const oldest = `${shiftMonth(monthOf(today), 1 - LINE_MONTHS)}-01`;
-  const counted = lines.filter(
-    (line) => line.kind === Kind.Spend || line.kind === Kind.Charity || line.kind === Kind.Income
-  );
   const covered = lines.reduce(
     (counts, line) => (line.rule === null ? counts : counts.set(line.rule, (counts.get(line.rule) ?? 0) + 1)),
     new Map<string, number>()
@@ -781,11 +781,10 @@ export const buildFinance = ({
       .filter((line) => line.date >= oldest)
       .toSorted((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
       .map((line) => {
-        const own = line.kind === Kind.Spend || line.kind === Kind.Charity || line.kind === Kind.Income;
+        const own = isOwn(line.kind);
         return {
           id: line.id,
           date: line.date,
-          week: isoWeek(line.date),
           account: line.account,
           entity: own ? line.for : line.entity,
           paidBy: own && line.for !== line.entity ? line.entity : null,
@@ -796,6 +795,7 @@ export const buildFinance = ({
           kind: line.kind,
           rule: line.rule,
           approved: line.approved,
+          pinned: line.pinned,
           receipt: receipts.get(line.id) ?? null
         };
       }),
@@ -807,6 +807,7 @@ export const buildFinance = ({
     rules: orderRules(rules)
       .filter((rule) => rule.category !== undefined)
       .map((rule) => ({ ...rule, key: ruleKey(rule), lines: covered.get(ruleKey(rule)) ?? 0 })),
+    kinds: CATEGORY_KINDS,
     categories: [
       ...new Set([
         ...categories,
@@ -816,7 +817,7 @@ export const buildFinance = ({
     ],
     approval: {
       approved: counted.filter((line) => line.approved).length,
-      suggested: counted.filter((line) => line.category !== null && !line.approved).length,
+      suggested: suggestedCount,
       uncategorised: counted.filter((line) => line.category === null).length
     }
   };
@@ -828,23 +829,27 @@ const numberOrNull = (text: string | undefined): number | null =>
 const TEXT_FIELDS = ['match', 'payee', 'category', 'account', 'date', 'for', 'id'] as const;
 
 const isRule = (value: unknown): value is Rule =>
-  typeof value === 'object' &&
-  value !== null &&
-  TEXT_FIELDS.every((key) => !(key in value) || typeof (value as Record<string, unknown>)[key] === 'string') &&
-  (!('confirmed' in value) || typeof (value as Record<string, unknown>).confirmed === 'boolean');
+  isRecord(value) &&
+  TEXT_FIELDS.every((key) => value[key] === undefined || typeof value[key] === 'string') &&
+  (value.confirmed === undefined || typeof value.confirmed === 'boolean');
 
 /**
  * The `## Learned` section of RULES.md with its `###` headings raised, so its yaml blocks read like
  * any other section; empty when the file has none.
  */
-export const learnedSection = (raw: string): string => {
+const learnedSection = (raw: string): string => {
+  const bounds = learnedBounds(raw);
+  return bounds === null ? '' : raw.slice(bounds.start, bounds.end).replace(/^### /gm, '## ');
+};
+
+/** Where RULES.md's `## Learned` section starts and ends, or null when the file has none. */
+export const learnedBounds = (raw: string): { start: number; end: number } | null => {
   const start = raw.search(/^## Learned[ \t]*$/m);
   if (start === -1) {
-    return '';
+    return null;
   }
-  const rest = raw.slice(start + 1);
-  const end = rest.search(/^## /m);
-  return (end === -1 ? raw.slice(start) : raw.slice(start, start + 1 + end)).replace(/^### /gm, '## ');
+  const after = raw.slice(start + 1).search(/^## /m);
+  return { start, end: after === -1 ? raw.length : start + 1 + after };
 };
 
 /**
@@ -887,15 +892,11 @@ export const parseRules = (raw: string): Rule[] => {
 const CATEGORIES = join(import.meta.dir, '..', 'references', 'categories.md');
 
 /** The picker's categories: RULES.md's own list when it has one, else the skill's defaults. */
-export const categoryList = (rulesRaw: string): string[] => {
-  const own = listBlock('RULES.md', rulesRaw, 'Categories I use').filter(
-    (item): item is string => typeof item === 'string'
-  );
-  return own.length > 0
-    ? own
-    : listBlock('categories.md', readFileSync(CATEGORIES, 'utf8'), 'Categories').filter(
-        (item): item is string => typeof item === 'string'
-      );
+const strings = (items: unknown[]): string[] => items.filter((item): item is string => typeof item === 'string');
+
+const categoryList = (rulesRaw: string): string[] => {
+  const own = strings(listBlock('RULES.md', rulesRaw, 'Categories I use'));
+  return own.length > 0 ? own : strings(listBlock('categories.md', readFileSync(CATEGORIES, 'utf8'), 'Categories'));
 };
 
 /** Everything `buildFinance` needs, read from the finances project folder. */
@@ -943,9 +944,7 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
     rules: parseRules(rulesRaw),
     categories: categoryList(rulesRaw),
     receipts: new Map(
-      (existsSync(DATA.receipts(dir)) ? parseCsv(readFileSync(DATA.receipts(dir), 'utf8')) : []).flatMap((row) =>
-        row.line ? [[row.line, row.file ?? ''] as const] : []
-      )
+      loadReceipts(dir).flatMap((receipt) => (receipt.line === '' ? [] : [[receipt.line, receipt.file] as const]))
     )
   };
 };
@@ -960,9 +959,13 @@ export interface FinancePlan {
   resolved: { id: string; label: string }[];
 }
 
+/** Insights that drop out by age rather than by being dealt with: their tasks are never closed for it. */
+const AGES_OUT = new Set<string>([InsightKind.Fee, InsightKind.Duplicate, InsightKind.Rising]);
+
 /**
  * The insights no task carries yet, each with the labels and priority to file it under, and the open
- * tasks whose insight is gone (the bill was paid, the statement came in), to close.
+ * tasks whose insight is gone (the bill was paid, the statement came in), to close. A fee, double
+ * charge or rising bill only ages out of view, so its task stays open for the operator.
  */
 export const financePlan = (insights: Insight[], existing: ExistingTask[]): FinancePlan => ({
   missing: insights
@@ -974,6 +977,7 @@ export const financePlan = (insights: Insight[], existing: ExistingTask[]): Fina
     })),
   resolved: existing
     .filter((task) => task.status !== 'done' && task.status !== 'cancelled')
+    .filter((task) => !AGES_OUT.has(task.label.split(':')[1] ?? ''))
     .filter((task) => !insights.some((insight) => insight.label === task.label))
     .map((task) => ({ id: task.id, label: task.label }))
 });

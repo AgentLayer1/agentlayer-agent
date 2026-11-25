@@ -318,16 +318,19 @@ body.masked iframe.tax:hover { filter: none; }
     return Array.from({ length: count }, (_, i) => shift(end, i - count + 1));
   };
 
+  // One value axis for the bar charts: a rounded top, its scale, and three gridlines.
+  const W = 720, H = 220, pad = { l: 56, r: 8, t: 10, b: 26 };
+  const axis = (top) => {
+    const step = Math.pow(10, Math.floor(Math.log10(Math.max(1, top))));
+    const max = Math.ceil(Math.max(1, top) / step) * step;
+    const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - v / max);
+    const grid = [0, 0.5, 1].map((f) => f * max).map((t) => `<line class="grid" x1="${pad.l}" x2="${W - pad.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${pad.l - 8}" y="${y(t) + 4}" text-anchor="end" class="amt">${esc(plain(t))}</text>`).join("");
+    return { y, grid };
+  };
   const barsChart = (months, series) => {
-    const W = 720, H = 220, pad = { l: 56, r: 8, t: 10, b: 26 };
-    const top = Math.max(1, ...series.flatMap((s) => s.values));
-    const step = Math.pow(10, Math.floor(Math.log10(top)));
-    const max = Math.ceil(top / step) * step;
+    const { y, grid } = axis(Math.max(...series.flatMap((s) => s.values)));
     const band = (W - pad.l - pad.r) / months.length;
     const barW = Math.max(3, Math.min(18, (band - 10) / series.length - 2));
-    const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - v / max);
-    const ticks = [0, 0.5, 1].map((f) => f * max);
-    const grid = ticks.map((t) => `<line class="grid" x1="${pad.l}" x2="${W - pad.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${pad.l - 8}" y="${y(t) + 4}" text-anchor="end" class="amt">${esc(plain(t))}</text>`).join("");
     const bars = months.map((month, i) => {
       const x0 = pad.l + i * band + (band - series.length * (barW + 2)) / 2;
       return series.map((s, j) => {
@@ -351,42 +354,44 @@ body.masked iframe.tax:hover { filter: none; }
   // Edits made on this page wait here until they are pasted into a session; each build drops the ones it applied.
   const EDITS = "finances-edits";
   const OWN = new Set(["spend", "charity", "income"]);
-  const CHARITY_CATS = new Set(["charity", "zakat", "sadaqah", "donation"]);
   const ruleBy = new Map(DATA.rules.map((rule) => [rule.key, rule]));
-  const sameLines = (op) => DATA.lines.filter((l) => (op.scope === "line" ? l.id === op.line : l.payee.toLowerCase() === op.payee.toLowerCase()));
+  const lower = (text) => (text ?? "").toLowerCase();
+  // An edit is applied once the build carries a confirmed rule for its target, with its category and owner.
+  const applied = (op) => op.op === "approve"
+    ? !ruleBy.has(op.key) || ruleBy.get(op.key).confirmed
+    : DATA.rules.some((r) => r.confirmed && r.category === op.category && r.for === op.for &&
+      (op.scope === "line" ? r.id === op.line : r.id === undefined && !r.match && !r.account && !r.date && lower(r.payee) === lower(op.payee)));
   const store = {
-    ops: (() => { try { return JSON.parse(localStorage.getItem(EDITS) || "[]"); } catch (e) { return []; } })().filter((op) =>
-      op.op === "approve"
-        ? ruleBy.has(op.key) && !ruleBy.get(op.key).confirmed
-        : !sameLines(op).every((l) => l.category === op.category && l.approved && (op.for === undefined || l.entity === op.for))
-    )
+    ops: (() => { try { return JSON.parse(localStorage.getItem(EDITS) || "[]"); } catch (e) { return []; } })().filter((op) => !applied(op)),
+    version: 0
   };
   const saveOps = () => { try { localStorage.setItem(EDITS, JSON.stringify(store.ops)); } catch (e) {} };
   const derived = () => {
     const approve = new Set(store.ops.filter((op) => op.op === "approve").map((op) => op.key));
     const byPayee = new Map(); const byLine = new Map();
-    store.ops.filter((op) => op.op === "set").forEach((op) => (op.scope === "line" ? byLine.set(op.line, op) : byPayee.set(op.payee.toLowerCase(), op)));
+    store.ops.filter((op) => op.op === "set").forEach((op) => (op.scope === "line" ? byLine.set(op.line, op) : byPayee.set(lower(op.payee), op)));
     return { approve, byPayee, byLine };
   };
+  // Previews an edit the way the next build will read it: a payee fix never moves a line fixed on its own.
   const viewOf = (d) => (l) => {
-    const fix = OWN.has(l.kind) ? (d.byLine.get(l.id) ?? d.byPayee.get(l.payee.toLowerCase())) : undefined;
+    const fix = OWN.has(l.kind) ? (d.byLine.get(l.id) ?? (l.pinned ? undefined : d.byPayee.get(lower(l.payee)))) : undefined;
     if (fix) {
       const owner = l.paidBy ?? l.entity;
       const entity = fix.for ?? l.entity;
-      const kind = CHARITY_CATS.has(fix.category) ? "charity" : l.amount > 0 ? "income" : "spend";
+      const kind = DATA.kinds[fix.category] ?? (l.amount > 0 ? "income" : "spend");
       return { ...l, category: fix.category, kind, entity, paidBy: owner !== entity ? owner : null, approved: true, pending: true };
     }
     return l.rule !== null && d.approve.has(l.rule) ? { ...l, approved: true, pending: true } : l;
   };
-  const viewed = () => DATA.lines.map(viewOf(derived()));
-  const covers = () => {
-    const d = derived();
-    const ids = new Set([
-      ...DATA.lines.filter((l) => l.rule !== null && d.approve.has(l.rule)).map((l) => l.id),
-      ...DATA.lines.filter((l) => OWN.has(l.kind) && (d.byLine.has(l.id) || d.byPayee.has(l.payee.toLowerCase()))).map((l) => l.id)
-    ]);
-    return ids.size;
+  const memo = { version: -1, lines: [] };
+  const viewed = () => {
+    if (memo.version !== store.version) {
+      memo.lines = DATA.lines.map(viewOf(derived()));
+      memo.version = store.version;
+    }
+    return memo.lines;
   };
+  const covers = () => viewed().filter((l) => l.pending).length;
   const editsBlock = () => {
     const d = derived();
     const set = [...d.byPayee.values(), ...d.byLine.values()].map((op) => ({ line: op.line, category: op.category, ...(op.for ? { for: op.for } : {}), scope: op.scope }));
@@ -409,24 +414,24 @@ body.masked iframe.tax:hover { filter: none; }
     const jan4 = `${year}-01-04`;
     return addDays(jan4, -((new Date(`${jan4}T00:00:00Z`).getUTCDay() + 6) % 7) + (week - 1) * 7);
   };
-  const P = {
-    key: (mode, date) => (mode === "week" ? weekOf(date) : mode === "month" ? date.slice(0, 7) : date.slice(0, 4)),
-    start: (mode, key) => (mode === "week" ? weekStart(key) : mode === "month" ? `${key}-01` : `${key}-01-01`),
-    end: (mode, key) => (mode === "week" ? addDays(weekStart(key), 6) : mode === "month" ? addDays(`${shift(key, 1)}-01`, -1) : `${key}-12-31`),
-    step: (mode, key, n) => (mode === "week" ? weekOf(addDays(weekStart(key), 7 * n)) : mode === "month" ? shift(key, n) : String(Number(key) + n)),
-    long: (mode, key) => (mode === "week" ? `the week of ${dateLabel(weekStart(key))}` : mode === "month" ? `${["January","February","March","April","May","June","July","August","September","October","November","December"][Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}` : key),
-    short: (mode, key) => (mode === "week" ? dateLabel(weekStart(key)) : mode === "month" ? monthLabel(key, key.endsWith("-01")) : key),
-    noun: (mode) => mode
+  const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const PERIODS = {
+    week: { key: weekOf, start: weekStart, end: (k) => addDays(weekStart(k), 6), step: (k, n) => weekOf(addDays(weekStart(k), 7 * n)), long: (k) => `the week of ${dateLabel(weekStart(k))}`, short: (k) => dateLabel(weekStart(k)) },
+    month: { key: (d) => d.slice(0, 7), start: (k) => `${k}-01`, end: (k) => addDays(`${shift(k, 1)}-01`, -1), step: (k, n) => shift(k, n), long: (k) => `${MONTHS_LONG[Number(k.slice(5, 7)) - 1]} ${k.slice(0, 4)}`, short: (k) => monthLabel(k, k.endsWith("-01")) },
+    year: { key: (d) => d.slice(0, 4), start: (k) => `${k}-01-01`, end: (k) => `${k}-12-31`, step: (k, n) => String(Number(k) + n), long: (k) => k, short: (k) => k }
   };
+  const P = Object.fromEntries(["key", "start", "end", "step", "long", "short"].map((f) => [f, (mode, ...args) => PERIODS[mode][f](...args)]));
   // The latest date every account's statements reach: a period past it is still filling in.
   const through = DATA.accounts.filter((a) => a.asOf).map((a) => a.asOf).sort()[0] ?? DATA.today;
   const firstDate = DATA.lines[0]?.date ?? through;
   const anchorOf = (mode) => state.anchor[mode] ?? P.key(mode, through);
 
   // A category keeps its colour everywhere: slots go by all-time spending, so no filter repaints them.
+  const isSpend = (l) => (l.kind === "spend" || l.kind === "charity") && l.amount < 0;
+  const plural = (n, word, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
   const COLOURS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--c6)", "var(--c7)", "var(--c8)"];
   const rank = (() => {
-    const totals = DATA.lines.filter((l) => (l.kind === "spend" || l.kind === "charity") && l.amount < 0 && l.category !== null && l.currency === DATA.base)
+    const totals = DATA.lines.filter((l) => isSpend(l) && l.category !== null && l.currency === DATA.base)
       .reduce((map, l) => map.set(l.category, (map.get(l.category) ?? 0) - l.amount), new Map());
     return [...totals].sort((a, b) => b[1] - a[1]).map(([name]) => name);
   })();
@@ -444,19 +449,19 @@ body.masked iframe.tax:hover { filter: none; }
     const pts = values.map((v, i) => `${(i * 84) / Math.max(1, values.length - 1) + 2},${20 - (v / max) * 17}`).join(" ");
     return `<svg class="spark" viewBox="0 0 88 22" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${colour}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
   };
-  const isSpend = (l) => (l.kind === "spend" || l.kind === "charity") && l.amount < 0;
   const catName = (c) => (c === null ? "Uncategorised" : c.charAt(0).toUpperCase() + c.slice(1));
   const entityPicker = (current, attrs) =>
     DATA.entities.length < 2 ? "" : `<select class="picker" ${attrs} aria-label="Whose expense">${DATA.entities.map((e) => `<option value="${esc(e.slug)}"${e.slug === current ? " selected" : ""}>${esc(e.name)}</option>`).join("")}</select>`;
   const catPicker = (attrs, placeholder = "Set category") => `<input class="picker" list="cat-list" ${attrs} placeholder="${esc(placeholder)}" aria-label="${esc(placeholder)}">`;
   const catList = () => `<datalist id="cat-list">${[...new Set([...DATA.categories, ...store.ops.filter((op) => op.op === "set").map((op) => op.category)])].map((c) => `<option value="${esc(c)}"></option>`).join("")}</datalist>`;
   const receiptOf = (l) => (l.receipt ? ` <a href="${esc(l.receipt)}" target="_blank" title="Open the receipt" aria-label="Open the receipt">🧾</a>` : "");
-  const tagOf = (l) => l.pending ? `<span class="tag pending">${esc(l.category ?? "")}, not pasted yet</span>` : l.category === null ? '<span class="tag none">No category</span>' : `<span class="tag ${l.approved ? "approved" : "suggested"}">${esc(l.category)}</span>`;
+  const tagOf = (l, suffix = "") => l.pending ? `<span class="tag pending">${esc(l.category ?? "")}${suffix}, not pasted yet</span>` : l.category === null ? '<span class="tag none">No category</span>' : `<span class="tag ${l.approved ? "approved" : "suggested"}">${esc(l.category)}${suffix}</span>`;
+  const fixControls = (scope, l, label) => `${catPicker(`data-fix="${scope}" data-line="${esc(l.id)}" data-payee="${esc(l.payee)}"`, label)}${entityPicker(l.entity, `data-for-of="${esc(l.id)}"`)}`;
   const editBar = () => {
     if (store.ops.length === 0) { return ""; }
     const d = derived();
     const n = { approve: d.approve.size, fix: d.byPayee.size + d.byLine.size };
-    const parts = [n.approve ? `${n.approve} approval${n.approve === 1 ? "" : "s"}` : "", n.fix ? `${n.fix} fix${n.fix === 1 ? "" : "es"}` : ""].filter(Boolean).join(" and ");
+    const parts = [n.approve ? plural(n.approve, "approval") : "", n.fix ? plural(n.fix, "fix", "fixes") : ""].filter(Boolean).join(" and ");
     return `<div class="editbar" role="region" aria-label="Your edits"><span class="what">${state.copied ? "Copied. Paste it into a session with your agent; this page rebuilds with your changes." : `${parts}, covering ${covers()} lines. They count here now and become permanent once pasted into a session.`}</span><button class="btn" data-act="undo">Undo last</button><button class="btn" data-act="clear">Discard</button><button class="btn primary" data-act="copy">Copy changes</button>${state.copied ? `<pre>${esc(editsBlock())}</pre>` : ""}</div>`;
   };
   const pages = {
@@ -510,17 +515,17 @@ body.masked iframe.tax:hover { filter: none; }
       const end = P.end(mode, anchor);
       const partial = through < end && P.key(mode, through) === anchor;
       const cutoff = partial ? days(through) - days(P.start(mode, anchor)) : null;
-      const within = (key, rows, limit) => rows.filter((l) => P.key(mode, l.date) === key && (limit === null || days(l.date) - days(P.start(mode, key)) <= limit));
+      const byPeriod = groupBy(base, (l) => P.key(mode, l.date));
+      const within = (key, limit) => (byPeriod.get(key) ?? []).filter((l) => limit === null || days(l.date) - days(P.start(mode, key)) <= limit);
       const prevKey = P.step(mode, anchor, -1);
-      const cur = within(anchor, base, null);
-      const prev = within(prevKey, base, cutoff);
+      const cur = within(anchor, null);
+      const prev = within(prevKey, cutoff);
       const spent = (rows) => -sum(rows, (l) => l.amount);
       const total = spent(cur);
       const before = spent(prev);
-      const history = [1, 2, 3, 4, 5, 6].map((i) => P.step(mode, anchor, -i)).filter((k) => P.end(mode, k) >= firstDate).map((k) => spent(within(k, base, null)));
+      const history = [1, 2, 3, 4, 5, 6].map((i) => P.step(mode, anchor, -i)).filter((k) => P.end(mode, k) >= firstDate).map((k) => spent(within(k, null)));
       const usual = history.length ? sum(history, (v) => v) / history.length : null;
       const hasPrev = P.end(mode, prevKey) >= firstDate;
-      const canBack = P.end(mode, prevKey) >= firstDate;
       const canFwd = P.start(mode, P.step(mode, anchor, 1)) <= (DATA.lines.at(-1)?.date ?? through);
       const sentence = total === 0
         ? `Nothing went out in ${P.long(mode, anchor)}`
@@ -528,7 +533,7 @@ body.masked iframe.tax:hover { filter: none; }
       const groups = (rows) => [...groupBy(rows, (l) => l.category)].map(([category, rs]) => ({ category, rows: rs, amount: spent(rs) })).sort((a, b) => (a.category === null) - (b.category === null) || b.amount - a.amount);
       const curCats = groups(cur);
       const prevBy = new Map(groups(prev).map((g) => [g.category, g.amount]));
-      const trendOf = (category) => [5, 4, 3, 2, 1, 0].map((i) => spent(within(P.step(mode, anchor, -i), base, null).filter((l) => l.category === category)));
+      const trendOf = (category) => [5, 4, 3, 2, 1, 0].map((i) => spent(within(P.step(mode, anchor, -i), null).filter((l) => l.category === category)));
       const named = curCats.filter((g) => g.category !== null);
       const top = state.showOther ? named : named.slice(0, 8);
       const rest = named.slice(8);
@@ -543,7 +548,7 @@ body.masked iframe.tax:hover { filter: none; }
       const foreign = [...groupBy(all.filter((l) => isSpend(l) && l.currency !== DATA.base && P.key(mode, l.date) === anchor), (l) => l.currency)];
       const modeBtn = (m, label) => `<button data-act="mode" data-mode="${m}" aria-pressed="${mode === m}">${label}</button>`;
       const periodbar = `<div class="periodbar"><div class="seg" role="group" aria-label="Period">${modeBtn("week", "Week")}${modeBtn("month", "Month")}${modeBtn("year", "Year")}</div>
-        <div class="stepper"><button data-act="step" data-by="-1" aria-label="Previous ${mode}"${canBack ? "" : " disabled"}>‹</button><button data-act="step" data-by="1" aria-label="Next ${mode}"${canFwd ? "" : " disabled"}>›</button></div>
+        <div class="stepper"><button data-act="step" data-by="-1" aria-label="Previous ${mode}"${hasPrev ? "" : " disabled"}>‹</button><button data-act="step" data-by="1" aria-label="Next ${mode}"${canFwd ? "" : " disabled"}>›</button></div>
         <span class="period-name">${esc(P.long(mode, anchor).replace(/^the week of/, "Week of"))}</span>${partial ? `<span class="note" style="margin:0">statements run to ${dateLabel(through)}</span>` : ""}</div>`;
 
       if (state.drill) {
@@ -558,52 +563,47 @@ body.masked iframe.tax:hover { filter: none; }
             <div class="cats">${payees.map((x) => `<div class="work-row"><div class="who"><button class="toggle" data-act="drill-payee" data-payee="${esc(x.payee)}" style="padding:0;color:var(--ink);text-align:left"><strong>${esc(x.payee)}</strong></button><small>${x.rs.length} payment${x.rs.length === 1 ? "" : "s"}${x.rs.some((l) => l.paidBy) ? `, paid by ${esc(entityName(x.rs.find((l) => l.paidBy).paidBy))}` : ""}</small></div>
               <span class="track" style="grid-column:span 1"><span class="fill" style="display:block;width:${(100 * x.amount) / pmax}%;background:${colourOf(d.category || null)}"></span></span>
               <span class="num">${money(x.amount)}</span>${deltaTag(x.amount, prevPayee.get(x.payee) ?? 0)}
-              <span class="acts">${catPicker(`data-fix="payee" data-line="${esc(x.rs[0].id)}" data-payee="${esc(x.payee)}"`, "Recategorise")}${entityPicker(x.rs[0].entity, `data-for-of="${esc(x.rs[0].id)}"`)}</span></div>`).join("")}</div>${catList()}${editBar()}`;
+              <span class="acts">${fixControls("payee", x.rs[0], "Recategorise")}</span></div>`).join("")}</div>${catList()}${editBar()}`;
         }
         const rows = inCat.filter((l) => l.payee === d.payee);
         return `${periodbar}${crumbs}<h1 class="answer">${money(spent(rows))} to ${esc(d.payee)}</h1><p class="answer-sub">${rows.length} payment${rows.length === 1 ? "" : "s"} in ${esc(P.long(mode, anchor))}. Fix one line here when it differs from the rest.</p>
-          <table><thead><tr><th>Date</th><th>Account</th><th>For</th><th class="num">Amount</th><th>Category</th><th></th></tr></thead><tbody>${rows.map((l) => `<tr><td>${dateLabel(l.date)}${receiptOf(l)}</td><td>${esc(accountName(l.account))}</td><td>${esc(entityName(l.entity))}${l.paidBy ? ` <span class="chip">paid by ${esc(entityName(l.paidBy))}</span>` : ""}</td><td class="num">${money(-l.amount, l.currency, 2)}</td><td>${tagOf(l)}</td><td>${catPicker(`data-fix="line" data-line="${esc(l.id)}" data-payee="${esc(l.payee)}"`, "Just this line")}${entityPicker(l.entity, `data-for-of="${esc(l.id)}"`)}</td></tr>`).join("")}</tbody></table>${catList()}${editBar()}`;
+          <table><thead><tr><th>Date</th><th>Account</th><th>For</th><th class="num">Amount</th><th>Category</th><th></th></tr></thead><tbody>${rows.map((l) => `<tr><td>${dateLabel(l.date)}${receiptOf(l)}</td><td>${esc(accountName(l.account))}</td><td>${esc(entityName(l.entity))}${l.paidBy ? ` <span class="chip">paid by ${esc(entityName(l.paidBy))}</span>` : ""}</td><td class="num">${money(-l.amount, l.currency, 2)}</td><td>${tagOf(l)}</td><td>${fixControls("line", l, "Just this line")}</td></tr>`).join("")}</tbody></table>${catList()}${editBar()}`;
       }
 
       const ribbon = curCats.filter((g) => g.amount > 0).map((g) => `<button style="flex:${g.amount};background:${colourOf(g.category)}" data-act="drill" data-category="${esc(g.category ?? "")}" data-tip="${esc(`${catName(g.category)}: ${plain(g.amount)} (${pct(g.amount, total)}%)`)}" aria-label="${esc(catName(g.category))}"></button>`).join("");
       const key = curCats.slice(0, 6).map((g) => `<span><i style="background:${colourOf(g.category)}"></i>${esc(catName(g.category))} ${pct(g.amount, total)}%</span>`).join("");
       const entitiesHere = state.entity === "all" ? DATA.entities.filter((e) => cur.some((l) => l.entity === e.slug)) : [];
       const split = entitiesHere.length < 2 ? "" : `<div class="split">${entitiesHere.map((e) => {
-        const mine2 = groups(cur.filter((l) => l.entity === e.slug)).filter((g) => g.category !== null).slice(0, 5);
-        const emax = Math.max(1, ...mine2.map((g) => g.amount));
-        return `<div><h3><span class="dot" style="background:${entityColor(e.slug)}"></span>${esc(e.name)} <span class="num" style="margin-left:auto;font-weight:500">${money(spent(cur.filter((l) => l.entity === e.slug)))}</span></h3>${mine2.map((g) => `<div class="hbar"><span class="name">${esc(catName(g.category))}</span><span class="track"><span class="fill" style="display:block;width:${(100 * g.amount) / emax}%;background:${colourOf(g.category)}"></span></span><span class="num">${money(g.amount)}</span></div>`).join("")}</div>`;
+        const topCats = groups(cur.filter((l) => l.entity === e.slug)).filter((g) => g.category !== null).slice(0, 5);
+        const emax = Math.max(1, ...topCats.map((g) => g.amount));
+        return `<div><h3><span class="dot" style="background:${entityColor(e.slug)}"></span>${esc(e.name)} <span class="num" style="margin-left:auto;font-weight:500">${money(spent(cur.filter((l) => l.entity === e.slug)))}</span></h3>${topCats.map((g) => `<div class="hbar"><span class="name">${esc(catName(g.category))}</span><span class="track"><span class="fill" style="display:block;width:${(100 * g.amount) / emax}%;background:${colourOf(g.category)}"></span></span><span class="num">${money(g.amount)}</span></div>`).join("")}</div>`;
       }).join("")}</div>`;
       const moverRows = (items) => items.length === 0 ? '<p class="empty">Nothing moved much.</p>' : items.map((m) => `<div class="mover"><span>${esc(m.name)}</span>${deltaTag(m.now, m.before)}<span class="why">${m.why}</span></div>`).join("");
-      const catMovers = [...new Set([...curCats.map((g) => g.category), ...prevBy.keys()])].filter((c) => c !== null)
+      const topMovers = (items) => items.filter((m) => Math.abs(m.now - m.before) >= 1).sort((a, b) => Math.abs(b.now - b.before) - Math.abs(a.now - a.before)).slice(0, 3);
+      const catMovers = topMovers([...new Set([...curCats.map((g) => g.category), ...prevBy.keys()])].filter((c) => c !== null)
         .map((c) => {
           const nowRows = cur.filter((l) => l.category === c); const beforeRows = prev.filter((l) => l.category === c);
           const byPayee = [...new Set([...nowRows, ...beforeRows].map((l) => l.payee))].map((payee) => ({ payee, diff: spent(nowRows.filter((l) => l.payee === payee)) - spent(beforeRows.filter((l) => l.payee === payee)) })).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))[0];
           return { name: catName(c), now: spent(nowRows), before: spent(beforeRows), why: byPayee ? `Mostly ${esc(byPayee.payee)} (${byPayee.diff >= 0 ? "+" : "−"}${money(Math.abs(byPayee.diff))})` : "" };
-        })
-        .filter((m) => Math.abs(m.now - m.before) >= 1).sort((a, b) => Math.abs(b.now - b.before) - Math.abs(a.now - a.before)).slice(0, 3);
-      const payMovers = [...new Set([...cur, ...prev].map((l) => l.payee))]
+        }));
+      const payMovers = topMovers([...new Set([...cur, ...prev].map((l) => l.payee))]
         .map((payee) => {
           const n = cur.filter((l) => l.payee === payee); const b = prev.filter((l) => l.payee === payee);
-          const why = esc(b.length === 0 ? `New: ${n.length} payment${n.length === 1 ? "" : "s"}` : n.length === 0 ? `None this ${mode}, ${b.length} the ${mode} before` : `${n.length} payment${n.length === 1 ? "" : "s"}, ${b.length} the ${mode} before`);
+          const why = esc(b.length === 0 ? `New: ${plural(n.length, "payment")}` : n.length === 0 ? `None this ${mode}, ${b.length} the ${mode} before` : `${plural(n.length, "payment")}, ${b.length} the ${mode} before`);
           return { name: payee, now: spent(n), before: spent(b), why };
-        })
-        .filter((m) => Math.abs(m.now - m.before) >= 1).sort((a, b) => Math.abs(b.now - b.before) - Math.abs(a.now - a.before)).slice(0, 3);
+        }));
       const span = mode === "year" ? 5 : 12;
       const keys = Array.from({ length: span }, (_, i) => P.step(mode, anchor, i - span + 1)).filter((k) => P.end(mode, k) >= firstDate);
-      const stackCats = [...rank.slice(0, 6)];
+      const stackCats = rank.slice(0, 6);
       const stackOf = (k) => {
-        const rows = within(k, base, null);
+        const rows = within(k, null);
         const parts = [...stackCats.map((c) => ({ c, v: spent(rows.filter((l) => l.category === c)) })), { c: "__other", v: spent(rows.filter((l) => l.category !== null && !stackCats.includes(l.category))) }, { c: null, v: spent(rows.filter((l) => l.category === null)) }];
         return { k, parts, total: sum(parts, (x) => x.v) };
       };
       const stacks = keys.map(stackOf);
-      const W = 720, H = 220, pad = { l: 56, r: 8, t: 10, b: 26 };
-      const top2 = Math.max(1, ...stacks.map((x) => x.total));
-      const stepv = Math.pow(10, Math.floor(Math.log10(top2)));
-      const maxv = Math.ceil(top2 / stepv) * stepv;
+      const { y, grid: ticks } = axis(Math.max(...stacks.map((x) => x.total)));
       const band = (W - pad.l - pad.r) / Math.max(1, stacks.length);
       const bw = Math.min(34, band - 8);
-      const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - v / maxv);
       const colourFor = (c) => (c === "__other" ? "var(--c-other)" : colourOf(c));
       const columns = stacks.map((x, i) => {
         const x0 = pad.l + i * band + (band - bw) / 2;
@@ -615,7 +615,6 @@ body.masked iframe.tax:hover { filter: none; }
         return segs.map((sg) => `<rect x="${x0}" y="${sg.top + 1}" width="${bw}" height="${Math.max(0, sg.h - 2)}" rx="2" fill="${colourFor(sg.c)}" data-tip="${esc(`${P.short(mode, x.k)}\n${sg.c === "__other" ? "Other" : catName(sg.c)}: ${plain(sg.v)}\nTotal: ${plain(x.total)}`)}"/>`).join("") +
           `<text x="${x0 + bw / 2}" y="${H - 8}" text-anchor="middle"${x.k === anchor ? ' style="fill:var(--ink);font-weight:600"' : ""}>${esc(P.short(mode, x.k))}</text>`;
       }).join("");
-      const ticks = [0, 0.5, 1].map((f) => f * maxv).map((t) => `<line class="grid" x1="${pad.l}" x2="${W - pad.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${pad.l - 8}" y="${y(t) + 4}" text-anchor="end" class="amt">${esc(plain(t))}</text>`).join("");
       const legend = `<div class="legend">${[...stackCats, "__other", null].map((c) => `<span><i style="background:${colourFor(c)}"></i>${c === "__other" ? "Other" : esc(catName(c))}</span>`).join("")}</div>`;
 
       return `${periodbar}
@@ -634,22 +633,21 @@ body.masked iframe.tax:hover { filter: none; }
     categorise() {
       const rows = viewed().filter(mine).filter((l) => OWN.has(l.kind));
       const groupsAll = [...groupBy(rows, (l) => l.payee.toLowerCase())].map(([k, rs]) => {
-        const state2 = rs.some((l) => l.category === null) ? "none" : rs.some((l) => !l.approved) ? "suggested" : "approved";
+        const status = rs.some((l) => l.category === null) ? "none" : rs.some((l) => !l.approved) ? "suggested" : "approved";
         const cats = [...groupBy(rs.filter((l) => l.category !== null), (l) => l.category)].sort((a, b) => b[1].length - a[1].length);
         const keys = [...new Set(rs.filter((l) => !l.approved && l.rule !== null).map((l) => l.rule))];
-        return { k, payee: rs[0].payee, rs, state: state2, category: cats[0]?.[0] ?? null, mixed: cats.length > 1, keys, out: -sum(rs.filter((l) => l.amount < 0 && l.currency === DATA.base), (l) => l.amount), inn: sum(rs.filter((l) => l.amount > 0 && l.currency === DATA.base), (l) => l.amount), pending: rs.some((l) => l.pending) };
+        return { k, payee: rs[0].payee, rs, state: status, category: cats[0]?.[0] ?? null, mixed: cats.length > 1, keys, out: -sum(rs.filter((l) => l.amount < 0 && l.currency === DATA.base), (l) => l.amount), inn: sum(rs.filter((l) => l.amount > 0 && l.currency === DATA.base), (l) => l.amount), pending: rs.some((l) => l.pending) };
       });
       const count = (t) => groupsAll.filter((g) => g.state === t).length;
       const q = state.query.trim().toLowerCase();
       const shown = groupsAll.filter((g) => g.state === state.tab && (q === "" || g.payee.toLowerCase().includes(q) || (g.category ?? "").includes(q))).sort((a, b) => b.out + b.inn - (a.out + a.inn));
       const tab = (t, label) => `<button data-act="tab" data-tab="${t}" aria-pressed="${state.tab === t}">${label} ${count(t)}</button>`;
       const lineCount = (g) => g.keys.reduce((n, k) => n + (ruleBy.get(k)?.lines ?? 0), 0);
-      const tagFor = (g) => g.pending ? `<span class="tag pending">${esc(g.category ?? "")}, not pasted yet</span>` : g.state === "none" ? '<span class="tag none">No category</span>' : g.state === "suggested" ? `<span class="tag suggested">${esc(g.category)}${g.mixed ? " and others" : ""}</span>` : `<span class="tag approved">${esc(g.category)}${g.mixed ? " and others" : ""}</span>`;
       const list = shown.slice(0, 200).map((g) => `<div class="work-row"><div class="who"><strong>${esc(g.payee)}</strong><small>${[...new Set(g.rs.map((l) => l.entity))].map((e) => esc(entityName(e))).join(", ")}</small></div>
           <span class="count note" style="margin:0">${g.rs.length} line${g.rs.length === 1 ? "" : "s"}${g.rs.some((l) => l.receipt) ? " 🧾" : ""}</span><span class="total num">${g.out ? money(g.out) : money(g.inn)}</span>
-          <span>${tagFor(g)}</span>
-          <span class="acts">${g.state === "suggested" && g.keys.length ? `<button class="btn" data-act="approve" data-keys="${esc(g.keys.join(","))}" title="Approves ${lineCount(g)} lines">Approve</button>` : ""}${catPicker(`data-fix="payee" data-line="${esc(g.rs[0].id)}" data-payee="${esc(g.payee)}"`, g.state === "none" ? "Set category" : "Change")}${entityPicker(g.rs[0].entity, `data-for-of="${esc(g.rs[0].id)}"`)}<button class="toggle" data-act="open" data-k="${esc(g.k)}" aria-expanded="${state.open.has(g.k)}" aria-label="Show lines">${state.open.has(g.k) ? "▾" : "▸"}</button></span></div>
-          ${state.open.has(g.k) ? `<div class="work-lines"><table><tbody>${g.rs.slice(-30).reverse().map((l) => `<tr><td>${dateLabel(l.date)} ${l.date.slice(0, 4)}${receiptOf(l)}</td><td>${esc(accountName(l.account))}</td><td class="num">${money(l.amount, l.currency, 2)}</td><td>${tagOf(l)}</td><td>${catPicker(`data-fix="line" data-line="${esc(l.id)}" data-payee="${esc(l.payee)}"`, "Just this line")}</td></tr>`).join("")}</tbody></table>${g.rs.length > 30 ? `<p class="note">The latest 30 of ${g.rs.length}.</p>` : ""}</div>` : ""}`).join("");
+          <span>${tagOf({ category: g.state === "none" ? null : g.category, approved: g.state === "approved", pending: g.pending }, g.mixed ? " and others" : "")}</span>
+          <span class="acts">${g.state === "suggested" && g.keys.length ? `<button class="btn" data-act="approve" data-keys="${esc(g.keys.join(","))}" title="Approves ${lineCount(g)} lines">Approve</button>` : ""}${fixControls("payee", g.rs[0], g.state === "none" ? "Set category" : "Change")}<button class="toggle" data-act="open" data-k="${esc(g.k)}" aria-expanded="${state.open.has(g.k)}" aria-label="Show lines">${state.open.has(g.k) ? "▾" : "▸"}</button></span></div>
+          ${state.open.has(g.k) ? `<div class="work-lines"><table><tbody>${g.rs.slice(-30).reverse().map((l) => `<tr><td>${dateLabel(l.date)} ${l.date.slice(0, 4)}${receiptOf(l)}</td><td>${esc(accountName(l.account))}</td><td class="num">${money(l.amount, l.currency, 2)}</td><td>${tagOf(l)}</td><td>${fixControls("line", l, "Just this line")}</td></tr>`).join("")}</tbody></table>${g.rs.length > 30 ? `<p class="note">The latest 30 of ${g.rs.length}.</p>` : ""}</div>` : ""}`).join("");
       const a = DATA.approval;
       return `<h1 class="answer">${count("none") ? `${count("none")} payee${count("none") === 1 ? "" : "s"} need a category` : count("suggested") ? `${count("suggested")} suggestion${count("suggested") === 1 ? "" : "s"} to check` : "Everything is categorised and approved"}</h1>
         <p class="answer-sub">Approving a payee teaches every line from it, past and future; "Just this line" fixes one. Your edits count on this page straight away, and become permanent when you copy them into a session. ${a.approved} of ${a.approved + a.suggested + a.uncategorised} lines are approved so far.</p>
@@ -708,7 +706,7 @@ body.masked iframe.tax:hover { filter: none; }
   };
 
   const toReview = () => new Set(viewed().filter((l) => OWN.has(l.kind) && !l.approved).map((l) => l.payee.toLowerCase())).size;
-  const counts = { categorise: toReview(), overview: DATA.insights.length, checks: DATA.checks.filter((c) => !c.ok).length, bills: DATA.recurring.filter((b) => b.state === "missed").length };
+  const counts = { categorise: 0, overview: DATA.insights.length, checks: DATA.checks.filter((c) => !c.ok).length, bills: DATA.recurring.filter((b) => b.state === "missed").length };
   const current = () => (PAGES.some(([id]) => `#${id}` === location.hash) ? location.hash.slice(1) : "overview");
   const render = () => {
     const page = current();
@@ -725,7 +723,8 @@ body.masked iframe.tax:hover { filter: none; }
     const search = document.querySelector("[data-search]");
     if (searching && search) { search.focus(); search.setSelectionRange(search.value.length, search.value.length); }
   };
-  const push = (op) => { store.ops.push(op); state.copied = false; saveOps(); render(); };
+  const commit = (change) => { change(); store.version += 1; state.copied = false; saveOps(); render(); };
+  const push = (op) => commit(() => store.ops.push(op));
   const original = new Map(DATA.lines.map((l) => [l.id, l]));
   const forOf = (el, id) => {
     const picked = [...(el.closest(".work-row, tr")?.querySelectorAll("[data-for-of]") ?? [])].find((x) => x.dataset.forOf === id)?.value;
@@ -745,9 +744,9 @@ body.masked iframe.tax:hover { filter: none; }
     other: () => { state.showOther = true; render(); },
     tab: (el) => { state.tab = el.dataset.tab; render(); },
     open: (el) => { const k = el.dataset.k; if (state.open.has(k)) { state.open.delete(k); } else { state.open.add(k); } render(); },
-    approve: (el) => { el.dataset.keys.split(",").filter(Boolean).forEach((key) => store.ops.push({ op: "approve", key })); state.copied = false; saveOps(); render(); },
-    undo: () => { store.ops.pop(); state.copied = false; saveOps(); render(); },
-    clear: () => { store.ops = []; state.copied = false; saveOps(); render(); },
+    approve: (el) => commit(() => el.dataset.keys.split(",").filter(Boolean).forEach((key) => store.ops.push({ op: "approve", key }))),
+    undo: () => commit(() => store.ops.pop()),
+    clear: () => commit(() => { store.ops = []; }),
     copy: () => { copyText(editsBlock()).finally(() => { state.copied = true; render(); }); },
     zero: () => { state.showZero = !state.showZero; save(); render(); }
   };

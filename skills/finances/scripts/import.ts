@@ -12,8 +12,8 @@ import {
 import { basename, dirname, extname, join, relative } from 'node:path';
 import { FOLDERS } from '../../../src/config';
 import { hashBuffer } from '../../../src/knowledge/utils';
-import { type Account, argValue, type Entity, escapeRegExp, loadEntities, yamlBlock } from './calendar';
-import { cents, Check, csvFiles, DATA, monthOf } from './layout';
+import { type Account, argValue, type Entity, escapeRegExp, loadEntities, refuse, yamlBlock } from './calendar';
+import { cents, Check, csvFiles, csvLine, DATA, monthOf } from './layout';
 import { csvRows, parseCsv } from './liability';
 
 /**
@@ -327,13 +327,6 @@ export const readXlsx = (path: string, sheet = 1): string[][] => {
     .filter((cells) => cells.some((cell) => cell.trim() !== ''));
 };
 
-const csvCell = (value: string | number | null): string => {
-  const text = value === null ? '' : String(value);
-  return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-};
-
-const csvLine = (values: (string | number | null)[]): string => values.map(csvCell).join(',');
-
 const appendRows = (path: string, header: string, lines: string[]): void => {
   if (lines.length === 0) {
     return;
@@ -617,7 +610,6 @@ if (import.meta.main) {
     });
     console.log(JSON.stringify(report, null, 2));
   } catch (error) {
-    console.error(`refused: ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(1);
+    refuse(error);
   }
 }

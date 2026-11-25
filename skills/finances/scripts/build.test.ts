@@ -10,7 +10,6 @@ import {
   classifyAll,
   defaultPayee,
   detectRecurring,
-  isoWeek,
   orderRules,
   ruleKey,
   financePlan,
@@ -429,7 +428,8 @@ describe('learning', () => {
     const lines = classifyAll(TXNS, [suggested, approved, oneOff, { match: '^STREAMCO', payee: 'Streamco' }], ENTITIES);
     const byId = Object.fromEntries(lines.map((line) => [line.id, line]));
     expect(byId.s1).toMatchObject({ category: 'subscriptions', approved: true, rule: ruleKey(approved) });
-    expect(byId.s4).toMatchObject({ category: 'gifts', approved: true, rule: ruleKey(oneOff) });
+    expect(byId.s4).toMatchObject({ category: 'gifts', approved: true, rule: ruleKey(oneOff), pinned: true });
+    expect(byId.s1?.pinned).toBe(false);
   });
 
   test('a line a suggestion categorised is suggested, not approved', () => {
@@ -446,16 +446,7 @@ describe('learning', () => {
     expect(data.rules.find((rule) => rule.key === ruleKey(approved))).toMatchObject({ confirmed: true, lines: 4 });
     expect(data.categories.slice(0, 3)).toEqual(['groceries', 'subscriptions', 'zakat']);
     expect(data.approval).toEqual({ approved: 4, suggested: 3, uncategorised: 3 });
-    expect(data.lines.find((line) => line.id === 's1')).toMatchObject({ week: '2026-W27', approved: true });
-  });
-});
-
-describe('isoWeek', () => {
-  test('weeks start on Monday and belong to the year of their Thursday', () => {
-    expect(isoWeek('2026-01-01')).toBe('2026-W01');
-    expect(isoWeek('2025-12-29')).toBe('2026-W01');
-    expect(isoWeek('2027-01-03')).toBe('2026-W53');
-    expect(isoWeek('2026-11-25')).toBe('2026-W48');
+    expect(data.lines.find((line) => line.id === 's1')).toMatchObject({ approved: true, pinned: false });
   });
 });
 
@@ -522,6 +513,19 @@ describe('financePlan', () => {
       labels: ['finances', 'entity:acme', 'fin:pay:acme-card:2026-11']
     });
     expect(plan.missing.find((task) => task.kind === 'review')?.labels).toEqual(['finances', 'fin:review:2026-10']);
+  });
+
+  test('a fee, double charge or rising bill that ages out of view leaves its task open', () => {
+    const plan = financePlan(
+      [],
+      [
+        { id: 'fp-005', label: 'fin:fee:acme-main:2026-08', status: 'open' },
+        { id: 'fp-006', label: 'fin:dup:x9', status: 'open' },
+        { id: 'fp-007', label: 'fin:rising:ada:streamco:2026-08', status: 'open' },
+        { id: 'fp-008', label: 'fin:pay:acme-card:2026-08', status: 'open' }
+      ]
+    );
+    expect(plan.resolved).toEqual([{ id: 'fp-008', label: 'fin:pay:acme-card:2026-08' }]);
   });
 
   test('a task done or cancelled on purpose is never filed again, and an open one whose insight is gone is closed', () => {

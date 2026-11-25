@@ -457,6 +457,16 @@ export const stateOf = (occurrence: Occurrence, existing: ExistingTask[], today:
   return occurrence.due < today ? TaskState.Overdue : TaskState.Open;
 };
 
+/** The arguments that are neither a flag nor a flag's value. */
+export const positionals = (args: string[]): string[] =>
+  args.filter((arg, i) => !arg.startsWith("--") && !args[i - 1]?.startsWith("--"));
+
+/** Ends a script run on a refusal, saying why. */
+export const refuse = (error: unknown): never => {
+  console.error(`refused: ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
+};
+
 export const argValue = (args: string[], flag: string): string | undefined => {
   const index = args.indexOf(flag);
   return index === -1 ? undefined : args[index + 1];

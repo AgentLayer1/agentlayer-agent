@@ -1,6 +1,7 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadEntities, pendingCloses } from './calendar';
+import { parseCsv } from './liability';
 
 /**
  * Where the finances project keeps things, and the small shapes every script that reads or writes
@@ -22,6 +23,14 @@ export const DATA = {
 } as const;
 
 export const cents = (amount: number): number => Math.round(amount * 100);
+
+const csvCell = (value: string | number | null): string => {
+  const text = value === null ? '' : String(value);
+  return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+};
+
+/** One CSV row, quoting a cell only when it holds a comma, a quote or a line break. */
+export const csvLine = (values: (string | number | null)[]): string => values.map(csvCell).join(',');
 export const monthOf = (date: string): string => date.slice(0, 7);
 
 /** Every CSV under `dir`, at any depth. */
@@ -86,3 +95,30 @@ export const financesDue = (dir: string, today: string): Due[] => {
         }
       ];
 };
+
+export interface Receipt {
+  id: string;
+  date: string;
+  merchant: string;
+  amount: number;
+  currency: string;
+  items: string;
+  entity: string;
+  file: string;
+  line: string;
+}
+
+export const loadReceipts = (dir: string): Receipt[] =>
+  existsSync(DATA.receipts(dir))
+    ? parseCsv(readFileSync(DATA.receipts(dir), 'utf8')).map((row) => ({
+        id: row.id ?? '',
+        date: row.date ?? '',
+        merchant: row.merchant ?? '',
+        amount: Number(row.amount),
+        currency: row.currency || 'MYR',
+        items: row.items ?? '',
+        entity: row.entity ?? '',
+        file: row.file ?? '',
+        line: row.line ?? ''
+      }))
+    : [];
