@@ -1248,6 +1248,7 @@ Concrete approach: `Read` the existing file (treat as `{}` if absent), build the
       "Skill(agentlayer:configure-skills)",
       "Skill(agentlayer:dashboard)",
       "Skill(agentlayer:engineer)",
+      "Skill(agentlayer:finances)",
       "Skill(agentlayer:find-session)",
       "Skill(agentlayer:flywheel)",
       "Skill(agentlayer:attention)",
@@ -1270,7 +1271,6 @@ Concrete approach: `Read` the existing file (treat as `{}` if absent), build the
       "Skill(agentlayer:setup-worktree)",
       "Skill(agentlayer:slack)",
       "Skill(agentlayer:sync)",
-      "Skill(agentlayer:tax)",
       "Skill(agentlayer:upgrade)",
       "Skill(agentlayer:wordpress-rest)"
     ]

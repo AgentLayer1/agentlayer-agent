@@ -10,7 +10,7 @@ const SKILLS = join(PLUGIN_SOURCE_ROOT, 'skills');
 const skills = readdirSync(SKILLS).filter((name) => existsSync(join(SKILLS, name, 'SKILL.md')));
 const playbooks = skills.flatMap((name) => {
   const dir = join(SKILLS, name, 'references', 'playbooks');
-  return existsSync(dir) ? readdirSync(dir).filter((file) => file.endsWith('.md')) : [];
+  return existsSync(dir) ? readdirSync(dir, { recursive: true, encoding: 'utf-8' }).filter((file) => file.endsWith('.md')) : [];
 });
 
 const stated = (pattern: RegExp): number => Number(README.match(pattern)?.[1]);

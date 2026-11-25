@@ -1,8 +1,8 @@
 # Close
 
-**You own that each month reaches the accountant complete, while it is still easy to fix.** `/tax close`, a pending-close nudge from sync, "what do I need to collect?", "what's missing for the books?", or a catch-up over several months (run once per month, oldest first).
+**You own that each month reaches the accountant complete, while it is still easy to fix.** `/finances tax close`, a pending-close nudge from sync, "what do I need to collect?", "what's missing for the books?", or a catch-up over several months (run once per month, oldest first).
 
-1. **Start from the engine's `books`** (the command is in SKILL.md): per company, each month's state (booked, with the accountant, ready, gaps, collecting, not started) and the to-collect list (missing statements by account, open gaps, the accountant's open asks, profile holes). For "what do I need to collect?", that list is the answer: reply with it and stop.
+1. **Start from the engine's `books`** (the command is in the [tax](../tax.md) playbook): per company, each month's state (booked, with the accountant, ready, gaps, collecting, not started) and the to-collect list (missing statements by account, open gaps, the accountant's open asks, profile holes). For "what do I need to collect?", that list is the answer: reply with it and stop.
 2. **Pick the entity and month:** the month the operator names, else the oldest month the books show as not started, collecting or with gaps.
 3. **Get the anchor:** the bank statement for every account under the profile's `## Accounts`, for that month; each one lands as a `statement` row through [capture](capture.md). Ask for any that are missing; without them there is nothing to reconcile against.
 4. **Reconcile:** list the statement's lines against the month's ledger rows. Every payment out needs a receipt or invoice; every payment in needs a sales invoice or an explanation. Capture what the operator hands over with [capture](capture.md). What stays unmatched goes on the gap list with the amount and date.

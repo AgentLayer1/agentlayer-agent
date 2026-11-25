@@ -7,6 +7,8 @@
  *     into concepts on the next compile run.
  *   - `kind: 'feedback'` — appends an entry to `raw/user/feedback.md`, the
  *     append-only operator-meta log compiled into memory/index.md → Learnings.
+ *   - `kind: 'finance'` — copies a statement or export, byte for byte, into the
+ *     finances project's `data/inbox/` for its import playbook; never compiled.
  *
  * Local-only, secret-redacted, atomic write, content-hash deduped. The
  * compile lifecycle is unchanged — capture is just a writer.
@@ -26,12 +28,14 @@ import { htmlToMarkdown, renderExtracted } from '@/shared/html-to-markdown';
 import { serialQueue } from '@/shared/serial';
 import { slugify } from '@/tasks/mutate';
 import { existsSync, statSync } from 'node:fs';
-import { appendFile, mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
-import { basename, relative, resolve } from 'node:path';
+import { appendFile, copyFile, mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
+import { basename, extname, join, relative, resolve } from 'node:path';
 import { fetchSignal } from '@/shared/call-signal';
 import { yamlScalar } from '@/shared/yaml';
 
-export type CaptureKind = 'inbox' | 'feedback';
+export type CaptureKind = 'inbox' | 'feedback' | 'finance';
+
+const MAX_FINANCE_FILE_BYTES = 25 * 1024 * 1024;
 
 export interface CaptureOpts {
   text?: string;
@@ -253,8 +257,48 @@ async function captureToFeedback(opts: CaptureOpts, content: string): Promise<Ca
 // keyed statement must find the first before it looks for a duplicate.
 const nextFeedbackWrite = serialQueue();
 
+/**
+ * A statement or export copied into the finances inbox as it is: no text decoding and no redaction, which would
+ * corrupt a PDF or a workbook. A file already waiting there is reported as a duplicate (the import
+ * catches one already imported); the original is never moved.
+ */
+async function captureToFinance(opts: CaptureOpts): Promise<CaptureResult> {
+  if (!opts.file) {
+    throw new Error('kind "finance" takes a file: the statement or export to import');
+  }
+  const source = resolve(opts.file);
+  if (!existsSync(source)) {
+    throw new Error(`File not found: ${opts.file}`);
+  }
+  const size = statSync(source).size;
+  if (size > MAX_FINANCE_FILE_BYTES) {
+    throw new Error(`File too large (${size} > ${MAX_FINANCE_FILE_BYTES} bytes): ${opts.file}`);
+  }
+  const bytes = await readFile(source);
+  const hash = hashBuffer(bytes);
+  const inbox = join(FOLDERS.PROJECTS, 'finances', 'data', 'inbox');
+  await mkdir(inbox, { recursive: true });
+  const waiting = await Promise.all(
+    (await readdir(inbox, { withFileTypes: true }))
+      .filter((entry) => entry.isFile())
+      .map((entry) => join(inbox, entry.name))
+      .map(async (path) => ({ path, hash: hashBuffer(await readFile(path)) }))
+  );
+  const twin = waiting.find((entry) => entry.hash === hash)?.path;
+  if (twin) {
+    return { ok: true, kind: 'finance', path: twin, relPath: homeRelative(twin), bytes: size, duplicate: true };
+  }
+  const name = basename(source);
+  const target = existsSync(join(inbox, name))
+    ? join(inbox, `${basename(name, extname(name))}-${hash.slice(0, 6)}${extname(name)}`)
+    : join(inbox, name);
+  await copyFile(source, target);
+  return { ok: true, kind: 'finance', path: target, relPath: homeRelative(target), bytes: size, duplicate: false };
+}
+
 export async function capture(opts: CaptureOpts): Promise<CaptureResult> {
   const kind: CaptureKind = opts.kind ?? 'inbox';
+  if (kind === 'finance') return captureToFinance(opts);
   const { content, sourceHint } = await resolveContent(opts);
   if (kind === 'feedback') return nextFeedbackWrite(() => captureToFeedback(opts, content));
   return captureToInbox(opts, content, sourceHint);

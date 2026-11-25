@@ -4,7 +4,7 @@
  * dead grant never comes back and an operator's ask or deny placement carries over. Retired MCP tools
  * below migrate the same way.
  */
-export const RETIRED_SKILLS: Readonly<Record<string, string>> = {};
+export const RETIRED_SKILLS: Readonly<Record<string, string>> = { tax: 'finances tax' };
 
 /**
  * MCP tools a release renamed, by old name, with the tool that replaced each.

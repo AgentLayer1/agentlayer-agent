@@ -1306,8 +1306,8 @@ const cheatsheet = (plugin: string): Array<{ when: string; say: string; what: st
   },
   {
     when: 'Taxes and receipts',
-    say: `/${plugin}:tax <what’s due | receipt | close | help>`,
-    what: 'Tax deadlines as dated tasks, receipts filed to the ledger, monthly close for the accountant; nothing is filed or paid without you.'
+    say: `/${plugin}:finances tax <what’s due | receipt | close | review | help>`,
+    what: 'Tax deadlines as dated tasks, receipts filed to the ledger, monthly close and books review for the accountant; nothing is filed or paid without you.'
   },
   {
     when: 'Support queue',

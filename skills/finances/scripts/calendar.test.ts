@@ -263,17 +263,19 @@ describe("renderDashboard", () => {
     write(dir, "entities/acme.md", profile);
     write(dir, "tasks/ta-010-a.md", task("ta-010", "open", ["tax", "entity:acme"]).replace("due:\n", "due: 2026-10-20\n"));
     write(dir, "tasks/ta-011-b.md", task("ta-011", "done", ["tax"]).replace("due:\n", "due: 2026-10-21\n"));
+    write(dir, "tasks/ta-012-c.md", task("ta-012", "open", ["entity:acme"]).replace("due:\n", "due: 2026-10-22\n"));
     const html = renderDashboard(dir, "2026-10-08");
     const soon = html.slice(html.indexOf("Next 60 days"), html.indexOf("Twelve months"));
     expect(soon).toContain("20 Oct");
     expect(soon).not.toContain("21 Oct");
+    expect(soon).not.toContain("22 Oct");
   });
 
   test("prices the year from the ledger and shows the estimate on file against it", () => {
     const dir = scratch();
     write(dir, "entities/acme.md", profile.replace("kind: company", "kind: company\ncountry: my"));
     write(dir, "estimates/acme/2026.md", "---\nya: 2026\nfiled: 0\nupdated: 2026-11-20\n---\n");
-    write(dir, "ledger/acme/2026.csv", "date,type,counterparty,country,currency,amount,tax,reference,category,file,flags,notes\n2026-10-15,opening,Acme accountant,MY,MYR,100000,0,management accounts to Oct,,,,\n");
+    write(dir, "data/ledger/acme/2026.csv", "date,type,counterparty,country,currency,amount,tax,reference,category,file,flags,notes\n2026-10-15,opening,Acme accountant,MY,MYR,100000,0,management accounts to Oct,,,,\n");
     const html = renderDashboard(dir, "2026-11-21");
     expect(html).toContain("RM 24,000");
     expect(html).toContain("Penalty if left as is");
@@ -319,8 +321,8 @@ describe("renderDashboard", () => {
   test("a malformed money cell stops the render with the ledger file and row named", () => {
     const dir = scratch();
     write(dir, "entities/acme.md", profile.replace("kind: company", "kind: company\ncountry: my"));
-    write(dir, "ledger/acme/2026.csv", "date,type,counterparty,country,currency,amount,tax,reference,category,file,flags,notes\n2026-07-31,opening,Acme accountant,MY,MYR,RM 50000,0,management accounts to Jul,,,,\n");
-    expect(() => renderDashboard(dir, "2026-09-20")).toThrow("ledger/acme/2026.csv row 2");
+    write(dir, "data/ledger/acme/2026.csv", "date,type,counterparty,country,currency,amount,tax,reference,category,file,flags,notes\n2026-07-31,opening,Acme accountant,MY,MYR,RM 50000,0,management accounts to Jul,,,,\n");
+    expect(() => renderDashboard(dir, "2026-09-20")).toThrow("data/ledger/acme/2026.csv row 2");
   });
 
   test("a partial close leaves the year unpriced, never RM 0", () => {
@@ -330,7 +332,7 @@ describe("renderDashboard", () => {
     write(dir, "closes/acme/2026-08.md", partial);
     const html = renderDashboard(dir, "2026-09-20");
     expect(html).toContain('<div class="hero-figure">—</div>');
-    write(dir, "ledger/acme/2026.csv", "date,type,counterparty,country,currency,amount,tax,reference,category,file,flags,notes\n2026-07-31,opening,Acme accountant,MY,MYR,50000,0,management accounts to Jul,,,,\n");
+    write(dir, "data/ledger/acme/2026.csv", "date,type,counterparty,country,currency,amount,tax,reference,category,file,flags,notes\n2026-07-31,opening,Acme accountant,MY,MYR,50000,0,management accounts to Jul,,,,\n");
     write(dir, "closes/acme/2026-08.md", '---\nmonth: "2026-08"\nstatus: closed\n---\n');
     expect(renderDashboard(dir, "2026-09-20")).toContain('<div class="hero-figure">RM 12,000</div>');
   });

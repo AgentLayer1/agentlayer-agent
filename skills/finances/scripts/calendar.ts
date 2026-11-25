@@ -1,19 +1,19 @@
 #!/usr/bin/env bun
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { FOLDERS } from "../../../src/config";
 import { todayDate } from "../../../src/shared/date";
 import { parseFrontmatter } from "../../../src/tasks/schema";
 
 /**
- * Deadline engine for the tax skill. Reads entity profiles from <projects>/tax/entities/*.md,
- * expands each obligation into dated occurrences, matches them against existing tasks by their
- * `obl:` label, and renders <projects>/tax/dashboard.html. Never creates tasks itself.
+ * Deadline engine for the finances skill's tax playbook. Reads entity profiles from
+ * <projects>/finances/entities/*.md, expands each obligation into dated occurrences, matches them
+ * against existing tasks by their `obl:` label. Never creates tasks itself; page.ts renders the
+ * dashboard.
  *
  * Usage: bun calendar.ts plan [--today YYYY-MM-DD]       prints { missing, existing, pendingCloses }
  *        bun calendar.ts liability [--today YYYY-MM-DD]  prints each entity's tax position
  *        bun calendar.ts books [--today YYYY-MM-DD]      prints each company's bookkeeping state
- *        bun calendar.ts render [--today YYYY-MM-DD]     writes dashboard.html, prints its path
  */
 
 export const DueFrom = { Start: "start", End: "end" } as const;
@@ -46,6 +46,10 @@ export type EntityKind = (typeof EntityKind)[keyof typeof EntityKind];
 export interface Account {
   id: string;
   name: string;
+  institution?: string;
+  type?: string;
+  currency?: string;
+  importer?: string;
 }
 
 export interface Entity {
@@ -202,7 +206,7 @@ const isObligation = (value: unknown): value is Obligation =>
   (value.period.anchor === "fye" || typeof value.period.anchor === "number") &&
   isDue(value.due);
 
-const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
  * The flat frontmatter of a markdown file as a record, or null when it has none.
@@ -217,7 +221,7 @@ export const frontmatterOf = (raw: string): Record<string, unknown> | null => {
  * The parsed fenced yaml block under a `## <heading>` section of a markdown body, or null when the
  * section or its block is absent. Structured data lives here because frontmatter stays flat.
  */
-const yamlBlock = (raw: string, heading: string): unknown => {
+export const yamlBlock = (raw: string, heading: string): unknown => {
   const pattern = new RegExp(`^## ${escapeRegExp(heading)}[ \\t]*\\r?\\n(?:(?!^## )[\\s\\S])*?^\`\`\`ya?ml\\r?\\n([\\s\\S]*?)^\`\`\``, "m");
   const block = raw.match(pattern)?.[1];
   return block === undefined ? null : Bun.YAML.parse(block);
@@ -338,10 +342,10 @@ export const loadEntities = (taxDir: string): Entity[] => {
 };
 
 /**
- * Tasks carrying an `obl:` label, from tasks/ and tasks/archive/ alike, so an obligation that was
- * done and archived, or cancelled on purpose, is never created again.
+ * Tasks carrying a label with this prefix (`obl:` by default), from tasks/ and tasks/archive/
+ * alike, so an obligation that was done and archived, or cancelled on purpose, is never created again.
  */
-export const loadExisting = (taxDir: string): ExistingTask[] =>
+export const loadExisting = (taxDir: string, prefix = "obl:"): ExistingTask[] =>
   [join(taxDir, "tasks"), join(taxDir, "tasks", "archive")]
     .filter((dir) => existsSync(dir))
     .flatMap((dir) =>
@@ -353,12 +357,12 @@ export const loadExisting = (taxDir: string): ExistingTask[] =>
       frontmatter === null
         ? []
         : frontmatter.labels
-            .filter((label) => label.startsWith("obl:"))
+            .filter((label) => label.startsWith(prefix))
             .map((label): ExistingTask => ({ id: frontmatter.id, label, status: frontmatter.status }))
     );
 
 /**
- * Open tax tasks with a due date that no obligation generated (a one-off filing, a request from
+ * Open tasks labelled `tax` with a due date that no obligation generated (a one-off filing, a request from
  * the accountant), so the dashboard shows everything with a date, not only the recurring rules.
  */
 export const loadOneOffs = (taxDir: string, entities: Entity[]): Occurrence[] => {
@@ -372,6 +376,7 @@ export const loadOneOffs = (taxDir: string, entities: Entity[]): Occurrence[] =>
     .flatMap((frontmatter) => {
       if (
         frontmatter === null ||
+        !frontmatter.labels.includes("tax") ||
         !frontmatter.due ||
         frontmatter.status === "done" ||
         frontmatter.status === "cancelled" ||
@@ -448,25 +453,30 @@ export const stateOf = (occurrence: Occurrence, existing: ExistingTask[], today:
   return occurrence.due < today ? TaskState.Overdue : TaskState.Open;
 };
 
-const argValue = (args: string[], flag: string): string | undefined => {
+/** The arguments that are neither a flag nor a flag's value. */
+export const positionals = (args: string[]): string[] =>
+  args.filter((arg, i) => !arg.startsWith("--") && !args[i - 1]?.startsWith("--"));
+
+/** Ends a script run on a refusal, saying why. */
+export const refuse = (error: unknown): never => {
+  console.error(`refused: ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
+};
+
+export const argValue = (args: string[], flag: string): string | undefined => {
   const index = args.indexOf(flag);
   return index === -1 ? undefined : args[index + 1];
 };
 
 if (import.meta.main) {
   const [command = "plan", ...rest] = process.argv.slice(2);
-  const taxDir = argValue(rest, "--dir") ?? join(FOLDERS.PROJECTS, "tax");
+  const taxDir = argValue(rest, "--dir") ?? join(FOLDERS.PROJECTS, "finances");
   const today = argValue(rest, "--today") ?? todayDate();
   if (!existsSync(join(taxDir, "entities"))) {
-    console.error(`no tax project at ${taxDir}: run the tax skill's setup playbook first`);
+    console.error(`no entity profiles at ${taxDir}: run the finances skill's tax setup playbook first`);
     process.exit(1);
   }
-  if (command === "render") {
-    const { renderDashboard } = await import("./dashboard");
-    const path = join(taxDir, "dashboard.html");
-    writeFileSync(path, renderDashboard(taxDir, today));
-    console.log(path);
-  } else if (command === "liability") {
+  if (command === "liability") {
     const { positions } = await import("./liability");
     const countriesDir = join(import.meta.dir, "..", "references", "countries");
     console.log(JSON.stringify(positions(taxDir, countriesDir, loadEntities(taxDir), today), null, 2));
@@ -476,7 +486,7 @@ if (import.meta.main) {
   } else if (command === "plan") {
     console.log(JSON.stringify(plan(taxDir, today), null, 2));
   } else {
-    console.error(`unknown command: ${command} (use plan, liability, books or render)`);
+    console.error(`unknown command: ${command} (use plan, liability or books; the page is page.ts)`);
     process.exit(1);
   }
 }

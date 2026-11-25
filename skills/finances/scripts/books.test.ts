@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { type Ask, booksFor, MonthState, monthRange } from "./books";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { type Ask, booksFor, loadAsks, MonthState, monthRange } from "./books";
 import { type CloseRecord, parseClose } from "./closes";
 import type { Entity } from "./calendar";
 import type { LedgerRow } from "./liability";
@@ -148,5 +151,18 @@ describe("parseClose", () => {
   test("a malformed gap stops the run with the file named", () => {
     const raw = "---\nstatus: partial\n---\n\n## Gaps\n\n```yaml\n- { date: \"2026-10-03\", amount: 1, direction: sideways, need: receipt }\n```\n";
     expect(() => parseClose("closes/acme/2026-10.md", raw)).toThrow("closes/acme/2026-10.md");
+  });
+});
+
+describe("loadAsks", () => {
+  const task = (id: string, labels: string[]): string =>
+    `---\nschema: 1\nid: ${id}\ntitle: ${id}\ntype: task\nstatus: open\npriority: P1\nproject: finances\nassignee: [agent]\nlabels: [${labels.join(", ")}]\ncreated: 2026-01-01\nupdated: 2026-01-01\ndue:\ndepends_on: []\nblocked_by:\nparent:\nclosed:\n---\n`;
+
+  test("reads only tax tasks, so a finances task in the same folder never shows as the accountant's ask", () => {
+    const dir = mkdtempSync(join(tmpdir(), "books-"));
+    mkdirSync(join(dir, "tasks"));
+    writeFileSync(join(dir, "tasks", "fp-001-a.md"), task("fp-001", ["tax", '"entity:acme"', "accountant"]));
+    writeFileSync(join(dir, "tasks", "fp-002-b.md"), task("fp-002", ['"entity:acme"', "accountant"]));
+    expect(loadAsks(dir, "acme").map((ask) => ask.id)).toEqual(["fp-001"]);
   });
 });
