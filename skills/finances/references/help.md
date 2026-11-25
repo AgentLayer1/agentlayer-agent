@@ -7,6 +7,7 @@ Your companies and your own money, kept legible and ahead of their deadlines. I 
 | Ask | Playbook | You get |
 |---|---|---|
 | "Import this statement", "import ~/Downloads/october.csv", `/finances import` | **import** | Each statement filed once, proven against its own balances, its lines added to your accounts, and the month marked in for the books |
+| A receipt dropped in the inbox | **import** | The receipt filed and matched to the line it paid for, so its items help categorise it |
 
 ### 📊 Your money
 

@@ -400,6 +400,8 @@ export interface FinanceInput {
   rules: Rule[];
   /** The categories the picker offers: the operator's list, else the skill's defaults. */
   categories?: string[];
+  /** Receipt files by the line each was matched to. */
+  receipts?: Map<string, string>;
 }
 
 /** A category rule as the dashboard shows it, with how many lines it covers. */
@@ -462,6 +464,8 @@ export interface FinanceData {
     kind: Kind;
     rule: string | null;
     approved: boolean;
+    /** The matched receipt's file, relative to the finances project. */
+    receipt: string | null;
   }[];
   recurring: Recurring[];
   dues: { account: string; entity: string; due: string; amount: number; currency: string; paid: boolean }[];
@@ -494,7 +498,8 @@ export const buildFinance = ({
   txns,
   statements,
   rules,
-  categories = []
+  categories = [],
+  receipts = new Map()
 }: FinanceInput): FinanceData => {
   const accounts = entities.flatMap((entity) => entity.accounts.map((account) => ({ account, entity })));
   const lines = classifyAll(txns, rules, entities);
@@ -790,7 +795,8 @@ export const buildFinance = ({
           category: line.category,
           kind: line.kind,
           rule: line.rule,
-          approved: line.approved
+          approved: line.approved,
+          receipt: receipts.get(line.id) ?? null
         };
       }),
     recurring,
@@ -935,7 +941,12 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
     txns,
     statements,
     rules: parseRules(rulesRaw),
-    categories: categoryList(rulesRaw)
+    categories: categoryList(rulesRaw),
+    receipts: new Map(
+      (existsSync(DATA.receipts(dir)) ? parseCsv(readFileSync(DATA.receipts(dir), 'utf8')) : []).flatMap((row) =>
+        row.line ? [[row.line, row.file ?? ''] as const] : []
+      )
+    )
   };
 };
 

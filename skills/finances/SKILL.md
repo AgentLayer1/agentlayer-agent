@@ -64,6 +64,7 @@ $PROJECTS/finances/
 └── data/                              gitignored
     ├── inbox/                         documents the operator drops in (dropping one is consent to read it)
     ├── originals/<slug>/<YYYY-MM>/    filed statements and documents
+    ├── receipts/<slug>/<YYYY-MM>/     filed receipts; receipts.csv links each to the line it paid for
     ├── statements.csv                 one row per imported statement: period, balances, check
     ├── transactions/<slug>/<YYYY>.csv every statement line, as the bank wrote it
     └── ledger/<slug>/<YYYY>.csv       the tax ledger: one row per document or stated figure
