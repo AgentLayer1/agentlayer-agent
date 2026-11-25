@@ -249,7 +249,7 @@ describe('the page in a browser', () => {
 
   test('a period still in progress counts both sides only to the day every statement reaches', () => {
     const { doc } = open(renderFinances(company(), '2026-11-02'), '#spending');
-    expect(doc.querySelector('h1.answer')?.textContent).toBe('RM 5 went out in October 2026 so far.');
+    expect(doc.querySelector('h1.answer')?.textContent).toBe('RM\u00a05 went out in October 2026 so far.');
   });
 
   test('hiding amounts hides the figures in a failing check too', () => {
@@ -270,5 +270,36 @@ describe('the page in a browser', () => {
     const note = [...doc.querySelectorAll('#checks .note')].find((el) => el.textContent?.includes('1234.56'));
     expect(note?.closest('.amt')).not.toBeNull();
     expect(doc.body.classList.contains('masked')).toBe(true);
+  });
+
+  test("summaries switch to USD at each month's rate, a month with no rate is left out and said so, and lines keep their own currency", () => {
+    const dir = company();
+    writeFileSync(join(dir, 'data/rates.csv'), 'month,currency,per_usd,source\n2026-10,MYR,5,frankfurter\n');
+    const { doc, click } = open(renderFinances(dir, '2026-11-02'), '#spending');
+    expect(doc.querySelector('#currency')?.textContent).toBe('MYRUSD');
+    click('button[data-usd="true"]');
+    expect(doc.querySelector('h1.answer')?.textContent).toBe('$1 went out in October 2026 so far.');
+    const flows = open(renderFinances(dir, '2026-11-02'), '#cashflow');
+    flows.click('button[data-usd="true"]');
+    expect(flows.doc.querySelector('#cashflow .lede')?.textContent).toMatch(
+      /In USD, other currencies converted at each month's central-bank rate; \d+ lines? with no rate/
+    );
+    const lines = open(renderFinances(dir, '2026-11-02'), '#categorise');
+    lines.click('button[data-usd="true"]');
+    lines.click('button[data-tab="approved"]');
+    lines.click('button[data-act="open"]');
+    const amounts = [...lines.doc.querySelectorAll('.work-lines td.num')].map((cell) => cell.textContent ?? '');
+    expect(amounts.length).toBeGreaterThan(0);
+    expect(amounts.every((text) => text.includes('RM'))).toBe(true);
+  });
+
+  test('the currency switch is hidden when the local currency is already USD', () => {
+    const dir = setup();
+    writeFileSync(
+      join(dir, 'entities/ada.md'),
+      '---\nname: Personal\nkind: individual\nclose: none\ncurrency: USD\n---\n\n## Accounts\n\n```yaml\n- { id: ada-main, name: Ada current }\n- { id: ada-old, name: Ada old savings }\n```\n'
+    );
+    const { doc } = open(renderFinances(dir, '2026-11-02'), '#overview');
+    expect(doc.querySelector<HTMLElement>('#currency')?.hidden).toBe(true);
   });
 });
