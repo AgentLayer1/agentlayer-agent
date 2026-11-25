@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { readProbe } from './probe';
-import { mcp, PACKS, PackState, packIds, type Probe, statusOf } from './registry';
+import { mcp, type PackDef, PACKS, PackState, packIds, type Probe, statusOf } from './registry';
 
 const probe = (extra: Partial<Probe> = {}): Probe => ({
   allow: new Set(),
@@ -77,6 +77,18 @@ describe('statusOf', () => {
     expect(recommended({})).toEqual(['browser']);
     expect(recommended({ env: { AGENT_CODE_PATH: '/code' }, inCmux: true })).toEqual(['browser', 'github', 'cmux']);
     expect(recommended({ allow: new Set(PACKS.browser.grants) })).toEqual([]);
+  });
+
+  test('no label or blurb carries angle brackets, which hosts escape in tool output', () => {
+    const texts = packIds().flatMap((id) => {
+      const def: PackDef = PACKS[id];
+      return [
+        def.label,
+        def.blurb,
+        ...def.parts(probe({ finances: [{ slug: 'acme', company: true, accounts: false }] })).map((part) => part.label)
+      ];
+    });
+    expect(texts.filter((text) => /[<>]/.test(text))).toEqual([]);
   });
 
   test("a pack's own MCP server is not one of the operator's remote servers", () => {

@@ -206,7 +206,7 @@ export const PACKS = {
     removable: true,
     parts: (probe) => [
       { label: 'database tool permissions', ok: granted(probe, DATABASE) },
-      { label: 'a connection (AGENT_DB_<NAME>)', ok: probe.connections.database > 0 }
+      { label: 'a database connection (an AGENT_DB_ key)', ok: probe.connections.database > 0 }
     ],
     grants: DATABASE
   },
