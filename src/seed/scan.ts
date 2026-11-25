@@ -181,8 +181,13 @@ export const scanSeed = (): SeedScanResult => {
     (entries ?? []).map((entry) => ({ entry, class: classifyGrant(entry) }));
   const allow = classify(permissionsRaw.allow);
   const activePacks = Object.entries(PACKS)
-    .filter(([, def]) => def.grants.every((grant) => permissionsRaw.allow?.includes(grant)))
-    .map(([name, def]) => ({ name, denies: def.denies ?? [], secretKeys: def.secretKeys, settingsEnv: def.settingsEnv }));
+    .filter(([, def]) => (def.grants ?? []).every((grant) => permissionsRaw.allow?.includes(grant)))
+    .map(([name, def]) => ({
+      name,
+      denies: def.denies ?? [],
+      secretKeys: def.secretKeys ?? [],
+      settingsEnv: def.settingsEnv ?? []
+    }));
 
   const localSettings = readJson(resolve(home, '.claude', 'settings.local.json'));
   // Credential-shaped keys (some homes keep e.g. an OAuth token in the env block on

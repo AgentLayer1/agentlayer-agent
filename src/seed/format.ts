@@ -27,8 +27,8 @@
  * ALLOWED_ROOTS — a hostile manifest cannot touch settings, secrets, or
  * anything else in the home.
  */
-import { FOLDERS, MCP_PREFIX, PLUGIN_NAME } from '@/config';
-import { PACKS as ALL_PACKS, type PackDef } from '@/packs/registry';
+import { FOLDERS, PLUGIN_NAME } from '@/config';
+import { PACKS as ALL_PACKS, mcp, type PackDef } from '@/packs/registry';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -153,8 +153,6 @@ export const validateSeedPath = (path: string): string | null => {
  */
 export const CREDENTIAL_KEY_RE = /(_TOKEN|_KEY|_SECRET|_PASSWORD|_CREDENTIALS?)($|_)/;
 
-const mcp = (names: string[]): string[] => names.map((name) => `${MCP_PREFIX}${name}`);
-
 /**
  * Grant classification for `seed_scan` — mirrors what `/init` pre-grants and
  * what each `configure-skills` pack walk adds. Keep in sync with
@@ -210,28 +208,10 @@ const CORE_GRANTS = new Set([
   'Bash(test *)'
 ]);
 
-interface SeedPack {
-  grants: string[];
-  /** Entries the pack's walk adds to `permissions.deny`, carried with the pack so its routing holds. */
-  denies?: string[];
-  /** Secret key names the pack's tools read from `.state/secrets/.env`. */
-  secretKeys: string[];
-  /** Non-secret keys the pack plants in settings.local.json `env`. */
-  settingsEnv: string[];
-}
-
 /** The packs a bundle can carry: set up by grants, keys and env alone, so carrying those carries the pack. */
 const SEEDABLE = ['seo', 'browser', 'database', 'github', 'helpdesk', 'appstore', 'slack'] as const;
 
-export const PACKS: Record<string, SeedPack> = Object.fromEntries(
-  SEEDABLE.map((id) => {
-    const def: PackDef = ALL_PACKS[id];
-    return [
-      id,
-      { grants: def.grants, denies: def.denies, secretKeys: def.secretKeys ?? [], settingsEnv: def.settingsEnv ?? [] }
-    ];
-  })
-);
+export const PACKS: Record<string, PackDef> = Object.fromEntries(SEEDABLE.map((id) => [id, ALL_PACKS[id]]));
 
 export type GrantClass = 'core' | 'skill' | 'custom' | { pack: string };
 
@@ -242,7 +222,7 @@ export type GrantClass = 'core' | 'skill' | 'custom' | { pack: string };
  */
 export const classifyGrant = (entry: string): GrantClass => {
   if (CORE_GRANTS.has(entry)) return 'core';
-  const pack = Object.entries(PACKS).find(([, def]) => def.grants.includes(entry));
+  const pack = Object.entries(PACKS).find(([, def]) => (def.grants ?? []).includes(entry));
   if (pack) return { pack: pack[0] };
   if (entry.startsWith(`Skill(${PLUGIN_NAME}:`)) return 'skill';
   return 'custom';

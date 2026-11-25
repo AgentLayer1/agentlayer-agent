@@ -34,7 +34,7 @@ When `<HOME>/.state/version.json` has `migratedFrom`, this home came from the pr
 - **Inbox:** how many files sit in `knowledge/raw/inbox/` (documents from init's Step 5d that no compile has absorbed yet).
 - **Roadmap draft:** whether `knowledge/concepts/roadmap-draft.md` exists (the goals from Step 5d).
 - **Roadmap:** whether `roadmap.html` exists at the home root (a seed bundle can bring one).
-- **Packs:** whether `.claude/settings.json` grants any pack tool: `serpapi_search`, `web_search`, `browser_`, `database_`, `github_`, `slack_`, or `mcp__xcode__`. None means no pack was activated at init.
+- **Packs:** `packs_status`. Every available row `new` means no pack was set up at init.
 
 ## 2. Greet and ask
 
@@ -45,7 +45,7 @@ One or two lines as the agent: setup is done, here is where we could start. Then
 | **Build your roadmap (Recommended)**: "from the goals you gave at setup" with a draft, "a plan-on-a-page for the year" without one | no `roadmap.html` | the `roadmap` skill |
 | **Review your roadmap (Recommended)**: check the one you brought still holds | `roadmap.html` exists | the `roadmap` skill, as an update |
 | **Absorb your documents**: read the N files you dropped in so I know them in full | inbox has files | the `knowledge-compile` skill |
-| **Set up skill packs**: search, browser, GitHub, Slack, databases | no pack granted | the `configure-skills` skill |
+| **Set up packs**: browser, GitHub, finances, support and more | every pack `new` | the `configure-skills` skill |
 | **Morning brief**: see what I already know and what's on today | always | the `briefing` skill, morning |
 
 The roadmap row always comes first and always carries "(Recommended)". A typed answer ("Other") is a request of its own: do that instead.

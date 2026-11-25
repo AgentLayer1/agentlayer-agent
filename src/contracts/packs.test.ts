@@ -1,13 +1,14 @@
 import { describe, expect, test } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { PACKS } from '@/packs/registry';
+import { MCP_PREFIX } from '@/config';
+import { type PackDef, PACKS } from '@/packs/registry';
 import { PLUGIN_SOURCE_ROOT } from '@/shared/naming';
 
 const CONFIGURE = readFileSync(join(PLUGIN_SOURCE_ROOT, 'skills', 'configure-skills', 'SKILL.md'), 'utf-8');
 const README = readFileSync(join(PLUGIN_SOURCE_ROOT, 'README.md'), 'utf-8');
 const DESCRIPTION = /^description: (.*)$/m.exec(CONFIGURE)?.[1] ?? '';
-const packs = Object.values(PACKS);
+const packs: PackDef[] = Object.values(PACKS);
 const labels = packs.map((pack) => pack.label);
 
 const walkHeading = (walk: string): RegExp =>
@@ -23,6 +24,21 @@ const sources = (dir: string): string[] =>
 describe('the pack registry and configure-skills', () => {
   test("every pack's walk is a section of configure-skills", () => {
     expect(packs.filter((pack) => !walkHeading(pack.walk).test(CONFIGURE)).map((pack) => pack.walk)).toEqual([]);
+  });
+
+  test('every grant and deny the registry checks for is named by its walk (tools by their short name)', () => {
+    const section = (walk: string): string => {
+      const start = CONFIGURE.search(walkHeading(walk));
+      const rest = CONFIGURE.slice(CONFIGURE.indexOf('\n', start));
+      const next = rest.search(/^#{2,3} /m);
+      return next === -1 ? rest : rest.slice(0, next);
+    };
+    const unwritten = packs.flatMap((pack) =>
+      [...(pack.grants ?? []), ...(pack.denies ?? [])]
+        .filter((entry) => !section(pack.walk).includes(entry.replace(MCP_PREFIX, '')))
+        .map((entry) => `${pack.label}: ${entry}`)
+    );
+    expect(unwritten).toEqual([]);
   });
 
   test('every pack configure can take out has its removal entry', () => {

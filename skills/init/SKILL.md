@@ -1692,15 +1692,8 @@ The note holds the `~/.gemini/config/plugins.json` entry naming this checkout, a
 
 The scaffold is done. Before the final confirmation, offer the optional packs. This is `/agentlayer:configure-skills`'s install branch, run inline so the operator doesn't have to come back for it after the relaunch.
 
-1. **The list.** Call `packs_status` and keep the rows with `available: true` (it already leaves Xcode off a non-Mac, and cmux off a Mac without the app). Show them as configure-skills Step 2 does: one numbered table per group, with the label, the blurb word for word, and a ★ on the recommended rows. Each row's status is `○ new` in a fresh home. When an existing home already has a pack, show its real status and leave it out of `recommended`.
-2. **Recommended:**
-   - **Browser, always.** Playwright's capture tools work with no key; Perplexity is optional, and briefings use the built-in web search until a key is added.
-   - **GitHub, when Step 4b captured a real code path.** `github_fast_forward` keeps those checkouts current on every sync and needs a token. Without the pack it returns `NOT_CONFIGURED` and the code silently never refreshes, so the agent keeps answering from a frozen checkout.
-   - **cmux, when init runs inside cmux** (`CMUX_WORKSPACE_ID` is set). The operator already lives in the app the sidebar belongs to.
-   - **Never pre-pick Xcode.** Plenty of Mac operators never open Xcode, and its two manual steps (a sandbox exclusion and a sudo enablement) are wasted on them.
-3. **Ask:** *"Reply with the numbers (`2, 5`), a group (`all of Code`), `recommended`, or `skip` to set packs up later with `/agentlayer:configure-skills`."*
-4. **Run the picked rows** in table order: open `${CLAUDE_PLUGIN_ROOT}/skills/configure-skills/SKILL.md` and follow the section each row's `walk` names. Honor every skip inside a walk. The walks **never prompt for API key values or connection strings in chat**: they add grants, plant non-secret placeholders and ensure `.state/secrets/.env` exists, and the operator adds secret lines in their editor after the relaunch.
-5. **`skip`, or nothing picked:** write nothing, and note "packs not set up: run `/agentlayer:configure-skills` after relaunch" for Step 9's status block.
+1. **Show and run the install branch.** Open `${CLAUDE_PLUGIN_ROOT}/skills/configure-skills/SKILL.md`, call `packs_status`, and follow its Step 2 for the Install branch: the table, the reply, then each picked row's walk. Offer `skip` (set packs up later with `/agentlayer:configure-skills`) in place of `none`. Honor every skip inside a walk. The walks **never prompt for API key values or connection strings in chat**: they add grants, plant non-secret placeholders and ensure `.state/secrets/.env` exists, and the operator adds secret lines in their editor after the relaunch.
+2. **`skip`, or nothing picked:** write nothing, and note "packs not set up: run `/agentlayer:configure-skills` after relaunch" for Step 9's status block.
 
 ## Step 8b — History (when Step 6d staged `on`)
 

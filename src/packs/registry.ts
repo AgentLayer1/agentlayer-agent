@@ -1,4 +1,5 @@
-import { MCP_PREFIX, PLUGIN_NAME } from '@/config';
+import { FILES, FOLDERS, MCP_PREFIX, PLUGIN_NAME } from '@/config';
+import { relative } from 'node:path';
 
 /**
  * Every optional pack the configure-skills skill sets up, in the order it shows them: what each
@@ -15,24 +16,29 @@ export const PackGroup = {
 } as const;
 export type PackGroup = (typeof PackGroup)[keyof typeof PackGroup];
 
-/** What a pack's detector reads: the home's settings, files and the secret store's key names. */
+/** What a pack's detector reads: the home's settings and files, and what the secret store holds. */
 export interface Probe {
   allow: ReadonlySet<string>;
   deny: ReadonlySet<string>;
   env: Readonly<Record<string, string>>;
-  /** Key names in `.state/secrets/.env`, plus the OAuth files present (`google/tokens`, `slack/tokens`). */
-  secrets: ReadonlySet<string>;
+  /** Whether a secret-store key holds a value. */
+  key: (name: string) => boolean;
+  /** The OAuth sign-ins the secret store holds. */
+  signedIn: ReadonlySet<'google' | 'slack'>;
+  /** The connections each pack's own code finds: GitHub tokens, databases, helpdesk logins. */
+  connections: Readonly<Record<'github' | 'database' | 'helpdesk', number>>;
   mcpServers: readonly string[];
   /** True when a path under the home exists. */
   exists: (path: string) => boolean;
-  /** Third-party skill libraries linked into `.claude/skills/`. */
-  libraries: number;
-  /** This home's place in the cmux sidebar. */
-  cmux: 'joined' | 'not-joined' | 'not-installed';
+  /** A third-party skill library is linked into `.claude/skills/`. */
+  libraries: boolean;
+  cmuxJoined: boolean;
   /** Each finances entity, and whether a company one lists its accounts. */
   finances: readonly { slug: string; company: boolean; accounts: boolean }[];
   macos: boolean;
   cmuxApp: boolean;
+  /** This session runs in a cmux terminal. */
+  inCmux: boolean;
 }
 
 /** One thing a set-up pack has; an optional part never holds a pack back from set up. */
@@ -50,10 +56,13 @@ export interface PackDef {
   walk: string;
   /** Whether configure-skills can take it out again (its C.2 entry is `**<label> deconfigure:**`). */
   removable: boolean;
-  available: (probe: Probe) => boolean;
+  /** Whether this machine can run it; every machine when absent. */
+  available?: (probe: Probe) => boolean;
+  /** Whether setup offers it first; never when absent. */
+  recommended?: (probe: Probe) => boolean;
   parts: (probe: Probe) => Part[];
   /** Grants the walk adds to `permissions.allow`; seed carries them with the pack. */
-  grants: string[];
+  grants?: string[];
   denies?: string[];
   /** Secret key names the pack's tools read, for a seed recipient to fill in. */
   secretKeys?: string[];
@@ -61,12 +70,10 @@ export interface PackDef {
   settingsEnv?: string[];
 }
 
-const mcp = (names: string[]): string[] => names.map((name) => `${MCP_PREFIX}${name}`);
-const always = (): boolean => true;
+export const mcp = (names: string[]): string[] => names.map((name) => `${MCP_PREFIX}${name}`);
 const granted = (probe: Probe, grants: string[]): boolean => grants.every((grant) => probe.allow.has(grant));
 const anyGranted = (probe: Probe, grants: string[]): boolean => grants.some((grant) => probe.allow.has(grant));
-const hasSecret = (probe: Probe, prefix: string): boolean =>
-  [...probe.secrets].some((name) => name === prefix || name.startsWith(`${prefix}_`));
+const hasEnv = (probe: Probe, key: string): boolean => (probe.env[key] ?? '').trim() !== '';
 
 const SEO = mcp([
   'serpapi_search',
@@ -124,7 +131,7 @@ const SLACK = [
 ];
 
 /** MCP servers a pack registers in `.mcp.json`, so they don't count as the operator's own. */
-export const PACK_SERVERS = ['xcode'];
+const PACK_SERVERS = ['xcode'];
 
 export const PACKS = {
   browser: {
@@ -133,12 +140,13 @@ export const PACKS = {
     blurb: 'screenshots, PDFs and page text from any site, scripted flows, optional Perplexity search',
     walk: 'A.2b',
     removable: true,
-    available: always,
+    // Playwright works with no key, and search falls back to the built-in web search.
+    recommended: () => true,
     parts: (probe) => [
       { label: 'browser tool permissions', ok: granted(probe, PLAYWRIGHT) },
       {
         label: 'Perplexity search key',
-        ok: probe.allow.has(`${MCP_PREFIX}web_search`) && probe.secrets.has('PERPLEXITY_API_KEY'),
+        ok: granted(probe, mcp(['web_search'])) && probe.key('PERPLEXITY_API_KEY'),
         optional: true
       }
     ],
@@ -151,13 +159,12 @@ export const PACKS = {
     blurb: 'site audits, Search Console, PageSpeed, live Google results and domain authority',
     walk: 'A.2a',
     removable: true,
-    available: always,
     parts: (probe) => [
       { label: 'SEO tool permissions', ok: anyGranted(probe, SEO) },
-      { label: 'site URL (GSC_SITE_URL)', ok: (probe.env.GSC_SITE_URL ?? '').trim() !== '', optional: true },
-      { label: 'Google sign-in', ok: probe.secrets.has('google/tokens'), optional: true },
-      { label: 'SerpAPI key', ok: probe.secrets.has('SERPAPI_KEY'), optional: true },
-      { label: 'Open PageRank key', ok: probe.secrets.has('OPENPAGERANK_API_KEY'), optional: true }
+      { label: 'site URL (GSC_SITE_URL)', ok: hasEnv(probe, 'GSC_SITE_URL'), optional: true },
+      { label: 'Google sign-in', ok: probe.signedIn.has('google'), optional: true },
+      { label: 'SerpAPI key', ok: probe.key('SERPAPI_KEY'), optional: true },
+      { label: 'Open PageRank key', ok: probe.key('OPENPAGERANK_API_KEY'), optional: true }
     ],
     grants: SEO,
     secretKeys: ['SERPAPI_KEY', 'OPENPAGERANK_API_KEY'],
@@ -169,12 +176,10 @@ export const PACKS = {
     blurb: 'the heartbeat sends up to three checked findings a day, from public facts you approve',
     walk: 'A.2k',
     removable: true,
-    available: always,
     parts: (probe) => [
-      { label: 'approved public facts (knowledge/public.md)', ok: probe.exists('knowledge/public.md') },
+      { label: 'approved public facts (knowledge/public.md)', ok: probe.exists(relative(FOLDERS.HOME, FILES.PUBLIC)) },
       { label: 'scouting turned on (AGENT_NOTES_SCOUT)', ok: probe.env.AGENT_NOTES_SCOUT === 'true' }
-    ],
-    grants: []
+    ]
   },
   github: {
     label: 'GitHub',
@@ -182,11 +187,12 @@ export const PACKS = {
     blurb: 'PRs, issues and CI runs: reviews, replies, walkthroughs, and keeping your checkouts current',
     walk: 'A.2d',
     removable: true,
-    available: always,
+    // Without a token, sync never fast-forwards the operator's checkouts and the agent reads stale code.
+    recommended: (probe) => hasEnv(probe, 'AGENT_CODE_PATH'),
     parts: (probe) => [
       { label: 'GitHub tool permissions', ok: granted(probe, GITHUB) },
       { label: 'gh kept out of the shell', ok: probe.deny.has('Bash(gh *)') },
-      { label: 'a GitHub token', ok: hasSecret(probe, 'GITHUB_TOKEN') }
+      { label: 'a GitHub token', ok: probe.connections.github > 0 }
     ],
     grants: GITHUB,
     denies: ['Bash(gh)', 'Bash(gh *)'],
@@ -198,10 +204,9 @@ export const PACKS = {
     blurb: 'read-only Postgres queries and schema, and a private copy of a local database for risky work',
     walk: 'A.2c',
     removable: true,
-    available: always,
     parts: (probe) => [
       { label: 'database tool permissions', ok: granted(probe, DATABASE) },
-      { label: 'a connection (AGENT_DB_<NAME>)', ok: [...probe.secrets].some((name) => name.startsWith('AGENT_DB_')) }
+      { label: 'a connection (AGENT_DB_<NAME>)', ok: probe.connections.database > 0 }
     ],
     grants: DATABASE
   },
@@ -211,14 +216,12 @@ export const PACKS = {
     blurb: 'API requests drafted as Bruno, Postman or curl collections you send yourself',
     walk: 'A.2e',
     removable: false,
-    available: always,
     parts: (probe) => [
       {
         label: 'a collection folder (reports/api/)',
         ok: ['bruno', 'postman', 'curl'].some((adapter) => probe.exists(`reports/api/${adapter}`))
       }
-    ],
-    grants: []
+    ]
   },
   xcode: {
     label: 'Xcode',
@@ -240,13 +243,9 @@ export const PACKS = {
     blurb: 'read SupportCandy or Pylon tickets and leave private draft notes; a person sends every reply',
     walk: 'A.2g',
     removable: true,
-    available: always,
     parts: (probe) => [
       { label: 'helpdesk tool permissions', ok: granted(probe, HELPDESK_READ) },
-      {
-        label: 'a helpdesk login',
-        ok: hasSecret(probe, 'SUPPORTCANDY_APP_PASSWORD') || hasSecret(probe, 'PYLON_API_TOKEN')
-      },
+      { label: 'a helpdesk login', ok: probe.connections.helpdesk > 0 },
       { label: 'draft notes and assigning', ok: granted(probe, HELPDESK_DRAFT), optional: true }
     ],
     grants: [...HELPDESK_READ, ...HELPDESK_DRAFT],
@@ -259,7 +258,6 @@ export const PACKS = {
     blurb: "read any app's App Store reviews; read-only, never replies",
     walk: 'A.2h',
     removable: true,
-    available: always,
     parts: (probe) => [{ label: 'the reviews tool permission', ok: granted(probe, mcp(['appstore_reviews'])) }],
     grants: mcp(['appstore_reviews'])
   },
@@ -269,11 +267,10 @@ export const PACKS = {
     blurb: 'read-only Slack through your account: pulses, replies you owe, threads waiting on you',
     walk: 'A.2i',
     removable: true,
-    available: always,
     parts: (probe) => [
       { label: 'Slack tool permissions', ok: granted(probe, SLACK) },
-      { label: 'a Slack app (AGENT_SLACK_CLIENT_ID)', ok: (probe.env.AGENT_SLACK_CLIENT_ID ?? '') !== '' },
-      { label: 'signed in to Slack', ok: probe.secrets.has('slack/tokens') }
+      { label: 'a Slack app (AGENT_SLACK_CLIENT_ID)', ok: hasEnv(probe, 'AGENT_SLACK_CLIENT_ID') },
+      { label: 'signed in to Slack', ok: probe.signedIn.has('slack') }
     ],
     grants: SLACK,
     settingsEnv: ['AGENT_SLACK_CLIENT_ID']
@@ -284,9 +281,9 @@ export const PACKS = {
     blurb: "the AgentLayer sidebar in cmux: every session by what needs you, each agent's tasks and pages",
     walk: 'A.2j',
     removable: true,
-    available: (probe) => probe.macos && probe.cmuxApp,
-    parts: (probe) => [{ label: 'this home in the cmux sidebar', ok: probe.cmux === 'joined' }],
-    grants: []
+    available: (probe) => probe.cmuxApp,
+    recommended: (probe) => probe.inCmux,
+    parts: (probe) => [{ label: 'this home in the cmux sidebar', ok: probe.cmuxJoined }]
   },
   finances: {
     label: 'Finances',
@@ -294,15 +291,13 @@ export const PACKS = {
     blurb: 'tax deadlines and books for your companies and you, statements, spending by category',
     walk: 'A.2l',
     removable: false,
-    available: always,
     parts: (probe) => [
       { label: 'a profile per company and for you (projects/finances/entities/)', ok: probe.finances.length > 0 },
       ...probe.finances
         .filter((entity) => entity.company)
         .map((entity) => ({ label: `${entity.slug}'s bank accounts`, ok: entity.accounts })),
       { label: 'categorising rules (RULES.md)', ok: probe.exists('projects/finances/RULES.md'), optional: true }
-    ],
-    grants: []
+    ]
   },
   libraries: {
     label: 'Third-party libraries',
@@ -310,9 +305,7 @@ export const PACKS = {
     blurb: 'skill libraries others publish (SEO/GEO, marketing playbooks), linked into .claude/skills/',
     walk: 'F',
     removable: true,
-    available: always,
-    parts: (probe) => [{ label: 'a library linked', ok: probe.libraries > 0 }],
-    grants: []
+    parts: (probe) => [{ label: 'a library linked', ok: probe.libraries }]
   },
   mcp: {
     label: 'Remote MCP servers',
@@ -320,14 +313,12 @@ export const PACKS = {
     blurb: "another service's MCP server, behind a hardened wrapper in .mcp.json",
     walk: 'B',
     removable: false,
-    available: always,
     parts: (probe) => [
       {
         label: 'a server in .mcp.json',
         ok: probe.mcpServers.some((name) => !PACK_SERVERS.includes(name))
       }
-    ],
-    grants: []
+    ]
   }
 } satisfies Record<string, PackDef>;
 
@@ -336,27 +327,27 @@ export type PackId = keyof typeof PACKS;
 export const PackState = { New: 'new', Partial: 'partial', Ready: 'ready' } as const;
 export type PackState = (typeof PackState)[keyof typeof PackState];
 
-export interface PackStatus {
+export interface PackStatus extends Pick<PackDef, 'label' | 'group' | 'blurb' | 'walk' | 'removable'> {
   id: PackId;
-  label: string;
-  group: PackGroup;
-  blurb: string;
-  walk: string;
-  removable: boolean;
   available: boolean;
+  /** Offered first, and only while it isn't set up. */
+  recommended: boolean;
   state: PackState;
-  /** What a set-up pack still lacks, an optional part marked so. */
+  /** The required parts still missing. */
   missing: string[];
+  /** The optional parts still off. */
+  optional: string[];
 }
 
 /** A pack is new when it has none of its parts, set up when it has every required one, and half-done between. */
 export const statusOf = (id: PackId, probe: Probe): PackStatus => {
   const def: PackDef = PACKS[id];
   const parts = def.parts(probe);
-  const required = parts.filter((part) => part.optional !== true);
+  const off = (optional: boolean): string[] =>
+    parts.filter((part) => !part.ok && (part.optional === true) === optional).map((part) => part.label);
   const state = !parts.some((part) => part.ok)
     ? PackState.New
-    : required.every((part) => part.ok)
+    : off(false).length === 0
       ? PackState.Ready
       : PackState.Partial;
   return {
@@ -366,14 +357,11 @@ export const statusOf = (id: PackId, probe: Probe): PackStatus => {
     blurb: def.blurb,
     walk: def.walk,
     removable: def.removable,
-    available: def.available(probe),
+    available: def.available?.(probe) ?? true,
+    recommended: state !== PackState.Ready && (def.recommended?.(probe) ?? false),
     state,
-    missing:
-      state === PackState.New
-        ? []
-        : parts
-            .filter((part) => !part.ok)
-            .map((part) => (part.optional === true ? `${part.label} (optional)` : part.label))
+    missing: state === PackState.New ? [] : off(false),
+    optional: state === PackState.New ? [] : off(true)
   };
 };
 

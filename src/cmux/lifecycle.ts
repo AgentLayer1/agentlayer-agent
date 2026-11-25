@@ -75,10 +75,7 @@ const readJoined = (home: string, target: SidebarTarget): Joined | Absent => {
 };
 
 /** Whether this home is in the cmux sidebar, read only. */
-export const sidebarState = (home: string, target: SidebarTarget = defaultTarget()): 'joined' | Absent => {
-  const joined = readJoined(home, target);
-  return typeof joined === 'string' ? joined : 'joined';
-};
+export const sidebarJoined = (home: string): boolean => typeof readJoined(home, defaultTarget()) !== 'string';
 
 const writeIfChanged = (path: string, text: string, next: string): 'unchanged' | 'written' => {
   if (next === text) {

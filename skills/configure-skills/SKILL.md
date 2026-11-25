@@ -79,12 +79,12 @@ Show the branch's rows as one table per `group`, in the order the tool returns t
 | 3 | GitHub ★ | PRs, issues and CI runs: … | ✅ set up |
 ```
 
-- **Pack** is the row's `label`, with ★ on a recommended one: Browser always, GitHub when `AGENT_CODE_PATH` is set, cmux when `CMUX_WORKSPACE_ID` is set (this session runs inside cmux).
+- **Pack** is the row's `label`, with ★ when its `recommended` is true.
 - **What it gives you** is the row's `blurb`, word for word.
-- **Status** is `○ new`, `◐ needs: <missing>` for a half-done pack (its required `missing` items only), or `✅ set up`, followed by `· optional: <items>` when a set-up pack still has optional parts off.
+- **Status** is `○ new`, `◐ needs: <missing>` for a half-done pack, or `✅ set up`, followed by `· optional: <optional>` when that list isn't empty.
 - Leave out a group with no rows in this branch.
 
-Then ask in one line: *"Reply with the numbers (`2, 5`), a group (`all of Code`), `recommended`, or `none`."* A branch with four rows or fewer uses `AskUserQuestion` (multi-select, one option per row, the label as the option) instead of the table. Never merge two packs into one option.
+Then ask in one line: *"Reply with the numbers (`2, 5`), a group (`all of Code`), `recommended`, or `none`."*
 
 Run the picked rows in table order:
 
@@ -985,9 +985,7 @@ Print per library: install status + symlink path + upstream LICENSE first-line. 
 
 ## Section C — Deconfigure a skill pack
 
-### C.1 What reaches here
-
-The Remove branch of Step 2: each picked row runs its `**<label> deconfigure:**` entry below. Confirm once, naming every pack about to be removed and what each removal takes out, before running any.
+The Remove branch of Step 2 runs each picked row's `**<label> deconfigure:**` entry below. Confirm once, naming every pack about to be removed and what each removal takes out, before running any.
 
 ### C.2 Deconfigure actions
 
