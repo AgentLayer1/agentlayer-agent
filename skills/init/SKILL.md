@@ -1677,6 +1677,14 @@ bun "$PLUGIN_ROOT/skills/init/scripts/codex-user-config.ts" --home "$HOME_DIR" -
 
 **Trust is the operator's step.** Codex reads a project's `.codex/config.toml` only for a trusted folder (it asks on first launch), and trusts hooks per command by content hash: an untrusted hook does not run at all (silently, under `codex exec`). Note for Step 9: the operator must trust the folder, then run `/hooks` in their next Codex session from this home and trust all four entries, or Codex sessions start without the agent's context and are never captured.
 
+**A toolbar button, in cmux.** When `CMUX_WORKSPACE_ID` is set (this session runs inside cmux), ask with `AskUserQuestion`: "Add an OpenAI Codex button to the cmux toolbar?" (options: "Yes, show me what to paste" / "No"). On yes, run the read-only check with this host's button:
+
+```bash
+bun "$PLUGIN_ROOT/src/cli.ts" cmux settings --file=cmux --host=codex
+```
+
+Exit 0 means the button is already there: say so in one line. Otherwise show its command and the text under **To paste**, in that order, for the operator to merge into `~/.config/cmux/cmux.json` themselves (the sandbox can't write there), then `cmux reload-config` from a cmux tab. The button opens a new tab running `codex`. Never write the file.
+
 ## Step 7d — Antigravity (when the operator also runs Antigravity here)
 
 Skip this step silently unless `agy --version` answers (a functional probe, never `command -v`). On native Windows (`$AGENT_PLATFORM=windows`) it runs the same way, but say once that Antigravity on Windows is unverified: no Windows machine has run it yet, its commands run through PowerShell, and its sandbox needs Windows 11 24H2 with the August 2026 update. On every platform, ask once with `AskUserQuestion`: "Do you also run Google Antigravity (`agy`) from this home?" (options: "Yes, set it up" / "No, Claude Code only"). A no writes nothing; the upgrade skill offers it again whenever `agy` is installed.
@@ -1688,6 +1696,14 @@ bun "$PLUGIN_ROOT/skills/init/scripts/antigravity-user-config.ts" --home "$HOME_
 ```
 
 The note holds the `~/.gemini/config/plugins.json` entry naming this checkout, and the keys for `~/.gemini/antigravity-cli/settings.json`: the terminal sandbox on, the user-level Claude denies and this home's `.state/secrets` as path rules, write access to the code folders, and the allowed domains. Quote it in Step 9 verbatim, with three facts the operator needs: the plugin loads in every folder but stays silent outside an agent home; anything that asks in Claude Code asks through Antigravity's own approval prompt; and a wildcard deny such as `**/.env` is refused by the agent inside an agent home only.
+
+**A toolbar button, in cmux.** When `CMUX_WORKSPACE_ID` is set (this session runs inside cmux), ask with `AskUserQuestion`: "Add an Antigravity button to the cmux toolbar?" (options: "Yes, show me what to paste" / "No"). On yes, run the read-only check with this host's button:
+
+```bash
+bun "$PLUGIN_ROOT/src/cli.ts" cmux settings --file=cmux --host=antigravity
+```
+
+Exit 0 means the button is already there: say so in one line. Otherwise show its command and the text under **To paste**, in that order, for the operator to merge into `~/.config/cmux/cmux.json` themselves (the sandbox can't write there), then `cmux reload-config` from a cmux tab. The button opens a new tab running `agy`. Never write the file.
 
 ## Step 8 — Optional: set up packs
 

@@ -202,9 +202,10 @@ Sidebar commands for cmux (this CLI's, not the cmux app's own; run them from a t
   cmux sidebar install              Add this home to the AgentLayer sidebar (starting it if it's the first), have cmux check it, and show it
   cmux sidebar refresh              Put this home's latest projects and tasks into the sidebar (every dashboard refresh also does this)
   cmux sidebar remove               Take this home out of the sidebar; the last home out deletes it
-  cmux settings --file=<ghostty|cmux> [--launcher=<claude|agent>] [--json]
+  cmux settings --file=<ghostty|cmux> [--launcher=<claude|agent>] [--host=<codex,antigravity>] [--json]
                                     Compare a Mac's Ghostty or cmux settings with the recommended ones (read-only;
-                                    prints what to paste and the command to run; without --json, exit 3 unless the file is complete)
+                                    prints what to paste and the command to run; without --json, exit 3 unless the file is complete);
+                                    --host adds the button for each host set up here
 
 Notes commands:
   notes list [--json]               Today's notes, the room left, and the notes of the last two weeks
@@ -268,7 +269,7 @@ async function run(): Promise<void> {
   // before the invocation log below, which writes into the home it runs in.
   if (group === 'cmux' && command === 'settings') {
     const { runSettingsCommand } = await import('@/cmux/settings');
-    process.exit(runSettingsCommand(flag('file'), bool('json'), flag('launcher')));
+    process.exit(runSettingsCommand(flag('file'), bool('json'), flag('launcher'), flag('host')));
   }
 
   // Read-only: init shows the choices with it while it names a new agent, then writes the line --line prints.

@@ -16,6 +16,28 @@ type SettingsFile = (typeof SETTINGS_FILES)[number];
 const LAUNCHERS = ['claude', 'agent'] as const;
 type Launcher = (typeof LAUNCHERS)[number];
 
+// A button for each other agent CLI, recommended only when that host is set up, after the Claude Code button.
+const HOST_ACTIONS = {
+  codex: {
+    type: 'command',
+    command: 'codex',
+    target: 'newTabInCurrentPane',
+    title: 'OpenAI Codex',
+    subtitle: 'Open OpenAI Codex in a new terminal tab',
+    icon: { type: 'symbol', name: 'chevron.left.forwardslash.chevron.right' }
+  },
+  antigravity: {
+    type: 'command',
+    command: 'agy',
+    target: 'newTabInCurrentPane',
+    title: 'Antigravity',
+    subtitle: 'Open Google Antigravity in a new terminal tab',
+    icon: { type: 'symbol', name: 'a.circle.fill' }
+  }
+} as const;
+type HostButton = keyof typeof HOST_ACTIONS;
+const HOST_BUTTONS = Object.keys(HOST_ACTIONS).filter((name): name is HostButton => name in HOST_ACTIONS);
+
 interface SettingDifference {
   key: string;
   yours: string;
@@ -165,14 +187,48 @@ const shortValue = (value: unknown): string => {
   return typeof command === 'string' ? command : stableJson(value);
 };
 
-const checkCmux = (home: string, applications: string, launcher: Launcher): SettingsReport => {
+const recordOf = (value: unknown): Record<string, unknown> => (isRecord(value) ? value : {});
+
+const tabBarOf = (settings: unknown): string[] => namesOf(child(child(child(settings, 'ui'), 'surfaceTabBar'), 'buttons'));
+
+/** The template with each host's button added to the actions and placed right after the agent buttons before it. */
+const withHosts = (template: Record<string, unknown>, hosts: readonly HostButton[]): Record<string, unknown> => {
+  const added = HOST_BUTTONS.filter((name) => hosts.includes(name));
+  const buttons = tabBarOf(template);
+  const at = buttons.indexOf('claude') + 1;
+  const ui = recordOf(template.ui);
+  return added.length === 0
+    ? template
+    : {
+        ...template,
+        actions: { ...recordOf(template.actions), ...Object.fromEntries(added.map((name) => [name, HOST_ACTIONS[name]])) },
+        ui: {
+          ...ui,
+          surfaceTabBar: { ...recordOf(ui.surfaceTabBar), buttons: [...buttons.slice(0, at), ...added, ...buttons.slice(at)] }
+        }
+      };
+};
+
+/** Your tab bar with each recommended button it lacks put after the last of yours that comes before it in ours. */
+const mergedTabBar = (yours: string[], ours: string[]): string[] =>
+  ours.reduce((bar, name, index) => {
+    if (bar.includes(name)) {
+      return bar;
+    }
+    const before = ours.slice(0, index);
+    const after = bar.findLastIndex((button) => before.includes(button)) + 1;
+    return after === 0 ? [...bar, name] : [...bar.slice(0, after), name, ...bar.slice(after)];
+  }, yours);
+
+const checkCmux = (home: string, applications: string, launcher: Launcher, hosts: readonly HostButton[]): SettingsReport => {
   const path = join(home, '.config', 'cmux', 'cmux.json');
   const shipped = readText(templatePath('cmux'));
-  const template = mergeSettings(parseJson(shipped) ?? {}, { actions: { claude: { command: launcher } } });
-  const templateText = launcher === 'claude' ? shipped : `${JSON.stringify(template, null, 2)}\n`;
+  const template = withHosts(mergeSettings(parseJson(shipped) ?? {}, { actions: { claude: { command: launcher } } }), hosts);
+  const templateText = launcher === 'claude' && hosts.length === 0 ? shipped : `${JSON.stringify(template, null, 2)}\n`;
   const text = existsSync(path) ? readText(path) : null;
   const yours = text === null ? {} : parseJson(text);
-  const yourButtons = namesOf(child(child(child(yours, 'ui'), 'surfaceTabBar'), 'buttons'));
+  const yourButtons = tabBarOf(yours);
+  const tabBar = mergedTabBar(yourButtons, tabBarOf(template));
   const computerUse = child(child(template, 'computerUse'), 'enabled');
 
   const checks = [
@@ -182,12 +238,12 @@ const checkCmux = (home: string, applications: string, launcher: Launcher): Sett
       yours: child(child(yours, 'actions'), name),
       fragment: { actions: { [name]: ours } }
     })),
-    // The tab bar merges as one list: yours, then ours.
-    ...namesOf(child(child(child(template, 'ui'), 'surfaceTabBar'), 'buttons')).map((name) => ({
+    // The tab bar merges as one list: yours, with each of ours it lacks in its place.
+    ...tabBarOf(template).map((name) => ({
       key: `${name} in the tab bar`,
       ours: true,
       yours: yourButtons.includes(name) ? true : undefined,
-      fragment: { ui: { surfaceTabBar: { buttons: [...yourButtons, name] } } }
+      fragment: { ui: { surfaceTabBar: { buttons: tabBar } } }
     })),
     ...entriesOf(child(child(template, 'shortcuts'), 'bindings')).map(([name, ours]) => ({
       key: `${name} shortcut`,
@@ -203,7 +259,10 @@ const checkCmux = (home: string, applications: string, launcher: Launcher): Sett
   const editor = [applications, join(home, 'Applications')].some((folder) => existsSync(join(folder, 'CotEditor.app')));
   const found: Found =
     text === null
-      ? { kind: 'none', why: 'cmux has no settings file yet. The recommended one adds a Claude Code button and a Manager button that opens the AgentLayer sidebar, plus a few shortcuts.' }
+      ? {
+          kind: 'none',
+          why: `cmux has no settings file yet. The recommended one adds a Claude Code button${hosts.map((name) => `, an ${HOST_ACTIONS[name].title} button`).join('')} and a Manager button that opens the AgentLayer sidebar, plus a few shortcuts.`
+        }
       : yours === null
         ? { kind: 'broken', why: `${shown} isn't valid JSON, so cmux ignores it. Fix it first, then check again.` }
         : { kind: 'compared' };
@@ -236,23 +295,33 @@ export const checkSettings = (
   file: SettingsFile,
   home = homedir(),
   applications = '/Applications',
-  launcher: Launcher = 'claude'
-): SettingsReport => (file === 'ghostty' ? checkGhostty(home) : checkCmux(home, applications, launcher));
+  launcher: Launcher = 'claude',
+  hosts: readonly HostButton[] = []
+): SettingsReport => (file === 'ghostty' ? checkGhostty(home) : checkCmux(home, applications, launcher, hosts));
 
 const isLauncher = (value: string | undefined): value is Launcher => LAUNCHERS.some((launcher) => launcher === value);
+
+const isHostButton = (value: string): value is HostButton => HOST_BUTTONS.some((name) => name === value);
 
 const isSettingsFile = (value: string | undefined): value is SettingsFile => SETTINGS_FILES.some((file) => file === value);
 
 /**
- * `cmux settings --file=<ghostty|cmux> [--launcher=<claude|agent>] [--json]`. Without --json, exits 3 unless the file is
- * complete. The launcher defaults to agent in a session started with it.
+ * `cmux settings --file=<ghostty|cmux> [--launcher=<claude|agent>] [--host=<codex,antigravity>] [--json]`. Without
+ * --json, exits 3 unless the file is complete. The launcher defaults to agent in a session started with it.
  */
-export const runSettingsCommand = (file: string | undefined, json: boolean, launcher?: string): number => {
-  if (!isSettingsFile(file)) {
-    console.error(`Usage: cmux settings --file=<${SETTINGS_FILES.join('|')}> [--json]`);
+export const runSettingsCommand = (file: string | undefined, json: boolean, launcher?: string, host?: string): number => {
+  const hosts = (host ?? '').split(',').filter(Boolean);
+  if (!isSettingsFile(file) || !hosts.every(isHostButton)) {
+    console.error(`Usage: cmux settings --file=<${SETTINGS_FILES.join('|')}> [--host=<${HOST_BUTTONS.join(',')}>] [--json]`);
     return 1;
   }
-  const report = checkSettings(file, homedir(), '/Applications', isLauncher(launcher) ? launcher : env(SUBSCRIPTION_MARKER) ? 'agent' : 'claude');
+  const report = checkSettings(
+    file,
+    homedir(),
+    '/Applications',
+    isLauncher(launcher) ? launcher : env(SUBSCRIPTION_MARKER) ? 'agent' : 'claude',
+    hosts.filter(isHostButton)
+  );
   if (json) {
     console.log(JSON.stringify(report, null, 2));
     return 0;

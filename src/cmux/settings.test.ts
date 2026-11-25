@@ -153,3 +153,40 @@ test('with the agent launcher, the Claude Code button is recommended to run agen
   expect(checkSettings('cmux', home, apps(), 'claude').different).toEqual([{ key: 'claude button', yours: 'agent', ours: 'claude' }]);
 });
 
+
+const CODEX_BUTTON = {
+  type: 'command',
+  title: 'OpenAI Codex',
+  subtitle: 'Open OpenAI Codex in a new terminal tab',
+  icon: { type: 'symbol', name: 'chevron.left.forwardslash.chevron.right' },
+  command: 'codex',
+  target: 'newTabInCurrentPane'
+};
+
+test('a host set up here adds its button, placed after the agent buttons before it', () => {
+  const withCodex = JSON.parse(CMUX_TEMPLATE);
+  withCodex.actions.codex = CODEX_BUTTON;
+  withCodex.ui.surfaceTabBar.buttons = ['claude', 'codex', 'cmux.newTerminal', 'cmux.splitRight', 'cmux.splitDown', 'manager'];
+  write(CMUX, JSON.stringify(withCodex));
+  const report = checkSettings('cmux', home, apps(), 'claude', ['codex', 'antigravity']);
+  expect(report.missing).toEqual(['antigravity button', 'antigravity in the tab bar']);
+  expect(report.different).toEqual([]);
+  const fragment = JSON.parse(report.paste);
+  expect(fragment.actions.antigravity.command).toBe('agy');
+  expect(fragment.ui.surfaceTabBar.buttons).toEqual([
+    'claude',
+    'codex',
+    'antigravity',
+    'cmux.newTerminal',
+    'cmux.splitRight',
+    'cmux.splitDown',
+    'manager'
+  ]);
+});
+
+test('without a host, no host button is recommended, and a fresh file gets each host asked for', () => {
+  expect(checkSettings('cmux', home, apps()).missing).not.toContain('codex button');
+  const fresh = JSON.parse(checkSettings('cmux', home, apps(), 'claude', ['antigravity']).paste);
+  expect(fresh.ui.surfaceTabBar.buttons.slice(0, 2)).toEqual(['claude', 'antigravity']);
+  expect(fresh.actions.antigravity.icon.name).toBe('a.circle.fill');
+});
