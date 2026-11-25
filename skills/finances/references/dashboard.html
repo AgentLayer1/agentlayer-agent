@@ -282,7 +282,7 @@ body.masked iframe.tax:hover { filter: none; }
   const formatOf = (currency, digits) => {
     const key = `${currency}|${digits}`;
     if (!formats.has(key)) {
-      const make = (display) => { try { return new Intl.NumberFormat("en-US", { style: "currency", currency, currencyDisplay: display, minimumFractionDigits: digits, maximumFractionDigits: digits }); } catch (e) { return null; } };
+      const make = (display) => { try { return new Intl.NumberFormat("en-US", { style: "currency", currency, currencyDisplay: display, signDisplay: "negative", minimumFractionDigits: digits, maximumFractionDigits: digits }); } catch (e) { return null; } };
       const narrow = make("narrowSymbol");
       const bareDollar = currency !== "USD" && narrow?.formatToParts(0).find((part) => part.type === "currency")?.value === "$";
       formats.set(key, bareDollar ? make("symbol") : narrow);

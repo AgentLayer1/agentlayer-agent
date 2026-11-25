@@ -654,10 +654,11 @@ const closedMonths = (taxDir: string, slug: string): string[] =>
     .map((record) => record.month);
 
 /**
- * Every entity's position, in the order given.
+ * Every entity's position, in the order given, for the entities whose country has tax rules here; the
+ * rest have statements and a page but no tax position yet.
  */
 export const positions = (taxDir: string, countriesDir: string, entities: Entity[], today: string): Position[] =>
-  entities.map((entity) =>
+  entities.filter((entity) => existsSync(join(countriesDir, `${entity.country}.md`))).map((entity) =>
     position(
       entity,
       loadLedger(taxDir, entity.slug),

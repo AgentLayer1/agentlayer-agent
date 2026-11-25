@@ -293,6 +293,12 @@ describe('the page in a browser', () => {
     expect(amounts.every((text) => text.includes('RM'))).toBe(true);
   });
 
+  test('nothing owed shows as zero, never a negative zero', () => {
+    const { doc } = open(renderFinances(setup(), '2026-11-02'), '#overview');
+    const owed = [...doc.querySelectorAll('.tile')].find((tile) => tile.textContent?.includes('Cards owed'));
+    expect(owed?.querySelector('.value')?.textContent).toBe('RM\u00a00');
+  });
+
   test('the currency switch is hidden when the local currency is already USD', () => {
     const dir = setup();
     writeFileSync(
