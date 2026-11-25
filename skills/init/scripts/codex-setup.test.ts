@@ -415,7 +415,7 @@ describe('codex-setup mcp registration', () => {
     const written = readFileSync(json.mcp.path, 'utf-8');
     expect(written).toContain('model = "gpt-6"\n\n[mcp_servers.other]\ncommand = "other"\n\n[tui]\n');
     expect(written).toContain(
-      `status_line_use_colors = true\n\n[skills]\nmax_context_tokens = 10000\n\n[mcp_servers.${PLUGIN_NAME}]\n`
+      `status_line_use_colors = true\n\n[skills]\nmax_context_tokens = 10000\n\n[analytics]\nenabled = false\n\n[feedback]\nenabled = false\n\n[mcp_servers.${PLUGIN_NAME}]\n`
     );
     expect(written.startsWith(`default_permissions = "${PLUGIN_NAME}"\n`)).toBe(true);
     expect(written).not.toContain(`/old/${PLUGIN_NAME}`);
@@ -482,11 +482,25 @@ describe('codex-setup mcp registration', () => {
     const { json } = run('--home', home, '--plugin-root', PLUGIN, '--write');
     const written = readFileSync(json.mcp.path, 'utf-8');
     expect(written).toContain('enabled = false\n\n[tui]\n');
-    expect(written).toContain(`\n\n[skills]\nmax_context_tokens = 10000\n\n[mcp_servers.${PLUGIN_NAME}]\n`);
+    expect(written).toContain(`\n\n[skills]\nmax_context_tokens = 10000\n\n[analytics]\nenabled = false\n\n[feedback]\nenabled = false\n\n[mcp_servers.${PLUGIN_NAME}]\n`);
     const added = Bun.TOML.parse(written) as Record<string, any>;
     expect(added.skills).toEqual({ max_context_tokens: 10_000, config: [{ name: 'imagegen', enabled: false }] });
     expect(json.notes).toEqual([]);
     expect(run('--home', home, '--plugin-root', PLUGIN, '--write').json.mcp.changed).toBe(false);
+  });
+
+  test("turns analytics and feedback off in the home, keeping an operator's own choice", () => {
+    const home = scratch();
+    const fresh = Bun.TOML.parse(
+      readFileSync(run('--home', home, '--plugin-root', PLUGIN, '--write').json.mcp.path, 'utf-8')
+    ) as Record<string, any>;
+    expect([fresh.analytics, fresh.feedback]).toEqual([{ enabled: false }, { enabled: false }]);
+
+    seed(home, 'config.toml', '[analytics]\nenabled = true\n');
+    const kept = Bun.TOML.parse(
+      readFileSync(run('--home', home, '--plugin-root', PLUGIN, '--write').json.mcp.path, 'utf-8')
+    ) as Record<string, any>;
+    expect([kept.analytics, kept.feedback]).toEqual([{ enabled: true }, { enabled: false }]);
   });
 
   test('escapes backslashes in paths', () => {
