@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 function Start-AgentLayerGuide {
   param([string[]]$GuideArgs)
 
-  $release = 'v1.2.1'
+  $release = 'v1.2.2'
   $sourceUrl = "https://raw.githubusercontent.com/AgentLayer1/agentlayer-agent/$release/install"
   $powershellPage = 'https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-windows'
 

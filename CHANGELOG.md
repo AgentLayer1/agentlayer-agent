@@ -52,6 +52,27 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.2.2] - 2026-11-26
+
+Antigravity knows when it isn't in an agent home, and `hosts status` names every host gap.
+
+### Added
+- `hosts status` has two new rows: **Banner shown** (Antigravity relays the banner in its first
+  reply, since it can't show it) and **Question prompt** (Codex asks in chat, without its question
+  card, outside Plan mode and for a multi-select question).
+
+### Changed
+- Antigravity loads the plugin in every folder. Outside an agent home, its session start now tells
+  the model the plugin's skills and tools work only inside a home, so it answers without them and,
+  asked for one, says to start Antigravity in the home folder. Init's Antigravity note says the same.
+- `hosts status` reads partly where a host has a gap: Agent tools for Codex and Antigravity (the
+  agent's own tools run unless the home asks about or denies them), Capture for Antigravity (no
+  session-end event, so the hooks save every ten turns and the next session start saves the rest),
+  and Home rules for Codex (its allowed network domains need Codex's experimental network proxy).
+
+### Upgrade
+- None — code-only, no bun install or HOME changes.
+
 ## [1.2.1] - 2026-11-26
 
 Antigravity stops asking about the agent's own tools, and cmux gets a button for each host.
