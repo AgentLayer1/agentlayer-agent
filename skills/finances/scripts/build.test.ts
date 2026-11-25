@@ -265,7 +265,9 @@ describe('buildFinance', () => {
         opening: 5000,
         openingOn: '2026-09-30',
         balance: 6000,
-        movements: [{ date: '2026-10-10', amount: 1000, payee: 'TRANSFER TO ADA', category: null, why: 'transfer' }]
+        movements: [
+          { date: '2026-10-10', amount: 1000, currency: 'MYR', payee: 'TRANSFER TO ADA', category: null, why: 'transfer' }
+        ]
       }
     ]);
   });
@@ -382,6 +384,16 @@ describe('paid for another entity', () => {
     expect(acme?.balance).toBe(5000 + 4200 + 1000 + 180 - 300);
   });
 
+  test('money paid for the operator in another currency is listed in it and left out of the balance', () => {
+    const usd = { ...txn('u1', '2026-10-05', 'acme-main', -100, 'SCHOOL ONLINE USD'), currency: 'USD' };
+    const [acme] = buildFinance({ ...INPUT, txns: [...txns, usd], rules }).director;
+    expect(acme?.movements.find((movement) => movement.date === '2026-10-05')).toMatchObject({
+      amount: 100,
+      currency: 'USD'
+    });
+    expect(acme).toMatchObject({ currency: 'MYR', balance: 5000 + 4200 + 1000 + 180 - 300 });
+  });
+
   test('a for naming no entity stops the build', () => {
     expect(() => buildFinance({ ...INPUT, rules: [{ match: 'X', for: 'personal' }] })).toThrow(
       'for: personal is not an entity'
@@ -399,7 +411,14 @@ describe('a loan seen only from the personal side', () => {
       rules: [{ match: 'LOAN ACME', category: 'director', for: 'acme' }]
     });
     expect(data.director[0]?.movements).toEqual([
-      { date: '2026-11-03', amount: 2000, payee: 'DUITNOW LOAN ACME SDN BHD', category: 'director', why: 'transfer' }
+      {
+        date: '2026-11-03',
+        amount: 2000,
+        currency: 'MYR',
+        payee: 'DUITNOW LOAN ACME SDN BHD',
+        category: 'director',
+        why: 'transfer'
+      }
     ]);
     expect(data.lines[0]).toMatchObject({ entity: 'ada', paidBy: null, kind: Kind.Director });
   });

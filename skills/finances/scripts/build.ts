@@ -477,6 +477,7 @@ export type Why = (typeof Why)[keyof typeof Why];
 export interface DirectorMovement {
   date: string;
   amount: number;
+  currency: string;
   payee: string;
   category: string | null;
   why: Why;
@@ -527,6 +528,8 @@ export interface FinanceData {
 /** Five years of lines: enough for the year view, small enough to embed. */
 const LINE_MONTHS = 60;
 /** A statement older than this, about one cycle and a few days, means the next one is due. */
+/** The currency every total is in; money in another stays on its own lines, never converted. */
+const BASE = 'MYR';
 const STALE_DAYS = 35;
 /** Fees and double charges older than this are history, not something to act on. */
 const RECENT_DAYS = 60;
@@ -589,7 +592,7 @@ export const buildFinance = ({
         .filter((line) => company.directorBalanceOn === null || line.date > company.directorBalanceOn)
         .toSorted((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
         .flatMap((line): DirectorMovement[] => {
-          const base = { date: line.date, payee: line.payee, category: line.category };
+          const base = { date: line.date, currency: line.currency, payee: line.payee, category: line.category };
           if (line.entity === company.slug && line.kind === Kind.Director) {
             return [{ ...base, amount: -line.amount, why: Why.Transfer }];
           }
@@ -616,14 +619,17 @@ export const buildFinance = ({
       if (movements.length === 0 && company.directorBalance === null) {
         return [];
       }
-      const currency = accountViews.find((account) => account.entity === company.slug)?.currency ?? 'MYR';
       return [
         {
           company: company.slug,
-          currency,
+          currency: BASE,
           opening: company.directorBalance,
           openingOn: company.directorBalanceOn,
-          balance: (company.directorBalance ?? 0) + movements.reduce((sum, movement) => sum + movement.amount, 0),
+          balance:
+            (company.directorBalance ?? 0) +
+            movements
+              .filter((movement) => movement.currency === BASE)
+              .reduce((sum, movement) => sum + movement.amount, 0),
           movements
         }
       ];
@@ -798,7 +804,7 @@ export const buildFinance = ({
   );
   return {
     today,
-    base: 'MYR',
+    base: BASE,
     entities: entities.map((entity) => ({ slug: entity.slug, name: entity.name, kind: entity.kind })),
     accounts: accountViews,
     lines: lines
