@@ -2,6 +2,12 @@
 
 Your companies and your own money, kept legible and ahead of their deadlines. I prepare and track; you and your tax agent file and pay.
 
+### 🏦 Statements
+
+| Ask | Playbook | You get |
+|---|---|---|
+| "Import this statement", "import ~/Downloads/october.csv", `/finances import` | **import** | Each statement filed once, proven against its own balances, its lines added to your accounts, and the month marked in for the books |
+
 ### 📅 Tax deadlines
 
 | Ask | Playbook | You get |

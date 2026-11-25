@@ -203,9 +203,10 @@ export const bandTax = (income: number, bands: Band[]): number =>
   ).tax;
 
 /**
- * Minimal RFC 4180 reader: quoted fields may hold commas, newlines, and doubled quotes.
+ * Minimal RFC 4180 reader: quoted fields may hold commas, newlines, and doubled quotes. Blank rows
+ * are dropped; the rest come back as cells, header included.
  */
-export const parseCsv = (text: string): Record<string, string>[] => {
+export const csvRows = (text: string): string[][] => {
   const rows: string[][] = [];
   let field = "";
   let row: string[] = [];
@@ -242,7 +243,14 @@ export const parseCsv = (text: string): Record<string, string>[] => {
     row.push(field);
     rows.push(row);
   }
-  const [header = [], ...body] = rows.filter((cells) => cells.some((cell) => cell.trim() !== ""));
+  return rows.filter((cells) => cells.some((cell) => cell.trim() !== ""));
+};
+
+/**
+ * CSV rows keyed by the first row's headers.
+ */
+export const parseCsv = (text: string): Record<string, string>[] => {
+  const [header = [], ...body] = csvRows(text);
   return body.map((cells) => Object.fromEntries(header.map((key, i) => [key.trim(), (cells[i] ?? "").trim()])));
 };
 

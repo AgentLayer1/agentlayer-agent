@@ -47,6 +47,10 @@ export type EntityKind = (typeof EntityKind)[keyof typeof EntityKind];
 export interface Account {
   id: string;
   name: string;
+  institution?: string;
+  type?: string;
+  currency?: string;
+  importer?: string;
 }
 
 export interface Entity {
@@ -218,7 +222,7 @@ export const frontmatterOf = (raw: string): Record<string, unknown> | null => {
  * The parsed fenced yaml block under a `## <heading>` section of a markdown body, or null when the
  * section or its block is absent. Structured data lives here because frontmatter stays flat.
  */
-const yamlBlock = (raw: string, heading: string): unknown => {
+export const yamlBlock = (raw: string, heading: string): unknown => {
   const pattern = new RegExp(`^## ${escapeRegExp(heading)}[ \\t]*\\r?\\n(?:(?!^## )[\\s\\S])*?^\`\`\`ya?ml\\r?\\n([\\s\\S]*?)^\`\`\``, "m");
   const block = raw.match(pattern)?.[1];
   return block === undefined ? null : Bun.YAML.parse(block);

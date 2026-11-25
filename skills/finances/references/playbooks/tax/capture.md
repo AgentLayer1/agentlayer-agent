@@ -15,7 +15,7 @@
    | `zakat` | an individual's rebate or a company's capped deduction |
    | `relief` | spending that counts toward a personal relief; `category` holds the relief's id from the country file's `reliefs:` list (`lifestyle`, `medical`, `prs`), and the engine caps the total at the relief's limit. Use the most specific id: a dental bill is `medical-dental`, not `medical`, because its sublimit is far below the parent's |
    | `opening` | a company's profit to date from its accountant's management accounts, as of the row's date; date it the month's last day when it covers the whole month, and give `amount_myr` when it is not in MYR. Companies only: on a personal return the engine ignores it and says so |
-   | `statement` | kept for the close, not counted; `category` holds the account id from the profile's `## Accounts`, dated in the month the statement covers, so the books show that month's statement as in |
+   | `statement` | kept for the close, not counted; `category` holds the account id from the profile's `## Accounts`, dated in the month the statement covers, so the books show that month's statement as in. A bank or card statement goes through [import](../import.md) instead, which writes this row itself |
 
    A figure the operator states becomes a row the same way, with `file` left empty and `notes` saying who stated it and when. A foreign amount without a stated or documented MYR value stays blank in `amount_myr`: the engine leaves it out and says so, never converts at a guessed rate.
 4. **Check for a duplicate:** the same counterparty, date, and amount already in the ledger means stop and report, not a second row.

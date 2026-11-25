@@ -1,10 +1,10 @@
 ---
 name: finances
 description: >
-  The operator's money across their companies and their own name: tax owed now, deadlines as
-  dated tasks, receipts, monthly close, estimates, reviewing the accountant's books and requests.
-  Triggers on "finances", "tax", "how much tax do I owe", "receipt", "bookkeeping", "close the
-  month", "what's due", "review the books", "my accountant asked".
+  The operator's money across their companies and their own name: statements imported, tax owed
+  now, deadlines as tasks, receipts, monthly close, estimates, the accountant's books. Triggers on
+  "finances", "import this statement", "tax", "how much tax do I owe", "receipt", "bookkeeping",
+  "close the month", "review the books", "my accountant asked".
 allowed-tools:
   - AskUserQuestion
   - Bash
@@ -37,6 +37,7 @@ Keep the operator's money legible: every entity they file for (companies and the
 
 | Task | Playbook |
 |---|---|
+| A bank, card or platform statement or export to add, or files waiting in `data/inbox/` (`/finances import`) | [import](references/playbooks/import.md) |
 | Tax, bookkeeping, the monthly close, estimates, the accountant's books or requests (`/finances tax …`) | [tax](references/playbooks/tax.md) |
 
 ## Every time
@@ -51,6 +52,7 @@ Keep the operator's money legible: every entity they file for (companies and the
 $PROJECTS/finances/
 ├── README.md
 ├── entities/<slug>.md                 flat facts (frontmatter) + `## Obligations` and `## Accounts` yaml blocks
+├── importers/<institution>.md         an institution's export columns (names only, no figures)
 ├── closes/<slug>/<YYYY-MM>.md         monthly close records
 ├── estimates/<slug>/<YA>.md           estimate worksheets
 ├── reviews/<YYYY-MM-DD>-<topic>.md    books, optimize and year-end reviews
@@ -58,8 +60,10 @@ $PROJECTS/finances/
 ├── tasks/                             deadlines and one-off work
 └── data/                              gitignored
     ├── inbox/                         documents the operator drops in (dropping one is consent to read it)
-    ├── originals/<slug>/<YYYY-MM>/    filed documents
-    └── ledger/<slug>/<YYYY>.csv       one row per document or stated figure
+    ├── originals/<slug>/<YYYY-MM>/    filed statements and documents
+    ├── statements.csv                 one row per imported statement: period, balances, check
+    ├── transactions/<slug>/<YYYY>.csv every statement line, as the bank wrote it
+    └── ledger/<slug>/<YYYY>.csv       the tax ledger: one row per document or stated figure
 ```
 
 ## Reply
