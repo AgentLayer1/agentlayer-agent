@@ -13,7 +13,7 @@ Your companies and your own money, kept legible and ahead of their deadlines. I 
 
 | Ask | Playbook | You get |
 |---|---|---|
-| "Refresh my finances", "categorise the new transactions", "why was October high?" | **dashboard** | The finances page rebuilt (where your money goes by week, month and year, cash, bills, the director balance, charity, checks), suggested categories for new payees, and answers from your statements |
+| "Refresh my finances", "categorise the new transactions", "why was October high?" | **dashboard** | The finances page rebuilt (where your money goes by week, month and year, cash, bills, the director balance, charity, checks; totals in your currency or USD), suggested categories for new payees, and answers from your statements |
 | The edits you copied from the page's Categorise tab, pasted | **dashboard** | Your approvals and fixes written into `RULES.md`, so every matching line, past and future, follows them |
 | "Booking.com flights are travel" | **dashboard** | Your rule added to `RULES.md` in your words, and the suggestions redone to follow it |
 
@@ -21,7 +21,7 @@ Your companies and your own money, kept legible and ahead of their deadlines. I 
 
 | Ask | Playbook | You get |
 |---|---|---|
-| "Set up my taxes", "add my new company" | **tax** setup | A profile per entity and its obligations, from your country's rules |
+| "Set up my taxes", "add my new company" | **tax** setup | A profile per entity with its currency and obligations, from your country's rules (Malaysia so far) |
 | "What's due?", `/finances tax calendar` | **tax** calendar | Dated tasks beside all your other deadlines, and a year-at-a-glance dashboard |
 
 ### 🧮 What you owe
