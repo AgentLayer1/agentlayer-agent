@@ -17,19 +17,12 @@ import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { readMergedSettings, readSettingsFile } from '../../../src/home/settings-scope';
+import { workRootsOf } from '../../../src/home/work-roots';
 import { WIRING } from '../../../src/hooks/policy';
 import { cliSettings, entriesOf, namesCheckout, personalManifest } from '../../../src/hosts/antigravity';
 import { PLUGIN_SOURCE_ROOT, RUNTIME_DIR } from '../../../src/shared/naming';
 import { isInside, resolvedPath } from '../../../src/shared/paths';
-import {
-  denyGlobs,
-  expandTilde,
-  isRecord,
-  readHomeSettings,
-  shellPrefixes,
-  stringsOf,
-  workspaceRootsOf
-} from './wiring';
+import { denyGlobs, expandTilde, isRecord, shellPrefixes, stringsOf } from './wiring';
 
 type Json = Record<string, unknown>;
 
@@ -273,14 +266,13 @@ if (import.meta.main) {
   };
   const claudeUserPath = flag('claude-settings') ?? resolve(homedir(), '.claude', 'settings.json');
   const checkout = resolvedPath(resolve(flag('plugin-root') ?? PLUGIN_SOURCE_ROOT));
-  const homeSettings = readHomeSettings(home);
   const config = buildUserConfig({
     home,
     checkout,
     manifest: readSettingsFile(paths.manifest),
     settings: readSettingsFile(paths.settings),
     claudeUser: readSettingsFile(claudeUserPath),
-    codeRoots: workspaceRootsOf(home, homeSettings).map(resolvedPath),
+    codeRoots: workRootsOf(home, readMergedSettings(home).merged).map(resolvedPath),
     claudeHome: readMergedSettings(home).merged,
     filesUnder
   });

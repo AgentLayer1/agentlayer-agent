@@ -7,11 +7,12 @@
 import { gitParts, plainTexts } from '@/hooks/guard';
 import { commandWords, scanShell, type ShellCommand } from '@/hooks/shell-scan';
 import { mergeSettings, readMergedSettings, readSettingsFile } from '@/home/settings-scope';
+import { workRootsOf } from '@/home/work-roots';
 import type { PolicyDecision, ToolCall } from '@/hosts/contract';
 import { isRecord } from '@/shared/json-block';
-import { pluginName, RUNTIME_DIR } from '@/shared/naming';
-import { isInside, resolvedPath } from '@/shared/paths';
-import { homedir } from 'node:os';
+import { PLUGIN_SOURCE_ROOT, pluginName, RUNTIME_DIR } from '@/shared/naming';
+import { expandTilde, isInside, resolvedPath } from '@/shared/paths';
+import { homedir, tmpdir } from 'node:os';
 import { basename, isAbsolute, join, resolve } from 'node:path';
 
 type Json = Record<string, unknown>;
@@ -22,6 +23,8 @@ export interface PolicyContext {
   cwd: string;
   /** The home's effective Claude settings: the user-level file under the home's two. */
   settings: Json;
+  /** Folders the host keeps for the session itself, inside the home's bounds. */
+  hostFolders?: string[];
 }
 
 /** What a home holds that the host's tools never write: the rules, and every host's wiring. */
@@ -185,31 +188,58 @@ const shellDecision = (command: string, bypass: boolean, context: PolicyContext)
   return null;
 };
 
+/**
+ * An ask for a file outside the folders the home works in: the home, the plugin, the code folders its settings name, the
+ * folders the sandbox may write, the temp folder and the host's own, as Claude Code keeps its tools to its working folders.
+ */
+const outsideBounds = (target: string, home: string, context: PolicyContext): PolicyDecision => {
+  const sandbox = isRecord(context.settings.sandbox) ? context.settings.sandbox : {};
+  const filesystem = isRecord(sandbox.filesystem) ? sandbox.filesystem : {};
+  const writable = Array.isArray(filesystem.allowWrite)
+    ? filesystem.allowWrite.filter((path): path is string => typeof path === 'string').map(expandTilde)
+    : [];
+  const roots = [
+    home,
+    PLUGIN_SOURCE_ROOT,
+    tmpdir(),
+    ...workRootsOf(home, context.settings),
+    ...writable.filter((path) => isAbsolute(path)),
+    ...(context.hostFolders ?? [])
+  ].map(resolvedPath);
+  return roots.some((root) => isInside(target, root))
+    ? null
+    : {
+        decision: 'force_ask',
+        reason: `${target} is outside this home's folders (the home, its code folders and the plugin).`
+      };
+};
+
 const pathDecision = (kind: 'read' | 'write' | 'search', path: string, context: PolicyContext): PolicyDecision => {
   const target = resolvedPath(isAbsolute(path) ? path : resolve(context.cwd, path));
   const home = resolvedPath(context.home);
   const deny = rulesOf(context.settings, 'deny');
   const readDenies = bodies(deny, 'Read');
+  const outside = outsideBounds(target, home, context);
   if (kind === 'search') {
     const anchors = [join(home, RUNTIME_DIR, 'secrets'), ...readDenies.map((rule) => absoluteGlob(rule, home))]
       .filter((anchor) => !/[*?[{]/.test(anchor))
       .map(resolvedPath);
     return anchors.some((anchor) => isInside(anchor, target))
       ? { decision: 'deny', reason: 'This search would reach a folder the home denies; search a narrower folder.' }
-      : null;
+      : outside;
   }
   if (readDenies.some((rule) => matchesPath(rule, target, home))) {
     return { decision: 'deny', reason: `${target} is denied in this home.` };
   }
   if (kind === 'read') {
-    return null;
+    return outside;
   }
   if ([...bodies(deny, 'Edit'), ...bodies(deny, 'Write')].some((rule) => matchesPath(rule, target, home))) {
     return { decision: 'deny', reason: `Writing ${target} is denied in this home.` };
   }
   return WIRING.map((name) => resolvedPath(join(home, name))).some((folder) => isInside(target, folder))
     ? { decision: 'deny', reason: `${target} holds the home's rules or wiring, which only the operator changes.` }
-    : null;
+    : outside;
 };
 
 const mcpDecision = (server: string, tool: string, context: PolicyContext): PolicyDecision => {

@@ -107,7 +107,16 @@ export const runPolicy = async (flag: Flag): Promise<number> => {
       }
     }
     const { effectiveSettings, policyDecision } = await import('@/hooks/policy');
-    return emit(reply(policyDecision(call, { home: FOLDERS.HOME, cwd, settings: effectiveSettings(FOLDERS.HOME) })));
+    return emit(
+      reply(
+        policyDecision(call, {
+          home: FOLDERS.HOME,
+          cwd,
+          settings: effectiveSettings(FOLDERS.HOME),
+          hostFolders: payload.hostFolders ?? []
+        })
+      )
+    );
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     return emit(

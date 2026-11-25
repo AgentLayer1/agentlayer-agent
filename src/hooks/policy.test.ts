@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { PLUGIN_NAME } from '@/config';
 import { policyDecision, type PolicyContext } from '@/hooks/policy';
 import type { PolicyDecision, ToolCall } from '@/hosts/contract';
+import { PLUGIN_SOURCE_ROOT } from '@/shared/naming';
 
 const SCRATCH = realpathSync(mkdtempSync(join(tmpdir(), 'policy-')));
 const HOME = join(SCRATCH, 'Nova');
@@ -141,6 +142,28 @@ describe('a rule or a workspace spelled through a symlink', () => {
     const linkedDeny = { permissions: { deny: [`Read(/${join(SCRATCH, 'linked-state')}/**)`] } };
     expect(verdict({ kind: 'read', path: join(HOME, '.state', 'token') }, { settings: linkedDeny })).toBe('deny');
     expect(verdict(shell(`cat ${join(HOME, '.state', 'token')}`), { settings: linkedDeny })).toBe('deny');
+  });
+});
+
+describe("the home's bounds", () => {
+  test('a file tool outside the home, its code folders, the plugin, the temp folder and the host’s own asks first', () => {
+    expect(verdict({ kind: 'read', path: '/etc/hosts' })).toBe('force_ask');
+    expect(verdict({ kind: 'write', path: '/usr/lib/acme.txt' })).toBe('force_ask');
+    expect(verdict({ kind: 'search', path: '/usr/lib' })).toBe('force_ask');
+    expect(verdict({ kind: 'read', path: join(HOME, 'notes.md') })).toBe('host decides');
+    expect(verdict({ kind: 'read', path: join(PLUGIN_SOURCE_ROOT, 'README.md') })).toBe('host decides');
+  });
+
+  test('the code folders the settings name and the folders the host keeps count as inside', () => {
+    const withCode = { ...settings, env: { AGENT_CODE_PATH: '/usr/share' } };
+    expect(verdict({ kind: 'read', path: '/usr/share/dict/words' }, { settings: withCode })).toBe('host decides');
+    expect(verdict({ kind: 'read', path: '/usr/local/acme/plan.md' }, { hostFolders: ['/usr/local/acme'] })).toBe(
+      'host decides'
+    );
+  });
+
+  test('a deny inside the bounds still refuses', () => {
+    expect(verdict({ kind: 'read', path: join(HOME, '.state', 'secrets', 'x') })).toBe('deny');
   });
 });
 

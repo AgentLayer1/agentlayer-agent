@@ -60,6 +60,7 @@ interface AntigravityPayload {
   transcriptPath?: string;
   cwd?: string;
   workspacePaths?: string[];
+  artifactDirectoryPath?: string;
   hookEventName?: string;
   lastUserInput?: string;
   toolCall?: { name?: string; args?: Record<string, unknown> };
@@ -119,7 +120,8 @@ const readPayload = (raw: string): HookPayload => {
         : undefined) ?? parsed.cwd,
     origin: child ? 'child' : 'user',
     call: toolCallOf(parsed),
-    home: homeOfSession(parsed)
+    home: homeOfSession(parsed),
+    hostFolders: parsed.artifactDirectoryPath ? [parsed.artifactDirectoryPath] : []
   };
 };
 

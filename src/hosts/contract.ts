@@ -91,6 +91,8 @@ export interface HookPayload {
   call: ToolCall;
   /** The agent home the session works in, for a host whose hooks run outside it; absent when it works in none. */
   home?: string;
+  /** Folders the host keeps for the session itself (its artifacts), which its file tools may always use. */
+  hostFolders?: string[];
 }
 
 /**
