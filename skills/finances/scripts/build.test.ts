@@ -10,6 +10,9 @@ import {
   classifyAll,
   defaultPayee,
   detectRecurring,
+  isoWeek,
+  orderRules,
+  ruleKey,
   financePlan,
   type FinanceInput,
   Kind,
@@ -126,8 +129,8 @@ const INPUT: FinanceInput = {
 
 describe('classify', () => {
   test('renames the payee first, then sets the category from the payee or the description', () => {
-    expect(classify(TXNS[0] as Txn, RULES)).toEqual({ payee: 'Streamco', category: 'subscriptions', for: null });
-    expect(classify(txn('z', '2026-10-01', 'ada-main', -1, 'ZAKAT'), RULES)).toEqual({
+    expect(classify(TXNS[0] as Txn, RULES)).toMatchObject({ payee: 'Streamco', category: 'subscriptions', for: null });
+    expect(classify(txn('z', '2026-10-01', 'ada-main', -1, 'ZAKAT'), RULES)).toMatchObject({
       payee: 'ZAKAT',
       category: 'zakat',
       for: null
@@ -408,10 +411,49 @@ describe('insight labels', () => {
   });
 });
 
+describe('learning', () => {
+  const suggested: Rule = { payee: 'Streamco', category: 'entertainment' };
+  const approved: Rule = { match: 'STREAMCO', category: 'subscriptions', confirmed: true };
+  const oneOff: Rule = { id: 's4', category: 'gifts', confirmed: true };
+
+  test('an approved rule wins over a suggestion, and a fix for one line wins over both', () => {
+    const lines = classifyAll(TXNS, [suggested, approved, oneOff, { match: '^STREAMCO', payee: 'Streamco' }], ENTITIES);
+    const byId = Object.fromEntries(lines.map((line) => [line.id, line]));
+    expect(byId.s1).toMatchObject({ category: 'subscriptions', approved: true, rule: ruleKey(approved) });
+    expect(byId.s4).toMatchObject({ category: 'gifts', approved: true, rule: ruleKey(oneOff) });
+  });
+
+  test('a line a suggestion categorised is suggested, not approved', () => {
+    const [line] = classifyAll([TXNS[0] as Txn], [{ match: '^STREAMCO', payee: 'Streamco' }, suggested], ENTITIES);
+    expect(line).toMatchObject({ category: 'entertainment', approved: false, rule: ruleKey(suggested) });
+  });
+
+  test('orders fixes for one line, then approved rules, then suggestions, keeping file order within each', () => {
+    expect(orderRules([suggested, approved, oneOff])).toEqual([oneOff, approved, suggested]);
+  });
+
+  test('the page gets each category rule with how many lines it covers, and the approval counts', () => {
+    const data = buildFinance({ ...INPUT, rules: [...RULES, approved], categories: ['groceries'] });
+    expect(data.rules.find((rule) => rule.key === ruleKey(approved))).toMatchObject({ confirmed: true, lines: 4 });
+    expect(data.categories.slice(0, 3)).toEqual(['groceries', 'subscriptions', 'zakat']);
+    expect(data.approval).toEqual({ approved: 4, suggested: 3, uncategorised: 3 });
+    expect(data.lines.find((line) => line.id === 's1')).toMatchObject({ week: '2026-W27', approved: true });
+  });
+});
+
+describe('isoWeek', () => {
+  test('weeks start on Monday and belong to the year of their Thursday', () => {
+    expect(isoWeek('2026-01-01')).toBe('2026-W01');
+    expect(isoWeek('2025-12-29')).toBe('2026-W01');
+    expect(isoWeek('2027-01-03')).toBe('2026-W53');
+    expect(isoWeek('2026-11-25')).toBe('2026-W48');
+  });
+});
+
 describe('parseRules', () => {
   test('reads payees then categories, and a payee rule never sets a category or whose expense it is', () => {
     const raw =
-      '## Payees\n\n```yaml\n- { match: "^GRAB", payee: Grab, category: ignored, for: ignored }\n```\n\n## Categories\n\n```yaml\n- { payee: Grab, category: transport }\n```\n';
+      '# Rules\n\n## How I categorise\n\n- Grab rides are transport.\n\n## Learned\n\n### Payees\n\n```yaml\n- { match: "^GRAB", payee: Grab, category: ignored, for: ignored }\n```\n\n### Categories\n\n```yaml\n- { payee: Grab, category: transport }\n```\n';
     expect(parseRules(raw)).toEqual([
       { match: '^GRAB', payee: 'Grab' },
       { payee: 'Grab', category: 'transport' }
@@ -419,7 +461,7 @@ describe('parseRules', () => {
   });
 
   test('a broken pattern stops the build with the pattern named', () => {
-    expect(() => parseRules('## Categories\n\n```yaml\n- { match: "(", category: x }\n```\n')).toThrow(
+    expect(() => parseRules('## Learned\n\n### Categories\n\n```yaml\n- { match: "(", category: x }\n```\n')).toThrow(
       '( is not a valid pattern'
     );
   });
@@ -441,7 +483,7 @@ describe('loadFinance', () => {
       'entities/acme.md',
       '---\nname: Acme\nkind: company\nclose: monthly\n---\n\n## Accounts\n\n```yaml\n- { id: acme-main, name: Acme current }\n```\n'
     );
-    write('rules.md', '## Categories\n\n```yaml\n- { match: HOSTING, category: software }\n```\n');
+    write('RULES.md', '## Learned\n\n### Categories\n\n```yaml\n- { match: HOSTING, category: software }\n```\n');
     importStatement({
       dir,
       account: 'acme-main',

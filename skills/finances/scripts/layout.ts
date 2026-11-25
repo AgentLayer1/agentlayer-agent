@@ -16,7 +16,8 @@ export const DATA = {
   statements: (dir: string): string => join(dir, 'data', 'statements.csv'),
   transactions: (dir: string, entity?: string): string =>
     entity === undefined ? join(dir, 'data', 'transactions') : join(dir, 'data', 'transactions', entity),
-  ledger: (dir: string, entity: string, year: string): string => join(dir, 'data', 'ledger', entity, `${year}.csv`)
+  ledger: (dir: string, entity: string, year: string): string => join(dir, 'data', 'ledger', entity, `${year}.csv`),
+  rules: (dir: string): string => join(dir, 'RULES.md')
 } as const;
 
 export const cents = (amount: number): number => Math.round(amount * 100);

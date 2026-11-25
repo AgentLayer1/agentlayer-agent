@@ -2,6 +2,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FOLDERS } from '../../../src/config';
+import { hashBuffer } from '../../../src/knowledge/utils';
 import { daysBetween, shiftDate, todayDate } from '../../../src/shared/date';
 import { slugify } from '../../../src/tasks/mutate';
 import { shiftMonth } from './books';
@@ -19,7 +20,7 @@ import { parseCsv } from './liability';
 
 /**
  * The finances dashboard's data, built from what the importer wrote under data/ and the rules in
- * rules.md. Payee, category and kind are worked out here on every build, never stored, so a rule
+ * RULES.md's learned section. Payee, category and kind are worked out here on every build, never stored, so a rule
  * changed today re-reads every line. Pure apart from `loadFinance`: identical inputs and `today`
  * give identical data.
  *
@@ -56,7 +57,22 @@ export interface Rule {
   account?: string;
   date?: string;
   for?: string;
+  /** One transaction, by its id: a fix for that line alone, checked before every other rule. */
+  id?: string;
+  /** Approved by the operator; a rule without it is a suggestion. */
+  confirmed?: boolean;
 }
+
+/** A rule's identity, so the dashboard can name the rule it approves without its place in the file. */
+export const ruleKey = (rule: Rule): string =>
+  hashBuffer(JSON.stringify([rule.match, rule.payee, rule.account, rule.date, rule.id, rule.category, rule.for]));
+
+/** Fixes for one line first, then approved rules, then suggestions, each in file order. */
+export const orderRules = (rules: Rule[]): Rule[] => [
+  ...rules.filter((rule) => rule.id !== undefined),
+  ...rules.filter((rule) => rule.id === undefined && rule.confirmed === true),
+  ...rules.filter((rule) => rule.id === undefined && rule.confirmed !== true)
+];
 
 export const Kind = {
   Spend: 'spend',
@@ -79,6 +95,9 @@ export interface Line extends Txn {
   for: string;
   /** Matched with the other half of a transfer between the operator's accounts. */
   paired: boolean;
+  /** The key of the rule that set the category, and whether the operator approved it. */
+  rule: string | null;
+  approved: boolean;
 }
 
 const CHARITY = new Set(['charity', 'zakat', 'sadaqah', 'donation']);
@@ -121,29 +140,43 @@ const patternOf = (source: string): RegExp => {
 const matches = (rule: Rule, text: string): boolean => rule.match !== undefined && patternOf(rule.match).test(text);
 
 const applies = (rule: Rule, txn: Txn): boolean =>
+  (rule.id === undefined || rule.id === txn.id) &&
   (rule.account === undefined || rule.account === txn.account) &&
   (rule.date === undefined || txn.date.startsWith(rule.date));
 
+export interface Classified {
+  payee: string;
+  category: string | null;
+  for: string | null;
+  /** The key of the rule that set the category, and whether the operator approved it. */
+  rule: string | null;
+  approved: boolean;
+}
+
 /**
- * Rules run in two passes, in file order: the first rule naming a payee whose pattern fits the raw
- * description renames it, then the first rule naming a category that fits the payee (by name or
- * pattern) or the raw description sets it, and the first naming a `for` the same way says whose
- * expense the line is. `account` and `date` (a day or a month) narrow any rule.
+ * Rules run in two passes over rules in `orderRules` order: the first rule naming a payee whose
+ * pattern fits the raw description renames it, then the first rule naming a category that fits the
+ * line (its id, the payee by name or pattern, or the raw description) sets it, and the first naming a
+ * `for` the same way says whose expense the line is. `account` and `date` (a day or a month) narrow any rule.
  */
-export const classify = (txn: Txn, rules: Rule[]): { payee: string; category: string | null; for: string | null } => {
+export const classify = (txn: Txn, rules: Rule[]): Classified => {
   const payee =
     rules.find(
       (rule) => rule.payee !== undefined && rule.category === undefined && applies(rule, txn) && matches(rule, txn.raw)
     )?.payee ?? defaultPayee(txn.raw);
   const fits = (rule: Rule): boolean =>
     applies(rule, txn) &&
-    ((rule.payee !== undefined && rule.payee.toLowerCase() === payee.toLowerCase()) ||
+    (rule.id !== undefined ||
+      (rule.payee !== undefined && rule.payee.toLowerCase() === payee.toLowerCase()) ||
       matches(rule, txn.raw) ||
       matches(rule, payee));
+  const categoryRule = rules.find((rule) => rule.category !== undefined && fits(rule));
   return {
     payee,
-    category: rules.find((rule) => rule.category !== undefined && fits(rule))?.category ?? null,
-    for: rules.find((rule) => rule.for !== undefined && fits(rule))?.for ?? null
+    category: categoryRule?.category ?? null,
+    for: rules.find((rule) => rule.for !== undefined && fits(rule))?.for ?? null,
+    rule: categoryRule === undefined ? null : ruleKey(categoryRule),
+    approved: categoryRule?.confirmed === true
   };
 };
 
@@ -205,10 +238,11 @@ export const classifyAll = (txns: Txn[], rules: Rule[], entities: Entity[]): Lin
   const unknown = rules.find((rule) => rule.for !== undefined && !entities.some((entity) => entity.slug === rule.for));
   if (unknown !== undefined) {
     throw new Error(
-      `rules.md: for: ${unknown.for} is not an entity (use a profile's slug: ${entities.map((entity) => entity.slug).join(', ')})`
+      `RULES.md: for: ${unknown.for} is not an entity (use a profile's slug: ${entities.map((entity) => entity.slug).join(', ')})`
     );
   }
-  const classified = txns.map((txn) => ({ txn, ...classify(txn, rules) }));
+  const ordered = orderRules(rules);
+  const classified = txns.map((txn) => ({ txn, ...classify(txn, ordered) }));
   const ruled = new Set(
     classified
       .filter((line) => line.category === 'transfer' || (line.for !== null && line.category !== 'director'))
@@ -219,7 +253,7 @@ export const classifyAll = (txns: Txn[], rules: Rule[], entities: Entity[]): Lin
   const soleCompany = companies.length === 1 ? (companies[0]?.slug ?? null) : null;
   const byId = new Map(txns.map((txn) => [txn.id, txn]));
   const entityOf = (slug: string | undefined): Entity | undefined => entities.find((entity) => entity.slug === slug);
-  return classified.map(({ txn, payee, category, for: owner }): Line => {
+  return classified.map(({ txn, payee, category, for: owner, rule, approved }): Line => {
     const partner = byId.get(pairs.get(txn.id) ?? '');
     const kind = kindOf(
       partner === undefined ? null : pairKind(entityOf(txn.entity), entityOf(partner.entity)),
@@ -236,7 +270,9 @@ export const classifyAll = (txns: Txn[], rules: Rule[], entities: Entity[]): Lin
       category,
       kind,
       for: own ? (owner ?? txn.entity) : counterparty,
-      paired: partner !== undefined
+      paired: partner !== undefined,
+      rule,
+      approved
     };
   });
 };
@@ -357,7 +393,25 @@ export interface FinanceInput {
   txns: Txn[];
   statements: Statement[];
   rules: Rule[];
+  /** The categories the picker offers: the operator's list, else the skill's defaults. */
+  categories?: string[];
 }
+
+/** A category rule as the dashboard shows it, with how many lines it covers. */
+export interface RuleView extends Rule {
+  key: string;
+  lines: number;
+}
+
+/** ISO 8601 week of a date, `2026-W43`: weeks start on Monday, and week 1 holds the year's first Thursday. */
+export const isoWeek = (date: string): string => {
+  const monday = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
+  const thursday = shiftDate(date, 3 - monday);
+  const firstThursday = `${thursday.slice(0, 4)}-01-04`;
+  const offset = (new Date(`${firstThursday}T00:00:00Z`).getUTCDay() + 6) % 7;
+  const week = 1 + Math.round((daysBetween(firstThursday, thursday) - 3 + offset) / 7);
+  return `${thursday.slice(0, 4)}-W${String(week).padStart(2, '0')}`;
+};
 
 export interface AccountView {
   id: string;
@@ -390,7 +444,9 @@ export interface FinanceData {
   accounts: AccountView[];
   /** `entity` is whose expense or income the line is; `paidBy` names the entity whose account paid, when another. */
   lines: {
+    id: string;
     date: string;
+    week: string;
     account: string;
     entity: string;
     paidBy: string | null;
@@ -399,6 +455,8 @@ export interface FinanceData {
     payee: string;
     category: string | null;
     kind: Kind;
+    rule: string | null;
+    approved: boolean;
   }[];
   recurring: Recurring[];
   dues: { account: string; entity: string; due: string; amount: number; currency: string; paid: boolean }[];
@@ -412,6 +470,10 @@ export interface FinanceData {
   }[];
   insights: Insight[];
   checks: CheckResult[];
+  rules: RuleView[];
+  categories: string[];
+  /** Spending, charity and income lines: how many are approved, only suggested, or have no category. */
+  approval: { approved: number; suggested: number; uncategorised: number };
 }
 
 const LINE_MONTHS = 13;
@@ -420,7 +482,14 @@ const STALE_DAYS = 35;
 /** Fees and double charges older than this are history, not something to act on. */
 const RECENT_DAYS = 60;
 
-export const buildFinance = ({ today, entities, txns, statements, rules }: FinanceInput): FinanceData => {
+export const buildFinance = ({
+  today,
+  entities,
+  txns,
+  statements,
+  rules,
+  categories = []
+}: FinanceInput): FinanceData => {
   const accounts = entities.flatMap((entity) => entity.accounts.map((account) => ({ account, entity })));
   const lines = classifyAll(txns, rules, entities);
   const byAccount = Map.groupBy(statements, (statement) => statement.account);
@@ -557,6 +626,14 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
     .filter((account) => account.behind)
     .map((account) => `${account.id}: ${account.asOf === null ? 'no statement yet' : `through ${account.asOf}`}`);
   const reviewCount = [...uncategorized.values()].reduce((sum, group) => sum + group.length, 0);
+  const suggestedLines = lines.filter(
+    (line) =>
+      (line.kind === Kind.Spend || line.kind === Kind.Charity || line.kind === Kind.Income) &&
+      line.category !== null &&
+      !line.approved
+  );
+  const suggestedCount = suggestedLines.length;
+  const suggestedMonths = suggestedLines.map((line) => monthOf(line.date));
   const checks: CheckResult[] = [
     {
       id: 'proven',
@@ -649,14 +726,20 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
               }
             ]
     ),
-    ...(reviewCount === 0
+    ...(reviewCount === 0 && suggestedCount === 0
       ? []
       : [
           {
             kind: InsightKind.Review,
-            label: `fin:review:${[...uncategorized.keys()].toSorted().at(-1) ?? ''}`,
+            label: `fin:review:${[...uncategorized.keys(), ...suggestedMonths].toSorted().at(-1) ?? ''}`,
             entity: '',
-            title: `Categorise ${reviewCount} transaction${reviewCount === 1 ? '' : 's'} no rule covers yet`,
+            title: [
+              reviewCount === 0 ? null : `categorise ${reviewCount} transaction${reviewCount === 1 ? '' : 's'}`,
+              suggestedCount === 0 ? null : `approve ${suggestedCount} suggested`
+            ]
+              .filter((part) => part !== null)
+              .join(', then ')
+              .replace(/^./, (first) => first.toUpperCase()),
             due: null
           }
         ]),
@@ -671,6 +754,13 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
       }))
   ];
   const oldest = `${shiftMonth(monthOf(today), 1 - LINE_MONTHS)}-01`;
+  const counted = lines.filter(
+    (line) => line.kind === Kind.Spend || line.kind === Kind.Charity || line.kind === Kind.Income
+  );
+  const covered = lines.reduce(
+    (counts, line) => (line.rule === null ? counts : counts.set(line.rule, (counts.get(line.rule) ?? 0) + 1)),
+    new Map<string, number>()
+  );
   return {
     today,
     base: 'MYR',
@@ -682,7 +772,9 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
       .map((line) => {
         const own = line.kind === Kind.Spend || line.kind === Kind.Charity || line.kind === Kind.Income;
         return {
+          id: line.id,
           date: line.date,
+          week: isoWeek(line.date),
           account: line.account,
           entity: own ? line.for : line.entity,
           paidBy: own && line.for !== line.entity ? line.entity : null,
@@ -690,41 +782,73 @@ export const buildFinance = ({ today, entities, txns, statements, rules }: Finan
           currency: line.currency,
           payee: line.payee,
           category: line.category,
-          kind: line.kind
+          kind: line.kind,
+          rule: line.rule,
+          approved: line.approved
         };
       }),
     recurring,
     dues,
     director,
     insights,
-    checks
+    checks,
+    rules: orderRules(rules)
+      .filter((rule) => rule.category !== undefined)
+      .map((rule) => ({ ...rule, key: ruleKey(rule), lines: covered.get(ruleKey(rule)) ?? 0 })),
+    categories: [
+      ...new Set([
+        ...categories,
+        ...rules.flatMap((rule) => (rule.category === undefined ? [] : [rule.category])),
+        ...lines.flatMap((line) => (line.category === null ? [] : [line.category]))
+      ])
+    ],
+    approval: {
+      approved: counted.filter((line) => line.approved).length,
+      suggested: counted.filter((line) => line.category !== null && !line.approved).length,
+      uncategorised: counted.filter((line) => line.category === null).length
+    }
   };
 };
 
 const numberOrNull = (text: string | undefined): number | null =>
   text === undefined || text.trim() === '' ? null : Number(text);
 
+const TEXT_FIELDS = ['match', 'payee', 'category', 'account', 'date', 'for', 'id'] as const;
+
 const isRule = (value: unknown): value is Rule =>
   typeof value === 'object' &&
   value !== null &&
-  ['match', 'payee', 'category', 'account', 'date', 'for'].every(
-    (key) => !(key in value) || typeof (value as Record<string, unknown>)[key] === 'string'
-  );
+  TEXT_FIELDS.every((key) => !(key in value) || typeof (value as Record<string, unknown>)[key] === 'string') &&
+  (!('confirmed' in value) || typeof (value as Record<string, unknown>).confirmed === 'boolean');
 
-/** Reads rules.md: payee renames under `## Payees`, categories under `## Categories`, each a yaml list. */
-export const parseRules = (raw: string): Rule[] => {
-  const payees = listBlock('rules.md', raw, 'Payees');
-  const categories = listBlock('rules.md', raw, 'Categories');
+/**
+ * The `## Learned` section of RULES.md with its `###` headings raised, so its yaml blocks read like
+ * any other section; empty when the file has none.
+ */
+export const learnedSection = (raw: string): string => {
+  const start = raw.search(/^## Learned[ \t]*$/m);
+  if (start === -1) {
+    return '';
+  }
+  const rest = raw.slice(start + 1);
+  const end = rest.search(/^## /m);
+  return (end === -1 ? raw.slice(start) : raw.slice(start, start + 1 + end)).replace(/^### /gm, '## ');
+};
+
+/**
+ * RULES.md's learned rules as written: payee renames under `### Payees`, categories under `### Categories`.
+ * A malformed entry or pattern stops the run with it named.
+ */
+export const learnedRules = (raw: string): { payees: Rule[]; categories: Rule[] } => {
+  const learned = learnedSection(raw);
+  const payees = listBlock('RULES.md', learned, 'Payees');
+  const categories = listBlock('RULES.md', learned, 'Categories');
   const bad = [...payees, ...categories].find((rule) => !isRule(rule));
   if (bad !== undefined) {
     throw new Error(
-      `rules.md: ${JSON.stringify(bad)} is not a rule (match, payee, category, account, date and for are text)`
+      `RULES.md: ${JSON.stringify(bad)} is not a rule (match, payee, category, account, date, for and id are text; confirmed is true or false)`
     );
   }
-  const rules = [
-    ...payees.filter(isRule).map(({ category: _category, for: _for, ...rule }) => rule),
-    ...categories.filter(isRule)
-  ];
   const isPattern = (source: string): boolean => {
     try {
       patternOf(source);
@@ -733,11 +857,33 @@ export const parseRules = (raw: string): Rule[] => {
       return false;
     }
   };
-  const badPattern = rules.find((rule) => rule.match !== undefined && !isPattern(rule.match));
+  const badPattern = [...payees, ...categories]
+    .filter(isRule)
+    .find((rule) => rule.match !== undefined && !isPattern(rule.match));
   if (badPattern !== undefined) {
-    throw new Error(`rules.md: ${badPattern.match} is not a valid pattern`);
+    throw new Error(`RULES.md: ${badPattern.match} is not a valid pattern`);
   }
-  return rules;
+  return { payees: payees.filter(isRule), categories: categories.filter(isRule) };
+};
+
+/** The rules the engine applies: payee renames (which never set a category, a for or an id), then category rules. */
+export const parseRules = (raw: string): Rule[] => {
+  const { payees, categories } = learnedRules(raw);
+  return [...payees.map(({ category: _category, for: _for, id: _id, ...rule }) => rule), ...categories];
+};
+
+const CATEGORIES = join(import.meta.dir, '..', 'references', 'categories.md');
+
+/** The picker's categories: RULES.md's own list when it has one, else the skill's defaults. */
+export const categoryList = (rulesRaw: string): string[] => {
+  const own = listBlock('RULES.md', rulesRaw, 'Categories I use').filter(
+    (item): item is string => typeof item === 'string'
+  );
+  return own.length > 0
+    ? own
+    : listBlock('categories.md', readFileSync(CATEGORIES, 'utf8'), 'Categories').filter(
+        (item): item is string => typeof item === 'string'
+      );
 };
 
 /** Everything `buildFinance` needs, read from the finances project folder. */
@@ -775,13 +921,15 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
         })
       )
     : [];
-  const rulesPath = join(dir, 'rules.md');
+  const rulesPath = DATA.rules(dir);
+  const rulesRaw = existsSync(rulesPath) ? readFileSync(rulesPath, 'utf8') : '';
   return {
     today,
     entities,
     txns,
     statements,
-    rules: existsSync(rulesPath) ? parseRules(readFileSync(rulesPath, 'utf8')) : []
+    rules: parseRules(rulesRaw),
+    categories: categoryList(rulesRaw)
   };
 };
 
