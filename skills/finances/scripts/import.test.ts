@@ -272,6 +272,40 @@ describe('importStatement', () => {
     expect(readFileSync(join(dir, 'data/transactions/acme/2026.csv'), 'utf8').trim().split('\n')).toHaveLength(6);
   });
 
+  test('a statement with balances replaces an export of the same period that had none', () => {
+    const dir = home();
+    const period = { from: '2026-10-01', to: '2026-10-31' };
+    const csv = (body: string, name: string) =>
+      write(dir, `data/inbox/${name}.csv`, `date,description,amount,balance\n${body}`);
+    const first = importStatement({
+      dir,
+      file: csv('2026-10-05,SHOP A,-10,\n', 'export'),
+      account: 'acme-main',
+      ...period
+    });
+    expect(first.check).toBe(Check.Unchecked);
+    const proven = importStatement({
+      dir,
+      file: csv('2026-10-05,SHOP A KUALA LUMPUR,-10,\n', 'statement'),
+      account: 'acme-main',
+      ...period,
+      opening: 100,
+      closing: 90
+    });
+    expect(proven).toMatchObject({ check: Check.Checked, alreadyImported: false, added: 1, replaced: first.filed });
+    const statements = readFileSync(join(dir, 'data/statements.csv'), 'utf8').trim().split('\n');
+    expect(statements).toHaveLength(2);
+    expect(statements[1]).toContain('acme-main,2026-10-01,2026-10-31,100,90,MYR,,,checked,');
+    const transactions = readFileSync(join(dir, 'data/transactions/acme/2026.csv'), 'utf8').trim().split('\n');
+    expect(transactions.slice(1).map((row) => row.split(',')[7])).toEqual(['SHOP A KUALA LUMPUR']);
+    const ledger = readFileSync(join(dir, 'data/ledger/acme/2026.csv'), 'utf8').trim().split('\n');
+    expect(ledger.slice(1).filter((row) => row.includes(',statement,'))).toHaveLength(1);
+    expect(ledger.at(-1)).toContain(',90,');
+    expect(
+      importStatement({ dir, file: csv('2026-10-05,SHOP A,-10,\n', 'export-again'), account: 'acme-main', ...period })
+    ).toMatchObject({ alreadyImported: true, added: 0 });
+  });
+
   test('a statement that does not add up is refused and nothing is written', () => {
     const dir = home();
     const file = write(dir, 'data/inbox/broken.csv', OCTOBER.replace('"6,150.00"', '"6,151.00"'));

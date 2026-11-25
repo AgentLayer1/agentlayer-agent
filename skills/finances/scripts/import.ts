@@ -405,6 +405,8 @@ export interface ImportReport {
   repeated: number;
   filed: string | null;
   ledger: 'added' | 'present';
+  /** The unproven import of the same period this one replaced, by its filed path. */
+  replaced: string | null;
   alreadyImported: boolean;
   dryRun: boolean;
 }
@@ -420,6 +422,9 @@ interface Planned {
   filed: string | null;
   staged: string | null;
 }
+
+const readRows = (path: string): Record<string, string>[] =>
+  existsSync(path) ? parseCsv(readFileSync(path, 'utf8')) : [];
 
 /** Everything one import would write, worked out before anything is written. */
 const planImport = (options: ImportOptions): Planned => {
@@ -439,14 +444,20 @@ const planImport = (options: ImportOptions): Planned => {
   const from = options.from ?? lines[0]?.date ?? '';
   const to = options.to ?? lines.at(-1)?.date ?? '';
   const currency = account.currency ?? 'MYR';
-  const alreadyImported = (
-    existsSync(DATA.statements(dir)) ? parseCsv(readFileSync(DATA.statements(dir), 'utf8')) : []
-  ).some(
-    (row) => row.sha === sha || (row.account === account.id && row.period_start === from && row.period_end === to)
+  const statements = readRows(DATA.statements(dir));
+  const samePeriod = statements.find(
+    (row) => row.account === account.id && row.period_start === from && row.period_end === to
   );
+  const replaced =
+    samePeriod !== undefined && samePeriod.check !== Check.Checked && proof.check === Check.Checked
+      ? (samePeriod.file ?? null)
+      : null;
+  const alreadyImported = statements.some((row) => row.sha === sha) || (samePeriod !== undefined && replaced === null);
   const known = new Set(
     csvFiles(DATA.transactions(dir, entity.slug)).flatMap((path) =>
-      parseCsv(readFileSync(path, 'utf8')).map((row) => row.id)
+      readRows(path)
+        .filter((row) => replaced === null || row.source !== replaced)
+        .map((row) => row.id)
     )
   );
   const ids = lineIds(account.id, lines);
@@ -454,11 +465,13 @@ const planImport = (options: ImportOptions): Planned => {
     ? []
     : lines.map((line, i) => ({ line, id: ids[i] ?? '' })).filter(({ id }) => !known.has(id));
   const ledgerPath = DATA.ledger(dir, entity.slug, to.slice(0, 4));
-  const ledgerHas =
-    existsSync(ledgerPath) &&
-    parseCsv(readFileSync(ledgerPath, 'utf8')).some(
-      (row) => row.type === 'statement' && row.category === account.id && monthOf(row.date ?? '') === monthOf(to)
-    );
+  const ledgerHas = readRows(ledgerPath).some(
+    (row) =>
+      row.type === 'statement' &&
+      row.category === account.id &&
+      monthOf(row.date ?? '') === monthOf(to) &&
+      (replaced === null || row.file !== replaced)
+  );
   const target = join(
     DATA.originals(dir, entity.slug, monthOf(to)),
     `${to} ${account.id} statement${extname(original).toLowerCase()}`
@@ -483,6 +496,7 @@ const planImport = (options: ImportOptions): Planned => {
       repeated: lines.length - fresh.length,
       filed: filed === null ? null : relative(dir, filed),
       ledger: ledgerHas || alreadyImported ? 'present' : 'added',
+      replaced,
       alreadyImported,
       dryRun: options.dryRun === true
     },
@@ -540,8 +554,29 @@ const planImport = (options: ImportOptions): Planned => {
   };
 };
 
+/** Rewrites a CSV without the rows an earlier import of `file` wrote to it. */
+const dropRows = (path: string, header: string, column: string, file: string): void => {
+  const rows = readRows(path);
+  const kept = rows.filter((row) => row[column] !== file);
+  if (kept.length < rows.length) {
+    const columns = header.split(',');
+    writeFileSync(
+      path,
+      [header, ...kept.map((row) => csvLine(columns.map((key) => row[key] ?? null)))].join('\n') + '\n'
+    );
+  }
+};
+
 const writeImport = (dir: string, plan: Planned): void => {
   const entity = plan.report.entity;
+  const replaced = plan.report.replaced;
+  if (replaced !== null) {
+    csvFiles(DATA.transactions(dir, entity)).forEach((path) => dropRows(path, TRANSACTIONS_HEADER, 'source', replaced));
+    dropRows(DATA.statements(dir), STATEMENTS_HEADER, 'file', replaced);
+    if (plan.ledger !== null) {
+      dropRows(plan.ledger.path, LEDGER_HEADER, 'file', replaced);
+    }
+  }
   Map.groupBy(plan.rows, (row) => row.year).forEach((rows, year) =>
     appendRows(
       join(DATA.transactions(dir, entity), `${year}.csv`),
@@ -568,7 +603,8 @@ const writeImport = (dir: string, plan: Planned): void => {
 
 /**
  * Imports one statement. Every write happens after every check, so a refused file leaves data/
- * exactly as it was; a dry run, or a statement already imported, writes nothing.
+ * exactly as it was; a dry run, or a statement already imported, writes nothing. A proven statement
+ * for a period already imported unproven (an export without balances) replaces that import's lines.
  */
 export const importStatement = (options: ImportOptions): ImportReport => {
   const plan = planImport(options);
