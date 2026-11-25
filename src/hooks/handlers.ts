@@ -8,7 +8,10 @@ import { hookStdin } from '@/hooks/stdin';
 import { HOST_NAMES, isHostName, type HookPayload, type HookReply, type HostAdapter } from '@/hosts/contract';
 import { DEFAULT_HOST, hostNamed } from '@/hosts/registry';
 import { CLI_COMMAND } from '@/shared/naming';
+import { log as baseLog } from '@/shared/log';
 import { pinHome } from '@/shared/settings-env';
+
+const log = baseLog.session.with('capture');
 
 type Flag = (name: string) => string | undefined;
 
@@ -34,11 +37,16 @@ const atHome = (host: HostAdapter, payload: HookPayload | undefined): boolean =>
   return true;
 };
 
-/** A host with no session-end event keeps each of its conversations on the open list for the drain. */
+/**
+ * A host with no session-end event keeps each of its conversations on the open list for the drain. A failed write is
+ * logged and the hook goes on: the list only feeds the drain, and a later hook records the conversation again.
+ */
 const recordFor = async (host: HostAdapter, payload: HookPayload | undefined): Promise<void> => {
   if (host.recordsConversations && payload?.origin === 'user') {
     const { recordConversation } = await import('@/knowledge/session-capture');
-    await recordConversation(payload, host.name);
+    await recordConversation(payload, host.name).catch((err: unknown) =>
+      log.warn(`conversation not recorded: ${err instanceof Error ? err.message : String(err)}`)
+    );
   }
 };
 

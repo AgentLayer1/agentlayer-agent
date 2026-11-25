@@ -93,7 +93,8 @@ const normalize = (text: string, home: string): string =>
     .replace(WEEKDAY, '<WEEKDAY>')
     .replace(MONTH, '<MONTH>')
     .replace(/<MONTH> \d{1,2}, \d{4}/g, '<MONTH> <DAY>, <YEAR>')
-    .replace(/[+-]\d{4}\b/g, '<OFFSET>');
+    .replace(/[+-]\d{4}\b/g, '<OFFSET>')
+    .replace(/\d+\.\dKB added today/g, '<N>KB added today');
 
 interface Run {
   stdout: string;
@@ -271,6 +272,21 @@ describe.skipIf(!POSIX_GIT)('session start, per host and home state', () => {
       asPlugin: true
     });
     expect(Object.keys(JSON.parse(readFileSync(open, 'utf-8')) as object)).toEqual([SESSION_ID]);
+  });
+
+  test.skipIf(process.getuid?.() === 0)("a conversation list that can't be written costs the session nothing", () => {
+    const home = makeHome('initialized');
+    antigravityTranscript(home, 1);
+    const conversations = resolve(home, RUNTIME_DIR, 'conversations');
+    mkdirSync(conversations, { recursive: true });
+    chmodSync(conversations, 0o555);
+    const run = cli(home, ['session-start', '--hook-protocol=antigravity', '--home-from-payload'], {
+      stdin: antigravityPayload(home),
+      asPlugin: true
+    });
+    chmodSync(conversations, 0o755);
+    expect(run.exit).toBe(0);
+    expect(run.stdout).toContain('injectSteps');
   });
 
   test('no protocol, initialized home', () => {

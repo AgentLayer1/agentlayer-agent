@@ -1,5 +1,5 @@
 import { isRecord, stringsOf } from '@/shared/json-block';
-import { expandTilde, isInside } from '@/shared/paths';
+import { expandTilde, isInside, resolvedPath } from '@/shared/paths';
 import { isAbsolute, resolve } from 'node:path';
 
 interface RootSettings {
@@ -30,7 +30,8 @@ export const workRootsOf = (home: string, settings: RootSettings): string[] =>
         .filter(Boolean)
         .map((path) => resolve(home, expandTilde(path)))
     )
-  ].filter((path) => !isInside(path, home));
+    // Where a folder leads decides whether the home holds it: a link in the home to code outside it is still a root.
+  ].filter((path) => !isInside(resolvedPath(path), resolvedPath(home)));
 
 /** The folders the sandbox may write, as the settings' `sandbox.filesystem.allowWrite` names them: absolute, no globs. */
 export const sandboxWritesOf = (settings: RootSettings): string[] => {
