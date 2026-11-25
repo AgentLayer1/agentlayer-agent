@@ -737,7 +737,7 @@ exports[`session start, per host and home state Antigravity, initialized home 1`
 "
 ,
   "stdout": 
-"{"injectSteps":[{"systemMessage":{"systemMessage":"<!-- session banner: mention its warnings and notices in your first reply, unless the request asks for a set output format -->
+"{"injectSteps":[{"systemMessage":{"systemMessage":"<!-- session banner: in your first reply, pass on each line that warns (⚠️) or asks for an action (an upgrade, a sync), unless the request asks for a set output format; when none does, say nothing about the banner -->
 🦊 Agent:     Nova · v<VERSION>
   ⚠️ Sandbox:   Antigravity's terminal sandbox is off in <USER>/.gemini/antigravity-cli/settings.json, so shell commands can reach the whole disk. Paste the settings from .state/updates/antigravity-user-config.md there, then restart Antigravity.
   ↑  Upgrade:   Turn on update tracking · run the upgrade skill
