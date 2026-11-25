@@ -91,7 +91,7 @@ run('INBOX leads the Manager above NEEDS YOU, its cards closed and its put-off a
     'Later',
     'Dismiss'
   ]);
-  expect(sidebar.propsOf('Proposal'), 'a pink of its own, apart from INBOX’s purple').toMatchObject({ color: '#FF375F' });
+  expect(sidebar.propsOf('Proposal'), 'a badge word reads in the text colour, light or dark').toMatchObject({ color: 'secondary' });
   expect(texts, 'the second card starts closed').not.toContain('Runs the checkout with the totals from the issue.');
   expect(texts).not.toContain('Tidy the release notes');
   expect(texts).not.toContain('Run the sync');

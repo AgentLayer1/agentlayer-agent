@@ -130,13 +130,13 @@ export interface ProjectTag {
 export const keepWidth = (view: View) => view.lineLimit(1).fixedSize('horizontal');
 
 /**
- * A word on a tint of its own colour, for a project or a report's status. `color` is `#rrggbb`.
+ * A word in the text colour on a tint of `color`, for a project or a report's status. `color` is `#rrggbb`.
  */
 const pillText = (label: string, color: string) =>
   Text(label)
     .font(9)
     .weight('semibold')
-    .color(color)
+    .color('secondary')
     .paddingHorizontal(5)
     .paddingVertical(1)
     .background(`${color}26`)
@@ -232,15 +232,16 @@ export const foldCard = ({ title, count, icon, color, expanded, setExpanded }: F
     content
   );
 
-// The sidebar's palette, shared by its icons, badges and tallies.
+// The sidebar's palette, shared by its icons, badges and tallies: mid-tones that clear 3:1 on both a light and a dark
+// sidebar, since cmux tells a sidebar nothing about the appearance.
 export const ACCENT = '#0A84FF';
-export const GREEN = '#34C759';
-export const ORANGE = '#FF9F0A';
+export const GREEN = '#1F9D44';
+export const ORANGE = '#DB7100';
 export const RED = '#FF453A';
 export const GREY = '#8E8E93';
 export const PURPLE = '#BF5AF2';
 export const PINK = '#FF375F';
-export const YELLOW = '#FFD60A';
+export const YELLOW = '#B88A00';
 
 export const note = (text: string) => Text(text).font(11).color('tertiary').paddingHorizontal(10);
 
