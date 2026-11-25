@@ -144,6 +144,16 @@ describe('classify', () => {
     ).toBe('Acme Telco');
   });
 
+  test('an approved category keeps its line when a later rename changes the payee', () => {
+    const approved: Rule = { payee: 'Example', category: 'housing', confirmed: true };
+    const rename: Rule = { match: '^Example$', payee: 'Other' };
+    expect(classify(txn('e', '2026-10-01', 'ada-main', -1, 'Example'), orderRules([approved, rename]))).toMatchObject({
+      payee: 'Other',
+      category: 'housing',
+      approved: true
+    });
+  });
+
   test('a rule limited to an account leaves the others alone', () => {
     const rules: Rule[] = [{ match: 'SHOP', category: 'office', account: 'acme-main' }];
     expect(classify(txn('a', '2026-10-01', 'acme-main', -1, 'SHOP'), rules).category).toBe('office');
@@ -180,6 +190,21 @@ describe('classifyAll', () => {
       ENTITIES
     );
     expect(lines.map((line) => line.kind)).toEqual([Kind.Transfer, Kind.Transfer]);
+  });
+
+  test('a categorised purchase and an unrelated credit of the same amount stay spending and income', () => {
+    const lines = classifyAll(
+      [txn('p', '2026-10-01', 'acme-main', -100, 'GROCER MART'), txn('s', '2026-10-01', 'ada-main', 100, 'SALARY')],
+      [
+        { match: 'GROCER', category: 'groceries', confirmed: true },
+        { match: 'SALARY', category: 'income', confirmed: true }
+      ],
+      ENTITIES
+    );
+    expect(lines.map((line) => [line.kind, line.paired])).toEqual([
+      [Kind.Spend, false],
+      [Kind.Income, false]
+    ]);
   });
 });
 

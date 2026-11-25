@@ -170,7 +170,7 @@ export interface Classified {
 /**
  * Rules run in two passes over rules in `orderRules` order: the first rule naming a payee whose
  * pattern fits the raw description, or the payee it would otherwise get, renames it, then the first rule naming a category that fits the
- * line (its id, the payee by name or pattern, or the raw description) sets it, and the first naming a
+ * line (its id, the payee by name or pattern before or after the rename, or the raw description) sets it, and the first naming a
  * `for` the same way says whose expense the line is. `account` and `date` (a day or a month) narrow any rule.
  */
 export const classify = (txn: Txn, rules: Rule[]): Classified => {
@@ -183,12 +183,14 @@ export const classify = (txn: Txn, rules: Rule[]): Classified => {
         applies(rule, txn) &&
         (matches(rule, txn.raw) || matches(rule, fallback))
     )?.payee ?? fallback;
+  const names = new Set([payee.toLowerCase(), fallback.toLowerCase()]);
   const fits = (rule: Rule): boolean =>
     applies(rule, txn) &&
     (rule.id !== undefined ||
-      (rule.payee !== undefined && rule.payee.toLowerCase() === payee.toLowerCase()) ||
+      (rule.payee !== undefined && names.has(rule.payee.toLowerCase())) ||
       matches(rule, txn.raw) ||
-      matches(rule, payee));
+      matches(rule, payee) ||
+      matches(rule, fallback));
   const categoryRule = rules.find((rule) => rule.category !== undefined && fits(rule));
   return {
     payee,
@@ -202,9 +204,9 @@ export const classify = (txn: Txn, rules: Rule[]): Classified => {
 
 /**
  * Pairs money leaving one of the operator's accounts with the same amount arriving in another of
- * them within three days, oldest first and closest date first, each line in at most one pair. Lines
- * a rule marked as a transfer, or as paid for another entity, are left to the rule; a line marked
- * director still pairs, so a loan seen from both sides counts once.
+ * them within three days, oldest first and closest date first, each line in at most one pair. A line
+ * a rule already gave a category, or marked as paid for another entity, is left to the rule; a line
+ * marked director still pairs, so a loan seen from both sides counts once.
  */
 const pairTransfers = (txns: Txn[], skip: Set<string>): Map<string, string> => {
   const bucket = (txn: Txn): string => `${txn.currency}|${Math.abs(cents(txn.amount))}`;
@@ -265,7 +267,7 @@ export const classifyAll = (txns: Txn[], rules: Rule[], entities: Entity[]): Lin
   const classified = txns.map((txn) => ({ txn, ...classify(txn, ordered) }));
   const ruled = new Set(
     classified
-      .filter((line) => line.category === 'transfer' || (line.for !== null && line.category !== 'director'))
+      .filter((line) => (line.category !== null || line.for !== null) && line.category !== 'director')
       .map((line) => line.txn.id)
   );
   const pairs = pairTransfers(txns, ruled);
