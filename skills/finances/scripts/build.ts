@@ -327,10 +327,10 @@ const BANDS: Record<Cadence, [number, number]> = { monthly: [25, 35], yearly: [3
 /**
  * A payee paid three or more times at a steady interval (monthly or yearly, within five days) and a
  * steady amount (two in three within 20% of the usual) is a recurring payment. Its next date
- * follows the last; it is missed when the account's statements already run five days past that
- * date without it, and rising when the last payment is 15% or more above the usual.
+ * follows the last; it is missed when the account's statements cover that date and the five days
+ * after it without it, and rising when the last payment is 15% or more above the usual.
  */
-export const detectRecurring = (lines: Line[], coverage: Map<string, string>): Recurring[] => {
+export const detectRecurring = (lines: Line[], coverage: Map<string, Span[]>): Recurring[] => {
   const groups = Map.groupBy(
     lines.filter((line) => line.amount < 0 && (line.kind === Kind.Spend || line.kind === Kind.Charity)),
     (line) => `${line.for}|${line.currency}|${line.payee.toLowerCase()}`
@@ -352,7 +352,9 @@ export const detectRecurring = (lines: Line[], coverage: Map<string, string>): R
       return [];
     }
     const next = cadence === Cadence.Monthly ? nextMonthDay(last.date) : shiftDate(last.date, 365);
-    const covered = coverage.get(last.account);
+    const covered = (coverage.get(last.account) ?? []).some(
+      (span) => span.from <= next && span.to >= shiftDate(next, 6)
+    );
     return [
       {
         entity: last.for,
@@ -365,7 +367,7 @@ export const detectRecurring = (lines: Line[], coverage: Map<string, string>): R
         last: -last.amount,
         lastDate: last.date,
         next,
-        state: covered !== undefined && daysBetween(next, covered) > 5 ? BillState.Missed : BillState.Upcoming,
+        state: covered ? BillState.Missed : BillState.Upcoming,
         rising: -last.amount >= typical * 1.15,
         count: sorted.length
       }
@@ -401,14 +403,42 @@ export interface Insight {
   due: string | null;
 }
 
-/** Each statement of one account beside the one before it, in date order. */
+/**
+ * Each statement of one account that reaches past the ones before it, beside the one that reached
+ * furthest so far, in date order. A statement inside another's dates adds nothing and is skipped.
+ */
 const adjacent = (statements: Statement[]): { before: Statement; statement: Statement; gap: number }[] => {
-  const sorted = statements.toSorted((a, b) => a.from.localeCompare(b.from));
-  return sorted.slice(1).flatMap((statement, i) => {
-    const before = sorted[i];
-    return before === undefined ? [] : [{ before, statement, gap: daysBetween(before.to, statement.from) }];
-  });
+  const [first, ...rest] = statements.toSorted((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to));
+  if (first === undefined) {
+    return [];
+  }
+  return rest.reduce<{ reach: Statement; pairs: { before: Statement; statement: Statement; gap: number }[] }>(
+    ({ reach, pairs }, statement) =>
+      statement.to > reach.to
+        ? {
+            reach: statement,
+            pairs: [...pairs, { before: reach, statement, gap: daysBetween(reach.to, statement.from) }]
+          }
+        : { reach, pairs },
+    { reach: first, pairs: [] }
+  ).pairs;
 };
+
+export interface Span {
+  from: string;
+  to: string;
+}
+
+/** The date ranges one account's statements cover between them, oldest first. */
+const spansOf = (statements: Statement[]): Span[] =>
+  statements
+    .toSorted((a, b) => a.from.localeCompare(b.from))
+    .reduce<Span[]>((spans, statement) => {
+      const last = spans.at(-1);
+      return last !== undefined && daysBetween(last.to, statement.from) <= 1
+        ? [...spans.slice(0, -1), { from: last.from, to: statement.to > last.to ? statement.to : last.to }]
+        : [...spans, { from: statement.from, to: statement.to }];
+    }, []);
 
 export interface FinanceInput {
   today: string;
@@ -513,15 +543,7 @@ export const buildFinance = ({
   const accounts = entities.flatMap((entity) => entity.accounts.map((account) => ({ account, entity })));
   const lines = classifyAll(txns, rules, entities);
   const byAccount = Map.groupBy(statements, (statement) => statement.account);
-  const coverage = new Map(
-    [...byAccount].map(([account, list]) => [
-      account,
-      list
-        .map((statement) => statement.to)
-        .toSorted()
-        .at(-1) ?? ''
-    ])
-  );
+  const coverage = new Map([...byAccount].map(([account, list]) => [account, spansOf(list)]));
   const accountViews = accounts.map(({ account, entity }): AccountView => {
     const latest = (byAccount.get(account.id) ?? []).toSorted((a, b) => a.to.localeCompare(b.to)).at(-1);
     return {
@@ -684,7 +706,7 @@ export const buildFinance = ({
       .filter((due) => !due.paid && daysBetween(today, due.due) <= 7)
       .map((due) => ({
         kind: InsightKind.Pay,
-        label: `fin:pay:${due.account}:${monthOf(due.due)}`,
+        label: `fin:pay:${due.account}:${due.due}`,
         entity: due.entity,
         title: `Pay the ${accountNameOf(due.account)} statement`,
         due: due.due
@@ -747,7 +769,7 @@ export const buildFinance = ({
       : [
           {
             kind: InsightKind.Review,
-            label: `fin:review:${[...uncategorized.keys(), ...suggestedMonths].toSorted().at(-1) ?? ''}`,
+            label: `fin:review:${[...uncategorized.keys(), ...suggestedMonths].toSorted().at(0) ?? ''}`,
             entity: '',
             title: [
               reviewCount === 0 ? null : `categorise ${reviewCount} transaction${reviewCount === 1 ? '' : 's'}`,

@@ -212,7 +212,7 @@ describe('detectRecurring', () => {
   const lines = classifyAll(TXNS, RULES, ENTITIES);
 
   test('finds a monthly payment, its next date, and that it went up', () => {
-    const [bill] = detectRecurring(lines, new Map([['ada-main', '2026-10-31']]));
+    const [bill] = detectRecurring(lines, new Map([['ada-main', [{ from: '2026-07-01', to: '2026-10-31' }]]]));
     expect(bill).toMatchObject({
       payee: 'Streamco',
       cadence: Cadence.Monthly,
@@ -225,7 +225,7 @@ describe('detectRecurring', () => {
   });
 
   test("is missed once the account's statements run past its date without it", () => {
-    expect(detectRecurring(lines, new Map([['ada-main', '2026-11-30']]))[0]?.state).toBe(BillState.Missed);
+    expect(detectRecurring(lines, new Map([['ada-main', [{ from: '2026-07-01', to: '2026-11-30' }]]]))[0]?.state).toBe(BillState.Missed);
   });
 
   test('two payments are not a pattern', () => {
@@ -274,7 +274,7 @@ describe('buildFinance', () => {
     expect(data.dues).toEqual([
       { account: 'acme-card', entity: 'acme', due: '2026-11-25', amount: 200, currency: 'MYR', paid: false }
     ]);
-    expect(data.insights.map((insight) => insight.label)).toContain('fin:pay:acme-card:2026-11');
+    expect(data.insights.map((insight) => insight.label)).toContain('fin:pay:acme-card:2026-11-25');
   });
 
   test('raises the missed and rising bill, the double charge, the new fee and the unproven statement', () => {
@@ -286,7 +286,7 @@ describe('buildFinance', () => {
         'fin:dup:x2',
         'fin:fee:acme-main:2026-10',
         'fin:check:acme-card:2026-10',
-        'fin:review:2026-10'
+        'fin:review:2025-01'
       ])
     );
     expect(data.insights.every((insight) => !/\d+\.\d\d|RM/.test(insight.title))).toBe(true);
@@ -442,6 +442,54 @@ describe('insight labels', () => {
       buildFinance(INPUT).insights.length
     );
   });
+
+  test('two card statements due in one month are two payments', () => {
+    const data = buildFinance({
+      ...INPUT,
+      today: '2026-03-25',
+      txns: [],
+      statements: [
+        statement('acme-card', '2026-01-07', '2026-02-06', { due: '2026-03-03', amountDue: 100 }),
+        statement('acme-card', '2026-02-07', '2026-03-06', { due: '2026-03-31', amountDue: 100 })
+      ]
+    });
+    expect(data.insights.filter((insight) => insight.kind === 'pay').map((insight) => insight.label)).toEqual([
+      'fin:pay:acme-card:2026-03-03',
+      'fin:pay:acme-card:2026-03-31'
+    ]);
+  });
+
+  test('the categorising task stays on the oldest month with work left, so a new month never closes it', () => {
+    const review = (txns: Txn[]) =>
+      buildFinance({ ...INPUT, txns }).insights.find((insight) => insight.kind === 'review')?.label;
+    const october = txn('o', '2026-10-03', 'ada-main', -5, 'SHOP ONE');
+    expect(review([october])).toBe('fin:review:2026-10');
+    expect(review([october, txn('d', '2026-12-03', 'ada-main', -5, 'SHOP TWO')])).toBe('fin:review:2026-10');
+  });
+});
+
+describe('statement coverage', () => {
+  test('an export inside a statement is no gap, and the next statement is checked against the one it follows', () => {
+    const checks = buildFinance({
+      ...INPUT,
+      statements: [
+        statement('ada-main', '2026-08-01', '2026-08-31', { closing: 50 }),
+        statement('ada-main', '2026-08-10', '2026-08-20', { closing: 999 }),
+        statement('ada-main', '2026-09-01', '2026-09-30', { opening: 50 })
+      ]
+    }).checks;
+    expect(checks.find((check) => check.id === 'gaps')?.items).toEqual([]);
+    expect(checks.find((check) => check.id === 'openings')?.ok).toBe(true);
+  });
+
+  test('a bill is not missed in a month no statement covers, even when a later one is imported', () => {
+    const lines = classifyAll(TXNS, RULES, ENTITIES);
+    const spans = [
+      { from: '2026-07-01', to: '2026-10-31' },
+      { from: '2026-12-01', to: '2026-12-31' }
+    ];
+    expect(detectRecurring(lines, new Map([['ada-main', spans]]))[0]?.state).toBe(BillState.Upcoming);
+  });
 });
 
 describe('learning', () => {
@@ -535,9 +583,9 @@ describe('financePlan', () => {
     expect(plan.missing.find((task) => task.kind === 'pay')).toMatchObject({
       priority: 'P1',
       due: '2026-11-25',
-      labels: ['finances', 'entity:acme', 'fin:pay:acme-card:2026-11']
+      labels: ['finances', 'entity:acme', 'fin:pay:acme-card:2026-11-25']
     });
-    expect(plan.missing.find((task) => task.kind === 'review')?.labels).toEqual(['finances', 'fin:review:2026-10']);
+    expect(plan.missing.find((task) => task.kind === 'review')?.labels).toEqual(['finances', 'fin:review:2025-01']);
   });
 
   test('a fee, double charge or rising bill that ages out of view leaves its task open', () => {
