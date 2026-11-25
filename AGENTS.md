@@ -64,4 +64,5 @@ The gate before any commit is `bun run typecheck && bun test`, chained, never pi
 - **Product docs are host-neutral**: skills named bare, "your host" for the CLI, host-specific steps in per-host tabs.
 - **Frontmatter the plugin writes is flat** (scalars and lists of scalars), so Obsidian shows it as properties.
 - **Generated HTML pages share their chrome**: the theme switch (`src/shared/theme.ts`) and the diagram viewer (`src/shared/diagram-viewer.ts`) are synced into templates with `bun <file> sync`, and their tests fail until a template carries the current block.
+- **A host gap is a capability row**: a change that works around something a host can't do adds or updates that host's row in `src/hosts/contract.ts` in the same commit, so `hosts status` lists every gap.
 - **Releases go through the `release` skill**: the version, the CHANGELOG entry with its `### Upgrade` block for home migrations, and the tag are one act. A pushed tag never moves.

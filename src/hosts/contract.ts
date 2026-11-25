@@ -17,11 +17,13 @@ export const isHostName = (value: string): value is HostName => HOST_NAMES.some(
 export const CAPABILITIES = [
   { id: 'manual', label: 'Manual' },
   { id: 'context', label: 'Session context' },
+  { id: 'banner', label: 'Banner shown' },
   { id: 'capture', label: 'Capture' },
   { id: 'guard', label: 'Shell guard' },
   { id: 'rules', label: 'Home rules' },
   { id: 'tools', label: 'Agent tools' },
   { id: 'skills', label: 'Skills' },
+  { id: 'ask', label: 'Question prompt' },
   { id: 'setup', label: 'Setup, upgrade' },
   { id: 'mods', label: 'Mods' },
   { id: 'radar', label: 'Session radar' }

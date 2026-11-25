@@ -190,7 +190,11 @@ export const antigravityHost = {
       note: 'Antigravity reads the first 24 KB itself; the session-start hook sends it whole'
     },
     context: { level: 'yes' },
-    capture: { level: 'yes' },
+    banner: { level: 'no', note: "Antigravity can't show a hook's banner, so the first reply relays it word for word" },
+    capture: {
+      level: 'partial',
+      note: "no session-end event: the hooks save every ten turns, and any host's next session start saves the rest"
+    },
     guard: { level: 'yes' },
     rules: {
       level: 'partial',
@@ -198,6 +202,7 @@ export const antigravityHost = {
     },
     tools: { level: 'yes' },
     skills: { level: 'partial', note: 'a skill over 24 KB is read on from its file' },
+    ask: { level: 'yes' },
     setup: { level: 'no', note: 'run init and upgrade from Claude Code' },
     ...CLAUDE_CODE_ONLY
   },

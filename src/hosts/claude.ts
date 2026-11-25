@@ -21,11 +21,13 @@ export const claudeHost: HostAdapter = {
   capabilities: {
     manual: { level: 'yes' },
     context: { level: 'yes' },
+    banner: { level: 'yes' },
     capture: { level: 'yes' },
     guard: { level: 'yes' },
     rules: { level: 'yes' },
     tools: { level: 'yes' },
     skills: { level: 'yes' },
+    ask: { level: 'yes' },
     setup: { level: 'yes' },
     mods: { level: 'yes' },
     radar: { level: 'yes' }

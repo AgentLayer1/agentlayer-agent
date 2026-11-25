@@ -12,11 +12,19 @@ export const codexHost = {
   capabilities: {
     manual: { level: 'yes' },
     context: { level: 'yes' },
+    banner: { level: 'yes' },
     capture: { level: 'yes' },
     guard: { level: 'yes' },
-    rules: { level: 'yes' },
+    rules: {
+      level: 'partial',
+      note: "the home's allowed network domains need Codex's experimental network proxy; until then the rules file is the only outbound gate"
+    },
     tools: { level: 'yes' },
     skills: { level: 'partial', note: 'Codex runs its own copy, which lags the plugin until it is re-added' },
+    ask: {
+      level: 'partial',
+      note: "outside Plan mode, and for a multi-select question, the agent asks in chat and waits, without Codex's question card"
+    },
     setup: { level: 'yes' },
     ...CLAUDE_CODE_ONLY
   },
