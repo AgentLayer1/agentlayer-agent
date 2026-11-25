@@ -1677,7 +1677,7 @@ bun "$PLUGIN_ROOT/skills/init/scripts/codex-user-config.ts" --home "$HOME_DIR" -
 
 ## Step 7d — Antigravity (when the operator also runs Antigravity here)
 
-Skip this step silently unless `agy --version` answers (a functional probe, never `command -v`). On native Windows (`$AGENT_PLATFORM=windows`) skip it with one line in Step 9 saying Antigravity support is macOS-only for now. Otherwise ask once with `AskUserQuestion`: "Do you also run Google Antigravity (`agy`) from this home?" (options: "Yes, set it up" / "No, Claude Code only"). A no writes nothing; the upgrade skill offers it again whenever `agy` is installed.
+Skip this step silently unless `agy --version` answers (a functional probe, never `command -v`). On native Windows (`$AGENT_PLATFORM=windows`) it runs the same way, but say once that Antigravity on Windows is unverified: no Windows machine has run it yet, its commands run through PowerShell, and its sandbox needs Windows 11 24H2 with the August 2026 update. Otherwise ask once with `AskUserQuestion`: "Do you also run Google Antigravity (`agy`) from this home?" (options: "Yes, set it up" / "No, Claude Code only"). A no writes nothing; the upgrade skill offers it again whenever `agy` is installed.
 
 Antigravity loads this plugin as a plugin of its own, in place from this checkout: its skills, an always-on rule with the glossary for them, the hooks (context at session start, the home's rules on every tool, a capture at each turn's end) and the MCP server, which finds the home from the session's folder. Nothing is written into the home. What it needs lives in two user-level files the plugin never edits, so a yes generates a paste-ready note:
 

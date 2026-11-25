@@ -382,7 +382,7 @@ all, silently under `codex exec`, which is a home that stops capturing its Codex
 **antigravity (always, when `agy` is installed)** — Antigravity loads the plugin in place from the
 checkout its user-level `~/.gemini/config/plugins.json` names, so a release reaches it with nothing
 regenerated in the home. What can drift is user-level: the manifest entry (a moved or recloned
-checkout) and the CLI settings (new denies, a new code folder). When `command -v agy` finds it,
+checkout) and the CLI settings (new denies, a new code folder). When `agy --version` answers,
 regenerate the paste-ready note:
 
 ```bash
