@@ -39,7 +39,7 @@ Keep the operator's money legible: every entity they file for (companies and the
 | Task | Playbook |
 |---|---|
 | A bank, card or platform statement or export to add, or files waiting in `data/inbox/` (`/finances import`) | [import](references/playbooks/import.md) |
-| Refresh or open the finances page, categorise transactions, or a question about spending, bills or cash (`/finances dashboard`) | [dashboard](references/playbooks/dashboard.md) |
+| Refresh or open the finances page, categorise transactions, a pasted ```` ```finances-edits ```` block, a stated categorising preference, or a question about spending, bills or cash (`/finances dashboard`) | [dashboard](references/playbooks/dashboard.md) |
 | Tax, bookkeeping, the monthly close, estimates, the accountant's books or requests (`/finances tax …`) | [tax](references/playbooks/tax.md) |
 
 ## Every time

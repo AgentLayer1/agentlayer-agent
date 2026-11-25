@@ -43,7 +43,7 @@ export const PHASES: readonly Phase[] = [
   }),
   phase('attention', {
     tools: ['task_scan', 'helpdesk_connections', 'helpdesk_stats', 'appstore_reviews', 'github_sweep'],
-    scripts: ['cadence.ts', 'review-reads.ts', 'brain-audit.ts', 'build.ts']
+    scripts: ['cadence.ts', 'review-reads.ts', 'brain-audit.ts', 'build.ts', 'rules.ts']
   }),
   phase('briefing', {
     tools: ['attention_write', 'web_search', 'WebSearch'],

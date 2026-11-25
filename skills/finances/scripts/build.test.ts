@@ -138,6 +138,13 @@ describe('classify', () => {
     expect(classify(txn('n', '2026-10-01', 'ada-main', -1, 'SHOP 99'), RULES).category).toBeNull();
   });
 
+  test('a rename matches the payee a line would otherwise get, not only the raw text', () => {
+    const raw = 'JOMPAY||88231120|99120034|D17|ACME TELCO';
+    expect(
+      classify(txn('j', '2026-10-01', 'ada-main', -1, raw), [{ match: '^JOMPAY D17 ACME', payee: 'Acme Telco' }]).payee
+    ).toBe('Acme Telco');
+  });
+
   test('a rule limited to an account leaves the others alone', () => {
     const rules: Rule[] = [{ match: 'SHOP', category: 'office', account: 'acme-main' }];
     expect(classify(txn('a', '2026-10-01', 'acme-main', -1, 'SHOP'), rules).category).toBe('office');

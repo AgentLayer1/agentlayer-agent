@@ -4,7 +4,16 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { buildFinance, learnedRules, loadFinance, ruleKey } from './build';
 import { importStatement } from './import';
-import { applyEdits, parseEdits, ruleLine, Scope, withLearned } from './rules';
+import {
+  addSuggestions,
+  applyEdits,
+  parseEdits,
+  parseSuggestions,
+  reviewUncategorised,
+  ruleLine,
+  Scope,
+  withLearned
+} from './rules';
 
 const dirs: string[] = [];
 afterAll(() => dirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
@@ -171,5 +180,60 @@ describe('withLearned', () => {
       '# Rules\n\n## Learned\n\n### Payees\n\n```yaml\n[]\n```\n\n### Categories\n\n```yaml\n- { payee: "A \\"B\\"", category: "food", confirmed: true }\n```\n'
     );
     expect(learnedRules(text).categories).toEqual([{ payee: 'A "B"', category: 'food', confirmed: true }]);
+  });
+});
+
+describe('reviewUncategorised', () => {
+  test('lists the payees no rule covers, with samples, and the approved rules as examples', () => {
+    const dir = project();
+    applyEdits(dir, parseEdits(block({ approve: [ruleKey(SUGGESTION)], set: [] })), TODAY);
+    const review = reviewUncategorised(dir, TODAY);
+    expect(review.groups).toEqual([
+      {
+        payee: 'RESTO X',
+        lines: 2,
+        total: 140,
+        currencies: ['MYR'],
+        accounts: ['ada-main'],
+        entities: ['ada'],
+        samples: ['RESTO X']
+      }
+    ]);
+    expect(review.examples).toEqual([{ payee: 'STREAMCO KL', category: 'entertainment' }]);
+    expect(review.categories).toContain('groceries');
+  });
+});
+
+describe('addSuggestions', () => {
+  test('adds new suggestions unconfirmed, and never overwrites a payee that already has a rule', () => {
+    const dir = project();
+    const report = addSuggestions(
+      dir,
+      parseSuggestions(
+        JSON.stringify({
+          payees: [{ match: '^RESTO', payee: 'Resto' }],
+          categories: [
+            { payee: 'Resto', category: 'food' },
+            { payee: 'STREAMCO KL', category: 'subscriptions' }
+          ]
+        })
+      )
+    );
+    expect(report).toEqual({ payees: 1, categories: 1, skipped: 1 });
+    const rules = learnedRules(readFileSync(join(dir, 'RULES.md'), 'utf8'));
+    expect(rules.payees).toEqual([{ match: '^RESTO', payee: 'Resto' }]);
+    expect(rules.categories).toEqual([SUGGESTION, { payee: 'Resto', category: 'food' }]);
+    expect(
+      lines(dir)
+        .filter((line) => line.payee === 'Resto')
+        .map((line) => [line.category, line.approved])
+    ).toEqual([
+      ['food', false],
+      ['food', false]
+    ]);
+  });
+
+  test('refuses an entry that is neither a rename nor a category rule', () => {
+    expect(() => parseSuggestions('{"categories":[{"category":"food"}]}')).toThrow('not a suggestion');
   });
 });

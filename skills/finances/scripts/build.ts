@@ -155,15 +155,20 @@ export interface Classified {
 
 /**
  * Rules run in two passes over rules in `orderRules` order: the first rule naming a payee whose
- * pattern fits the raw description renames it, then the first rule naming a category that fits the
+ * pattern fits the raw description, or the payee it would otherwise get, renames it, then the first rule naming a category that fits the
  * line (its id, the payee by name or pattern, or the raw description) sets it, and the first naming a
  * `for` the same way says whose expense the line is. `account` and `date` (a day or a month) narrow any rule.
  */
 export const classify = (txn: Txn, rules: Rule[]): Classified => {
+  const fallback = defaultPayee(txn.raw);
   const payee =
     rules.find(
-      (rule) => rule.payee !== undefined && rule.category === undefined && applies(rule, txn) && matches(rule, txn.raw)
-    )?.payee ?? defaultPayee(txn.raw);
+      (rule) =>
+        rule.payee !== undefined &&
+        rule.category === undefined &&
+        applies(rule, txn) &&
+        (matches(rule, txn.raw) || matches(rule, fallback))
+    )?.payee ?? fallback;
   const fits = (rule: Rule): boolean =>
     applies(rule, txn) &&
     (rule.id !== undefined ||

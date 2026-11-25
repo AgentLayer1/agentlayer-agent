@@ -210,7 +210,7 @@ Watermarks live in `.state/cadence.json` (`goals-week`, `goals-month`, `goals-ye
 bun "${CLAUDE_PLUGIN_ROOT}/skills/finances/scripts/build.ts" plan
 ```
 
-It returns `{ missing, resolved }` from the imported statements: a card statement to pay, a recurring bill that went up or didn't go out, a possible double charge, a new fee, a statement that doesn't add up, transactions to categorise, a personal statement to download. File each `missing` entry with `task_create` (`project: finances`, its `title`, `due` when set, `priority`, and its `labels` exactly as printed: the `fin:` label is the key that stops it being filed twice). Close each `resolved` task with `task_close` and a thread line saying the statements no longer show it. Never edit a `fin:` label, and never re-file one the operator cancelled. Report the counts in the `💰 Finances` line of the output.
+It returns `{ missing, resolved }` from the imported statements: a card statement to pay, a recurring bill that went up or didn't go out, a possible double charge, a new fee, a statement that doesn't add up, transactions to categorise, a personal statement to download. File each `missing` entry with `task_create` (`project: finances`, its `title`, `due` when set, `priority`, and its `labels` exactly as printed: the `fin:` label is the key that stops it being filed twice). Close each `resolved` task with `task_close` and a thread line saying the statements no longer show it. Never edit a `fin:` label, and never re-file one the operator cancelled. Then suggest categories for the payees no rule covers yet, following the finances skill's dashboard playbook, step 5 (`bun "${CLAUDE_PLUGIN_ROOT}/skills/finances/scripts/rules.ts" review`, then `suggest`). Suggestions are added unconfirmed and shown as suggested until the operator approves them, so this is safe unattended; a payment to a person stays for the operator. Report the counts in the `💰 Finances` line of the output.
 
 **Also count the support queues.** `helpdesk_connections` lists the configured connections; when it lists none, skip this and the `🎫 Support` block. Otherwise call `helpdesk_stats` once per queue, with its default 24-hour window:
 
@@ -400,6 +400,7 @@ One block, tight. Skip empty sections — don't pad.
 
 💰 Finances (omit entirely when the home has no projects/finances/data/)
   - <n> filed · <n> closed as resolved   (the plan's missing and resolved; "nothing new" when both are empty)
+  - <n> categories suggested for new payees · <approved>% of lines approved   (from the suggest run and the page's approval counts)
   - <title> (<id>)   (one line per task filed, payments first)
   - Page: <HOME>/projects/finances/dashboard.html
 

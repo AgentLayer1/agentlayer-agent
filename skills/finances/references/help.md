@@ -12,7 +12,9 @@ Your companies and your own money, kept legible and ahead of their deadlines. I 
 
 | Ask | Playbook | You get |
 |---|---|---|
-| "Refresh my finances", "categorise the new transactions", "why was October high?" | **dashboard** | The finances page rebuilt (cash per entity, cash flow, spending, bills, the director balance, charity, checks), rules for what no rule covered, and answers from your statements |
+| "Refresh my finances", "categorise the new transactions", "why was October high?" | **dashboard** | The finances page rebuilt (where your money goes by week, month and year, cash, bills, the director balance, charity, checks), suggested categories for new payees, and answers from your statements |
+| The edits you copied from the page's Categorise tab, pasted | **dashboard** | Your approvals and fixes written into `RULES.md`, so every matching line, past and future, follows them |
+| "Booking.com flights are travel" | **dashboard** | Your rule added to `RULES.md` in your words, and the suggestions redone to follow it |
 
 ### 📅 Tax deadlines
 

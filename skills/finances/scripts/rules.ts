@@ -12,8 +12,10 @@ import { DATA } from './layout';
  * confirms a rule, a fix by payee teaches every line from that payee, a fix for one line names it by
  * id. The prose above `## Learned` is never touched, and applying the same edits twice changes nothing.
  *
- * Usage: bun rules.ts apply [file]   the pasted `finances-edits` block, from the file or stdin
- *        bun rules.ts init           writes RULES.md from the template when the project has none
+ * Usage: bun rules.ts apply [file]     the pasted `finances-edits` block, from the file or stdin
+ *        bun rules.ts review [--limit N] the payees no rule covers, with the confirmed rules as examples
+ *        bun rules.ts suggest [file]   adds the agent's suggestions (JSON) as unconfirmed rules
+ *        bun rules.ts init             writes RULES.md from the template when the project has none
  */
 
 const TEMPLATE = join(import.meta.dir, '..', 'references', 'rules-template.md');
@@ -168,6 +170,116 @@ export const applyEdits = (dir: string, edits: Edits, today: string): ApplyRepor
   };
 };
 
+export interface Review {
+  categories: string[];
+  examples: { payee?: string; match?: string; category?: string; for?: string }[];
+  groups: {
+    payee: string;
+    lines: number;
+    total: number;
+    currencies: string[];
+    accounts: string[];
+    entities: string[];
+    samples: string[];
+  }[];
+}
+
+/** The payees no rule categorises, biggest first, with the operator's approved rules as examples to learn from. */
+export const reviewUncategorised = (dir: string, today: string, limit = 80): Review => {
+  const input = loadFinance(dir, today);
+  const own = classifyAll(input.txns, input.rules, input.entities).filter(
+    (line) => (line.kind === 'spend' || line.kind === 'income') && line.category === null
+  );
+  const groups = [...Map.groupBy(own, (line) => line.payee.toLowerCase()).values()]
+    .map((rows) => ({
+      payee: rows[0]?.payee ?? '',
+      lines: rows.length,
+      total: Math.round(rows.reduce((sum, line) => sum + Math.abs(line.amount), 0)),
+      currencies: [...new Set(rows.map((line) => line.currency))],
+      accounts: [...new Set(rows.map((line) => line.account))],
+      entities: [...new Set(rows.map((line) => line.for))],
+      samples: [...new Set(rows.map((line) => line.raw))].slice(0, 3)
+    }))
+    .toSorted((a, b) => b.lines - a.lines || b.total - a.total)
+    .slice(0, limit);
+  return {
+    categories: input.categories ?? [],
+    examples: input.rules
+      .filter((rule) => rule.confirmed === true && rule.category !== undefined)
+      .map(({ payee, match, category, for: owner }) => ({ payee, match, category, for: owner })),
+    groups
+  };
+};
+
+export interface Suggestions {
+  payees?: { match: string; payee: string }[];
+  categories?: { payee?: string; match?: string; category: string; for?: string }[];
+}
+
+const isText = (value: unknown): boolean => value === undefined || typeof value === 'string';
+
+/** The agent's suggestions JSON, refused when an entry isn't a rename or a category rule. */
+export const parseSuggestions = (text: string): Suggestions => {
+  const parsed: unknown = JSON.parse(text);
+  const payees: unknown[] = isRecord(parsed) && Array.isArray(parsed.payees) ? parsed.payees : [];
+  const categories: unknown[] = isRecord(parsed) && Array.isArray(parsed.categories) ? parsed.categories : [];
+  const goodPayee = (item: unknown): item is { match: string; payee: string } =>
+    isRecord(item) && typeof item.match === 'string' && typeof item.payee === 'string';
+  const goodCategory = (item: unknown): item is { payee?: string; match?: string; category: string; for?: string } =>
+    isRecord(item) &&
+    typeof item.category === 'string' &&
+    isText(item.payee) &&
+    isText(item.match) &&
+    isText(item.for) &&
+    (item.payee !== undefined || item.match !== undefined);
+  const bad = [...payees.filter((item) => !goodPayee(item)), ...categories.filter((item) => !goodCategory(item))];
+  if (!isRecord(parsed) || bad.length > 0) {
+    throw new Error(`not a suggestion: ${JSON.stringify(bad[0] ?? parsed)}`);
+  }
+  return { payees: payees.filter(goodPayee), categories: categories.filter(goodCategory) };
+};
+
+/**
+ * Adds the agent's suggestions as unconfirmed rules, after the ones already there. A suggestion for a
+ * payee or pattern that already has a rule is skipped: an existing decision or suggestion is never
+ * overwritten by a new guess.
+ */
+export const addSuggestions = (
+  dir: string,
+  suggestions: Suggestions
+): { payees: number; categories: number; skipped: number } => {
+  const text = readRules(dir);
+  const { payees, categories } = learnedRules(text);
+  const known = (rule: Rule, rules: Rule[]): boolean =>
+    rules.some(
+      (other) =>
+        (rule.match !== undefined && other.match === rule.match) ||
+        (rule.payee !== undefined &&
+          rule.match === undefined &&
+          other.payee?.toLowerCase() === rule.payee.toLowerCase() &&
+          other.match === undefined)
+    );
+  const newPayees = (suggestions.payees ?? [])
+    .filter((rule) => !known(rule, payees))
+    .map(({ match, payee }) => ({ match, payee }));
+  const newCategories = (suggestions.categories ?? [])
+    .filter((rule) => rule.category.trim() !== '' && !known(rule, categories))
+    .map(
+      ({ payee, match, category, for: owner }): Rule => ({
+        match,
+        payee,
+        category,
+        ...(owner === undefined ? {} : { for: owner })
+      })
+    );
+  const skipped =
+    (suggestions.payees?.length ?? 0) + (suggestions.categories?.length ?? 0) - newPayees.length - newCategories.length;
+  if (newPayees.length + newCategories.length > 0 || !existsSync(DATA.rules(dir))) {
+    writeFileSync(DATA.rules(dir), withLearned(text, [...payees, ...newPayees], [...categories, ...newCategories]));
+  }
+  return { payees: newPayees.length, categories: newCategories.length, skipped };
+};
+
 if (import.meta.main) {
   const [command, ...rest] = process.argv.slice(2);
   const dir = argValue(rest, '--dir') ?? join(FOLDERS.PROJECTS, 'finances');
@@ -185,8 +297,30 @@ if (import.meta.main) {
       console.error(`refused: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);
     }
+  } else if (command === 'review') {
+    const limit = argValue(rest, '--limit');
+    console.log(
+      JSON.stringify(
+        reviewUncategorised(
+          dir,
+          argValue(rest, '--today') ?? todayDate(),
+          limit === undefined ? undefined : Number(limit)
+        ),
+        null,
+        2
+      )
+    );
+  } else if (command === 'suggest') {
+    const file = rest.find((arg, i) => !arg.startsWith('--') && !rest[i - 1]?.startsWith('--'));
+    const text = file === undefined ? await Bun.stdin.text() : readFileSync(file, 'utf8');
+    try {
+      console.log(JSON.stringify(addSuggestions(dir, parseSuggestions(text)), null, 2));
+    } catch (error) {
+      console.error(`refused: ${error instanceof Error ? error.message : String(error)}`);
+      process.exit(1);
+    }
   } else {
-    console.error('usage: bun rules.ts <apply [file] | init> [--dir <finances dir>]');
+    console.error('usage: bun rules.ts <apply [file] | review | suggest [file] | init> [--dir <finances dir>]');
     process.exit(1);
   }
 }
