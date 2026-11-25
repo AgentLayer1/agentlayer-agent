@@ -24,6 +24,9 @@ export const DATA = {
   rates: (dir: string): string => join(dir, 'data', 'rates.csv')
 } as const;
 
+/** Five years of lines: enough for the page's year view, small enough to embed, and as far back as rates go. */
+export const LINE_MONTHS = 60;
+
 export const cents = (amount: number): number => Math.round(amount * 100);
 
 const csvCell = (value: string | number | null): string => {
@@ -110,17 +113,19 @@ export interface Receipt {
   line: string;
 }
 
+/** A CSV's rows by column name, or none when the file isn't there yet. */
+export const readRows = (path: string): Record<string, string>[] =>
+  existsSync(path) ? parseCsv(readFileSync(path, 'utf8')) : [];
+
 export const loadReceipts = (dir: string): Receipt[] =>
-  existsSync(DATA.receipts(dir))
-    ? parseCsv(readFileSync(DATA.receipts(dir), 'utf8')).map((row) => ({
-        id: row.id ?? '',
-        date: row.date ?? '',
-        merchant: row.merchant ?? '',
-        amount: Number(row.amount),
-        currency: row.currency ?? '',
-        items: row.items ?? '',
-        entity: row.entity ?? '',
-        file: row.file ?? '',
-        line: row.line ?? ''
-      }))
-    : [];
+  readRows(DATA.receipts(dir)).map((row) => ({
+    id: row.id ?? '',
+    date: row.date ?? '',
+    merchant: row.merchant ?? '',
+    amount: Number(row.amount),
+    currency: row.currency ?? '',
+    items: row.items ?? '',
+    entity: row.entity ?? '',
+    file: row.file ?? '',
+    line: row.line ?? ''
+  }));

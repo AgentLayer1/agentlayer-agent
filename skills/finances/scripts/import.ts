@@ -13,8 +13,8 @@ import { basename, dirname, extname, join, relative } from 'node:path';
 import { FOLDERS } from '../../../src/config';
 import { hashBuffer } from '../../../src/knowledge/utils';
 import { type Account, argValue, type Entity, escapeRegExp, loadEntities, refuse, yamlBlock } from './calendar';
-import { cents, Check, csvFiles, csvLine, DATA, monthOf } from './layout';
-import { csvRows, parseCsv } from './liability';
+import { cents, Check, csvFiles, csvLine, DATA, monthOf, readRows } from './layout';
+import { csvRows } from './liability';
 
 /**
  * Statement importer for the finances skill. Reads one bank, card or platform export (CSV or XLSX
@@ -423,13 +423,15 @@ interface Planned {
   staged: string | null;
 }
 
-const readRows = (path: string): Record<string, string>[] =>
-  existsSync(path) ? parseCsv(readFileSync(path, 'utf8')) : [];
-
 /** Everything one import would write, worked out before anything is written. */
 const planImport = (options: ImportOptions): Planned => {
   const { dir } = options;
   const { account, entity } = locate(loadEntities(dir), options.account);
+  if (!entity.currencyPinned) {
+    throw new Error(
+      `entities/${entity.slug}.md has no currency yet: add currency (where it pays tax or is registered, such as ${entity.currency}) so its lines are saved in the right one`
+    );
+  }
   const original = options.original ?? options.file;
   const sha = hashBuffer(readFileSync(original));
   const rows =

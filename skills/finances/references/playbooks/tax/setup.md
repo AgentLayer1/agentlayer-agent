@@ -11,6 +11,6 @@
    - tune `lead:` only when the operator wants earlier warning.
 6. **One-off obligations become plain tasks**, not recurring entries: a new company's first estimate within three months of starting operations, a registration, a late filing being cured. Give each a due date and the `tax` and `entity:<slug>` labels.
 7. **Write or refresh `$PROJECTS/finances/README.md`:** the entity table (name, profile link, tax agent, FYE) and how the project works.
-8. **Run [calendar](calendar.md)** so the first deadlines exist as tasks and the dashboard renders, then `bun "${CLAUDE_SKILL_DIR}/scripts/rates.ts" update` so the page can show its summaries in USD as well.
+8. **Run [calendar](calendar.md)** so the first deadlines exist as tasks and the dashboard renders.
 
 **Reply:** the entities set up, each one's obligations with the next due date, the open questions for the operator or tax agent, and the tasks created.

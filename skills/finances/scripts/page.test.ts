@@ -22,7 +22,7 @@ const project = (): string => {
   };
   write(
     'entities/acme.md',
-    '---\nname: Acme Sdn. Bhd.\nkind: company\nclose: monthly\n---\n\n## Accounts\n\n```yaml\n- { id: acme-main, name: Acme current }\n```\n'
+    '---\nname: Acme Sdn. Bhd.\nkind: company\nclose: monthly\ncurrency: MYR\n---\n\n## Accounts\n\n```yaml\n- { id: acme-main, name: Acme current }\n```\n'
   );
   importStatement({
     dir,
@@ -87,7 +87,7 @@ describe('the page in a browser', () => {
     };
     write(
       'entities/ada.md',
-      '---\nname: Personal\nkind: individual\nclose: none\n---\n\n## Accounts\n\n```yaml\n- { id: ada-main, name: Ada current }\n- { id: ada-old, name: Ada old savings }\n```\n'
+      '---\nname: Personal\nkind: individual\nclose: none\ncurrency: MYR\n---\n\n## Accounts\n\n```yaml\n- { id: ada-main, name: Ada current }\n- { id: ada-old, name: Ada old savings }\n```\n'
     );
     write(
       'RULES.md',
@@ -199,7 +199,7 @@ describe('the page in a browser', () => {
     };
     write(
       'entities/acme.md',
-      '---\nname: Acme\nkind: company\nclose: none\n---\n\n## Accounts\n\n```yaml\n- { id: acme-main, name: Acme current }\n```\n'
+      '---\nname: Acme\nkind: company\nclose: none\ncurrency: MYR\n---\n\n## Accounts\n\n```yaml\n- { id: acme-main, name: Acme current }\n```\n'
     );
     write(
       'RULES.md',
@@ -274,7 +274,7 @@ describe('the page in a browser', () => {
 
   test("summaries switch to USD at each month's rate, a month with no rate is left out and said so, and lines keep their own currency", () => {
     const dir = company();
-    writeFileSync(join(dir, 'data/rates.csv'), 'month,currency,per_usd,source\n2026-10,MYR,5,frankfurter\n');
+    writeFileSync(join(dir, 'data/rates.csv'), 'month,currency,per_usd\n2026-10,MYR,5\n');
     const { doc, click } = open(renderFinances(dir, '2026-11-02'), '#spending');
     expect(doc.querySelector('#currency')?.textContent).toBe('MYRUSD');
     click('button[data-usd="true"]');

@@ -152,6 +152,15 @@ export const linkReceipt = (dir: string, receiptId: string, lineId: string, toda
   );
 };
 
+/** The entity's pinned currency, for a receipt added without --currency; a guessed one is never saved. */
+const pinnedCurrency = (dir: string, slug: string): string => {
+  const entity = loadEntities(dir).find((item) => item.slug === slug);
+  if (entity === undefined || !entity.currencyPinned) {
+    throw new Error(`give --currency, or add currency to entities/${slug}.md`);
+  }
+  return entity.currency;
+};
+
 /** The only entity, for a receipt added without --entity; with several, the agent names it. */
 const soleEntity = (dir: string): string => {
   const entities = loadEntities(dir);
@@ -183,10 +192,7 @@ if (import.meta.main) {
             date,
             merchant,
             amount,
-            currency:
-              argValue(rest, '--currency') ??
-              loadEntities(dir).find((item) => item.slug === entity)?.currency ??
-              refuse(new Error(`no entity ${entity}`)),
+            currency: argValue(rest, '--currency') ?? pinnedCurrency(dir, entity),
             items: argValue(rest, '--items'),
             entity
           }),

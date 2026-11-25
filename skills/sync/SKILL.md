@@ -293,7 +293,6 @@ This is the final step — it runs **after** the briefing, on purpose. `dashboar
 First, when `<HOME>/projects/finances/entities/` exists, rebuild the finances page from its statements, so the main dashboard links a current one:
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/skills/finances/scripts/rates.ts" update
 bun "${CLAUDE_PLUGIN_ROOT}/skills/finances/scripts/page.ts"
 ```
 

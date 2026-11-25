@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { buildFinance, loadFinance } from './build';
@@ -41,16 +41,23 @@ describe('updateRates', () => {
     expect(asked.every((url) => url.includes('from=2026-09-01') && url.includes('base=usd'))).toBe(true);
     expect(readRates(dir)['2026-10']).toEqual({ GBP: 0.75, MYR: 4.08 });
     asked.length = 0;
-    await updateRates(dir, '2026-11-25', async (url) => {
+    const at = (iso: string) => utimesSync(join(dir, 'data/rates.csv'), new Date(iso), new Date(iso));
+    at('2026-11-25T12:00:00Z');
+    const again = async (url: string) => {
       asked.push(url);
       return rows((new URL(url).searchParams.get('quotes') ?? '').toUpperCase());
-    });
+    };
+    expect((await updateRates(dir, '2026-11-25', again)).added).toBe(0);
+    expect(asked).toEqual([]);
+    at('2026-11-24T00:00:00Z');
+    await updateRates(dir, '2026-11-25', again);
+    expect(asked.length).toBe(2);
     expect(asked.every((url) => url.includes('from=2026-11-01'))).toBe(true);
   });
 
   test('offline, or for a currency the source refuses, keeps what was saved and says what is missing', async () => {
     const dir = project();
-    writeFileSync(join(dir, 'data/rates.csv'), 'month,currency,per_usd,source\n2026-09,MYR,4.07,frankfurter\n');
+    writeFileSync(join(dir, 'data/rates.csv'), 'month,currency,per_usd\n2026-09,MYR,4.07\n');
     const report = await updateRates(dir, '2026-11-25', async () => {
       throw new Error('fetch failed');
     });
@@ -61,7 +68,7 @@ describe('updateRates', () => {
 
   test('the build carries the saved rates to the page', () => {
     const dir = project();
-    writeFileSync(join(dir, 'data/rates.csv'), 'month,currency,per_usd,source\n2026-09,MYR,4.07,frankfurter\n');
+    writeFileSync(join(dir, 'data/rates.csv'), 'month,currency,per_usd\n2026-09,MYR,4.07\n');
     expect(buildFinance(loadFinance(dir, '2026-11-25')).rates).toEqual({ '2026-09': { MYR: 4.07 } });
   });
 });

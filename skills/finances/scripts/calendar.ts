@@ -248,15 +248,15 @@ export const listBlock = (file: string, raw: string, heading: string): unknown[]
 
 const FYE_RE = /^(\d{2})-(\d{2})$/;
 
-// A non-leap year, so 29 February is refused: a year that ends on the last day of February is 02-28.
 /** Each country's currency, offered when a profile doesn't pin its own. */
 const COUNTRY_CURRENCY: Record<string, string> = {
   my: "MYR", sg: "SGD", us: "USD", gb: "GBP", ca: "CAD", au: "AUD", ae: "AED", sa: "SAR", in: "INR", id: "IDR",
   de: "EUR", fr: "EUR", nl: "EUR", ie: "EUR", es: "EUR", it: "EUR", be: "EUR", at: "EUR", pt: "EUR", fi: "EUR",
 };
 
-export const countryCurrency = (country: string): string => COUNTRY_CURRENCY[country.toLowerCase()] ?? "USD";
+const countryCurrency = (country: string): string => COUNTRY_CURRENCY[country.toLowerCase()] ?? "USD";
 
+// A non-leap year, so 29 February is refused: a year that ends on the last day of February is 02-28.
 const isFye = (fye: string): boolean => {
   const match = fye.match(FYE_RE);
   if (match === null) {

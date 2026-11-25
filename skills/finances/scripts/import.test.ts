@@ -45,6 +45,7 @@ const ACME_BANK: Importer = {
 const PROFILE = `---
 name: Acme Sdn. Bhd.
 kind: company
+currency: MYR
 fye: 12-31
 close: monthly
 ---
@@ -282,6 +283,14 @@ describe('importStatement', () => {
     expect(existsSync(join(dir, 'data/statements.csv'))).toBe(false);
     rmSync(join(dir, 'data/originals/acme'));
     expect(importStatement({ dir, file, account: 'acme-main' })).toMatchObject({ alreadyImported: false, added: 4 });
+  });
+
+  test('an entity whose currency is only guessed from its country is refused, so no guess is saved', () => {
+    const dir = home();
+    write(dir, 'entities/acme.md', PROFILE.replace('currency: MYR\nfye', 'fye'));
+    const file = write(dir, 'data/inbox/october.csv', OCTOBER);
+    expect(() => importStatement({ dir, file, account: 'acme-main' })).toThrow('has no currency yet');
+    expect(existsSync(join(dir, 'data/transactions'))).toBe(false);
   });
 
   test('each account imports in its own currency, whatever the entity pins', () => {

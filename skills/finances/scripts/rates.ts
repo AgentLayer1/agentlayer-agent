@@ -1,13 +1,12 @@
 #!/usr/bin/env bun
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { FOLDERS } from '../../../src/config';
 import { todayDate } from '../../../src/shared/date';
 import { isRecord } from '../../../src/shared/json-block';
-import { monthRange, shiftMonth } from './books';
+import { trailingMonths } from './books';
 import { argValue, loadEntities, refuse } from './calendar';
-import { csvFiles, csvLine, DATA, monthOf } from './layout';
-import { parseCsv } from './liability';
+import { csvLine, DATA, LINE_MONTHS, monthOf, readRows } from './layout';
 
 /**
  * Exchange rates for the finances page's summaries: each month's rate per US dollar for every
@@ -18,24 +17,26 @@ import { parseCsv } from './liability';
  * Usage: bun rates.ts update [--dir <finances project>] [--today YYYY-MM-DD]
  */
 
-const HEADER = 'month,currency,per_usd,source';
-const SOURCE = 'frankfurter';
+const HEADER = 'month,currency,per_usd';
 const ENDPOINT = 'https://api.frankfurter.dev/v2/rates';
-/** As far back as the page shows lines. */
-const MONTHS = 60;
 
 /** Each month's units of each currency per US dollar. */
-export type Rates = Record<string, Record<string, number>>;
+export type UsdRates = Record<string, Record<string, number>>;
 
-export const readRates = (dir: string): Rates =>
-  (existsSync(DATA.rates(dir)) ? parseCsv(readFileSync(DATA.rates(dir), 'utf8')) : []).reduce<Rates>((rates, row) => {
+const withRate = (rates: UsdRates, month: string, currency: string, rate: number): UsdRates => ({
+  ...rates,
+  [month]: { ...rates[month], [currency]: rate }
+});
+
+export const readRates = (dir: string): UsdRates =>
+  readRows(DATA.rates(dir)).reduce<UsdRates>((rates, row) => {
     const rate = Number(row.per_usd);
     return row.month && row.currency && Number.isFinite(rate) && rate > 0
-      ? { ...rates, [row.month]: { ...rates[row.month], [row.currency]: rate } }
+      ? withRate(rates, row.month, row.currency, rate)
       : rates;
   }, {});
 
-export type Fetcher = (url: string) => Promise<unknown>;
+type Fetcher = (url: string) => Promise<unknown>;
 
 const fetchJson: Fetcher = async (url) => {
   const response = await fetch(url, { signal: AbortSignal.timeout(20_000) });
@@ -45,16 +46,10 @@ const fetchJson: Fetcher = async (url) => {
   return response.json();
 };
 
-/** The first month any statement covers, or null before the first import. */
+/** The first month any imported statement covers, or null before the first import. */
 const firstMonth = (dir: string): string | null =>
-  [
-    ...(existsSync(DATA.statements(dir)) ? parseCsv(readFileSync(DATA.statements(dir), 'utf8')) : []).map(
-      (row) => row.period_start ?? ''
-    ),
-    ...csvFiles(DATA.transactions(dir)).flatMap((path) =>
-      parseCsv(readFileSync(path, 'utf8')).map((row) => row.date ?? '')
-    )
-  ]
+  readRows(DATA.statements(dir))
+    .map((row) => row.period_start ?? '')
     .filter((date) => /^\d{4}-\d{2}/.test(date))
     .map(monthOf)
     .toSorted()[0] ?? null;
@@ -66,9 +61,16 @@ export interface RatesReport {
   missing: string[];
 }
 
+interface Fetched {
+  currency: string;
+  rows: [string, number][];
+  error: string | null;
+}
+
 /**
  * Fetches every month not saved yet, from the first statement month (five years at most) to this
- * one, for each currency in use but the dollar. The current month is fetched again until it ends.
+ * one, for each currency in use but the dollar. The current month's rate moves until it ends, so it
+ * is fetched again once a day.
  */
 export const updateRates = async (dir: string, today: string, fetcher: Fetcher = fetchJson): Promise<RatesReport> => {
   const entities = loadEntities(dir);
@@ -83,16 +85,17 @@ export const updateRates = async (dir: string, today: string, fetcher: Fetcher =
     .filter((currency) => currency !== 'USD')
     .toSorted();
   const current = monthOf(today);
-  const start = firstMonth(dir);
+  const start = firstMonth(dir) ?? current;
   const saved = readRates(dir);
-  const from = [start ?? current, shiftMonth(current, 1 - MONTHS)].toSorted().at(-1) ?? current;
-  const months = monthRange(from, current);
-  const none: [string, number][] = [];
+  const savedToday = existsSync(DATA.rates(dir)) && todayDate(statSync(DATA.rates(dir)).mtime) === today;
+  const months = trailingMonths(today, LINE_MONTHS).filter((month) => month >= start);
   const results = await Promise.all(
-    currencies.map(async (currency) => {
-      const wanted = months.filter((month) => month === current || saved[month]?.[currency] === undefined);
+    currencies.map(async (currency): Promise<Fetched> => {
+      const wanted = months.filter(
+        (month) => saved[month]?.[currency] === undefined || (month === current && !savedToday)
+      );
       if (wanted.length === 0) {
-        return { currency, rows: none, error: null };
+        return { currency, rows: [], error: null };
       }
       const url = `${ENDPOINT}?from=${wanted[0]}-01&to=${today}&base=usd&quotes=${currency.toLowerCase()}&group=month`;
       try {
@@ -104,30 +107,30 @@ export const updateRates = async (dir: string, today: string, fetcher: Fetcher =
         );
         return { currency, rows: rows.filter(([month]) => wanted.includes(month)), error: null };
       } catch (error) {
-        return { currency, rows: none, error: error instanceof Error ? error.message : String(error) };
+        return { currency, rows: [], error: error instanceof Error ? error.message : String(error) };
       }
     })
   );
-  const merged = results.reduce<Rates>(
-    (rates, { currency, rows }) =>
-      rows.reduce<Rates>((acc, [month, rate]) => ({ ...acc, [month]: { ...acc[month], [currency]: rate } }), rates),
-    saved
+  const changed = results.flatMap(({ currency, rows }) =>
+    rows
+      .filter(([month, rate]) => saved[month]?.[currency] !== rate)
+      .map(([month, rate]) => ({ month, currency, rate }))
   );
-  const lines = Object.entries(merged)
-    .toSorted(([a], [b]) => a.localeCompare(b))
-    .flatMap(([month, byCurrency]) =>
-      Object.entries(byCurrency)
-        .toSorted(([a], [b]) => a.localeCompare(b))
-        .map(([currency, rate]) => csvLine([month, currency, rate, SOURCE]))
-    );
-  const added = results.reduce((sum, { rows }) => sum + rows.length, 0);
-  if (added > 0) {
+  if (changed.length > 0) {
+    const merged = changed.reduce((rates, { month, currency, rate }) => withRate(rates, month, currency, rate), saved);
+    const lines = Object.entries(merged)
+      .toSorted(([a], [b]) => a.localeCompare(b))
+      .flatMap(([month, byCurrency]) =>
+        Object.entries(byCurrency)
+          .toSorted(([a], [b]) => a.localeCompare(b))
+          .map(([currency, rate]) => csvLine([month, currency, rate]))
+      );
     mkdirSync(dirname(DATA.rates(dir)), { recursive: true });
     writeFileSync(DATA.rates(dir), `${[HEADER, ...lines].join('\n')}\n`);
   }
   return {
     currencies,
-    added,
+    added: changed.length,
     missing: results.flatMap(({ currency, error }) => (error === null ? [] : [`${currency}: ${error}`]))
   };
 };

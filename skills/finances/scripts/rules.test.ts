@@ -36,7 +36,7 @@ const project = (
   };
   write(
     'entities/ada.md',
-    '---\nname: Personal\nkind: individual\nclose: none\n---\n\n## Accounts\n\n```yaml\n- { id: ada-main, name: Ada current }\n```\n'
+    '---\nname: Personal\nkind: individual\nclose: none\ncurrency: MYR\n---\n\n## Accounts\n\n```yaml\n- { id: ada-main, name: Ada current }\n```\n'
   );
   if (rules !== null) {
     write('RULES.md', rules);

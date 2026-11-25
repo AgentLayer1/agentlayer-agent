@@ -303,13 +303,13 @@ body.masked iframe.tax:hover { filter: none; }
   // Summaries total in one currency: each line at its own month's rate, a line with no rate left out.
   const inView = (rows) => rows.flatMap((l) => {
     const amount = convert(l.amount, l.currency, l.date.slice(0, 7));
-    return amount === null ? [] : [{ ...l, amount, currency: viewCurrency(), original: l.original ?? l }];
+    return amount === null ? [] : [{ ...l, amount, currency: viewCurrency(), original: l }];
   });
-  const unconverted = (rows) => rows.filter((l) => convert(l.amount, l.currency, l.date.slice(0, 7)) === null).length;
+  const unconverted = (rows) => rows.length - inView(rows).length;
   const rateNote = (rows) => {
     const missing = unconverted(rows);
     const mixed = rows.some((l) => l.currency !== viewCurrency());
-    return `In ${viewCurrency()}${mixed ? ", other currencies converted at each month's central-bank rate" : ""}${missing ? `; ${missing} line${missing === 1 ? "" : "s"} with no rate for ${missing === 1 ? "its" : "their"} month left out` : ""}.`;
+    return `In ${viewCurrency()}${mixed ? ", other currencies converted at each month's central-bank rate" : ""}${missing ? `; ${plural(missing, "line")} with no rate for the month left out` : ""}.`;
   };
   // A single figure in the view's currency when it converts, else as it is.
   const moneyAt = (amount, currency, month) => { const value = convert(amount, currency, month); return value === null ? money(amount, currency) : money(value); };
@@ -672,7 +672,8 @@ body.masked iframe.tax:hover { filter: none; }
         const status = rs.some((l) => l.category === null) ? "none" : rs.some((l) => !l.approved) ? "suggested" : "approved";
         const cats = [...groupBy(rs.filter((l) => l.category !== null), (l) => l.category)].sort((a, b) => b[1].length - a[1].length);
         const keys = [...new Set(rs.filter((l) => !l.approved && l.rule !== null).map((l) => l.rule))];
-        return { k, payee: rs[0].payee, rs, state: status, category: cats[0]?.[0] ?? null, mixed: cats.length > 1, keys, out: -sum(inView(rs).filter((l) => l.amount < 0), (l) => l.amount), inn: sum(inView(rs).filter((l) => l.amount > 0), (l) => l.amount), pending: rs.some((l) => l.pending) };
+        const valued = inView(rs);
+        return { k, payee: rs[0].payee, rs, state: status, category: cats[0]?.[0] ?? null, mixed: cats.length > 1, keys, out: -sum(valued.filter((l) => l.amount < 0), (l) => l.amount), inn: sum(valued.filter((l) => l.amount > 0), (l) => l.amount), pending: rs.some((l) => l.pending) };
       });
       const count = (t) => groupsAll.filter((g) => g.state === t).length;
       const q = state.query.trim().toLowerCase();
@@ -693,8 +694,11 @@ body.masked iframe.tax:hover { filter: none; }
     },
     bills() {
       const at = (amount, currency) => convert(amount, currency, thisMonth);
-      const bills = DATA.recurring.filter(mine).map((b) => ({ ...b, typical: at(b.typical, b.currency), last: at(b.last, b.currency) })).filter((b) => b.typical !== null && b.last !== null);
-      const dues = DATA.dues.filter(mine).filter((d) => !d.paid).map((d) => ({ ...d, amount: at(d.amount, d.currency) })).filter((d) => d.amount !== null);
+      const allBills = DATA.recurring.filter(mine);
+      const allDues = DATA.dues.filter(mine).filter((d) => !d.paid);
+      const bills = allBills.map((b) => ({ ...b, typical: at(b.typical, b.currency), last: at(b.last, b.currency), currency: viewCurrency() })).filter((b) => b.typical !== null && b.last !== null);
+      const dues = allDues.map((d) => ({ ...d, amount: at(d.amount, d.currency), currency: viewCurrency() })).filter((d) => d.amount !== null);
+      const leftOut = allBills.length - bills.length + allDues.length - dues.length;
       const horizon = days(DATA.today) + 30;
       const upcoming = [
         ...bills.filter((b) => days(b.next) <= horizon).map((b) => ({ date: b.next, name: b.payee, amount: b.last, missed: b.state === "missed", kind: b.state === "missed" ? "critical" : b.rising ? "warning" : "upcoming", note: b.state === "missed" ? "missed" : b.rising ? "went up" : days(b.next) < days(DATA.today) ? "expected, after your last statement" : b.cadence })),
@@ -708,7 +712,7 @@ body.masked iframe.tax:hover { filter: none; }
       const x = (date) => 20 + ((days(date) - start) / span) * (W - 40);
       const color = { critical: "var(--critical)", warning: "var(--warning)", upcoming: "var(--s1)" };
       const timeline = `<svg class="chart" viewBox="0 0 ${W} ${H + 24}" role="img" aria-label="Payments due in the next 30 days"><line class="base" x1="20" x2="${W - 20}" y1="${H}" y2="${H}"/><line class="grid" x1="${x(DATA.today)}" x2="${x(DATA.today)}" y1="0" y2="${H}" stroke-dasharray="3 3"/><text x="${x(DATA.today) + 4}" y="10">today</text>${[0, 0.25, 0.5, 0.75, 1].map((f) => `<text x="${20 + f * (W - 40)}" y="${H + 16}" text-anchor="middle">${dateLabel(new Date((start + f * span) * 86400000).toISOString().slice(0, 10))}</text>`).join("")}${upcoming.map((u) => { const h = Math.max(6, (u.amount / max) * (H - 12)); return `<rect x="${x(u.date) - 4}" y="${H - h}" width="8" height="${h}" rx="3" fill="${color[u.kind]}" data-tip="${esc(`${dateLabel(u.date)} · ${u.name}\n${plain(u.amount)} · ${u.note}`)}"/>`; }).join("")}</svg>`;
-      return `<p class="kicker">Bills · next 30 days</p><h1>${money(total)} goes out by ${dateLabel(new Date(horizon * 86400000).toISOString().slice(0, 10))}</h1><p class="lede">Left of the dashed line: payments expected since your latest statement, not yet seen. Recurring payments are found from your statements (the same payee at a steady interval and amount), never typed in. Card statements come from their due dates.</p>
+      return `<p class="kicker">Bills · next 30 days</p><h1>${money(total)} goes out by ${dateLabel(new Date(horizon * 86400000).toISOString().slice(0, 10))}</h1><p class="lede">Left of the dashed line: payments expected since your latest statement, not yet seen. Recurring payments are found from your statements (the same payee at a steady interval and amount), never typed in. Card statements come from their due dates.${leftOut ? ` ${plural(leftOut, "payment")} in a currency with no rate this month ${leftOut === 1 ? "is" : "are"} left out.` : ""}</p>
         ${missed.length ? `<div class="banner">${ICONS.warning}<div><strong>${missed.length === 1 ? `${esc(missed[0].payee)} didn't go out` : `${missed.length} recurring payments didn't go out`}</strong> when expected, though your statements run past the date. A changed card, a cancelled plan, or a bill to chase.</div></div>` : ""}
         <div class="card"><div class="legend"><span><i style="background:var(--s1)"></i>Recurring</span><span><i style="background:var(--warning)"></i>Went up, or a card to pay</span><span><i style="background:var(--critical)"></i>Missed or overdue</span></div>${upcoming.length ? timeline : '<p class="empty">Nothing due in the next 30 days.</p>'}
         ${tableOf(["Date", "Payment", "Amount"], upcoming.map((u) => [dateLabel(u.date), esc(`${u.name} (${u.note})`), money(u.amount)]))}</div>
@@ -721,9 +725,8 @@ body.masked iframe.tax:hover { filter: none; }
       }
       return `<p class="kicker">Director</p><h1>${rows.map((d) => `${moneyAt(d.balance, d.currency, thisMonth)} owed to ${esc(entityName(d.company))}`).join(", ")}</h1><p class="lede">Money a company paid you, or paid for you (a line a rule marks <code>for</code> you), raises what you owe it; money you put back, or a company cost you paid, lowers it. Your accountant's books decide the figure; this is the running view between their closes.</p>` +
         rows.map((d) => {
-          const points = d.movements.reduce((acc, m) => [...acc, { ...m, balance: (acc.at(-1)?.balance ?? d.opening ?? 0) + (m.currency === d.currency ? m.amount : 0) }], []);
           return `<div class="card"><h2><span class="dot" style="background:${entityColor(d.company)}"></span> ${esc(entityName(d.company))}</h2>
-            <table><thead><tr><th>Date</th><th>What</th><th>Why</th><th class="num">Change</th><th class="num">You owe</th></tr></thead><tbody>${d.opening !== null ? `<tr><td>${dateLabel(d.openingOn)}</td><td>Opening, from the accountant</td><td></td><td class="num"></td><td class="num">${money(d.opening, d.currency)}</td></tr>` : ""}${points.map((p) => `<tr><td>${dateLabel(p.date)}</td><td>${esc(p.payee)}</td><td>${esc({ "transfer": "Transfer", "paid-for-you": `Paid for you${p.category ? ` · ${p.category}` : ""}`, "paid-for-company": `You paid it${p.category ? ` · ${p.category}` : ""}` }[p.why] ?? "")}</td><td class="num">${money(p.amount, p.currency)}</td><td class="num">${p.currency === d.currency ? money(p.balance, d.currency) : `<span class="note" style="margin:0">not in ${esc(d.currency)}, left out</span>`}</td></tr>`).join("")}</tbody></table></div>`;
+            <table><thead><tr><th>Date</th><th>What</th><th>Why</th><th class="num">Change</th><th class="num">You owe</th></tr></thead><tbody>${d.opening !== null ? `<tr><td>${dateLabel(d.openingOn)}</td><td>Opening, from the accountant</td><td></td><td class="num"></td><td class="num">${money(d.opening, d.currency)}</td></tr>` : ""}${d.movements.map((p) => `<tr><td>${dateLabel(p.date)}</td><td>${esc(p.payee)}</td><td>${esc({ "transfer": "Transfer", "paid-for-you": `Paid for you${p.category ? ` · ${p.category}` : ""}`, "paid-for-company": `You paid it${p.category ? ` · ${p.category}` : ""}` }[p.why] ?? "")}</td><td class="num">${money(p.amount, p.currency)}</td><td class="num">${p.inCompany === null ? `<span class="note" style="margin:0">no ${esc(p.currency)} rate that month, left out</span>` : money(p.owed, d.currency)}</td></tr>`).join("")}</tbody></table></div>`;
         }).join("");
     },
     charity() {
@@ -751,9 +754,10 @@ body.masked iframe.tax:hover { filter: none; }
     const searching = document.activeElement?.hasAttribute?.("data-search");
     document.getElementById("nav").innerHTML = PAGES.map(([id, label]) => `<li><a href="#${id}"${id === page ? ' aria-current="page"' : ""}>${label}${counts[id] ? `<span class="count">${counts[id]}</span>` : ""}</a></li>`).join("");
     document.getElementById("entities").innerHTML = [{ slug: "all", name: "All" }, ...DATA.entities].map((e) => `<button data-entity="${esc(e.slug)}" aria-pressed="${state.entity === e.slug}">${e.slug === "all" ? "" : `<span class="dot" style="background:${entityColor(e.slug)}"></span>`}${esc(e.name)}</button>`).join("");
-    const currencies = [...new Set([localCurrency(), "USD"])];
-    document.getElementById("currency").innerHTML = currencies.length < 2 ? "" : currencies.map((c) => `<button data-usd="${c === "USD"}" aria-pressed="${state.usd === (c === "USD")}">${esc(c)}</button>`).join("");
-    document.getElementById("currency").hidden = currencies.length < 2;
+    const local = localCurrency();
+    const switcher = document.getElementById("currency");
+    switcher.hidden = local === "USD";
+    switcher.innerHTML = [local, "USD"].map((c) => `<button data-usd="${c === "USD"}" aria-pressed="${state.usd === (c === "USD")}">${esc(c)}</button>`).join("");
     document.querySelectorAll("section.page").forEach((section) => section.classList.toggle("on", section.id === page));
     if (pages[page]) {
       document.getElementById(page).innerHTML = pages[page]();

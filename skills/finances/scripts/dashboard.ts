@@ -24,6 +24,7 @@ import {
   positions,
   type ReliefLine,
   ReliefStatus,
+  taxed,
 } from "./liability";
 
 /**
@@ -638,7 +639,7 @@ const tabStyles = (ids: string[]): string =>
  * The whole dashboard page for the tax project at `taxDir`, as of `today`.
  */
 export const renderDashboard = (taxDir: string, today: string, countriesDir: string = COUNTRIES_DIR): string => {
-  const entities = orderEntities(loadEntities(taxDir));
+  const entities = orderEntities(taxed(countriesDir, loadEntities(taxDir)));
   const existing: ExistingTask[] = loadExisting(taxDir);
   const list = positions(taxDir, countriesDir, entities, today);
   const books = booksAll(taxDir, entities, today);
