@@ -1,6 +1,6 @@
 ---
 name: find-session
-description: Find a past session by what it worked on — a branch, a PR number, a worktree, a bug, a feature, a task id — and hand back its resume command or its notes from the brain. Searches all transcripts and session logs. Use when the operator asks "find the session that…", "which session was working on/with X", "give me the session that did X", "what session was I fixing X in", "search my sessions for X", or "resume the session about X". Complements the attention skill's checkpoint all (the recent-sessions radar) — reach for this when the operator names WHAT the session did rather than WHEN it ran.
+description: Find a past session by what it worked on — a branch, a PR number, a worktree, a bug, a feature, a task id — and hand back its resume command or, from any host, its notes from the brain. Searches transcripts and session logs. Use when the operator asks "find the session that…", "which session was working on/with X", "give me the session that did X", "what session was I fixing X in", "search my sessions for X", or "resume the session about X". Complements the attention skill's checkpoint all (the recent-sessions radar) — reach for this when the operator names WHAT the session did rather than WHEN it ran.
 allowed-tools: Bash, Read, AskUserQuestion
 ---
 
@@ -8,7 +8,9 @@ allowed-tools: Bash, Read, AskUserQuestion
 
 The operator remembers the work, not the session id. This skill turns "the session that
 was reworking the dashboard radar" into `claude --resume <id>`, or into its notes in
-context when it can't be resumed from here. It searches two places:
+context when it can't be resumed from here. Notes are how a session carries across hosts: one
+started in Claude Code continues in Codex or Antigravity, and the other way round. It searches
+two places:
 
 - **Claude Code's transcripts** (`~/.claude/projects/`): resumable, but filed under the
   folder a session started in, and kept only by that tool.
@@ -52,7 +54,8 @@ bun "${CLAUDE_SKILL_DIR}/scripts/find_session.ts" "<term>" "<term2>" ...
     over the auto-title), `started` / `last_timestamp`, `cwds` (every directory the session
     roamed into), `git_branches`, `first_user_msg`, `slash_commands`, `hits` per term,
     `terms_in_user_prompts` (which terms appear in the operator's own messages).
-  - `brain`: session-log hits in this home, whatever the scope. Each carries
+  - `brain`: session-log hits in this home, whatever the scope. Each carries `host` (the
+    host it ran in: `claude`, `codex` or `antigravity`; null on old captures),
     `first_date` / `last_date`, `first_user_msg`, `slash_commands`, `hits`,
     `terms_in_user_prompts`, `transcript` (its `.jsonl` path anywhere on this machine, or
     null), and `blocks`: each captured entry as `file`, `start_line`, `end_line`, `date`,
@@ -101,17 +104,24 @@ operator described; if that's not conclusive, read the transcript's tail
 verification, put the choice to the operator via `AskUserQuestion` — label = title,
 description = when it ran + what distinguishes it.
 
-How it's reached decides the action:
+Where it ran and where you run decide the action. Only Claude Code's transcripts are resumable
+here, and only from Claude Code; every other case continues through the session's notes.
 
-- **A transcript under the current folder:** hand back `claude --resume <id>`, as below.
-- **A transcript only under another folder** (a home that moved, a code repo): it resumes
-  only from that folder (`cd <folder> && claude --resume <id>`), and an old home reopens on
-  whatever plugin it had. Offer that, and offer loading its notes instead (next bullet).
-- **No transcript** (an older tool, Codex, a transcript deleted or left behind): ask with
-  `AskUserQuestion`, "Load this session's notes into context?". On yes, read its `blocks`
-  with `Read` (`offset` = `start_line`, `limit` = `end_line - start_line + 1`), the block
-  with the most hits first, then offer the rest in date order rather than loading them
-  all; a long session can fill the context.
+- **You run in Claude Code, and its transcript is under the current folder:** hand back
+  `claude --resume <id>`, as below.
+- **You run in Claude Code, and its transcript is only under another folder** (a home that
+  moved, a code repo): it resumes only from that folder (`cd <folder> && claude --resume <id>`),
+  and an old home reopens on whatever plugin it had. Offer that, and offer loading its notes
+  instead (next bullet).
+- **Anything else** (you run in Codex or Antigravity, the session ran in one of them, or its
+  transcript is gone): ask with `AskUserQuestion`, "Load this session's notes into context?",
+  naming the host it ran in (`host`). On yes, read its `blocks` with `Read` (`offset` =
+  `start_line`, `limit` = `end_line - start_line + 1`), the block with the most hits first,
+  then offer the rest in date order rather than loading them all; a long session can fill the
+  context. Then carry on its work here.
+- **A Claude Code session that is still open,** found from another host: the brain holds it
+  only up to its last compact, and not at all before one. Say where its notes stop; once the
+  operator ends it in Claude Code, it is captured whole and this search finds the rest.
 
 Deliver as a short card:
 

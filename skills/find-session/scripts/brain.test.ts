@@ -68,6 +68,23 @@ describe('searchBrain', () => {
     expect(lines(second).at(-1)).toBe('**Assistant:** Fixed.');
   });
 
+  test('each session names the host it ran in, and a capture older than the field names none', () => {
+    const other = join(root, 'hosts');
+    mkdirSync(other);
+    writeFileSync(
+      join(other, '2026-11-12.md'),
+      '# Session Log: 2026-11-12\n\n' +
+        '### Session (09:00) [eeee5555] · 2026-11-12 · ~/Agents/Oppi · turns 1–2 · codex: gpt-6.2-sol\n\n**User:** badge overflow\n' +
+        SEPARATOR +
+        '### Session (10:00) [ffff6666] · 2026-11-12 · ~/Agents/Oppi · turns 1–2 · antigravity: gemini-4-pro\n\n**User:** badge overflow\n'
+    );
+    expect(searchBrain(other, ['badge overflow'], null).map((match) => [match.session_id, match.host])).toEqual([
+      ['eeee5555', 'codex'],
+      ['ffff6666', 'antigravity']
+    ]);
+    expect(matches.map((match) => match.host)).toEqual(['claude', null, 'claude']);
+  });
+
   test('days before `since` are skipped, and a missing folder finds nothing', () => {
     expect(searchBrain(sessions, ['badge overflow'], '2026-11-11').map((match) => match.session_id)).toEqual([
       'aaaa1111-0000-4000-8000-000000000001',

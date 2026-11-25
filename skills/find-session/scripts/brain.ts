@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { type HostName, isHostName } from '../../../src/hosts/contract';
 import { ENTRY_SPLIT_RE } from '../../../src/knowledge/session-format';
 
 const DAY_FILE = /^(\d{4}-\d{2}-\d{2})\.md$/;
@@ -25,6 +26,8 @@ export interface BrainBlock {
 
 export interface BrainMatch {
   session_id: string;
+  /** The host it ran in, from its heading (`· codex: gpt-6.2-sol`); null for captures older than the field. */
+  host: HostName | null;
   first_date: string;
   last_date: string;
   first_user_msg: string | null;
@@ -37,10 +40,18 @@ export interface BrainMatch {
 
 interface Entry {
   id: string;
+  host: HostName | null;
   block: Omit<BrainBlock, 'hits'>;
   lowered: string;
   userTurns: string[];
 }
+
+/** The heading's host segment: `claude` alone, or `claude: <model>`. */
+const hostOf = (heading: string): HostName | null =>
+  heading
+    .split(' · ')
+    .map((segment) => segment.split(':', 1)[0].trim())
+    .find(isHostName) ?? null;
 
 const countOccurrences = (haystack: string, needle: string): number =>
   needle ? haystack.split(needle).length - 1 : 0;
@@ -69,6 +80,7 @@ const entriesOf = (dir: string, name: string, date: string): Entry[] => {
     return [
       {
         id: heading[3],
+        host: hostOf(entry.split('\n', 1)[0]),
         lowered: body.toLowerCase(),
         userTurns: userTurns(body),
         block: {
@@ -118,6 +130,7 @@ export const searchBrain = (sessionsDir: string, terms: readonly string[], since
       return [
         {
           session_id: id,
+          host: sessionEntries.find((entry) => entry.host !== null)?.host ?? null,
           first_date: sessionEntries[0].block.date,
           last_date: sessionEntries[sessionEntries.length - 1].block.date,
           first_user_msg: firstUser ? [...firstUser].slice(0, USER_SNIPPET).join('') : null,

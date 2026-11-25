@@ -99,6 +99,9 @@ table that starts from what the home already has.
   about.
 - Codex: the home's own Codex sessions send no usage analytics and no `/feedback` uploads, and init
   asks about Codex only when Codex is installed.
+- find-session names the host each session ran in and offers `claude --resume` only inside Claude
+  Code. From any other host it loads the session's notes from the brain, so work started in one
+  host continues in another. `hosts status` no longer lists find-session as Claude Code only.
 - The cmux sidebar reads in light mode as well as dark, with one palette for both, and the Needs you
   and Inbox cards are tinted (cmux-custom-manager `b135877`).
 

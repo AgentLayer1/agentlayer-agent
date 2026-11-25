@@ -37,7 +37,10 @@ export const CLAUDE_CODE_ONLY = {
     level: 'no',
     note: 'instant commands, the heartbeat, bands and notices are mods, which only Claude Code runs'
   },
-  radar: { level: 'no', note: 'the radar and find-session read Claude Code transcripts only' }
+  radar: {
+    level: 'no',
+    note: "the session radar reads Claude Code transcripts only; find-session finds every host's sessions"
+  }
 } as const satisfies Partial<Record<Capability, Support>>;
 
 export interface GuardPolicy {
