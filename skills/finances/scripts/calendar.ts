@@ -65,8 +65,6 @@ export interface Entity {
   childrenUnder18: number | null;
   startedOn: string | null;
   bookedThrough: string | null;
-  directorBalance: number | null;
-  directorBalanceOn: string | null;
   accounts: Account[];
   obligations: Obligation[];
 }
@@ -327,8 +325,6 @@ export const parseEntity = (slug: string, raw: string): Entity => {
     childrenUnder18: typeof data.children_under_18 === "number" ? data.children_under_18 : null,
     startedOn: dates[0] ?? null,
     bookedThrough: monthField(slug, data, "booked_through"),
-    directorBalance: typeof data.director_balance === "number" ? data.director_balance : null,
-    directorBalanceOn: dateField(data, "director_balance_on"),
     accounts: accounts.filter(isAccount),
     obligations: obligations.filter(isObligation),
   };

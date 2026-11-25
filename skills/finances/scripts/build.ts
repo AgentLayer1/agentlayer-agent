@@ -450,6 +450,13 @@ export interface FinanceInput {
   categories?: string[];
   /** Receipt files by the line each was matched to. */
   receipts?: Map<string, string>;
+  /** Each company's director balance as its accountant last stated it, from data/director.csv. */
+  openings?: Map<string, DirectorOpening>;
+}
+
+export interface DirectorOpening {
+  balance: number;
+  on: string;
 }
 
 /** A category rule as the dashboard shows it, with how many lines it covers. */
@@ -541,7 +548,8 @@ export const buildFinance = ({
   statements,
   rules,
   categories = [],
-  receipts = new Map()
+  receipts = new Map(),
+  openings = new Map()
 }: FinanceInput): FinanceData => {
   const accounts = entities.flatMap((entity) => entity.accounts.map((account) => ({ account, entity })));
   const lines = classifyAll(txns, rules, entities);
@@ -588,8 +596,9 @@ export const buildFinance = ({
     .filter((entity) => entity.kind === EntityKind.Company)
     .flatMap((company) => {
       const kindOf = (slug: string): string | undefined => entities.find((entity) => entity.slug === slug)?.kind;
+      const opening = openings.get(company.slug);
       const movements = lines
-        .filter((line) => company.directorBalanceOn === null || line.date > company.directorBalanceOn)
+        .filter((line) => opening === undefined || line.date > opening.on)
         .toSorted((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
         .flatMap((line): DirectorMovement[] => {
           const base = { date: line.date, currency: line.currency, payee: line.payee, category: line.category };
@@ -616,17 +625,17 @@ export const buildFinance = ({
           }
           return [];
         });
-      if (movements.length === 0 && company.directorBalance === null) {
+      if (movements.length === 0 && opening === undefined) {
         return [];
       }
       return [
         {
           company: company.slug,
           currency: BASE,
-          opening: company.directorBalance,
-          openingOn: company.directorBalanceOn,
+          opening: opening?.balance ?? null,
+          openingOn: opening?.on ?? null,
           balance:
-            (company.directorBalance ?? 0) +
+            (opening?.balance ?? 0) +
             movements
               .filter((movement) => movement.currency === BASE)
               .reduce((sum, movement) => sum + movement.amount, 0),
@@ -966,6 +975,15 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
     : [];
   const rulesPath = DATA.rules(dir);
   const rulesRaw = existsSync(rulesPath) ? readFileSync(rulesPath, 'utf8') : '';
+  const directorPath = DATA.director(dir);
+  const stated = existsSync(directorPath)
+    ? parseCsv(readFileSync(directorPath, 'utf8')).flatMap((row) => {
+        const balance = numberOrNull(row.balance);
+        return balance === null || !/^\d{4}-\d{2}-\d{2}$/.test(row.on ?? '')
+          ? []
+          : [{ company: row.company ?? '', balance, on: row.on ?? '' }];
+      })
+    : [];
   return {
     today,
     entities,
@@ -975,6 +993,11 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
     categories: categoryList(rulesRaw),
     receipts: new Map(
       loadReceipts(dir).flatMap((receipt) => (receipt.line === '' ? [] : [[receipt.line, receipt.file] as const]))
+    ),
+    openings: new Map(
+      stated
+        .toSorted((a, b) => a.on.localeCompare(b.on))
+        .map(({ company, balance, on }) => [company, { balance, on }] as const)
     )
   };
 };

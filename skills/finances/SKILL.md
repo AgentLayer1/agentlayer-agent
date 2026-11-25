@@ -45,7 +45,7 @@ Keep the operator's money legible: every entity they file for (companies and the
 ## Every time
 
 - **Private by default.** Account numbers, tax ids, amounts, and documents stay in the home. Nothing from an entity profile or `data/` goes into a plugin file, a report shared outside the home, or a commit message. A residential address is never transcribed anywhere (profile, ledger, filename, task, draft); a company's registered or office address is fine. Ask before opening a personal document likely to carry one (payslips, employment statements, tenancy papers, utility bills, identity documents, personal bank statements), since whatever is read goes to the model provider. A file the operator drops into `data/inbox/` is the exception: dropping it there is their permission to read it.
-- **`data/` stays out of history.** Originals and normalized figures live under `data/`, which the home's `.gitignore` excludes, as does the generated `dashboard.html`. Never move them elsewhere in the project, and never force-add them.
+- **`data/` stays out of history.** Originals, normalized figures, books reviews and the director balance live under `data/`, which the home's `.gitignore` excludes, as does the generated `dashboard.html`. Never move them elsewhere in the project, and never force-add them.
 - **Nothing leaves without the operator.** The agent never files, pays, or sends. Drafts are paste-ready, in the operator's voice.
 
 ## Where things live
@@ -58,13 +58,15 @@ $PROJECTS/finances/
 ├── RULES.md                           how you categorise, in plain language, and the patterns learned from it
 ├── closes/<slug>/<YYYY-MM>.md         monthly close records
 ├── estimates/<slug>/<YA>.md           estimate worksheets
-├── reviews/<YYYY-MM-DD>-<topic>.md    books, optimize and year-end reviews
+├── reviews/<YYYY-MM-DD>-<topic>.md    optimize and year-end reviews
 ├── dashboard.html                     the finances page, rendered from data/ (gitignored)
 ├── tasks/                             deadlines and one-off work
 └── data/                              gitignored
     ├── inbox/                         documents the operator drops in (dropping one is consent to read it)
     ├── originals/<slug>/<YYYY-MM>/    filed statements and documents
     ├── receipts/<slug>/<YYYY-MM>/     filed receipts; receipts.csv links each to the line it paid for
+    ├── reviews/<YYYY-MM-DD>-<topic>.md books reviews, with the accountant's figures
+    ├── director.csv                   each company's director balance as its books stated it
     ├── statements.csv                 one row per imported statement: period, balances, check
     ├── transactions/<slug>/<YYYY>.csv every statement line, as the bank wrote it
     └── ledger/<slug>/<YYYY>.csv       the tax ledger: one row per document or stated figure

@@ -20,8 +20,6 @@ const acme: Entity = {
   childrenUnder18: null,
   startedOn: "2025-03-10",
   bookedThrough: "2026-03",
-  directorBalance: null,
-  directorBalanceOn: null,
   accounts: [
     { id: "main", name: "Main current account" },
     { id: "usd", name: "USD account" },

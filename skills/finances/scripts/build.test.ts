@@ -43,23 +43,16 @@ const entity = (
   childrenUnder18: null,
   startedOn: null,
   bookedThrough: null,
-  directorBalance: null,
-  directorBalanceOn: null,
   accounts,
   obligations: [],
   ...extra
 });
 
 const ENTITIES = [
-  entity(
-    'acme',
-    'company',
-    [
-      { id: 'acme-main', name: 'Acme current' },
-      { id: 'acme-card', name: 'Acme card', type: 'card' }
-    ],
-    { directorBalance: 5000, directorBalanceOn: '2026-09-30' }
-  ),
+  entity('acme', 'company', [
+    { id: 'acme-main', name: 'Acme current' },
+    { id: 'acme-card', name: 'Acme card', type: 'card' }
+  ]),
   entity('ada', 'individual', [{ id: 'ada-main', name: 'Ada current' }])
 ];
 
@@ -123,7 +116,8 @@ const INPUT: FinanceInput = {
   entities: ENTITIES,
   txns: TXNS,
   statements: STATEMENTS,
-  rules: RULES
+  rules: RULES,
+  openings: new Map([['acme', { balance: 5000, on: '2026-09-30' }]])
 };
 
 describe('classify', () => {
@@ -599,6 +593,20 @@ describe('loadFinance', () => {
       ['software', Kind.Spend],
       [null, Kind.Income]
     ]);
+  });
+
+  test("reads each company's director balance from data/, the latest the books stated", () => {
+    const dir = mkdtempSync(join(tmpdir(), 'finances-build-'));
+    dirs.push(dir);
+    mkdirSync(join(dir, 'entities'), { recursive: true });
+    mkdirSync(join(dir, 'data'), { recursive: true });
+    writeFileSync(join(dir, 'entities/acme.md'), '---\nname: Acme\nkind: company\nclose: none\n---\n');
+    writeFileSync(
+      join(dir, 'data/director.csv'),
+      'company,balance,on,source\nacme,7000,2026-09-30,books-q3.xlsx\nacme,5000,2026-06-30,books-q2.xlsx\n'
+    );
+    expect(loadFinance(dir, '2026-11-02').openings?.get('acme')).toEqual({ balance: 7000, on: '2026-09-30' });
+    expect(buildFinance(loadFinance(dir, '2026-11-02')).director[0]).toMatchObject({ opening: 7000, balance: 7000 });
   });
 });
 

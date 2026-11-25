@@ -680,7 +680,7 @@ body.masked iframe.tax:hover { filter: none; }
     director() {
       const rows = DATA.director.filter(mine);
       if (rows.length === 0) {
-        return `<p class="kicker">Director</p><h1>No money between a company and you</h1><p class="lede">Transfers between a company's account and yours show here as they're imported. Add <code>director_balance</code> and <code>director_balance_on</code> to a company's profile to start from the accountant's figure.</p>`;
+        return `<p class="kicker">Director</p><h1>No money between a company and you</h1><p class="lede">Transfers between a company's account and yours show here as they're imported. Add a row to <code>data/director.csv</code> (<code>company,balance,on,source</code>) to start from the accountant's figure.</p>`;
       }
       return `<p class="kicker">Director</p><h1>${rows.map((d) => `${money(d.balance, d.currency)} owed to ${esc(entityName(d.company))}`).join(", ")}</h1><p class="lede">Money a company paid you, or paid for you (a line a rule marks <code>for</code> you), raises what you owe it; money you put back, or a company cost you paid, lowers it. Your accountant's books decide the figure; this is the running view between their closes.</p>` +
         rows.map((d) => {
