@@ -41,7 +41,7 @@ export const parseHostVersion = (output: string): string | null => output.match(
 
 export type VersionRunner = (name: ToolName) => string | null;
 
-const runVersion: VersionRunner = (name) => {
+export const runVersion: VersionRunner = (name) => {
   if (name === 'bun') {
     return Bun.version;
   }

@@ -96,7 +96,7 @@ Every session is saved when you exit. Saved sessions are compiled into notes the
 - **36 [skills](https://agentlayer.one/docs/reference/skills)** with 78 playbooks: briefings, goals, attention and standup, engineering and PR review, sync, finances and tax, helpdesk, trips, SEO, and more.
 - **86 [MCP tools](https://agentlayer.one/docs/reference/mcp-tools)** for tasks, knowledge, reports, history, worktrees, GitHub, databases, a bundled browser and search.
 - **Four [hooks](https://agentlayer.one/docs/reference/hooks)** that load the brain at session start and capture the session at the end.
-- **Opt-in [packs](https://agentlayer.one/docs/packs):** Browser, SEO, Notes, GitHub, Database, API, Xcode, Helpdesk, App Store, Slack, cmux, Finances, Third-party libraries and Remote MCP servers.
+- **Opt-in [packs](https://agentlayer.one/docs/packs):** Browser, SEO, Notes, GitHub, Database, API, Xcode, Codex, Antigravity, Helpdesk, App Store, Slack, cmux, Finances, Third-party libraries and Remote MCP servers.
 - **A [dashboard](https://agentlayer.one/docs/dashboard)**, one static HTML page of your agent's day, work and brain, regenerated on every sync.
 
 ## Documentation

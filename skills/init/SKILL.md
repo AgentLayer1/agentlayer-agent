@@ -1692,7 +1692,7 @@ The note holds the `~/.gemini/config/plugins.json` entry naming this checkout, a
 
 The scaffold is done. Before the final confirmation, offer the optional packs. This is `/agentlayer:configure-skills`'s install branch, run inline so the operator doesn't have to come back for it after the relaunch.
 
-1. **Show and run the install branch.** Open `${CLAUDE_PLUGIN_ROOT}/skills/configure-skills/SKILL.md`, call `packs_status`, and follow its Step 2 for the Install branch: the table, the reply, then each picked row's walk. Offer `skip` (set packs up later with `/agentlayer:configure-skills`) in place of `none`. Honor every skip inside a walk. The walks **never prompt for API key values or connection strings in chat**: they add grants, plant non-secret placeholders and ensure `.state/secrets/.env` exists, and the operator adds secret lines in their editor after the relaunch.
+1. **Show and run the install branch.** Open `${CLAUDE_PLUGIN_ROOT}/skills/configure-skills/SKILL.md`, call `packs_status`, and follow its Step 2 for the Install branch: the table, the reply, then each picked row's walk. Leave out the Codex and Antigravity rows: Steps 7c and 7d already asked. Offer `skip` (set packs up later with `/agentlayer:configure-skills`) in place of `none`. Honor every skip inside a walk. The walks **never prompt for API key values or connection strings in chat**: they add grants, plant non-secret placeholders and ensure `.state/secrets/.env` exists, and the operator adds secret lines in their editor after the relaunch.
 2. **`skip`, or nothing picked:** write nothing, and note "packs not set up: run `/agentlayer:configure-skills` after relaunch" for Step 9's status block.
 
 ## Step 8b — History (when Step 6d staged `on`)

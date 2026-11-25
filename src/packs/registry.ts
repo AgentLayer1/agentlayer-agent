@@ -39,6 +39,8 @@ export interface Probe {
   cmuxApp: boolean;
   /** This session runs in a cmux terminal. */
   inCmux: boolean;
+  /** Each other host: whether its CLI answers here, and whether the agent is wired into it. */
+  hosts: Readonly<Record<'codex' | 'antigravity', { installed: boolean; wired: boolean }>>;
 }
 
 /** One thing a set-up pack has; an optional part never holds a pack back from set up. */
@@ -236,6 +238,24 @@ export const PACKS = {
       { label: 'the Xcode rules (.claude/rules/xcode.md)', ok: probe.exists('.claude/rules/xcode.md') }
     ],
     grants: ['mcp__xcode__*']
+  },
+  codex: {
+    label: 'Codex',
+    group: PackGroup.Code,
+    blurb: "this agent in OpenAI's Codex too: the same brain, skills, tools and home rules",
+    walk: 'A.2m',
+    removable: false,
+    available: (probe) => probe.hosts.codex.installed,
+    parts: (probe) => [{ label: 'wired into this home (.codex/)', ok: probe.hosts.codex.wired }]
+  },
+  antigravity: {
+    label: 'Antigravity',
+    group: PackGroup.Code,
+    blurb: "this agent in Google's Antigravity too: the same brain, skills, tools and home rules",
+    walk: 'A.2n',
+    removable: false,
+    available: (probe) => probe.hosts.antigravity.installed,
+    parts: (probe) => [{ label: 'the plugin in ~/.gemini/config/plugins.json', ok: probe.hosts.antigravity.wired }]
   },
   helpdesk: {
     label: 'Helpdesk',

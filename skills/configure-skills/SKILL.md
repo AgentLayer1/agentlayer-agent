@@ -1,7 +1,7 @@
 ---
 name: configure-skills
-description: Set up, change or remove the agent's optional packs (Browser, SEO, Notes, GitHub, Database, API, Xcode, Helpdesk, App Store, Slack, cmux, Finances, Third-party libraries, Remote MCP servers), starting from what this home already has. Pack skills ship with the plugin; this wires up their API keys, MCP servers, database connections, coding rules and tool permissions. Invoked at the end of /agentlayer:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
-allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), Bash(cp *), Bash(ls *), Bash(rm *), Bash(rmdir *), Bash(bunx skills *), Bash(test *), Bash(head *), Bash(command -v *), Bash(bun -e *), Bash(sw_vers *), Bash(xcode-select -p), Bash(xcodebuild -version), Bash(xcrun -f *), Bash(xcrun mcp-server status), Bash(bun *src/cli.ts notes public*), Bash(bun *skills/finances/scripts/*)
+description: Set up, change or remove the agent's optional packs (Browser, SEO, Notes, GitHub, Database, API, Xcode, Codex, Antigravity, Helpdesk, App Store, Slack, cmux, Finances, Third-party libraries, Remote MCP servers), starting from what this home already has. Pack skills ship with the plugin; this wires up their API keys, MCP servers, database connections, coding rules and tool permissions. Invoked at the end of /agentlayer:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
+allowed-tools: Read, Write, Edit, AskUserQuestion, mcp__plugin_agentlayer_agent__codex_setup, Bash(mkdir *), Bash(cat *), Bash(cp *), Bash(ls *), Bash(rm *), Bash(rmdir *), Bash(bunx skills *), Bash(test *), Bash(head *), Bash(command -v *), Bash(bun -e *), Bash(sw_vers *), Bash(xcode-select -p), Bash(xcodebuild -version), Bash(xcrun -f *), Bash(xcrun mcp-server status), Bash(bun *src/cli.ts notes public*), Bash(bun *skills/finances/scripts/*), Bash(bun *skills/init/scripts/*-user-config.ts *)
 ---
 
 # Configure Skills
@@ -48,7 +48,7 @@ The data dir is the marker; it is the same one the resolver and every runtime gu
 
 ## Step 1 — See what's set up, then pick a branch
 
-Call `packs_status` and keep the rows with `available: true` (a pack this machine can't run, such as Xcode off a Mac, is never shown). Open with one line from their `state`, for example:
+Call `packs_status` and keep the rows with `available: true` (a pack this machine can't run is never shown, such as Xcode off a Mac, or Codex and Antigravity where their CLI isn't installed). Open with one line from their `state`, for example:
 
 > ✅ 5 set up · ◐ 1 half-done · ○ 8 you can add
 
@@ -88,7 +88,7 @@ Then ask in one line: *"Reply with the numbers (`2, 5`), a group (`all of Code`)
 
 Run the picked rows in table order:
 
-- **Install, or finish a half-done pack:** run the section the row's `walk` names (`A.2a`…`A.2l`, `B`, `F`). For a half-done pack, start by saying what's missing and skip the steps whose part is already there.
+- **Install, or finish a half-done pack:** run the section the row's `walk` names (`A.2a`…`A.2n`, `B`, `F`). For a half-done pack, start by saying what's missing and skip the steps whose part is already there.
 - **Change a set-up pack:** before its walk, `AskUserQuestion`: **Update a key or setting**, **Add another connection** (Database, Helpdesk, GitHub token per owner, Remote MCP server, only where the walk supports more than one), **Re-run the whole walk**, or Cancel. Then do only that part of the walk.
 - **Remove:** run the row's `**<label> deconfigure:**` entry in §C.2.
 
@@ -855,6 +855,14 @@ Next:       drop statements into projects/finances/data/inbox/ and say "import m
 ```
 
 Finances can't be removed here: the project holds the operator's books and statements. Say so if asked, and point at archiving the project instead.
+
+### A.2m — Codex walk
+
+Runs this agent in OpenAI's Codex from this home as well. The row shows only when `codex --version` answers, so Codex is installed. Open `${CLAUDE_PLUGIN_ROOT}/skills/init/SKILL.md`, go to Step 7c, and follow it from "Generate them with the `codex_setup` MCP tool" to the end of the step, without its question: picking this row was the yes. Then show the operator three things: the `codex_setup` report, the user-level note verbatim, and the trust step (trust the folder, then trust the four hooks under `/hooks` in their first Codex session here). On a set-up row, re-running the walk regenerates the same files, keeping the operator's own values. Removal isn't offered: the wiring is the home's `.codex/` folder, which the operator can delete themselves.
+
+### A.2n — Antigravity walk
+
+Runs this agent in Google's Antigravity from this home as well. The row shows only when `agy --version` answers. Open `${CLAUDE_PLUGIN_ROOT}/skills/init/SKILL.md`, go to Step 7d, and follow it from "Antigravity loads this plugin as a plugin of its own" to the end of the step, without its question: picking this row was the yes. Quote the generated note verbatim, along with the step's three facts. The pack reads as set up once `~/.gemini/config/plugins.json` names this plugin's checkout, which happens when the operator pastes the note. That entry is the operator's whole machine, not just this home, so after the paste every agent home on the checkout shows Antigravity as set up. Removal isn't offered, because the plugin never edits that file; to take Antigravity out, the operator deletes the entry.
 
 ## Section B — Register an external remote MCP server
 

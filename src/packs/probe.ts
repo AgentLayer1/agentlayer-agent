@@ -4,10 +4,13 @@ import { CMUX_APP } from '@/cmux/app';
 import { sidebarJoined } from '@/cmux/lifecycle';
 import { listSecretEntries } from '@/config';
 import { connectors } from '@/helpdesk/connectors';
+import { antigravityHost } from '@/hosts/antigravity';
+import { codexHost } from '@/hosts/codex';
 import { readMergedSettings, readSettingsFile } from '@/home/settings-scope';
 import { dbConnections, env, GITHUB_TOKEN_KEY, githubTokenKeys } from '@/shared/env';
 import { isRecord, stringsOf } from '@/shared/json-block';
 import { listMarkdown, readText } from '@/shared/text';
+import { runVersion } from '@/upgrade/hosts';
 import type { Probe } from './registry';
 
 // The finances skill's own rules (skills/finances/scripts/calendar.ts parseEntity): an entity is a
@@ -61,6 +64,10 @@ export const readProbe = (home: string): Probe => {
     finances: financeEntities(home),
     macos,
     cmuxApp: macos && existsSync(CMUX_APP),
-    inCmux: env('CMUX_WORKSPACE_ID') !== undefined
+    inCmux: env('CMUX_WORKSPACE_ID') !== undefined,
+    hosts: {
+      codex: { installed: runVersion('codex') !== null, wired: codexHost.usedBy(home) },
+      antigravity: { installed: runVersion('antigravity') !== null, wired: antigravityHost.usedBy() }
+    }
   };
 };

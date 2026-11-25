@@ -20,6 +20,7 @@ const probe = (extra: Partial<Probe> = {}): Probe => ({
   macos: true,
   cmuxApp: true,
   inCmux: false,
+  hosts: { codex: { installed: true, wired: false }, antigravity: { installed: true, wired: false } },
   ...extra
 });
 
@@ -70,6 +71,17 @@ describe('statusOf', () => {
     expect(statusOf('xcode', probe({ macos: false })).available).toBe(false);
     expect(statusOf('cmux', probe({ cmuxApp: false })).available).toBe(false);
     expect(statusOf('cmux', probe()).available).toBe(true);
+  });
+
+  test('Codex and Antigravity are offered only where their CLI answers, and set up once the agent is wired in', () => {
+    const hosts = (installed: boolean, wired: boolean): Probe['hosts'] => ({
+      codex: { installed, wired },
+      antigravity: { installed, wired }
+    });
+    expect(statusOf('codex', probe({ hosts: hosts(false, false) })).available).toBe(false);
+    expect(statusOf('antigravity', probe({ hosts: hosts(false, false) })).available).toBe(false);
+    expect(statusOf('codex', probe()).state).toBe(PackState.New);
+    expect(statusOf('antigravity', probe({ hosts: hosts(true, true) })).state).toBe(PackState.Ready);
   });
 
   test('Browser is always recommended, GitHub once a code path is set, cmux inside cmux, and nothing else', () => {
