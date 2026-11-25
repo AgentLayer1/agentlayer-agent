@@ -124,11 +124,15 @@ describe('files', () => {
 describe('MCP', () => {
   const mcp = (server: string, tool: string): ToolCall => ({ kind: 'mcp', server, tool });
 
-  test('a granted tool is approved, an asked one asks, a denied one is refused, any other is the host’s', () => {
+  test('the agent’s own tools run unless asked or denied, as Codex runs them', () => {
     expect(verdict(mcp(PLUGIN_NAME, 'ping'))).toBe('auto_approve');
+    expect(verdict(mcp(PLUGIN_NAME, 'slack_whoami'))).toBe('auto_approve');
     expect(verdict(mcp(PLUGIN_NAME, 'curl_run'))).toBe('force_ask');
     expect(verdict(mcp(PLUGIN_NAME, 'seed_import'))).toBe('deny');
-    expect(verdict(mcp(PLUGIN_NAME, 'remove_worktree'))).toBe('host decides');
+  });
+
+  test('another server’s tool needs an allow rule, else it is the host’s', () => {
+    expect(verdict(mcp('acme', 'lookup'))).toBe('host decides');
   });
 
   test('a per-tool ask beats a server-wide allow', () => {

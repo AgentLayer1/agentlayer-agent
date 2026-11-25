@@ -1,7 +1,7 @@
 /**
  * The home's Claude rules applied by a host whose own permission rules can't hold them (path rules there take no
  * globs): every deny refused, every call that asks in Claude Code put to the operator through the host's own prompt,
- * and every MCP tool the home grants approved. Read from the home's effective settings on each call, so nothing
+ * and every tool of the agent's own server, or another MCP tool the home grants, approved. Read from the home's effective settings on each call, so nothing
  * derived from them can go stale.
  */
 import { gitParts, plainTexts } from '@/hooks/guard';
@@ -314,7 +314,10 @@ const mcpDecision = (server: string, tool: string, context: PolicyContext): Poli
   if (matchesMcp(rulesOf(context.settings, 'ask'), server, tool)) {
     return { decision: 'force_ask', reason: `${FROM_CLAUDE}: ${server}/${tool}.` };
   }
-  return matchesMcp(rulesOf(context.settings, 'allow'), server, tool) ? { decision: 'auto_approve' } : null;
+  // The agent's own tools run unless asked or denied, as Codex runs them; another server's need an allow rule.
+  return server === pluginName() || matchesMcp(rulesOf(context.settings, 'allow'), server, tool)
+    ? { decision: 'auto_approve' }
+    : null;
 };
 
 /** What the home's rules decide for this call; null leaves it to the host's own permissions. */
