@@ -17,7 +17,10 @@ const BUN_FLOOR: ToolFloor = {
   update: 'bun upgrade'
 };
 
-export const HOST_FLOORS: readonly ToolFloor[] = [...HOSTS.map((host) => ({ name: host.name, ...host.floor })), BUN_FLOOR];
+export const HOST_FLOORS: readonly ToolFloor[] = [
+  ...HOSTS.map((host) => ({ name: host.name, ...host.floor })),
+  BUN_FLOOR
+];
 
 export const binaryOf = (name: ToolName): string => HOST_FLOORS.find((floor) => floor.name === name)?.binary ?? name;
 
