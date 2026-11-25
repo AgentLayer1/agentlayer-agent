@@ -40,7 +40,7 @@ describe('renderHosts', () => {
     const rows = CAPABILITIES.map(({ label }) => lines.find((line) => line.startsWith(label)));
     expect(rows.every((row) => row !== undefined && row.length <= 40)).toBe(true);
     expect(lines.find((line) => line.startsWith('Mods'))?.match(/[✓◐✗]/g)).toEqual(['✓', '✗', '✗']);
-    expect(lines.find((line) => line.startsWith('Agent tools'))?.match(/[✓◐✗]/g)).toEqual(['✓', '✓', '✓']);
+    expect(lines.find((line) => line.startsWith('Agent tools'))?.match(/[✓◐✗]/g)).toEqual(['✓', '◐', '◐']);
   });
 
   test('each host gets a section with its state, its gaps and its to-dos with their commands', () => {

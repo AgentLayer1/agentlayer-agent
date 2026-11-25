@@ -190,7 +190,10 @@ export const antigravityHost = {
       note: 'Antigravity reads the first 24 KB itself; the session-start hook sends it whole'
     },
     context: { level: 'yes' },
-    banner: { level: 'no', note: "Antigravity can't show a hook's banner, so the first reply relays it word for word" },
+    banner: {
+      level: 'partial',
+      note: "the first reply relays it word for word, after your first message: Antigravity's documented user_markdown crashes its hook runner (1.5.15 to 1.5.17)"
+    },
     capture: {
       level: 'partial',
       note: "no session-end event: the hooks save every ten turns, and any host's next session start saves the rest"
@@ -200,7 +203,10 @@ export const antigravityHost = {
       level: 'partial',
       note: 'a file only a wildcard deny covers is blocked for every program once the upgrade lists it; one created since, only by the hook'
     },
-    tools: { level: 'yes' },
+    tools: {
+      level: 'partial',
+      note: "the agent's own tools run unless the home asks about or denies them: Antigravity can't allow a skill's tools only while it runs, and loads the plugin in every folder, where its tools answer that they need a home"
+    },
     skills: { level: 'partial', note: 'a skill over 24 KB is read on from its file' },
     ask: { level: 'yes' },
     setup: { level: 'no', note: 'run init and upgrade from Claude Code' },

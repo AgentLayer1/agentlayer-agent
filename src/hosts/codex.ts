@@ -19,7 +19,10 @@ export const codexHost = {
       level: 'partial',
       note: "the home's allowed network domains need Codex's experimental network proxy; until then the rules file is the only outbound gate"
     },
-    tools: { level: 'yes' },
+    tools: {
+      level: 'partial',
+      note: "the agent's own tools run unless the home asks about or denies them: Codex can't allow a skill's tools only while it runs, as Claude Code does"
+    },
     skills: { level: 'partial', note: 'Codex runs its own copy, which lags the plugin until it is re-added' },
     ask: {
       level: 'partial',
