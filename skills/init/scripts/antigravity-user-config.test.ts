@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildUserConfig, type UserConfigInputs } from './antigravity-user-config';
+import { buildUserConfig, rulePath, type UserConfigInputs } from './antigravity-user-config';
 
 const SCRATCH = realpathSync(mkdtempSync(join(tmpdir(), 'antigravity-user-config-')));
 afterAll(() => rmSync(SCRATCH, { recursive: true, force: true }));
@@ -11,7 +11,7 @@ const CHECKOUT = join(SCRATCH, 'acme-plugin');
 const CODE = join(SCRATCH, 'code');
 const VAULT = join(SCRATCH, 'vault');
 [HOME, CHECKOUT, join(CODE, 'acme'), VAULT].forEach((folder) => mkdirSync(folder, { recursive: true }));
-symlinkSync(CHECKOUT, join(SCRATCH, 'linked-plugin'));
+symlinkSync(CHECKOUT, join(SCRATCH, 'linked-plugin'), 'junction');
 
 const inputs = (overrides: Partial<UserConfigInputs> = {}): UserConfigInputs => ({
   home: HOME,
@@ -141,4 +141,10 @@ describe('a wildcard deny over the work', () => {
     });
     expect(linked).not.toContain(`read_file(${CHECKOUT})`);
   });
+});
+
+test('on Windows a rule names its path as Antigravity checks it: no drive letter, forward slashes', () => {
+  expect(rulePath('C:\\Users\\ada\\Nova\\.state\\secrets', true)).toBe('/Users/ada/Nova/.state/secrets');
+  expect(rulePath('d:/acme/.env', true)).toBe('/acme/.env');
+  expect(rulePath('/Users/ada/Nova/.env', false)).toBe('/Users/ada/Nova/.env');
 });

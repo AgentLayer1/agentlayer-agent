@@ -41,13 +41,14 @@ export const parseHostVersion = (output: string): string | null => output.match(
 
 export type VersionRunner = (name: ToolName) => string | null;
 
-// TODO(windows): the npm shims are .cmd files, which execFile cannot start without a shell, so a Windows box reports both hosts absent.
 const runVersion: VersionRunner = (name) => {
   if (name === 'bun') {
     return Bun.version;
   }
   try {
+    // On Windows the npm shims are .cmd files, which only a shell starts; the fixed name and flag carry nothing to quote.
     return execFileSync(binaryOf(name), ['--version'], {
+      shell: process.platform === 'win32',
       encoding: 'utf-8',
       timeout: 5_000,
       stdio: ['ignore', 'pipe', 'ignore']

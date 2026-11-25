@@ -724,12 +724,12 @@ exports[`session start, per host and home state Antigravity, initialized home 1`
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home-from-payload
 <TIMESTAMP> WARN  [🪝 session] [start] hook fired (antigravity)
   🦊 Agent:     Nova · v<VERSION>
-  ⚠️ Sandbox:   Antigravity's terminal sandbox isn't on for this machine, so shell commands can reach your whole disk. Paste the settings from .state/updates/antigravity-user-config.md (the upgrade skill, run from Claude Code, writes it).
+  ⚠️ Sandbox:   Antigravity's terminal sandbox is off in <USER>/.gemini/antigravity-cli/settings.json, so shell commands can reach the whole disk. Paste the settings from .state/updates/antigravity-user-config.md there, then restart Antigravity.
   ↑  Upgrade:   Turn on update tracking · run the upgrade skill
   ⟳  Sync:      Brain never synced · run the sync skill
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context:   0.2KB of home files and 0.5KB added today:
+  📚 Context:   0.2KB of home files and 0.4KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -739,12 +739,12 @@ exports[`session start, per host and home state Antigravity, initialized home 1`
   "stdout": 
 "{"injectSteps":[{"systemMessage":{"systemMessage":"<!-- session banner: mention its warnings and notices in your first reply, unless the request asks for a set output format -->
 🦊 Agent:     Nova · v<VERSION>
-  ⚠️ Sandbox:   Antigravity's terminal sandbox isn't on for this machine, so shell commands can reach your whole disk. Paste the settings from .state/updates/antigravity-user-config.md (the upgrade skill, run from Claude Code, writes it).
+  ⚠️ Sandbox:   Antigravity's terminal sandbox is off in <USER>/.gemini/antigravity-cli/settings.json, so shell commands can reach the whole disk. Paste the settings from .state/updates/antigravity-user-config.md there, then restart Antigravity.
   ↑  Upgrade:   Turn on update tracking · run the upgrade skill
   ⟳  Sync:      Brain never synced · run the sync skill
   🧠 Knowledge: <HOME>/knowledge
   📁 Projects:  <HOME>/projects
-  📚 Context:   0.2KB of home files and 0.5KB added today:
+  📚 Context:   0.2KB of home files and 0.4KB added today:
     ○ session tail     0.0KB  (no session in the last week)
     ○ today's reports  0.0KB  (no reports yet)
     ○ pinned reports   0.0KB  (none pinned)
@@ -792,7 +792,7 @@ Sharp and kind.
 
 ## ⚠️ Sandbox
 
-Antigravity's terminal sandbox isn't switched on in this machine's settings, so outside auto mode shell commands run with nothing between them and the rest of the disk. **Tell the operator before anything else**: paste the settings in \`.state/updates/antigravity-user-config.md\` into \`~/.gemini/antigravity-cli/settings.json\` (the upgrade skill, run from Claude Code, writes that note), then restart Antigravity.
+Antigravity's terminal sandbox is off in <USER>/.gemini/antigravity-cli/settings.json, so shell commands can reach the whole disk. Paste the settings from .state/updates/antigravity-user-config.md there, then restart Antigravity. **Tell the operator before anything else.** The upgrade skill, run from Claude Code, writes that note.
 "}}]}"
 ,
 }

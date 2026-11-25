@@ -3,10 +3,10 @@ import { CLAUDE_CODE_ONLY, type HookPayload, type HostAdapter, type ToolCall } f
 import { SKILL_PREFIX } from '@/hosts/dialect';
 import { isRecord } from '@/shared/json-block';
 import { PLUGIN_SOURCE_ROOT, pluginName } from '@/shared/naming';
-import { resolvedPath } from '@/shared/paths';
+import { driveForm, resolvedPath, samePath } from '@/shared/paths';
 import { homeOfSession } from '@/shared/settings-env';
 import { existsSync, readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, release as osRelease } from 'node:os';
 import { basename, resolve } from 'node:path';
 
 /** Antigravity keeps about 48,900 bytes of one injected message; each piece stays well under that. */
@@ -26,6 +26,23 @@ export const sandboxOnIn = (settingsPath: string): boolean => {
   } catch {
     return false;
   }
+};
+
+const WINDOWS_SANDBOX_BUILD = 26_100;
+
+/** What keeps Antigravity's terminal sandbox from holding on this machine, or null when it holds. */
+export const sandboxProblem = (
+  settingsPath: string,
+  platform: NodeJS.Platform = process.platform,
+  release: string = osRelease()
+): string | null => {
+  if (!sandboxOnIn(settingsPath)) {
+    return `Antigravity's terminal sandbox is off in ${settingsPath}, so shell commands can reach the whole disk. Paste the settings from .state/updates/antigravity-user-config.md there, then restart Antigravity.`;
+  }
+  const build = Number(release.split('.')[2]);
+  return platform === 'win32' && build < WINDOWS_SANDBOX_BUILD
+    ? `Antigravity's terminal sandbox needs Windows 11 24H2 (build ${WINDOWS_SANDBOX_BUILD}) with the August 2026 update; this Windows is build ${build}, so the sandbox setting has no effect.`
+    : null;
 };
 
 /** The folders a parsed discovery manifest names. */
@@ -48,7 +65,7 @@ export const manifestEntries = (manifest: string): string[] => {
 /** Whether any of a manifest's entries is the checkout at `root`, however the path to it is spelled. */
 export const namesCheckout = (entries: string[], root: string): boolean => {
   const target = resolvedPath(root);
-  return entries.some((path) => resolvedPath(path) === target);
+  return entries.some((path) => samePath(resolvedPath(path), target));
 };
 
 /** Whether a discovery manifest file loads the checkout at `root`. */
@@ -104,6 +121,10 @@ const toolCallOf = (parsed: AntigravityPayload): ToolCall => {
     : { kind: 'other' };
 };
 
+/** Git Bash's `/c/Users/…` as Windows spells it; elsewhere a path passes through. */
+const nativePath = (path: string | undefined): string | undefined =>
+  path !== undefined && process.platform === 'win32' ? driveForm(path) : path;
+
 const readPayload = (raw: string): HookPayload => {
   const parsed = JSON.parse(raw) as AntigravityPayload;
   // A subagent's hooks carry no user input, and at its start its transcript doesn't exist yet.
@@ -120,7 +141,7 @@ const readPayload = (raw: string): HookPayload => {
         : undefined) ?? parsed.cwd,
     origin: child ? 'child' : 'user',
     call: toolCallOf(parsed),
-    home: homeOfSession(parsed),
+    home: homeOfSession({ workspacePaths: parsed.workspacePaths?.map(nativePath), cwd: nativePath(parsed.cwd) }),
     hostFolders: parsed.artifactDirectoryPath ? [parsed.artifactDirectoryPath] : []
   };
 };
@@ -208,22 +229,20 @@ export const antigravityHost = {
   skill: (name) => `the ${name} skill`,
   usedBy: () => manifestLoads(personalManifest(), PLUGIN_SOURCE_ROOT),
   homeIssues: () => [],
-  machineIssues: () =>
-    sandboxOnIn(cliSettings())
-      ? []
-      : [
-          `Antigravity's terminal sandbox is off for this machine. Paste the settings from .state/updates/antigravity-user-config.md into ${cliSettings()}, then restart Antigravity`
-        ],
-  launchIssue: () =>
-    sandboxOnIn(cliSettings())
+  machineIssues: () => {
+    const problem = sandboxProblem(cliSettings());
+    return problem === null ? [] : [problem];
+  },
+  launchIssue: () => {
+    const problem = sandboxProblem(cliSettings());
+    return problem === null
       ? null
       : {
           label: 'Sandbox',
-          banner:
-            "Antigravity's terminal sandbox isn't on for this machine, so shell commands can reach your whole disk. Paste the settings from .state/updates/antigravity-user-config.md (the upgrade skill, run from Claude Code, writes it).",
-          section:
-            "## ⚠️ Sandbox\n\nAntigravity's terminal sandbox isn't switched on in this machine's settings, so outside auto mode shell commands run with nothing between them and the rest of the disk. **Tell the operator before anything else**: paste the settings in `.state/updates/antigravity-user-config.md` into `~/.gemini/antigravity-cli/settings.json` (the upgrade skill, run from Claude Code, writes that note), then restart Antigravity."
-        },
+          banner: problem,
+          section: `## ⚠️ Sandbox\n\n${problem} **Tell the operator before anything else.** The upgrade skill, run from Claude Code, writes that note.`
+        };
+  },
   delivery: {
     kind: 'inject',
     files: () => [FILES.AGENTS, ...staticContextFiles()],

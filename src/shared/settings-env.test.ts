@@ -12,7 +12,7 @@ mkdirSync(join(HOME, RUNTIME_DIR), { recursive: true });
 mkdirSync(join(HOME, 'projects', 'acme'), { recursive: true });
 mkdirSync(join(SCRATCH, 'elsewhere'));
 writeFileSync(join(HOME, RUNTIME_DIR, HOME_MARKER_FILES[0]), `${JSON.stringify({ plugin: pluginName() })}\n`);
-symlinkSync(join(HOME, 'projects', 'acme'), join(SCRATCH, 'acme-link'));
+symlinkSync(join(HOME, 'projects', 'acme'), join(SCRATCH, 'acme-link'), 'junction');
 
 test("a session's home is found from its workspace, however the folder is spelled, and none outside one", () => {
   expect(homeOfSession({ workspacePaths: [join(HOME, 'projects', 'acme')] })).toBe(HOME);

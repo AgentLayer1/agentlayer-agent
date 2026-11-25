@@ -21,7 +21,7 @@ import { workRootsOf } from '../../../src/home/work-roots';
 import { WIRING } from '../../../src/hooks/policy';
 import { cliSettings, entriesOf, namesCheckout, personalManifest } from '../../../src/hosts/antigravity';
 import { PLUGIN_SOURCE_ROOT, RUNTIME_DIR } from '../../../src/shared/naming';
-import { isInside, resolvedPath } from '../../../src/shared/paths';
+import { claudeForm, driveForm, isInside, resolvedPath } from '../../../src/shared/paths';
 import { denyGlobs, expandTilde, isRecord, shellPrefixes, stringsOf } from './wiring';
 
 type Json = Record<string, unknown>;
@@ -41,6 +41,8 @@ export interface UserConfigInputs {
   claudeHome: Json;
   /** Every file under a folder, for the wildcard denies a path rule can only name file by file. */
   filesUnder: (root: string) => string[];
+  /** The platform the rules are written for; this machine's when absent. */
+  platform?: NodeJS.Platform;
 }
 
 export interface UserConfig {
@@ -62,10 +64,12 @@ const outermost = (paths: string[]): string[] => {
 };
 
 /** A Claude deny glob as the path a rule can name: itself, or its fixed folder when that neither holds nor sits in the work. */
-const ruleTarget = (glob: string, work: string[]): string | undefined => {
+const ruleTarget = (glob: string, work: string[], windows: boolean): string | undefined => {
   const pattern = glob.replace(/\/\*\*$/, '');
+  // Claude spells a Windows path `/c/Users/…`; the file system needs `C:/Users/…`.
+  const native = (path: string): string => (windows ? driveForm(path) : path);
   if (!GLOB.test(pattern)) {
-    return isAbsolute(pattern) ? resolvedPath(pattern) : undefined;
+    return isAbsolute(pattern) ? resolvedPath(native(pattern)) : undefined;
   }
   const segments = pattern.split('/');
   const fixed = segments
@@ -77,23 +81,35 @@ const ruleTarget = (glob: string, work: string[]): string | undefined => {
   if (!fixed || !isAbsolute(fixed)) {
     return undefined;
   }
-  const folder = resolvedPath(fixed);
+  const folder = resolvedPath(native(fixed));
   const broad = [...work, homedir()].some((root) => isInside(root, folder) || isInside(folder, root));
   return broad ? undefined : folder;
 };
 
 /** The files under the roots that a held glob matches: an absolute glob as it stands, a relative one from each root. */
-const matchingFiles = (globs: string[], roots: string[], filesUnder: (root: string) => string[]): string[] => {
+const matchingFiles = (
+  globs: string[],
+  roots: string[],
+  filesUnder: (root: string) => string[],
+  windows: boolean
+): string[] => {
   const patterns = globs.map((glob) => ({ absolute: isAbsolute(glob), glob: new Bun.Glob(glob.replace(/^\.\//, '')) }));
+  // Globs use forward slashes, and an absolute one names a Windows file in Claude's `/c/…` form.
+  const slashed = (path: string): string => (windows ? claudeForm(path) : path);
   return roots.flatMap((root) =>
     filesUnder(root).filter((file) =>
-      patterns.some(({ absolute, glob }) => glob.match(absolute ? file : relative(root, file)))
+      patterns.some(({ absolute, glob }) => glob.match(slashed(absolute ? file : relative(root, file))))
     )
   );
 };
 
+/** A path as an Antigravity rule names it: on Windows it drops the drive and turns backslashes forward, as Antigravity does to every path it checks. */
+export const rulePath = (path: string, windows: boolean): string =>
+  windows ? path.replace(/\\/g, '/').replace(/^[a-z]:/i, '') : path;
+
 export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
   const { home, checkout } = inputs;
+  const windows = (inputs.platform ?? process.platform) === 'win32';
   const writable = [
     ...inputs.codeRoots,
     ...stringsOf(at(inputs.claudeHome, 'sandbox', 'filesystem', 'allowWrite')).map(expandTilde)
@@ -107,20 +123,20 @@ export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
     .map((rule) => /^(?:Edit|Write)\((.+)\)$/.exec(rule)?.[1] ?? '')
     .filter(Boolean)
     .map(expandTilde);
-  const readTargets = readGlobs.map((glob) => ruleTarget(glob, work));
-  const editTargets = editGlobs.map((glob) => ruleTarget(glob, work));
+  const readTargets = readGlobs.map((glob) => ruleTarget(glob, work, windows));
+  const editTargets = editGlobs.map((glob) => ruleTarget(glob, work, windows));
   const domains = [
     ...stringsOf(at(inputs.claudeUser, 'sandbox', 'network', 'allowedDomains')),
     ...stringsOf(at(inputs.claudeHome, 'sandbox', 'network', 'allowedDomains'))
   ].map((domain) => domain.replace(/^\*\./, ''));
   const heldUser = readGlobs.filter((_glob, index) => readTargets[index] === undefined);
   const heldHome = denyGlobs(stringsOf(at(inputs.claudeHome, 'permissions', 'deny'))).filter(
-    (glob) => ruleTarget(glob, work) === undefined
+    (glob) => ruleTarget(glob, work, windows) === undefined
   );
   // A user-level glob applies in every folder the agent works in; a home's own, in the home.
   const heldFiles = [
-    ...matchingFiles(heldUser, outermost(work), inputs.filesUnder),
-    ...matchingFiles(heldHome, [resolvedPath(home)], inputs.filesUnder)
+    ...matchingFiles(heldUser, outermost(work), inputs.filesUnder, windows),
+    ...matchingFiles(heldHome, [resolvedPath(home)], inputs.filesUnder, windows)
   ];
 
   const unread = outermost([
@@ -136,13 +152,17 @@ export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
   ]).filter((path) => !unread.some((folder) => isInside(path, folder)));
   const wanted = {
     deny: [
-      ...unread.map((path) => `read_file(${path})`),
-      ...unwritten.map((path) => `write_file(${path})`),
+      ...unread.map((path) => `read_file(${rulePath(path, windows)})`),
+      ...unwritten.map((path) => `write_file(${rulePath(path, windows)})`),
       ...unique(shellPrefixes(userDenies)).map((prefix) => `command(${prefix})`)
     ],
     allow: [
-      `read_file(${checkout})`,
-      ...outermost(writable).map((path) => `write_file(${path})`),
+      `read_file(${rulePath(checkout, windows)})`,
+      // TODO(windows): the sandbox hides the user profile, so bun and git's config may need reading there; unverified.
+      ...(windows ? [dirname(process.execPath), join(homedir(), '.gitconfig')] : []).map(
+        (path) => `read_file(${rulePath(path, windows)})`
+      ),
+      ...outermost(writable).map((path) => `write_file(${rulePath(path, windows)})`),
       ...unique(domains).map((domain) => `read_url(${domain})`)
     ]
   };
@@ -208,6 +228,15 @@ const note = (config: UserConfig, paths: { manifest: string; settings: string },
           '',
           ...config.heldByHook.map((glob) => `- \`${glob}\``)
         ];
+  const windowsPart =
+    process.platform === 'win32'
+      ? [
+          '',
+          'On Windows, Antigravity drops the drive letter from every path it checks, so these rules name paths without',
+          'one, and a rule for `C:` covers the same path on every drive. Antigravity on Windows is unverified: no',
+          'Windows machine has run this setup yet.'
+        ]
+      : [];
   return [
     '# Antigravity user settings',
     '',
@@ -220,6 +249,7 @@ const note = (config: UserConfig, paths: { manifest: string; settings: string },
     '',
     ...settingsPart,
     ...hookPart,
+    ...windowsPart,
     ''
   ].join('\n');
 };

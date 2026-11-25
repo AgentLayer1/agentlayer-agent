@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { manifestLoads, sandboxOnIn, splitPieces } from '@/hosts/antigravity';
+import { manifestLoads, sandboxOnIn, sandboxProblem, splitPieces } from '@/hosts/antigravity';
 
 describe('splitPieces', () => {
   const bytes = (text: string): number => Buffer.byteLength(text);
@@ -33,7 +33,7 @@ describe('manifestLoads', () => {
   afterAll(() => rmSync(scratch, { recursive: true, force: true }));
   const checkout = join(scratch, 'acme-plugin');
   mkdirSync(checkout);
-  symlinkSync(checkout, join(scratch, 'linked-plugin'));
+  symlinkSync(checkout, join(scratch, 'linked-plugin'), 'junction');
   const manifest = (name: string, text: string): string => {
     const path = join(scratch, name);
     writeFileSync(path, text);
@@ -72,5 +72,13 @@ describe('sandboxOnIn', () => {
     expect(sandboxOnIn(settings('unset.json', JSON.stringify({ trustedWorkspaces: [] })))).toBe(false);
     expect(sandboxOnIn(join(scratch, 'absent.json'))).toBe(false);
     expect(sandboxOnIn(settings('broken.json', '{'))).toBe(false);
+  });
+
+  test('on Windows, a build older than the sandbox needs is a problem even with the setting on', () => {
+    const on = settings('on-win.json', JSON.stringify({ enableTerminalSandbox: true }));
+    expect(sandboxProblem(on, 'win32', '10.0.22631')).toContain('build 22631');
+    expect(sandboxProblem(on, 'win32', '10.0.26100')).toBeNull();
+    expect(sandboxProblem(on, 'darwin', '25.0.0')).toBeNull();
+    expect(sandboxProblem(settings('off-win.json', '{}'), 'win32', '10.0.26100')).toContain('is off in');
   });
 });
