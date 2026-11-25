@@ -130,7 +130,7 @@ The optional cmux pack lives in `src/cmux/`. The Bun side (`entry.ts`, `file.ts`
 | `bun run cmux:check` | Typecheck, rebuild, and run the pack's tests |
 | `bun run cmux:preview --text` | Print what each page draws for the invented homes in `src/cmux/preview/fixture.ts` |
 | `bun run cmux:preview` | Write `agentlayer-preview`, the sidebar drawing those homes with a frozen clock |
-| `bun run cmux:screenshot` | Retake the screenshots: each page of the preview, cropped to the panel; `--window-demo` adds the whole window with made-up workspaces and groups; `--out <dir>` picks the folder |
+| `bun run cmux:screenshot` | Retake the screenshots: each page of the preview, cropped to the panel, in dark and light mode; `--window-demo` adds the whole window with made-up workspaces and groups; `--out <dir>` picks the folder; `--appearance dark` or `light` takes one mode only |
 
 The tests mount the built sidebar on cmux's own `SidebarRuntime.js`, read from the installed app and never copied into the repo (it is GPL-licensed), and assert what each page draws and which cmux call each tap makes. Without cmux installed they skip.
 
@@ -144,7 +144,7 @@ The preview draws `src/cmux/preview/showcase.ts`: three made-up agents (🐙 Opp
 - each page (Manager, Projects, Reports, Goals) shot and cropped to the panel by `src/cmux/preview/png.ts`, which finds the panel's edge in the image itself, as `cmux-sidebar-<page>.png`;
 - with `--window-demo`, made-up workspaces and two groups in that window's left sidebar and a mock chat in its terminal (`demo.ts`), then the whole window as `cmux-workstation.png`.
 
-Every command names that window, except `workspace-group create`, which runs inside it. It closes the window at the end, so no other window, workspace or group is touched. `png.ts` and `window.ts` are copies of cmux-custom-manager's `preview/`, kept in step by hand.
+Every command names that window, except `workspace-group create`, which runs inside it. It closes the window at the end, so no other window, workspace or group is touched. The one exception is the appearance: cmux has a single one for the whole app, so the run sets `app.appearance` in `~/.config/cmux/cmux.json` to dark, then light (light shots end in `-light`), and every cmux window follows for those seconds. The file is put back byte for byte at the end, on Ctrl-C too (`src/cmux/preview/appearance.ts`), and a file that isn't valid JSON stops the run before anything is written. `png.ts` and `window.ts` are copies of cmux-custom-manager's `preview/`, kept in step by hand.
 
 ## PR conventions
 
