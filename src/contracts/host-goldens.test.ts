@@ -457,6 +457,19 @@ describe.skipIf(!POSIX_GIT)('session capture, per host', () => {
     expect({ ...run, days: dayFiles(home) }).toMatchSnapshot();
   });
 
+  test('an Antigravity Stop the hook cannot read ends quietly, as a refusal would block the turn', () => {
+    const home = makeHome('initialized');
+    const stop = (stdin: string): Pick<Run, 'stdout' | 'exit'> => {
+      const { stdout, exit } = cli(
+        home,
+        ['session-capture', '--mode=turn-end', '--hook-protocol=antigravity', '--home-from-payload'],
+        { stdin, asPlugin: true }
+      );
+      return { stdout, exit };
+    };
+    expect([stop(''), stop('{not json'), stop('{}')]).toEqual(Array(3).fill({ stdout: '', exit: 0 }));
+  });
+
   test("Claude Code's launch folder wins over the payload's cwd", () => {
     const home = makeHome('initialized');
     mkdirSync(resolve(home, 'sub'), { recursive: true });

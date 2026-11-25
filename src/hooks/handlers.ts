@@ -141,8 +141,8 @@ export const runSessionStart = async (flag: Flag): Promise<number> => {
 };
 
 const sessionFromPayload = async (host: HostAdapter) => {
-  const payload = host.readPayload(await hookStdin());
-  if (!atHome(host, payload)) {
+  const payload = await payloadOf(host);
+  if (!payload || !atHome(host, payload)) {
     return undefined;
   }
   await recordFor(host, payload);
