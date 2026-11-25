@@ -164,7 +164,10 @@ export const antigravityHost = {
     context: { level: 'yes' },
     capture: { level: 'yes' },
     guard: { level: 'yes' },
-    rules: { level: 'yes' },
+    rules: {
+      level: 'partial',
+      note: 'a file only a wildcard deny covers is blocked for every program once the upgrade lists it; one created since, only by the hook'
+    },
     tools: { level: 'yes' },
     skills: { level: 'partial', note: 'a skill over 24 KB is read on from its file' },
     setup: { level: 'no', note: 'run init and upgrade from Claude Code' },

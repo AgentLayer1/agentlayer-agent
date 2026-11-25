@@ -13,9 +13,9 @@
  * Usage: antigravity-user-config.ts --home <dir> [--plugin-root <dir>] [--manifest <file>] [--settings <file>]
  *        [--claude-settings <file>] [--out <file>]
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { readMergedSettings, readSettingsFile } from '../../../src/home/settings-scope';
 import { WIRING } from '../../../src/hooks/policy';
 import { cliSettings, entriesOf, namesCheckout, personalManifest } from '../../../src/hosts/antigravity';
@@ -46,13 +46,15 @@ export interface UserConfigInputs {
   codeRoots: string[];
   /** The home's Claude settings, parsed and merged. */
   claudeHome: Json;
+  /** Every file under a folder, for the wildcard denies a path rule can only name file by file. */
+  filesUnder: (root: string) => string[];
 }
 
 export interface UserConfig {
   manifest: 'current' | 'missing' | 'add-entry';
   /** The keys to merge into the CLI settings: only what the user file lacks. */
   settings: { enableTerminalSandbox?: true; permissions?: { allow?: string[]; deny?: string[] } };
-  /** Claude denies a path rule can't hold, left to the policy hook inside a home. */
+  /** Claude denies a path rule can't hold: denied file by file as they stand today, and by the policy hook inside a home. */
   heldByHook: string[];
 }
 
@@ -66,7 +68,7 @@ const outermost = (paths: string[]): string[] => {
   return once.filter((path) => !once.some((other) => other !== path && isInside(path, other)));
 };
 
-/** A Claude deny glob as the path a rule can name: itself, or its fixed folder when that holds none of the work. */
+/** A Claude deny glob as the path a rule can name: itself, or its fixed folder when that neither holds nor sits in the work. */
 const ruleTarget = (glob: string, work: string[]): string | undefined => {
   const pattern = glob.replace(/\/\*\*$/, '');
   if (!GLOB.test(pattern)) {
@@ -79,13 +81,33 @@ const ruleTarget = (glob: string, work: string[]): string | undefined => {
       segments.findIndex((segment) => GLOB.test(segment))
     )
     .join('/');
-  const broad = !fixed || !isAbsolute(fixed) || [...work, homedir()].some((root) => isInside(root, fixed));
-  return broad ? undefined : resolvedPath(fixed);
+  if (!fixed || !isAbsolute(fixed)) {
+    return undefined;
+  }
+  const folder = resolvedPath(fixed);
+  const broad = [...work, homedir()].some((root) => isInside(root, folder) || isInside(folder, root));
+  return broad ? undefined : folder;
+};
+
+/** The files under the roots that a held glob matches: an absolute glob as it stands, a relative one from each root. */
+const matchingFiles = (globs: string[], roots: string[], filesUnder: (root: string) => string[]): string[] => {
+  const patterns = globs.map((glob) => ({ absolute: isAbsolute(glob), glob: new Bun.Glob(glob.replace(/^\.\//, '')) }));
+  return roots.flatMap((root) =>
+    filesUnder(root).filter((file) =>
+      patterns.some(({ absolute, glob }) => glob.match(absolute ? file : relative(root, file)))
+    )
+  );
 };
 
 export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
   const { home, checkout } = inputs;
-  const work = [home, checkout, ...inputs.codeRoots];
+  const writable = [
+    ...inputs.codeRoots,
+    ...stringsOf(at(inputs.claudeHome, 'sandbox', 'filesystem', 'allowWrite')).map(expandTilde)
+  ]
+    .filter((path) => isAbsolute(path) && !GLOB.test(path))
+    .map(resolvedPath);
+  const work = unique([home, checkout, ...writable].map(resolvedPath));
   const userDenies = stringsOf(at(inputs.claudeUser, 'permissions', 'deny'));
   const readGlobs = denyGlobs(userDenies);
   const editGlobs = userDenies
@@ -98,14 +120,20 @@ export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
     ...stringsOf(at(inputs.claudeUser, 'sandbox', 'network', 'allowedDomains')),
     ...stringsOf(at(inputs.claudeHome, 'sandbox', 'network', 'allowedDomains'))
   ].map((domain) => domain.replace(/^\*\./, ''));
-  const writable = [
-    ...inputs.codeRoots,
-    ...stringsOf(at(inputs.claudeHome, 'sandbox', 'filesystem', 'allowWrite')).map(expandTilde)
-  ].filter((path) => isAbsolute(path) && !GLOB.test(path));
+  const heldUser = readGlobs.filter((_glob, index) => readTargets[index] === undefined);
+  const heldHome = denyGlobs(stringsOf(at(inputs.claudeHome, 'permissions', 'deny'))).filter(
+    (glob) => ruleTarget(glob, work) === undefined
+  );
+  // A user-level glob applies in every folder the agent works in; a home's own, in the home.
+  const heldFiles = [
+    ...matchingFiles(heldUser, outermost(work), inputs.filesUnder),
+    ...matchingFiles(heldHome, [resolvedPath(home)], inputs.filesUnder)
+  ];
 
   const unread = outermost([
     resolvedPath(join(home, RUNTIME_DIR, 'secrets')),
-    ...readTargets.filter((path): path is string => path !== undefined)
+    ...readTargets.filter((path): path is string => path !== undefined),
+    ...heldFiles.map(resolvedPath)
   ]);
   // A read deny already denies writing there.
   // The rules and the wiring stay unwritable to every program the sandbox runs, not just the file tools the hook sees.
@@ -121,7 +149,7 @@ export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
     ],
     allow: [
       `read_file(${checkout})`,
-      ...outermost(writable.map(resolvedPath)).map((path) => `write_file(${path})`),
+      ...outermost(writable).map((path) => `write_file(${path})`),
       ...unique(domains).map((domain) => `read_url(${domain})`)
     ]
   };
@@ -142,10 +170,11 @@ export const buildUserConfig = (inputs: UserConfigInputs): UserConfig => {
       ...(at(inputs.settings, 'enableTerminalSandbox') === true ? {} : { enableTerminalSandbox: true }),
       ...(Object.keys(permissions).length > 0 ? { permissions } : {})
     },
-    heldByHook: [
-      ...readGlobs.filter((_glob, index) => readTargets[index] === undefined),
+    heldByHook: unique([
+      ...heldUser,
+      ...heldHome,
       ...editGlobs.filter((_glob, index) => editTargets[index] === undefined)
-    ]
+    ])
   };
 };
 
@@ -179,9 +208,10 @@ const note = (config: UserConfig, paths: { manifest: string; settings: string },
       ? []
       : [
           '',
-          'These Claude denies hold a wildcard an Antigravity path rule can’t name. Inside an agent home the',
-          'agent’s policy hook refuses them; outside the workspace the sandbox sees nothing anyway; in another',
-          'project’s own folder, Antigravity can read them (its sandbox did not block `cat .env` in a probe):',
+          'These Claude denies hold a wildcard, which an Antigravity path rule can’t name. The files they match',
+          'today in the home and the folders the agent works in are denied above one by one, so the sandbox blocks',
+          'them for every program. A file created since is guarded only by the agent’s policy hook, inside a home,',
+          'until the upgrade writes this note again; in another project’s own folder, Antigravity can read it:',
           '',
           ...config.heldByHook.map((glob) => `- \`${glob}\``)
         ];
@@ -199,6 +229,28 @@ const note = (config: UserConfig, paths: { manifest: string; settings: string },
     ...hookPart,
     ''
   ].join('\n');
+};
+
+const SKIPPED = new Set(['node_modules', '.git']);
+
+/** The files under a folder, not following links, past the dependency and git folders, which hold none of the operator's secrets. */
+const filesUnder = (root: string): string[] => {
+  const walk = (dir: string): string[] => {
+    try {
+      return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+        entry.isDirectory()
+          ? SKIPPED.has(entry.name)
+            ? []
+            : walk(join(dir, entry.name))
+          : entry.isFile()
+            ? [join(dir, entry.name)]
+            : []
+      );
+    } catch {
+      return [];
+    }
+  };
+  return walk(root);
 };
 
 if (import.meta.main) {
@@ -229,7 +281,8 @@ if (import.meta.main) {
     settings: readSettingsFile(paths.settings),
     claudeUser: readSettingsFile(claudeUserPath),
     codeRoots: workspaceRootsOf(home, homeSettings).map(resolvedPath),
-    claudeHome: readMergedSettings(home).merged
+    claudeHome: readMergedSettings(home).merged,
+    filesUnder
   });
   const out = flag('out');
   if (out) {

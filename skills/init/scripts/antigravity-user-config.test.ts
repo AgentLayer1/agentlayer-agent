@@ -37,6 +37,7 @@ const inputs = (overrides: Partial<UserConfigInputs> = {}): UserConfigInputs => 
   },
   codeRoots: [CODE, join(CODE, 'acme')],
   claudeHome: { sandbox: { filesystem: { allowWrite: [join(SCRATCH, 'cache')] } } },
+  filesUnder: () => [],
   ...overrides
 });
 
@@ -99,4 +100,45 @@ test("a wildcard under the user's whole home is never widened to it", () => {
   const { settings, heldByHook } = buildUserConfig(broad);
   expect(settings.permissions?.deny?.some((rule) => rule === `read_file(${homedir()})`)).toBe(false);
   expect(heldByHook).toEqual([join(homedir(), '*.key')]);
+});
+
+describe('a wildcard deny over the work', () => {
+  const WORK = join(SCRATCH, 'work');
+  const files: Record<string, string[]> = {
+    [HOME]: [join(HOME, '.env'), join(HOME, 'private', 'plan.md'), join(HOME, 'notes.md')],
+    [CODE]: [join(CODE, 'acme', '.env'), join(CODE, 'acme', 'src', 'app.ts'), join(CODE, 'acme', 'src', 'id.pem')],
+    [WORK]: [join(WORK, 'site', '.env')]
+  };
+  const filesUnder = (root: string): string[] => files[root] ?? [];
+  const deniesOf = (overrides: Partial<UserConfigInputs>): string[] =>
+    buildUserConfig(inputs({ filesUnder, ...overrides })).settings.permissions?.deny ?? [];
+
+  test('is denied file by file for what matches today, in the home and every folder the agent works in', () => {
+    const deny = deniesOf({ claudeUser: { permissions: { deny: ['Read(**/.env)'] } } });
+    [join(HOME, '.env'), join(CODE, 'acme', '.env')].forEach((file) => expect(deny).toContain(`read_file(${file})`));
+    expect(deny).not.toContain(`read_file(${join(HOME, 'notes.md')})`);
+  });
+
+  test("a home's own wildcard applies in the home only", () => {
+    const claudeHome = { permissions: { deny: ['Read(./private/**)', 'Read(**/*.pem)'] } };
+    const deny = deniesOf({ claudeUser: {}, claudeHome });
+    expect(deny).toContain(`read_file(${join(HOME, 'private', 'plan.md')})`);
+    expect(deny).not.toContain(`read_file(${join(CODE, 'acme', 'src', 'id.pem')})`);
+  });
+
+  test('never widens to a folder the agent writes, however that folder is granted or spelled', () => {
+    const viaAllowWrite = deniesOf({
+      claudeUser: { permissions: { deny: [`Read(/${WORK}/**/.env)`] } },
+      claudeHome: { sandbox: { filesystem: { allowWrite: [WORK] } } }
+    });
+    expect(viaAllowWrite).not.toContain(`read_file(${WORK})`);
+    expect(viaAllowWrite).toContain(`read_file(${join(WORK, 'site', '.env')})`);
+    const belowCodeRoot = deniesOf({ claudeUser: { permissions: { deny: [`Read(/${CODE}/acme/src/*.pem)`] } } });
+    expect(belowCodeRoot).not.toContain(`read_file(${join(CODE, 'acme', 'src')})`);
+    expect(belowCodeRoot).toContain(`read_file(${join(CODE, 'acme', 'src', 'id.pem')})`);
+    const linked = deniesOf({
+      claudeUser: { permissions: { deny: [`Read(/${join(SCRATCH, 'linked-plugin')}/**/.env)`] } }
+    });
+    expect(linked).not.toContain(`read_file(${CHECKOUT})`);
+  });
 });
