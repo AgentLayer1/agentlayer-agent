@@ -1,17 +1,14 @@
 ---
 name: configure-skills
-description: Configure the agent's optional skill packs (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, Slack, cmux, Notes) or author a brand-new custom skill. The pack skills ship with the plugin and auto-load — this skill just wires up API keys, MCP server registrations, database connections, coding rules, and tool permissions. Custom-authored skills land in `<HOME>/.claude/skills/<name>/`. Invoked at the end of /agentlayer:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
-allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), Bash(cp *), Bash(ls *), Bash(rm *), Bash(rmdir *), Bash(bunx skills *), Bash(test *), Bash(head *), Bash(command -v *), Bash(bun -e *), Bash(sw_vers *), Bash(xcode-select -p), Bash(xcodebuild -version), Bash(xcrun -f *), Bash(xcrun mcp-server status), Bash(bun *src/cli.ts notes public*)
+description: Set up, change or remove the agent's optional packs (Browser, SEO, Notes, GitHub, Database, API, Xcode, Helpdesk, App Store, Slack, cmux, Finances, Third-party libraries, Remote MCP servers), starting from what this home already has. Pack skills ship with the plugin; this wires up their API keys, MCP servers, database connections, coding rules and tool permissions. Invoked at the end of /agentlayer:init or any time after. Triggers on "set up the SEO pack", "add my SerpAPI key", "configure a pack", "turn off the database pack", or /configure-skills.
+allowed-tools: Read, Write, Edit, AskUserQuestion, Bash(mkdir *), Bash(cat *), Bash(cp *), Bash(ls *), Bash(rm *), Bash(rmdir *), Bash(bunx skills *), Bash(test *), Bash(head *), Bash(command -v *), Bash(bun -e *), Bash(sw_vers *), Bash(xcode-select -p), Bash(xcodebuild -version), Bash(xcrun -f *), Bash(xcrun mcp-server status), Bash(bun *src/cli.ts notes public*), Bash(bun *skills/finances/scripts/*)
 ---
 
 # Configure Skills
 
 > **Plugin root.** Claude Code fills in `CLAUDE_PLUGIN_ROOT`; Codex leaves it unset. Under Codex, read every `CLAUDE_PLUGIN_ROOT` path in this skill and its playbooks as the plugin root the session context names, or, in a session without one, as this skill's base directory two levels up (the `<skill>` block's `<path>`).
 
-This skill manages the agent's optional capabilities. Use it to:
-1. **Configure a pack** (SEO, Browser, Database, GitHub, API, Xcode, Helpdesk, App Store, Slack, or cmux) — writes API keys, registers MCP servers, sets up database connections, seeds coding rules, grants tool permissions
-2. **Deconfigure a pack** — revokes keys/MCP/permissions (the pack's SKILL.md files stay; they ship with the plugin)
-3. **Author a brand-new custom skill** — writes a new SKILL.md to your `<HOME>/.claude/skills/`
+This skill manages the agent's optional packs. It starts from what this home already has (the `packs_status` tool), then installs what's new, finishes or changes what's set up, or takes a pack out. A pack's walk writes its keys' place, registers its MCP server, sets up its connections, seeds its rules and grants its tool permissions; the pack's skills themselves already ship with the plugin.
 
 > **What this skill does NOT do:** copy pack skills around. The `seo` skill, `wordpress-rest` (and the Browser pack's underlying MCP tools) are part of the plugin itself, `<plugin>/skills/*` auto-loads when the plugin is enabled. Configuring a pack means setting up the keys/servers/permissions those skills need to actually work. For authoring brand-new custom skills, use Claude Code's native `skill-creator` plugin (the agent does not duplicate that surface). Third-party skill libraries install via skills.sh (Section F).
 
@@ -49,50 +46,59 @@ The data dir is the marker; it is the same one the resolver and every runtime gu
 
 ---
 
-## Step 1 — Pick what to do
+## Step 1 — See what's set up, then pick a branch
 
-`AskUserQuestion`:
+Call `packs_status` and keep the rows with `available: true` (a pack this machine can't run, such as Xcode off a Mac, is never shown). Open with one line from their `state`, for example:
+
+> ✅ 5 set up · ◐ 1 half-done · ○ 8 you can add
+
+When the operator already named a pack or a branch ("set up the SEO pack", "add my SerpAPI key", "turn off the database pack"), go straight to that pack's walk or removal. Otherwise `AskUserQuestion` (single-select), leaving out a branch with no rows:
 
 > **What would you like to do?**
-> - Configure a skill pack (SEO / Browser / Database / GitHub / API / Xcode / Helpdesk / App Store / Slack / cmux / Notes — Xcode and cmux on macOS only)
-> - Register an external remote MCP server (hardened wrapper → `<HOME>/.mcp.json`)
-> - Install third-party skill libraries (via skills.sh)
-> - Deconfigure a skill pack
+> - **Install something new** (the `new` rows)
+> - **Finish or change what's set up** (the `partial` and `ready` rows)
+> - **Remove a pack** (the `ready` and `partial` rows whose `removable` is true)
 > - Cancel
 
-Branch into the matching section below. For authoring brand-new custom skills (not in this plugin and not on skills.sh), use Claude Code's native [`skill-creator`](https://github.com/anthropics/claude-plugins-official) plugin — the agent does not duplicate that surface.
+## Step 2 — The table
+
+Show the branch's rows as one table per `group`, in the order the tool returns them, numbered across groups so every number is unique:
+
+```markdown
+**Web & research**
+
+| # | Pack | What it gives you | Status |
+|---|---|---|---|
+| 1 | Browser ★ | screenshots, PDFs and page text from any site, … | ○ new |
+| 2 | SEO | site audits, Search Console, PageSpeed, … | ◐ needs: SerpAPI key |
+
+**Code**
+
+| # | Pack | What it gives you | Status |
+|---|---|---|---|
+| 3 | GitHub ★ | PRs, issues and CI runs: … | ✅ set up |
+```
+
+- **Pack** is the row's `label`, with ★ on a recommended one: Browser always, GitHub when `AGENT_CODE_PATH` is set, cmux when `CMUX_WORKSPACE_ID` is set (this session runs inside cmux).
+- **What it gives you** is the row's `blurb`, word for word.
+- **Status** is `○ new`, `◐ needs: <missing>` for a half-done pack (its required `missing` items only), or `✅ set up`, followed by `· optional: <items>` when a set-up pack still has optional parts off.
+- Leave out a group with no rows in this branch.
+
+Then ask in one line: *"Reply with the numbers (`2, 5`), a group (`all of Code`), `recommended`, or `none`."* A branch with four rows or fewer uses `AskUserQuestion` (multi-select, one option per row, the label as the option) instead of the table. Never merge two packs into one option.
+
+Run the picked rows in table order:
+
+- **Install, or finish a half-done pack:** run the section the row's `walk` names (`A.2a`…`A.2l`, `B`, `F`). For a half-done pack, start by saying what's missing and skip the steps whose part is already there.
+- **Change a set-up pack:** before its walk, `AskUserQuestion`: **Update a key or setting**, **Add another connection** (Database, Helpdesk, GitHub token per owner, Remote MCP server, only where the walk supports more than one), **Re-run the whole walk**, or Cancel. Then do only that part of the walk.
+- **Remove:** run the row's `**<label> deconfigure:**` entry in §C.2.
+
+Nothing picked returns to Step 1. After the last walk, call `packs_status` again and show the rows that changed, old status → new.
+
+For authoring a brand-new skill (not in this plugin and not on skills.sh), use Claude Code's native [`skill-creator`](https://github.com/anthropics/claude-plugins-official) plugin; the agent does not duplicate that surface.
 
 ---
 
-## Section A — Configure a skill pack
-
-### A.1 Pick pack(s)
-
-`AskUserQuestion` takes at most four options per question, so ask the packs as **three multi-select questions in one call**, grouped as below. **Every pack is its own option**: never merge two packs into one option ("Database + API") to fit the limit.
-
-> **Search and web — which to configure?** (header `Web`)
-> - ☐ Browser **(recommended)** — Playwright tool permissions + optional Perplexity search (briefings fall back to the built-in web search without it)
-> - ☐ SEO — the `seo` skill (audit, Search Console, PageSpeed, SERP, rank) and `wordpress-rest` (already loaded; this walks API key + permission setup)
-> - ☐ Third-party libraries — clone separately-authored skill libraries (e.g. SEO/GEO from `aaron-he-zhu`, marketing playbooks from `coreyhaines31`) into `<HOME>/.claude/skills/`. Apache-2.0 licensed.
-> - ☐ Notes — the heartbeat sends up to three checked findings a day, after you approve the public facts its web scout may search with. No key.
->
-> **Code — which to configure?** (header `Code`)
-> - ☐ GitHub — PR, issue + GitHub Actions access (`github_pr_*` / `github_issue_*` / `github_run_*`), plus the writes your token allows (issues, a PR's title and description), so the agent can review PRs, walk their own, and brief a second model on them or on any branch (the `engineer` skill's PR playbooks and the `adversarial-review` skill) and diagnose failing CI builds
-> - ☐ Database — connect the agent to one or more Postgres databases (read-only `database_list`/`database_schema`/`database_query` + `database_fork` to clone a local DB for risky schema work)
-> - ☐ API — draft API requests as file-based collections you fire yourself (Bruno or Postman visual clients, or plain curl scripts). No keys or permissions; this walks the adapter setup.
-> - ☐ Xcode — build, test, run and debug Apple apps and Swift packages through Apple's Xcode MCP server, plus the sandbox and permission posture that makes the toolchain reachable. **macOS with Xcode 27 or later** (the headless server ships there). No API key.
->
-> **Support and workspace — which to configure?** (header `Support`)
-> - ☐ Helpdesk — read support tickets and leave private draft notes in SupportCandy or Pylon (`helpdesk_*`); a person sends every reply
-> - ☐ App Store — read any app's App Store reviews (`appstore_reviews`); no key, read-only, never replies
-> - ☐ Slack — read-only Slack through your own account (`slack_*`): pulses, the replies you owe and the external threads waiting; never posts or reads DMs. Needs a Slack app in your workspace (the walk creates one if there isn't)
-> - ☐ cmux — the AgentLayer sidebar in cmux's right panel: every agent session on the Mac sorted by what needs you, and each agent's tasks and projects with its dashboard and roadmap a tap away. **macOS with cmux 0.65.2 or later.** No key.
-
-Option descriptions are shortened to fit the picker; keep the pack's name as the label.
-
-**Never offer the Xcode tick on Windows, WSL2 or Linux.** Render it only when `$AGENT_PLATFORM` = `macos` (or `[ "$(uname -s)" = "Darwin" ]`); on every other host drop the row entirely rather than showing a pack that can only fail. The A.2f preflight is a second wall, but a Windows operator should never see the option in the first place. **The cmux tick follows the same rule**, and also needs the app: render it only on macOS with `/Applications/cmux.app` present.
-
-If nothing is ticked across the three questions, cancel and return to Step 1. Otherwise run the matching sub-section(s) below in order: SEO (A.2a) → Browser (A.2b) → Database (A.2c) → GitHub (A.2d) → API (A.2e) → Xcode (A.2f) → Helpdesk (A.2g) → App Store (A.2h) → Slack (A.2i) → cmux (A.2j) → Notes (A.2k) → Third-party (Section F).
+## Section A — Pack walks
 
 ### A.2a — SEO pack walk
 
@@ -829,6 +835,27 @@ Runs:          after each brain refresh in the heartbeat (/heartbeat), at most 3
 Try it now:    /heartbeat scout, in the heartbeat's tab
 ```
 
+### A.2l — Finances walk
+
+Sets up the finances project: a profile per company and for the operator, their tax obligations and accounts, and the categorising rules. No keys or permissions; the `finances` skill is granted at init.
+
+**(1) Profiles.** Open `${CLAUDE_PLUGIN_ROOT}/skills/finances/references/playbooks/tax/setup.md` and follow it from its first step. It creates `$PROJECTS/finances/` with an `entities/<slug>.md` per entity and runs the calendar. For a half-done pack, `packs_status` names what's left ("acme's bank accounts"): do only that part of the playbook.
+
+**(2) Categorising rules.** When `projects/finances/RULES.md` is absent, run `bun "${CLAUDE_PLUGIN_ROOT}/skills/finances/scripts/rules.ts" init` and tell the operator the file is where their plain-language rules go ("Grab rides are transport").
+
+**(3) Summary:**
+
+```
+✅ Finances set up.
+
+Profiles:   projects/finances/entities/ (N companies, personal)
+Calendar:   N deadlines filed as tasks
+Rules:      projects/finances/RULES.md
+Next:       drop statements into projects/finances/data/inbox/ and say "import my statements"
+```
+
+Finances can't be removed here: the project holds the operator's books and statements. Say so if asked, and point at archiving the project instead.
+
 ## Section B — Register an external remote MCP server
 
 For third-party **remote** MCP servers (an `https://…` endpoint authenticated by a bearer token) that aren't part of a first-party pack — e.g. a log platform's hosted MCP. The entry lands in `$MCP_FILE`, the token in `$SECRETS_ENV`, always via the hardened wrapper below. Never register a remote server bare or hand-roll a wrapper.
@@ -958,27 +985,9 @@ Print per library: install status + symlink path + upstream LICENSE first-line. 
 
 ## Section C — Deconfigure a skill pack
 
-### C.1 Pick pack(s) to deconfigure
+### C.1 What reaches here
 
-`AskUserQuestion`, as **three multi-select questions in one call** (the same four-option limit and the same rule as A.1: every pack is its own option, never two merged into one; Xcode and cmux only where A.1 would show them):
-
-> **Search and web — which to remove?** (header `Web`)
-> - SEO (clears API keys + permissions; skill files stay loaded but tool calls will error)
-> - Browser (removes the Perplexity API key from `.state/secrets/.env`; the MCP server stays plugin-bundled; briefings fall back to the built-in web search. Playwright tools stay since they're built-in)
-> - Notes (turns the heartbeat's scouting off; `knowledge/public.md` stays unless you say)
->
-> **Code — which to remove?** (header `Code`)
-> - GitHub (revokes the `github_*` tool permissions; optionally removes the `GITHUB_TOKEN*` lines)
-> - Database (revokes the db tool permissions; optionally removes the `AGENT_DB_*` connection keys)
-> - Xcode (unregisters the `xcode` MCP server, revokes its tool + Bash permissions; optionally removes the seeded rules)
->
-> **Support and workspace — which to remove?** (header `Support`)
-> - Helpdesk (revokes the `helpdesk_*` tool permissions; optionally removes the helpdesk keys)
-> - App Store (revokes `appstore_reviews`; the learned storefront files in `.state/appstore/` can stay)
-> - Slack (revokes the `slack_*` tools and the slack skill grant; optionally deletes your local Slack token)
-> - cmux (takes this home out of the AgentLayer sidebar; the last home out deletes it)
-
-Run C.2 for each ticked pack; nothing ticked returns to Step 1.
+The Remove branch of Step 2: each picked row runs its `**<label> deconfigure:**` entry below. Confirm once, naming every pack about to be removed and what each removal takes out, before running any.
 
 ### C.2 Deconfigure actions
 
@@ -1025,6 +1034,8 @@ Run C.2 for each ticked pack; nothing ticked returns to Step 1.
 
 **cmux deconfigure:**
 - Hand the operator `bun "${CLAUDE_PLUGIN_ROOT}/src/cli.ts" cmux sidebar remove --home="<HOME_DIR>"` to run in their own terminal (the sandbox can't write `~/.config/cmux/`). Other homes stay in the sidebar; when this was the last one the file is deleted, and `cmux right-sidebar set files` picks another right sidebar.
+
+**Third-party libraries deconfigure:** for each library the operator names (list them with `bunx skills list` from `$HOME_DIR`), follow F.4's uninstall.
 
 **Xcode deconfigure:**
 - Remove the `xcode` entry from `$MCP_FILE` `mcpServers` (leave every other server alone), then parse-check the result. If `<HOME>/.codex/hooks.json` exists, run the `codex_setup` MCP tool afterwards: it regenerates `[mcp_servers.xcode]` from `$MCP_FILE`, so with the entry gone the table goes with it. Never hand-edit that table.

@@ -48,8 +48,8 @@ export interface PackDef {
   blurb: string;
   /** The configure-skills section that sets it up (its heading starts with this). */
   walk: string;
-  /** The section that takes it out, or null when there's nothing to take out. */
-  remove: string | null;
+  /** Whether configure-skills can take it out again (its C.2 entry is `**<label> deconfigure:**`). */
+  removable: boolean;
   available: (probe: Probe) => boolean;
   parts: (probe: Probe) => Part[];
   /** Grants the walk adds to `permissions.allow`; seed carries them with the pack. */
@@ -132,7 +132,7 @@ export const PACKS = {
     group: PackGroup.Web,
     blurb: 'screenshots, PDFs and page text from any site, scripted flows, optional Perplexity search',
     walk: 'A.2b',
-    remove: 'Browser',
+    removable: true,
     available: always,
     parts: (probe) => [
       { label: 'browser tool permissions', ok: granted(probe, PLAYWRIGHT) },
@@ -150,7 +150,7 @@ export const PACKS = {
     group: PackGroup.Web,
     blurb: 'site audits, Search Console, PageSpeed, live Google results and domain authority',
     walk: 'A.2a',
-    remove: 'SEO',
+    removable: true,
     available: always,
     parts: (probe) => [
       { label: 'SEO tool permissions', ok: anyGranted(probe, SEO) },
@@ -168,7 +168,7 @@ export const PACKS = {
     group: PackGroup.Web,
     blurb: 'the heartbeat sends up to three checked findings a day, from public facts you approve',
     walk: 'A.2k',
-    remove: 'Notes',
+    removable: true,
     available: always,
     parts: (probe) => [
       { label: 'approved public facts (knowledge/public.md)', ok: probe.exists('knowledge/public.md') },
@@ -181,7 +181,7 @@ export const PACKS = {
     group: PackGroup.Code,
     blurb: 'PRs, issues and CI runs: reviews, replies, walkthroughs, and keeping your checkouts current',
     walk: 'A.2d',
-    remove: 'GitHub',
+    removable: true,
     available: always,
     parts: (probe) => [
       { label: 'GitHub tool permissions', ok: granted(probe, GITHUB) },
@@ -197,7 +197,7 @@ export const PACKS = {
     group: PackGroup.Code,
     blurb: 'read-only Postgres queries and schema, and a private copy of a local database for risky work',
     walk: 'A.2c',
-    remove: 'Database',
+    removable: true,
     available: always,
     parts: (probe) => [
       { label: 'database tool permissions', ok: granted(probe, DATABASE) },
@@ -210,7 +210,7 @@ export const PACKS = {
     group: PackGroup.Code,
     blurb: 'API requests drafted as Bruno, Postman or curl collections you send yourself',
     walk: 'A.2e',
-    remove: null,
+    removable: false,
     available: always,
     parts: (probe) => [
       {
@@ -225,7 +225,7 @@ export const PACKS = {
     group: PackGroup.Code,
     blurb: "build, test, run and debug Apple apps through Xcode's own MCP server",
     walk: 'A.2f',
-    remove: 'Xcode',
+    removable: true,
     available: (probe) => probe.macos,
     parts: (probe) => [
       { label: 'the xcode server in .mcp.json', ok: probe.mcpServers.includes('xcode') },
@@ -239,7 +239,7 @@ export const PACKS = {
     group: PackGroup.Support,
     blurb: 'read SupportCandy or Pylon tickets and leave private draft notes; a person sends every reply',
     walk: 'A.2g',
-    remove: 'Helpdesk',
+    removable: true,
     available: always,
     parts: (probe) => [
       { label: 'helpdesk tool permissions', ok: granted(probe, HELPDESK_READ) },
@@ -258,7 +258,7 @@ export const PACKS = {
     group: PackGroup.Support,
     blurb: "read any app's App Store reviews; read-only, never replies",
     walk: 'A.2h',
-    remove: 'App Store',
+    removable: true,
     available: always,
     parts: (probe) => [{ label: 'the reviews tool permission', ok: granted(probe, mcp(['appstore_reviews'])) }],
     grants: mcp(['appstore_reviews'])
@@ -268,7 +268,7 @@ export const PACKS = {
     group: PackGroup.Support,
     blurb: 'read-only Slack through your account: pulses, replies you owe, threads waiting on you',
     walk: 'A.2i',
-    remove: 'Slack',
+    removable: true,
     available: always,
     parts: (probe) => [
       { label: 'Slack tool permissions', ok: granted(probe, SLACK) },
@@ -283,7 +283,7 @@ export const PACKS = {
     group: PackGroup.Workspace,
     blurb: "the AgentLayer sidebar in cmux: every session by what needs you, each agent's tasks and pages",
     walk: 'A.2j',
-    remove: 'cmux',
+    removable: true,
     available: (probe) => probe.macos && probe.cmuxApp,
     parts: (probe) => [{ label: 'this home in the cmux sidebar', ok: probe.cmux === 'joined' }],
     grants: []
@@ -293,7 +293,7 @@ export const PACKS = {
     group: PackGroup.Workspace,
     blurb: 'tax deadlines and books for your companies and you, statements, spending by category',
     walk: 'A.2l',
-    remove: null,
+    removable: false,
     available: always,
     parts: (probe) => [
       { label: 'a profile per company and for you (projects/finances/entities/)', ok: probe.finances.length > 0 },
@@ -309,7 +309,7 @@ export const PACKS = {
     group: PackGroup.Extend,
     blurb: 'skill libraries others publish (SEO/GEO, marketing playbooks), linked into .claude/skills/',
     walk: 'F',
-    remove: 'F.4',
+    removable: true,
     available: always,
     parts: (probe) => [{ label: 'a library linked', ok: probe.libraries > 0 }],
     grants: []
@@ -319,7 +319,7 @@ export const PACKS = {
     group: PackGroup.Extend,
     blurb: "another service's MCP server, behind a hardened wrapper in .mcp.json",
     walk: 'B',
-    remove: null,
+    removable: false,
     available: always,
     parts: (probe) => [
       {
@@ -342,7 +342,7 @@ export interface PackStatus {
   group: PackGroup;
   blurb: string;
   walk: string;
-  remove: string | null;
+  removable: boolean;
   available: boolean;
   state: PackState;
   /** What a set-up pack still lacks, an optional part marked so. */
@@ -365,7 +365,7 @@ export const statusOf = (id: PackId, probe: Probe): PackStatus => {
     group: def.group,
     blurb: def.blurb,
     walk: def.walk,
-    remove: def.remove,
+    removable: def.removable,
     available: def.available(probe),
     state,
     missing:
