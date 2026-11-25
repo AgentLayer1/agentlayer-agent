@@ -152,6 +152,10 @@ export interface HostAdapter {
   homeFromPayload?: true;
   sessionStartReply: (result: SessionStartResult) => HookReply;
   /**
+   * The session start's answer in a folder that isn't a home, for a host that loads the plugin in every folder.
+   */
+  outsideHomeReply?: () => HookReply;
+  /**
    * The folder the session was launched from, where the hook's cwd can drift away from it.
    */
   launchDir: () => string | undefined;

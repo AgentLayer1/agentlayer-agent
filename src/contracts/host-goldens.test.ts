@@ -246,6 +246,15 @@ describe.skipIf(!POSIX_GIT)('session start, per host and home state', () => {
     ).toMatchSnapshot();
   });
 
+  test("an Antigravity session start whose payload can't be read stays silent, never claiming there's no home", () => {
+    const home = makeHome('initialized');
+    const reply = cli(home, ['session-start', '--hook-protocol=antigravity', '--home-from-payload'], {
+      stdin: 'not json',
+      asPlugin: true
+    });
+    expect(reply.stdout).toBe('');
+  });
+
   test("an Antigravity subagent's start gets no context", () => {
     const home = makeHome('initialized');
     const stdin = antigravityPayload(home, { lastUserInput: '', transcriptPath: resolve(home, 'not-yet.jsonl') });

@@ -140,8 +140,12 @@ export const runPolicy = async (flag: Flag): Promise<number> => {
 export const runSessionStart = async (flag: Flag): Promise<number> => {
   const host = hostOf(flag);
   const payload = host ? await payloadOf(host) : undefined;
-  if ((host && !atHome(host, payload)) || payload?.origin === 'child') {
+  if (payload?.origin === 'child') {
     return 0;
+  }
+  if (host && !atHome(host, payload)) {
+    // An unreadable payload names no home either, so only a read one earns the note.
+    return payload && host.outsideHomeReply ? emit(host.outsideHomeReply()) : 0;
   }
   if (host) {
     await recordFor(host, payload);

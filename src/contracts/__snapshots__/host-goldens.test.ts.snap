@@ -806,7 +806,7 @@ exports[`session start, per host and home state Antigravity, pre-init home 1`] =
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home-from-payload
 "
 ,
-  "stdout": "",
+  "stdout": "{"injectSteps":[{"systemMessage":{"systemMessage":"<!-- agentlayer: this folder isn't an agent home, and the agentlayer plugin's skills and tools work only inside one. Answer as Antigravity without them, and don't offer them; asked for one, say to start Antigravity in the agent's home folder. -->"}}]}",
 }
 `;
 
@@ -817,7 +817,7 @@ exports[`session start, per host and home state Antigravity, stranded home 1`] =
 "<TIMESTAMP> INFO  [🤖 system] [cli] session-start --hook-protocol=antigravity --home-from-payload
 "
 ,
-  "stdout": "",
+  "stdout": "{"injectSteps":[{"systemMessage":{"systemMessage":"<!-- agentlayer: this folder isn't an agent home, and the agentlayer plugin's skills and tools work only inside one. Answer as Antigravity without them, and don't offer them; asked for one, say to start Antigravity in the agent's home folder. -->"}}]}",
 }
 `;
 

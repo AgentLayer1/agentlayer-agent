@@ -141,6 +141,7 @@ Hook commands (internal — wired into Claude Code hooks; safe to run manually f
   session-start|session-capture|policy ... --home-from-payload
                                     Pin the home the payload's session works in, before any settings load (the Antigravity
                                     plugin's hooks, which run in the plugin's folder). Outside a home the hook does nothing
+                                    but tell the model the plugin doesn't apply
   policy --hook-protocol=antigravity --home-from-payload
                                     PreToolUse hook on every tool for a host whose own permission rules can't hold the home's:
                                     the shell guard, then the home's Claude settings: a deny is refused, an ask goes to the

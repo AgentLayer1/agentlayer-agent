@@ -205,7 +205,7 @@ export const antigravityHost = {
     },
     tools: {
       level: 'partial',
-      note: "the agent's own tools run unless the home asks about or denies them: Antigravity can't allow a skill's tools only while it runs, and loads the plugin in every folder, where its tools answer that they need a home"
+      note: "the agent's own tools run unless the home asks about or denies them: Antigravity can't allow a skill's tools only while it runs, and loads the plugin in every folder, where the session start tells the model they work only in a home"
     },
     skills: { level: 'partial', note: 'a skill over 24 KB is read on from its file' },
     ask: { level: 'yes' },
@@ -231,6 +231,14 @@ export const antigravityHost = {
     const pieces = splitPieces(banner + result.additionalContext);
     return pieces.length === 0 ? { code: 0 } : { stdout: injectSteps(pieces), code: 0 };
   },
+  // The plugin loads in every folder (a home's own plugins.json can't name a checkout outside it), so outside a home
+  // the model is told its skills and tools don't apply, or it reaches for them looking for one.
+  outsideHomeReply: () => ({
+    stdout: injectSteps([
+      `<!-- ${pluginName()}: this folder isn't an agent home, and the ${pluginName()} plugin's skills and tools work only inside one. Answer as Antigravity without them, and don't offer them; asked for one, say to start Antigravity in the agent's home folder. -->`
+    ]),
+    code: 0
+  }),
   launchDir: () => undefined,
   terminal: () => false,
   captureReply: 'json',
