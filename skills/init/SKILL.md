@@ -1116,7 +1116,8 @@ Baseline `sandbox` block to write when global `sandbox.enabled !== true`:
       "registry.npmjs.org",
       "*.npmjs.org",
       "docs.anthropic.com",
-      "docs.claude.com"
+      "docs.claude.com",
+      "api.frankfurter.dev"
     ]
   }
 }

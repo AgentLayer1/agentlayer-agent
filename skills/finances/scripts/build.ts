@@ -18,6 +18,7 @@ import {
 } from './calendar';
 import { cents, Check, csvFiles, DATA, loadReceipts, monthOf } from './layout';
 import { parseCsv } from './liability';
+import { type Rates, readRates } from './rates';
 
 /**
  * The finances dashboard's data, built from what the importer wrote under data/ and the rules in
@@ -452,6 +453,8 @@ export interface FinanceInput {
   receipts?: Map<string, string>;
   /** Each company's director balance as its accountant last stated it, from data/director.csv. */
   openings?: Map<string, DirectorOpening>;
+  /** Each month's units of each currency per US dollar, from data/rates.csv. */
+  rates?: Rates;
 }
 
 export interface DirectorOpening {
@@ -494,6 +497,8 @@ export interface FinanceData {
   today: string;
   /** The operator's own currency: the All view's local currency. Each entity's own is on `entities`. */
   home: string;
+  /** Each month's units of each currency per US dollar, for converting summaries; USD is 1 and never listed. */
+  rates: Rates;
   entities: { slug: string; name: string; kind: string; currency: string }[];
   accounts: AccountView[];
   /** `entity` is whose expense or income the line is; `paidBy` names the entity whose account paid, when another. */
@@ -548,7 +553,8 @@ export const buildFinance = ({
   rules,
   categories = [],
   receipts = new Map(),
-  openings = new Map()
+  openings = new Map(),
+  rates = {}
 }: FinanceInput): FinanceData => {
   const accounts = entities.flatMap((entity) => entity.accounts.map((account) => ({ account, entity })));
   const lines = classifyAll(txns, rules, entities);
@@ -821,6 +827,7 @@ export const buildFinance = ({
   return {
     today,
     home: entities.find((entity) => entity.kind === EntityKind.Individual)?.currency ?? entities[0]?.currency ?? 'USD',
+    rates: Object.fromEntries(Object.entries(rates).filter(([month]) => month >= oldest.slice(0, 7))),
     entities: entities.map((entity) => ({
       slug: entity.slug,
       name: entity.name,
@@ -1015,7 +1022,8 @@ export const loadFinance = (dir: string, today: string): FinanceInput => {
       stated
         .toSorted((a, b) => a.on.localeCompare(b.on))
         .map(({ company, balance, on }) => [company, { balance, on }] as const)
-    )
+    ),
+    rates: readRates(dir)
   };
 };
 
