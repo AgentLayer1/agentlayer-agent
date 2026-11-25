@@ -189,4 +189,86 @@ describe('the page in a browser', () => {
     expect(readFileSync(join(dir, 'RULES.md'), 'utf8').startsWith(PROSE)).toBe(true);
     expect(errors).toEqual([]);
   });
+
+  const company = () => {
+    const dir = setup();
+    const write = (file: string, body: string): string => {
+      mkdirSync(dirname(join(dir, file)), { recursive: true });
+      writeFileSync(join(dir, file), body);
+      return join(dir, file);
+    };
+    write(
+      'entities/acme.md',
+      '---\nname: Acme\nkind: company\nclose: none\n---\n\n## Accounts\n\n```yaml\n- { id: acme-main, name: Acme current }\n```\n'
+    );
+    write(
+      'RULES.md',
+      `${PROSE}\n## Learned\n\n### Payees\n\n\`\`\`yaml\n[]\n\`\`\`\n\n### Categories\n\n\`\`\`yaml\n- { payee: "SCHOOL X", category: "education", for: "ada", confirmed: true }\n\`\`\`\n`
+    );
+    importStatement({
+      dir,
+      account: 'acme-main',
+      file: write(
+        'data/inbox/a.csv',
+        'date,description,amount,balance\n2026-10-01,OPENING CREDIT,1000,1000\n2026-10-15,SCHOOL X,-100,900\n2026-10-25,CLOUD Y,-50,850\n'
+      ),
+      from: '2026-10-01',
+      to: '2026-10-31',
+      opening: 0,
+      closing: 850
+    });
+    return dir;
+  };
+
+  test("changing only a line's category keeps whose expense it is, on the page and after the paste", async () => {
+    const dir = company();
+    const { dom, doc, click } = open(renderFinances(dir, '2026-11-02'), '#categorise');
+    click('button[data-tab="approved"]');
+    const row = [...doc.querySelectorAll('.work-row')].find((el) => el.textContent?.includes('SCHOOL X'));
+    const input = row?.querySelector('input[data-fix="payee"]');
+    if (!(input instanceof dom.window.HTMLInputElement)) {
+      throw new Error('no picker for SCHOOL X');
+    }
+    input.value = 'Food';
+    input.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    click('button[data-act="copy"]');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    applyEdits(dir, parseEdits(doc.querySelector('.editbar pre')?.textContent ?? ''), '2026-11-02');
+    const rebuilt = readJsonBlock(renderFinances(dir, '2026-11-02'), 'finance-data');
+    const lines =
+      rebuilt?.kind === 'data'
+        ? (rebuilt.data as { lines: { payee: string; category: string; entity: string; paidBy: string | null }[] })
+            .lines
+        : [];
+    expect(lines.find((line) => line.payee === 'SCHOOL X')).toMatchObject({
+      category: 'food',
+      entity: 'ada',
+      paidBy: 'acme'
+    });
+  });
+
+  test('a period still in progress counts both sides only to the day every statement reaches', () => {
+    const { doc } = open(renderFinances(company(), '2026-11-02'), '#spending');
+    expect(doc.querySelector('h1.answer')?.textContent).toBe('RM 5 went out in October 2026 so far.');
+  });
+
+  test('hiding amounts hides the figures in a failing check too', () => {
+    const dir = company();
+    const file = join(dir, 'data/inbox/b.csv');
+    writeFileSync(file, 'date,description,amount,balance\n2026-11-01,CLOUD Y,-50,1184.56\n');
+    importStatement({
+      dir,
+      account: 'acme-main',
+      file,
+      from: '2026-11-01',
+      to: '2026-11-01',
+      opening: 1234.56,
+      closing: 1184.56
+    });
+    const { doc, click } = open(renderFinances(dir, '2026-11-02'), '#checks');
+    click('#mask');
+    const note = [...doc.querySelectorAll('#checks .note')].find((el) => el.textContent?.includes('1234.56'));
+    expect(note?.closest('.amt')).not.toBeNull();
+    expect(doc.body.classList.contains('masked')).toBe(true);
+  });
 });

@@ -225,7 +225,9 @@ describe('detectRecurring', () => {
   });
 
   test("is missed once the account's statements run past its date without it", () => {
-    expect(detectRecurring(lines, new Map([['ada-main', [{ from: '2026-07-01', to: '2026-11-30' }]]]))[0]?.state).toBe(BillState.Missed);
+    expect(detectRecurring(lines, new Map([['ada-main', [{ from: '2026-07-01', to: '2026-11-30' }]]]))[0]?.state).toBe(
+      BillState.Missed
+    );
   });
 
   test('two payments are not a pattern', () => {
@@ -266,7 +268,14 @@ describe('buildFinance', () => {
         openingOn: '2026-09-30',
         balance: 6000,
         movements: [
-          { date: '2026-10-10', amount: 1000, currency: 'MYR', payee: 'TRANSFER TO ADA', category: null, why: 'transfer' }
+          {
+            date: '2026-10-10',
+            amount: 1000,
+            currency: 'MYR',
+            payee: 'TRANSFER TO ADA',
+            category: null,
+            why: 'transfer'
+          }
         ]
       }
     ]);

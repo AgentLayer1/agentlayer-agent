@@ -518,7 +518,7 @@ body.masked iframe.tax:hover { filter: none; }
       const byPeriod = groupBy(base, (l) => P.key(mode, l.date));
       const within = (key, limit) => (byPeriod.get(key) ?? []).filter((l) => limit === null || days(l.date) - days(P.start(mode, key)) <= limit);
       const prevKey = P.step(mode, anchor, -1);
-      const cur = within(anchor, null);
+      const cur = within(anchor, cutoff);
       const prev = within(prevKey, cutoff);
       const spent = (rows) => -sum(rows, (l) => l.amount);
       const total = spent(cur);
@@ -701,7 +701,7 @@ body.masked iframe.tax:hover { filter: none; }
     },
     checks() {
       return `<p class="kicker">Checks</p><h1>${DATA.checks.every((c) => c.ok) ? "Every check holds" : `${DATA.checks.filter((c) => !c.ok).length} of ${DATA.checks.length} checks need a look`}</h1><p class="lede">What has to be true before the numbers on this page can be trusted. Each one is worked out from your statements on every build.</p>
-        <div class="card"><ul class="list">${DATA.checks.map((c) => `<li><span style="width:120px">${c.ok ? status("good", "TRUE") : status("critical", "FALSE")}</span><span class="what">${esc(c.label)}${c.items.length ? `<div class="note">${c.items.slice(0, 8).map(esc).join("<br>")}${c.items.length > 8 ? `<br>and ${c.items.length - 8} more` : ""}</div>` : ""}</span></li>`).join("")}</ul></div>`;
+        <div class="card"><ul class="list">${DATA.checks.map((c) => `<li><span style="width:120px">${c.ok ? status("good", "TRUE") : status("critical", "FALSE")}</span><span class="what">${esc(c.label)}${c.items.length ? `<div class="note amt">${c.items.slice(0, 8).map(esc).join("<br>")}${c.items.length > 8 ? `<br>and ${c.items.length - 8} more` : ""}</div>` : ""}</span></li>`).join("")}</ul></div>`;
     }
   };
 
@@ -728,7 +728,8 @@ body.masked iframe.tax:hover { filter: none; }
   const original = new Map(DATA.lines.map((l) => [l.id, l]));
   const forOf = (el, id) => {
     const picked = [...(el.closest(".work-row, tr")?.querySelectorAll("[data-for-of]") ?? [])].find((x) => x.dataset.forOf === id)?.value;
-    return picked && picked !== original.get(id)?.entity ? picked : undefined;
+    const line = original.get(id);
+    return picked && (picked !== line?.entity || line?.paidBy) ? picked : undefined;
   };
   const copyText = (text) => (navigator.clipboard?.writeText ? navigator.clipboard.writeText(text) : Promise.reject(new Error("no clipboard"))).catch(() => {
     const area = document.createElement("textarea");
