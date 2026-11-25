@@ -132,7 +132,7 @@ describe('classify', () => {
   });
 
   test('a rename matches the payee a line would otherwise get, not only the raw text', () => {
-    const raw = 'JOMPAY||88231120|99120034|D17|ACME TELCO';
+    const raw = 'JOMPAY||12345678|87654321|D17|ACME TELCO';
     expect(
       classify(txn('j', '2026-10-01', 'ada-main', -1, raw), [{ match: '^JOMPAY D17 ACME', payee: 'Acme Telco' }]).payee
     ).toBe('Acme Telco');
@@ -156,7 +156,7 @@ describe('classify', () => {
 
   test('a default payee drops reference numbers', () => {
     expect(defaultPayee('STREAMCO*884412 KL')).toBe('STREAMCO KL');
-    expect(defaultPayee('DUITNOW TO ACCOUNT||88231120|ACME TRADING|Fund Transfer||')).toBe(
+    expect(defaultPayee('DUITNOW TO ACCOUNT||12345678|ACME TRADING|Fund Transfer||')).toBe(
       'DUITNOW TO ACCOUNT ACME TRADING Fund Tra'
     );
   });
