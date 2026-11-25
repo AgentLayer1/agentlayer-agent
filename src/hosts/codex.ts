@@ -23,6 +23,14 @@ export const codexHost = {
   setup: 'Start codex from this home and run $upgrade, which wires the home',
   machineIssues: () => [],
   ...claudeProtocol,
+  // Codex drops the banner's leading blank line and prints its first line beside its own `Hook ·` label, so a heading
+  // takes that row and the banner's lines start together below it.
+  sessionStartReply: (result) =>
+    claudeProtocol.sessionStartReply(
+      result.systemMessage.trim()
+        ? { ...result, systemMessage: `Session context:\n${result.systemMessage.replace(/^\n+/, '')}` }
+        : result
+    ),
   launchDir: () => undefined,
   terminal: () => false,
   captureReply: 'json',

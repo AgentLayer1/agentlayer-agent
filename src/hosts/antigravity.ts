@@ -215,7 +215,7 @@ export const antigravityHost = {
       };
     }
     const banner = result.systemMessage.trim()
-      ? `<!-- session banner: in your first reply, pass on each line that warns (⚠️) or asks for an action (an upgrade, a sync), unless the request asks for a set output format; when none does, say nothing about the banner -->\n${result.systemMessage.trim()}\n\n`
+      ? `<!-- session banner, which this host can't show the operator: open your first reply with all of it, word for word, in a \`text\` code block, unless the request asks for a set output format -->\n${result.systemMessage.replace(/^\n+/, '').trimEnd()}\n\n`
       : '';
     const pieces = splitPieces(banner + result.additionalContext);
     return pieces.length === 0 ? { code: 0 } : { stdout: injectSteps(pieces), code: 0 };

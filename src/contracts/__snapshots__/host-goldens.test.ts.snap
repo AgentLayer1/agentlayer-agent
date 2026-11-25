@@ -140,7 +140,8 @@ exports[`session start, per host and home state Codex, initialized home 1`] = `
 "
 ,
   "stdout": 
-"{"systemMessage":"  🦊 Agent:     Nova · v<VERSION>
+"{"systemMessage":"Session context:
+  🦊 Agent:     Nova · v<VERSION>
   ↑  Upgrade:   Turn on update tracking · run $upgrade
   ⟳  Sync:      Brain never synced · run $sync
   🧠 Knowledge: <HOME>/knowledge
@@ -205,7 +206,7 @@ exports[`session start, per host and home state Codex, pre-init home 1`] = `
 "
 ,
   "stdout": 
-"{"systemMessage":"
+"{"systemMessage":"Session context:
  ╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗
  ╠═╣ ║ ╦ ║╣  ║║║  ║ 
  ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ 
@@ -239,7 +240,7 @@ exports[`session start, per host and home state Codex, stranded home 1`] = `
 "
 ,
   "stdout": 
-"{"systemMessage":"
+"{"systemMessage":"Session context:
  ╔═╗ ╔═╗ ╔═╗ ╔╗╔ ╔╦╗
  ╠═╣ ║ ╦ ║╣  ║║║  ║ 
  ╩ ╩ ╚═╝ ╚═╝ ╝╚╝  ╩ 
@@ -737,8 +738,8 @@ exports[`session start, per host and home state Antigravity, initialized home 1`
 "
 ,
   "stdout": 
-"{"injectSteps":[{"systemMessage":{"systemMessage":"<!-- session banner: in your first reply, pass on each line that warns (⚠️) or asks for an action (an upgrade, a sync), unless the request asks for a set output format; when none does, say nothing about the banner -->
-🦊 Agent:     Nova · v<VERSION>
+"{"injectSteps":[{"systemMessage":{"systemMessage":"<!-- session banner, which this host can't show the operator: open your first reply with all of it, word for word, in a \`text\` code block, unless the request asks for a set output format -->
+  🦊 Agent:     Nova · v<VERSION>
   ⚠️ Sandbox:   Antigravity's terminal sandbox is off in <USER>/.gemini/antigravity-cli/settings.json, so shell commands can reach the whole disk. Paste the settings from .state/updates/antigravity-user-config.md there, then restart Antigravity.
   ↑  Upgrade:   Turn on update tracking · run the upgrade skill
   ⟳  Sync:      Brain never synced · run the sync skill
