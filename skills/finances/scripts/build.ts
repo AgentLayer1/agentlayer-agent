@@ -14,7 +14,8 @@ import {
   type ExistingTask,
   listBlock,
   loadEntities,
-  loadExisting
+  loadExisting,
+  orderEntities
 } from './calendar';
 import { cents, Check, csvFiles, DATA, LINE_MONTHS, loadReceipts, monthOf } from './layout';
 import { parseCsv } from './liability';
@@ -865,18 +866,12 @@ export const buildFinance = ({
     today,
     home: entities.find((entity) => entity.kind === EntityKind.Individual)?.currency ?? entities[0]?.currency ?? 'USD',
     rates: Object.fromEntries(Object.entries(rates).filter(([month]) => month >= oldest.slice(0, 7))),
-    entities: entities
-      .toSorted(
-        (a, b) =>
-          Number(b.kind === EntityKind.Individual) - Number(a.kind === EntityKind.Individual) ||
-          a.name.localeCompare(b.name)
-      )
-      .map((entity) => ({
-        slug: entity.slug,
-        name: entity.name,
-        kind: entity.kind,
-        currency: entity.currency
-      })),
+    entities: orderEntities(entities).map((entity) => ({
+      slug: entity.slug,
+      name: entity.name,
+      kind: entity.kind,
+      currency: entity.currency
+    })),
     accounts: accountViews,
     lines: lines
       .filter((line) => line.date >= oldest)

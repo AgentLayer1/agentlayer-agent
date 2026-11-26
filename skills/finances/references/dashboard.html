@@ -130,7 +130,7 @@ details.table summary { cursor: pointer; color: var(--muted); font-size: 12px; }
 .empty { color: var(--muted); padding: 6px 0; }
 .note { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
 #tip { position: fixed; pointer-events: none; background: var(--raised); color: var(--ink); border: 1px solid var(--ring); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12); border-radius: 8px; padding: 6px 10px; font-size: 12px; white-space: pre; display: none; z-index: 9; }
-iframe.tax { width: 100%; height: calc(100vh - 140px); border: 1px solid var(--ring); border-radius: 14px; background: var(--surface); }
+iframe.tax { display: block; width: 100%; min-height: 480px; border: 0; background: transparent; }
 
 /* Where your money goes, and Categorise */
 .periodbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 26px; }
@@ -760,6 +760,18 @@ body.masked iframe.tax:hover { filter: none; }
   const counts = { categorise: 0, accounts: DATA.insights.length, health: DATA.checks.filter((c) => !c.ok).length, bills: DATA.recurring.filter((b) => b.state === "missed").length };
   const current = () => (PAGES.some(([id]) => `#${id}` === location.hash) ? location.hash.slice(1) : "overview");
   const redirect = () => { const from = location.hash.slice(1); if (Object.hasOwn(MOVED, from)) { history.replaceState(null, "", `#${MOVED[from]}`); } };
+  // The tax page is framed: it follows this page's theme and entity switch, and grows to its content.
+  const syncTax = () => {
+    const frame = document.querySelector("iframe.tax");
+    const doc = frame?.contentDocument;
+    if (!frame || !doc?.body || current() !== "tax") { return; }
+    const root = document.documentElement;
+    doc.documentElement.setAttribute("data-theme", root.getAttribute("data-theme") ?? "light");
+    doc.documentElement.style.colorScheme = root.style.colorScheme;
+    const tab = doc.getElementById(`tab-${state.entity}`) ?? doc.getElementById("tab-overview");
+    if (tab) { tab.checked = true; }
+    frame.style.height = `${doc.body.scrollHeight}px`;
+  };
   const render = () => {
     const page = current();
     counts.categorise = toReview();
@@ -778,6 +790,7 @@ body.masked iframe.tax:hover { filter: none; }
     document.getElementById("mask").setAttribute("aria-pressed", String(state.masked));
     const search = document.querySelector("[data-search]");
     if (searching && search) { search.focus(); search.setSelectionRange(search.value.length, search.value.length); }
+    syncTax();
   };
   const commit = (change) => { change(); store.version += 1; state.copied = false; saveOps(); render(); };
   const push = (op) => commit(() => store.ops.push(op));
@@ -836,6 +849,9 @@ body.masked iframe.tax:hover { filter: none; }
     if (button) { state.usd = button.dataset.usd === "true"; save(); render(); }
   });
   window.addEventListener("hashchange", () => { redirect(); render(); });
+  document.querySelector("iframe.tax")?.addEventListener("load", syncTax);
+  document.addEventListener("themechange", syncTax);
+  window.addEventListener("resize", syncTax);
   const tip = document.getElementById("tip");
   document.addEventListener("mousemove", (event) => {
     const target = event.target.closest?.("[data-tip]");

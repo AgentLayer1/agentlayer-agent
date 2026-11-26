@@ -354,6 +354,31 @@ describe('the page in a browser', () => {
     expect(checks.doc.querySelector('#health .kicker')?.textContent).toBe('Health');
   });
 
+  test('the tax page is framed without its own chrome, and follows the entity switch and the theme', () => {
+    const { dom, doc, click, errors } = open(renderFinances(company(), '2026-11-02'), '#tax');
+    const frame = doc.querySelector('iframe.tax');
+    if (!(frame instanceof dom.window.HTMLIFrameElement)) {
+      throw new Error('no tax frame');
+    }
+    const inner = frame.contentDocument;
+    if (inner === null) {
+      throw new Error('no frame document');
+    }
+    inner.documentElement.innerHTML =
+      /<html[^>]*>([\s\S]*)<\/html>/.exec(frame.getAttribute('srcdoc') ?? '')?.[1] ?? '';
+    frame.dispatchEvent(new dom.window.Event('load'));
+    expect(inner.querySelector('header, nav.tabs')).toBeNull();
+    expect(inner.querySelector('#theme-slot')?.hasAttribute('hidden')).toBe(true);
+    const checked = (): string | undefined => inner.querySelector('input.tab:checked')?.id;
+    expect(checked()).toBe('tab-overview');
+    click('button[data-entity="acme"]');
+    expect(checked()).toBe('tab-acme');
+    doc.documentElement.setAttribute('data-theme', 'dark');
+    doc.dispatchEvent(new dom.window.CustomEvent('themechange'));
+    expect(inner.documentElement.getAttribute('data-theme')).toBe('dark');
+    expect(errors).toEqual([]);
+  });
+
   test('nothing owed shows as zero, never a negative zero', () => {
     const { doc } = open(renderFinances(setup(), '2026-11-02'), '#accounts');
     const owed = [...doc.querySelectorAll('.tile')].find((tile) => tile.textContent?.includes('Cards owed'));

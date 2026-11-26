@@ -360,6 +360,16 @@ export const parseEntity = (slug: string, raw: string): Entity => {
   };
 };
 
+/**
+ * Individuals first, then companies, each alphabetical. Every view orders entities this way, and the
+ * order fixes each one's colour, so a colour always means the same entity.
+ */
+export const orderEntities = (entities: Entity[]): Entity[] =>
+  entities.toSorted(
+    (a, b) =>
+      Number(b.kind === EntityKind.Individual) - Number(a.kind === EntityKind.Individual) || a.name.localeCompare(b.name)
+  );
+
 export const loadEntities = (taxDir: string): Entity[] => {
   const dir = join(taxDir, "entities");
   if (!existsSync(dir)) {
