@@ -87,6 +87,31 @@ In the [PR report](report.md) data, paste text is the comment itself, its ```sug
 
 When the point is to teach a pattern, not only to fix a line, state the failing call as a fact, give a reproducer the author can run with its real output pasted under it, and end on a one-line suggestion. The run does the persuading.
 
+## A failing probe
+
+A finding the outcome lane raised is a teaching comment whose reproducer is the probe: the behavior the PR promised, the call that breaks it, the probe's real output, then the fix. The probe goes in a `<details>` block so the comment stays short:
+
+````
+Two edits that raise the quantity of the last unit both succeed, so the unit is held twice. The body says an order never holds more than is in stock.
+
+<details><summary>Probe and output</summary>
+
+```ts
+await Promise.all([editQuantity(order, 2), editQuantity(other, 2)]);
+expect(await heldUnits(item)).toBe(1);
+```
+
+```
+Expected: 1
+Received: 2
+```
+</details>
+
+Reading stock after `lockStock()` instead of before it closes the race.
+````
+
+Once the operator has opened the tests PR, the comment ends with one more line naming it by number ("This probe is in #421, which targets this branch and fails until the fix lands."), and the summary comment says what that PR adds. Before the tests PR exists, a comment never mentions it.
+
 ## Questions for the author
 
 A question is a finding you could not verify. It carries what would settle it:
