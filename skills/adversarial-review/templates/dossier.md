@@ -27,7 +27,7 @@ Review <the work in one clause> the way a principal engineer would before it mer
 
 Adversarially review <the work in one clause>. Assume it is broken and prove where.
 
-Read-only: modify nothing in the repositories or the files under review; read-only checks (a build, a test run, a script that inspects) are welcome and should be reported as what you ran.
+Read-only: modify nothing in the repositories or the files under review; read-only checks (a build, a test run, a script that inspects) are welcome and should be reported as what you ran. The one write allowed is the probes below: new files at paths that do not exist yet, where the repo keeps its tests, each pasted in full into your findings and deleted by its exact path before you finish, so `git status` is what you found.
 
 ### Why this matters
 
@@ -80,12 +80,18 @@ Full text: `<absolute path to the engineer skill>/references/principles/` and th
 
 ### Claims to falsify
 
-*Numbered. Each names the file, symbol, or section, what the author claims, and what a counterexample would look like. The claims come from whatever states the intent: the commit messages for a PR or branch; the task, the plan the change implements, and the author's own description for a working tree; the artifact's own assertions for a plan, skill, or document. Settled claims are retired between rounds; every fix the implementer lands becomes a new claim. Keep the numbering continuous across rounds so ids in the Ledger stay stable.*
+*Numbered. Each names the file, symbol, or section, what the author claims, and what a counterexample would look like. The claims come from whatever states the intent: the commit messages for a PR or branch; the task, the plan the change implements, and the author's own description for a working tree; the artifact's own assertions for a plan, skill, or document. Settled claims are retired between rounds; every fix the implementer lands becomes a new claim. Keep the numbering continuous across rounds so ids in the Ledger stay stable. On a code target, a claim a run could falsify ends with `(probe)`, and the Probes section below asks for one.*
 
 1. <Symbol or file>: <the claim>. <What to check, and what would falsify it.>
 2. …
 
 *A plan adds, after the numbered claims:* **Settled, not claims:** <one line per operator decision the plan records, so it is not reopened.>
+
+### Probes
+
+*A code target only; a plan, skill or document drops this section.*
+
+Before you read a single range above, write one probe for each claim marked `probe`, from the claim and the public interface alone (the exported names, signatures, routes and flags listed here), so it tests what was intended rather than what was built: <the repo's test command, the folder its tests live in, and the interface the probes may call>. Use the repo's own test framework and style, assert a literal expected value or an observable effect, and run each on the head. Nothing reaches production, a real third-party account, or anything that spends money or sends a message; a command the sandbox refuses is reported as not run, with its error, and never retried another way. Only after the probes ran, read the code behind each failure: a bug in the probe is fixed and re-run, a bug in the work is a finding with the probe's command and real output in `failure:`.
 
 ### Also look for
 
@@ -110,7 +116,7 @@ fix: <the smallest correct change, as a diff or one sentence>
 introduced: yes | made-worse | pre-existing
 ```
 
-`design` means the work behaves correctly but could be simpler or more robust by construction; `failure:` then names the cost of the current shape (what a reader or the next change pays), and `old:`/`new:` may describe the shape instead of the behavior. `defect` is a wrong outcome reachable in normal use. `edge-case` is a wrong outcome only under unusual inputs, environments, or timing. A skill or document uses `defect` or `edge-case`; a plan uses all three, with `design` for the approach itself. For a plan, a document, or a skill: `file` and `line` point into the artifact, `code:` quotes its lines, `old:` is what the text says, `new:` is what the code or the reader actually meets, and `introduced:` is `yes` for the text's own defect or `pre-existing` for a code fact it relies on without noticing; cite the grounding file and line inside `failure:`. The `code:` lines are the anchor of record; a finding whose snippet is not in the file cannot be verified, so copy it exactly. One finding per defect; a pattern repeated in six places is one finding with six anchors. Where an area is genuinely clean, say so in one line rather than padding; no findings is a valid result, and a few high-conviction findings beat a long list of nits. Close with one line per claim above: `claim <k>: falsified · holds · not checked`, and one line on what you ran and did not run. When you are done, reply in chat with only the path of this file.
+`design` means the work behaves correctly but could be simpler or more robust by construction; `failure:` then names the cost of the current shape (what a reader or the next change pays), and `old:`/`new:` may describe the shape instead of the behavior. `defect` is a wrong outcome reachable in normal use. `edge-case` is a wrong outcome only under unusual inputs, environments, or timing. A skill or document uses `defect` or `edge-case`; a plan uses all three, with `design` for the approach itself. For a plan, a document, or a skill: `file` and `line` point into the artifact, `code:` quotes its lines, `old:` is what the text says, `new:` is what the code or the reader actually meets, and `introduced:` is `yes` for the text's own defect or `pre-existing` for a code fact it relies on without noticing; cite the grounding file and line inside `failure:`. The `code:` lines are the anchor of record; a finding whose snippet is not in the file cannot be verified, so copy it exactly. One finding per defect; a pattern repeated in six places is one finding with six anchors. Where an area is genuinely clean, say so in one line rather than padding; no findings is a valid result, and a few high-conviction findings beat a long list of nits. Before that closing, under `#### Probes`, each probe in full as a fenced block headed by its path, then one line each: `probe <k>: <path> · <command> · pass | fail | not run (<why>)`, where `<k>` is the claim it tests. Close with one line per claim above: `claim <k>: falsified · holds · not checked`, and one line on what you ran and did not run. When you are done, reply in chat with only the path of this file.
 
 ---
 
@@ -153,9 +159,9 @@ introduced: yes | made-worse | pre-existing
 
 **Checks after the fixes**
 
-| Target | Build | Tests |
-|---|---|---|
-| <name> | <✅ scheme · ❌ · – (nothing to build for a document)> | <n passed / k failed · –> |
+| Target | Build | Tests | Probes |
+|---|---|---|---|
+| <name> | <✅ scheme · ❌ · – (nothing to build for a document)> | <n passed / k failed · –> | <n hold / k fail at the new head · –> |
 
 **Not done this round:** <fixes deferred to the operator's call, checks that could not run, one line each.>
 
