@@ -649,16 +649,26 @@
     "threeMonths": "Nothing expires holds until #419 merges; if this ships alone, abandoned carts pile up and items read as sold out.",
     "cut": "The checkout copy and the admin hold view can ship later; reserve.ts, cancel.ts and the migration are the change."
   },
+  "outcome": {
+    "probes": [
+      { "claim": "Two buyers paying for the last unit at once: one succeeds, the other is told it just sold out", "probe": "test/outcome/last-unit.test.ts", "command": "pnpm vitest run test/outcome/last-unit.test.ts", "head": "pass", "base": "fail" },
+      { "claim": "Cancelling an unpaid order puts its units back on sale", "probe": "test/outcome/cancel-release.test.ts", "command": "pnpm vitest run test/outcome/cancel-release.test.ts", "head": "pass" },
+      { "claim": "Raising an order's quantity never holds more units than are in stock", "probe": "test/outcome/edit-last-unit.test.ts", "command": "pnpm vitest run test/outcome/edit-last-unit.test.ts", "head": "fail", "finding": 1 }
+    ],
+    "branch": "rev/pr-418-tests",
+    "pr": 421
+  },
   "findings": [
     {
       "id": 1, "pr": 418, "severity": "blocker", "title": "An edit that raises quantity can oversell: stock is read before the row lock",
-      "anchor": "src/orders/edit.ts:22", "lanes": ["correctness", "case-against", "bot:coderabbitai[bot]"], "principle": "separate before serializing shared state", "introduced": "yes",
+      "anchor": "src/orders/edit.ts:22", "lanes": ["correctness", "outcome", "case-against", "bot:coderabbitai[bot]"], "principle": "separate before serializing shared state", "introduced": "yes",
       "raisedBy": { "who": "coderabbitai[bot]", "url": "https://github.com/acme/shop/pull/418#discussion_r1000000001" },
       "scenario": ["Two edits raise the last unit's quantity", "Both read 1 available", "Each takes the lock in turn", "The item is held twice"],
       "proof": [
         { "anchor": "src/orders/edit.ts:22", "fact": "reads availableStock() outside the transaction" },
         { "anchor": "src/orders/edit.ts:31", "fact": "the lock comes after the read" },
-        { "anchor": "src/orders/reserve.ts:41", "fact": "reserve() reads inside its lock" }
+        { "anchor": "src/orders/reserve.ts:41", "fact": "reserve() reads inside its lock" },
+        { "source": "test/outcome/edit-last-unit.test.ts", "fact": "fails on the head: two concurrent edits both hold the last unit" }
       ],
       "snippet": "const available = await availableStock(item.id);   // line 22\nawait db.transaction(async (tx) => {\n  await lockStock(tx, item.id);                      // line 31",
       "comment": "Two edits that raise quantity on the last unit both read 1 available before either takes the row lock, so both hold it and the item oversells.\n\n`availableStock()` at line 22 runs before the transaction that locks at line 31; `reserve()` reads inside its lock. Reading after the lock closes the race:\n\n```diff\n-    const available = await availableStock(item.id);\n     await db.transaction(async (tx) => {\n       await lockStock(tx, item.id);\n+      const available = await availableStock(tx, item.id);\n```"
@@ -704,7 +714,8 @@
     { "check": "Format", "result": "pass" },
     { "check": "Tests", "result": "partial", "notes": "212 passed, 1 failing on the base too" },
     { "check": "CI recorded", "result": "pass", "notes": "run 4417: build, lint and tests gate the PR" },
-    { "check": "Fan-out", "result": "info", "notes": "full: 9 lanes, the PR touches the order path" },
+    { "check": "Outcome probes", "result": "fail", "notes": "3 probes from the body and the issue: 2 hold, 1 fails on the head (finding 1)" },
+    { "check": "Fan-out", "result": "info", "notes": "full: 9 reading lanes and the outcome probes, the PR touches the order path" },
     { "check": "Verification pass", "result": "info", "notes": "6 candidates (2 from bots, 1 from the case against) → 1 finding, 1 question, 1 nit group, 1 dropped, 1 bot false positive" },
     { "check": "Coverage", "result": "info", "notes": "8 files on the checklist: 7 reviewed line by line, 1 generated client skimmed" }
   ],
@@ -1106,6 +1117,22 @@
           h("ul", { class: "plain" }, review.conversation.map((entry) => h("li", {}, entry)))) : null);
     })() : null;
 
+    const outcome = DATA.outcome ? (() => {
+      const run = DATA.outcome;
+      const count = (result) => list(run.probes).filter((probe) => probe.head === result).length;
+      const result = (value) => value ? h("span", { class: `pill ${value}` }, value) : h("span", { class: "meta" }, "—");
+      return section("outcome", "Outcome", run.sub || "Probes written from the stated intent, without reading the implementation, run on the head and, where a claim needs it, on the base.",
+        statStrip([[count("pass"), "hold on the head", "ok"], [count("fail"), "fail on the head", "bad"], [count("not-run"), "not run", "warn"]]),
+        run.branch ? h("div", { class: "attn" }, h("b", {}, "Tests PR: "),
+          run.pr ? h("a", { href: `https://github.com/${DATA.pr.repo}/pull/${run.pr}` }, `#${run.pr}`) : "not opened yet",
+          ` from `, h("code", {}, run.branch), `, into this PR's branch.`) : null,
+        h("div", { class: "card" }, table(["The intent says", "Probe", "Head", "Base"], list(run.probes).map((probe) => [
+          h("span", {}, probe.claim, probe.finding ? [" ", h("a", { href: `#finding-${probe.finding}` }, `#${probe.finding}`)] : null, probe.note ? h("div", { class: "meta" }, probe.note) : null),
+          h("span", {}, h("code", {}, probe.probe), h("div", { class: "meta mono" }, probe.command)),
+          result(probe.head),
+          result(probe.base)]))));
+    })() : null;
+
     const description = DATA.description ? (() => {
       const desc = DATA.description;
       const counts = ["matches", "partly", "wrong", "missing"].map((status) => [status, list(desc.claims).filter((claim) => claim.status === status).length]);
@@ -1224,7 +1251,7 @@
     // Understand the PR, then judge it, then act on it; reference material last. A re-review's delta sits right above the findings it explains.
     const groups = [
       [description, how, architecture],
-      [look, since, findingsSection, questionsSection, against],
+      [look, outcome, since, findingsSection, questionsSection, against],
       [conversation, summary],
       [files, clean, checksTable(), noticed, dropped, notChecked, since ? null : priorSection()]
     ];

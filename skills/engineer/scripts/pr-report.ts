@@ -21,7 +21,7 @@ const RISKS = ['S', 'M', 'L', 'XL'];
 const CLASSES = ['risk', 'logic', 'mechanical'];
 const SEVERITIES = ['blocker', 'fix-before-merge', 'nit', 'question'];
 const INTRODUCED = ['yes', 'made-worse', 'pre-existing'];
-const LANES = ['correctness', 'invariants', 'security', 'regressions', 'conventions', 'tests', 'hygiene', 'generated-code', 'performance', 'architecture', 'case-against', 'gate'];
+const LANES = ['correctness', 'invariants', 'security', 'regressions', 'conventions', 'tests', 'hygiene', 'generated-code', 'performance', 'architecture', 'outcome', 'case-against', 'gate'];
 const CRITICAL_LANES = ['invariants', 'security'];
 const ASKED = ['met', 'not-met', 'untested'];
 const CLAIMS = ['matches', 'partly', 'wrong', 'missing'];
@@ -31,6 +31,7 @@ const THREAD_STATES = ['open', 'partly', 'fixed', 'answered', 'unanswered', 'wro
 const TONES = ['ok', 'warn', 'bad', 'cool'];
 const TOPICS = ['tests', 'lint'];
 const RESULTS = ['pass', 'fail', 'not-run', 'partial', 'info'];
+const PROBE_RESULTS = ['pass', 'fail', 'not-run'];
 const WHERE = ['inline', 'conversation', 'review'];
 const STATUSES = ['to-post', 'follow-up', 'posted'];
 const PATH = /^[^\s:`]+$/;
@@ -45,7 +46,7 @@ const KEYS = {
   common: ['kind', 'pr', 'stack', 'summary', 'checks', 'prior', 'draft'],
   review: [
     'verdict', 'risk', 'riskWhy', 'executed', 'sinceReview', 'description', 'lookAt', 'skim', 'decisions', 'asked', 'callTree', 'explanation', 'flows', 'walkTree',
-    'behavior', 'holdQuestions', 'architecture', 'caseAgainst', 'findings', 'files', 'conversation', 'verifiedClean', 'summaryComment', 'noticed', 'dropped', 'notChecked'
+    'behavior', 'holdQuestions', 'architecture', 'outcome', 'caseAgainst', 'findings', 'files', 'conversation', 'verifiedClean', 'summaryComment', 'noticed', 'dropped', 'notChecked'
   ],
   replies: ['sinceLast', 'threads', 'ownFindings', 'commits', 'resolveOnly', 'stillOpen'],
   pr: ['number', 'title', 'author', 'repo', 'head', 'base', 'adds', 'dels'],
@@ -70,6 +71,8 @@ const KEYS = {
   concern: ['concern', 'ok', 'state', 'today', 'anchor', 'recommended', 'reuses'],
   debt: ['adds', 'paysDown'],
   pathStep: ['step', 'what'],
+  outcome: ['sub', 'probes', 'branch', 'pr'],
+  probe: ['claim', 'probe', 'command', 'head', 'base', 'finding', 'note'],
   caseAgainst: ['strongest', 'threeMonths', 'cut'],
   finding: [
     'id', 'priorId', 'pr', 'severity', 'topic', 'title', 'anchor', 'lanes', 'principle', 'introduced', 'raisedBy', 'scenario', 'failure', 'diagram', 'snippet', 'proof', 'evidence', 'comment'
@@ -314,6 +317,29 @@ const architectureErrors = (data: Row): string[] =>
     ...rowErrors(arch.path, 'architecture.path', KEYS.pathStep, (row, at) => textErrors(row, ['step', 'what'], at))
   ]);
 
+const outcomeErrors = (data: Row): string[] => {
+  const findingIds = rows(data.findings).map((finding) => finding.id);
+  return objectErrors(data.outcome, 'outcome', KEYS.outcome, (run) => [
+    ...optionalTextErrors(run, ['sub', 'branch'], 'outcome'),
+    ...(run.pr === undefined || Number.isInteger(run.pr) ? [] : ['outcome.pr must be the tests PR number']),
+    ...(run.pr !== undefined && !isText(run.branch) ? ['outcome.pr needs the branch it was opened from'] : []),
+    ...(list(run.probes).length ? [] : ['outcome.probes needs a probe per claim it tested']),
+    ...rowErrors(run.probes, 'outcome.probes', KEYS.probe, (row, at) => [
+      ...textErrors(row, ['claim', 'probe', 'command'], at),
+      ...oneLineErrors(row, ['claim', 'command'], at),
+      ...(isText(row.probe) && !PATH.test(row.probe) ? [`${at}.probe must be a repo-relative path, got ${JSON.stringify(row.probe)}`] : []),
+      ...enumErrors(row.head, PROBE_RESULTS, `${at}.head`),
+      ...optionalEnum(row.base, PROBE_RESULTS, `${at}.base`),
+      ...optionalTextErrors(row, ['note'], at),
+      ...(row.finding === undefined || findingIds.includes(row.finding) ? [] : [`${at}.finding points at no finding id`]),
+      ...(row.head === 'fail' && row.finding === undefined && !isText(row.note)
+        ? [`${at} fails on the head, so it names the finding or question it became, or a note on why it was dropped`]
+        : []),
+      ...([row.head, row.base].includes('not-run') && !isText(row.note) ? [`${at}.note must say why the probe did not run`] : [])
+    ])
+  ]);
+};
+
 const reviewErrors = (data: Row): string[] => {
   const pr = prOf(data);
   const findings = rows(data.findings);
@@ -365,6 +391,7 @@ const reviewErrors = (data: Row): string[] => {
     ]),
     ...textListErrors(data.holdQuestions, 'holdQuestions'),
     ...architectureErrors(data),
+    ...outcomeErrors(data),
     ...(data.caseAgainst === undefined
       ? []
       : isRecord(data.caseAgainst)
@@ -624,6 +651,9 @@ const reviewCard = (data: Row): string[] => {
   const priorCount = (status: string) => priorRows.filter((row) => row.status === status).length;
   const claims = rows(isRecord(data.description) ? data.description.claims : undefined);
   const claimCount = (status: string) => claims.filter((claim) => claim.status === status).length;
+  const outcome = isRecord(data.outcome) ? data.outcome : null;
+  const probes = rows(outcome?.probes);
+  const probeCount = (result: string) => probes.filter((probe) => probe.head === result).length;
   return [
     `**Verdict** ${VERDICT_LABEL[text(data.verdict)] ?? md(data.verdict)} · **Risk** ${md(data.risk)} · **Page** [open the review](${PAGE_TOKEN})`,
     ...(since
@@ -634,6 +664,12 @@ const reviewCard = (data: Row): string[] => {
       : []),
     ...(claims.length
       ? ['', `**PR description** ${claimCount('matches')} match · ${claimCount('partly')} partly · ${claimCount('wrong')} wrong · ${claimCount('missing')} missing from the body`]
+      : []),
+    ...(probes.length
+      ? [
+          '',
+          `**Outcome** ${probeCount('pass')} hold · ${probeCount('fail')} fail · ${probeCount('not-run')} not run on the head${outcome && Number.isInteger(outcome.pr) ? ` · tests in PR #${String(outcome.pr)}` : ''}`
+        ]
       : []),
     ...section('Findings', bySeverity(['blocker', 'fix-before-merge', 'nit'])),
     ...section('Questions for the author', bySeverity(['question'])),

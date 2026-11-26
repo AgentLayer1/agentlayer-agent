@@ -149,7 +149,7 @@ describe('validate', () => {
   test('a blocker needs what goes wrong and the proof, and a lane from the list', () => {
     const errors = validate(withFinding(sampleReview(), 0, { scenario: undefined, proof: undefined, lanes: ['races'] })).errors;
     expect(errors).toEqual([
-      'findings[0].lanes[0] must be one of correctness | invariants | security | regressions | conventions | tests | hygiene | generated-code | performance | architecture | case-against | gate | bot:<login>, got "races"',
+      'findings[0].lanes[0] must be one of correctness | invariants | security | regressions | conventions | tests | hygiene | generated-code | performance | architecture | outcome | case-against | gate | bot:<login>, got "races"',
       'findings[0] needs a scenario (or failure) saying what goes wrong',
       'findings[0] needs proof (or evidence) saying what was read or run'
     ]);
@@ -281,6 +281,28 @@ describe('validate', () => {
     ]);
   });
 
+  test('a probe that fails on the head names what it became, and one that did not run says why', () => {
+    const data = sampleReview();
+    const outcome = isRecord(data.outcome) ? data.outcome : {};
+    const probe = (change: Data): Data => ({ ...data, outcome: { ...outcome, probes: [{ ...rowsOf(outcome.probes)[2], ...change }] } });
+    expect(validate(probe({ finding: undefined })).errors).toEqual(['outcome.probes[0] fails on the head, so it names the finding or question it became, or a note on why it was dropped']);
+    expect(validate(probe({ finding: undefined, note: 'The probe assumed a sync edit; the API is async. Rewritten as probe 2.' })).errors).toEqual([]);
+    expect(validate(probe({ finding: 9 })).errors).toEqual(['outcome.probes[0].finding points at no finding id']);
+    expect(validate(probe({ head: 'pass', base: 'not-run' })).errors).toEqual(['outcome.probes[0].note must say why the probe did not run']);
+    expect(validate(probe({ head: 'passed', probe: 'a b.ts' })).errors).toEqual([
+      'outcome.probes[0].probe must be a repo-relative path, got "a b.ts"',
+      'outcome.probes[0].head must be one of pass | fail | not-run, got "passed"'
+    ]);
+  });
+
+  test('outcome needs its probes, and a tests PR names the branch it came from', () => {
+    const data = sampleReview();
+    const outcome = isRecord(data.outcome) ? data.outcome : {};
+    expect(validate({ ...data, outcome: { ...outcome, probes: [] } }).errors).toEqual(['outcome.probes needs a probe per claim it tested']);
+    expect(validate({ ...data, outcome: { ...outcome, branch: undefined } }).errors).toEqual(['outcome.pr needs the branch it was opened from']);
+    expect(validate({ ...data, outcome: { ...outcome, pr: '421' } }).errors).toEqual(['outcome.pr must be the tests PR number']);
+  });
+
   test('hunk lines must be a line or a range', () => {
     const data = sampleReview();
     const files = rowsOf(data.files).map((file, i) => (i === 0 ? { ...file, hunks: [{ lines: 'L41, 90-95', text: 'x' }] } : file));
@@ -305,7 +327,7 @@ describe('validate', () => {
     expect(validate({ ...sampleReview(), verdict: 'approve' }).errors).toEqual(['verdict: approve leaves no blocker, fix-before-merge or question']);
     const noBlockers = rowsOf(sampleReview().findings).filter((finding) => finding.severity !== 'blocker');
     const conversation = rowsOf(sampleReview().conversation).filter((thread) => thread.finding !== 1);
-    expect(validate({ ...sampleReview(), findings: noBlockers, conversation, verdict: 'do-not-merge' }).errors).toEqual(['verdict: do-not-merge needs a blocker']);
+    expect(validate({ ...sampleReview(), findings: noBlockers, conversation, outcome: undefined, verdict: 'do-not-merge' }).errors).toEqual(['verdict: do-not-merge needs a blocker']);
   });
 
   test('a lookAt or decision anchor must name a file in files', () => {
@@ -328,6 +350,7 @@ describe('card', () => {
     expect(card).toContain('- 🟡 #2 2 nits in errors.ts · `src/web/checkout/errors.ts` · PR #418');
     expect(card).toContain('## Questions for the author\n\n- ❓ #3');
     expect(card).toContain('**PR description** 1 match · 1 partly · 1 wrong · 1 missing from the body');
+    expect(card).toContain('**Outcome** 2 hold · 1 fail · 0 not run on the head · tests in PR #421');
     expect(card).toContain('- wrong · @coderabbitai\\[bot\\] · PR #418 · `src/orders/cancel.ts:19`: Holds not deleted on refund failure');
     expect(card).toContain('- unanswered · @grace · PR #418 · #3: Does this need #419 first?');
     expect(card).toContain(`[open the review](${PAGE_TOKEN})`);

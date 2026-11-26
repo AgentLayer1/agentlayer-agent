@@ -11,8 +11,9 @@ Work through these in order and write down what you did for each:
 5. **Would a linter, type checker, or formatter have caught it?** When that gate ran clean on this head, fail the finding as out of scope. When it did not run (`--quick`, `--no-local`, or the repo has none), keep the finding: nothing else caught it.
 6. **A claim about an outside API** (it does not exist, it ignores an option, it throws, it returns a shape) is checked in the dependency's source or type definitions in the worktree, at the version the lockfile pins. Never confirm or reject one from memory; say which file you opened.
 7. **A performance-lane cost claim** needs a realistic size or a named hot path. Without one, score it 59 at most so it stays a question.
-8. **Is the fix right?** If the proposed fix is wrong or worse, correct it in your answer. A ```` ```suggestion ```` fix replaces exactly the anchored lines, so widen the anchor when it replaces more.
-9. **Rewrite the failure sentence** so a reader who never saw the analysis understands it: inputs or state, then the wrong outcome, in one sentence.
+8. **A failing probe** (`lane: outcome`) is re-run, not re-read: run its command on the head yourself and paste the output into `checked:`. Then read the probe against the intent it cites and the code it reached. A failure you reproduce and trace to the change scores 90 or more. One that comes from the probe itself (a wrong setup, a misused helper, an assertion the intent never made) or from an intent that reads two ways scores 59 at most, so it stays a question; say which. A failure you cannot reproduce is flaky until shown otherwise: score it 39 at most and say so.
+9. **Is the fix right?** If the proposed fix is wrong or worse, correct it in your answer. A ```` ```suggestion ```` fix replaces exactly the anchored lines, so widen the anchor when it replaces more.
+10. **Rewrite the failure sentence** so a reader who never saw the analysis understands it: inputs or state, then the wrong outcome, in one sentence.
 
 Score 0–100 on whether the defect is real, reachable, and matters, wherever it came from:
 

@@ -75,6 +75,17 @@ describe('pr-report page', () => {
     expect(document.querySelector('.riskwhy')?.textContent).toStartWith('Risk L: ');
   });
 
+  test('the outcome sits above the findings, with each probe on the head and the base and a failure linked to its finding', () => {
+    const { document } = open(TEMPLATE);
+    const ids = [...document.querySelectorAll('section')].map((section) => section.id);
+    expect(ids.indexOf('outcome')).toBeGreaterThan(ids.indexOf('look'));
+    expect(ids.indexOf('outcome')).toBeLessThan(ids.indexOf('findings'));
+    const rows = [...document.querySelectorAll('section#outcome tbody tr')].map((row) => [...row.querySelectorAll('td')].map((cell) => cell.textContent ?? ''));
+    expect(rows.map((row) => row.slice(2))).toEqual([['pass', 'fail'], ['pass', '—'], ['fail', '—']]);
+    expect(document.querySelector('section#outcome tbody a[href="#finding-1"]')).not.toBeNull();
+    expect(document.querySelector('section#outcome .attn a')?.getAttribute('href')).toBe('https://github.com/acme/shop/pull/421');
+  });
+
   test('sections run from understanding to judging to acting, with the badges right under the title', () => {
     const { document } = open(TEMPLATE);
     const ids = [...document.querySelectorAll('section')].map((section) => section.id);
