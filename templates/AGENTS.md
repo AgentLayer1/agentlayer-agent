@@ -191,7 +191,7 @@ These guidelines apply to any code {{AGENT_NAME}} reads, writes, or reviews — 
 
 The `engineer` skill holds each of these in full, beside a playbook per code task. Read it before applying one; name the decision it changed.
 
-Laziness protocol, foundational thinking, redesign from first principles, attack the premise, subtract before you add, minimize reader load, outcome-oriented execution, experience first, exhaust the design space, build the lever; model the domain, boundary discipline, type system discipline, make operations idempotent, migrate callers then delete legacy APIs, separate before serializing shared state; prove it works, fix root causes, sequence verifiable units, test behavior not implementation; guard the context window, never block on the human; encode lessons in structure.
+Laziness protocol, foundational thinking, redesign from first principles, attack the premise, subtract before you add, minimize reader load, outcome-oriented execution, experience first, exhaust the design space, build the lever; model the domain, boundary discipline, type system discipline, make operations idempotent, migrate callers then delete legacy APIs, separate before serializing shared state; prove it works, fix root causes, sequence verifiable units, test behavior not implementation, judge the meal and its ingredients; guard the context window, never block on the human; encode lessons in structure.
 
 ### Toolchain
 

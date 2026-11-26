@@ -7,7 +7,7 @@ description: >
   swarm, get a branch ready for its PR, or drive a long run to a finish line. Pull requests too, read-only
   against GitHub: review a teammate's PR with verified findings and paste-ready comments, answer
   the review on your own PR (fixes uncommitted, replies drafted), or prep your own PR for standup
-  and its test video. Picks the playbook, applies 23 engineering principles, and runs a comment pass before a diff is shown. Triggers on "fix", "build", "refactor", "simplify", "why is this slow", "how
+  and its test video. Picks the playbook, applies 24 engineering principles, and runs a comment pass before a diff is shown. Triggers on "fix", "build", "refactor", "simplify", "why is this slow", "how
   does X work", "why is X like this", "architect this", "blast radius", "interrogate", "get this ready for a
   PR", "review PR 123", "reply to the comments on my PR", "walk me through my PR", "github sweep", "engineer help".
 allowed-tools:
@@ -167,6 +167,7 @@ Most changes need none of the heavy tools. A rough ladder:
 | [Fix root causes](references/principles/fix-root-causes.md) | Debugging, or about to add a guard |
 | [Sequence verifiable units](references/principles/sequence-verifiable-units.md) | Multi-step work, shaping commits, and the TDD cadence |
 | [Test behavior, not implementation](references/principles/test-behavior-not-implementation.md) | Writing, reviewing, or keeping a test |
+| [Judge the meal and its ingredients](references/principles/judge-the-meal-and-its-ingredients.md) | Reviewing a change: run probes written from its intent, and still read its code |
 
 **Delegation**
 

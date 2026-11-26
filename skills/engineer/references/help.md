@@ -77,7 +77,7 @@ Name one and it changes the decision it governs: "apply the laziness protocol", 
 
 - **Core** · laziness protocol · foundational thinking · redesign from first principles · attack the premise · subtract before you add · minimize reader load · outcome-oriented execution · experience first · exhaust the design space · build the lever
 - **Architecture** · model the domain · boundary discipline · type system discipline · make operations idempotent · migrate callers then delete legacy APIs · separate before serializing shared state
-- **Verification** · prove it works · fix root causes · sequence verifiable units · test behavior not implementation
+- **Verification** · prove it works · fix root causes · sequence verifiable units · test behavior not implementation · judge the meal and its ingredients
 - **Delegation** · guard the context window · never block on the human
 - **Meta** · encode lessons in structure
 
