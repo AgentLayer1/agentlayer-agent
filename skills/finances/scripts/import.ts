@@ -95,11 +95,8 @@ const fromSerial = (serial: number): string =>
  * A date cell in the importer's format (`DD/MM/YYYY`, `D MMM YYYY`, `YYYY-MM-DD`, ...) as an ISO
  * date. A time after the date is ignored; an XLSX serial number is read as one.
  */
-export const parseDate = (text: string, format: string): string => {
-  const trimmed = text.trim();
-  if (/^\d{5}(\.\d+)?$/.test(trimmed)) {
-    return fromSerial(Number(trimmed));
-  }
+/** A date format's tokens, and the pattern that matches it with one group per token. */
+export const datePattern = (format: string): { tokens: string[]; pattern: string } => {
   const tokens = format.match(/YYYY|YY|MMM|MM|M|DD|D|[^YMD]+/g) ?? [];
   const pattern = tokens
     .map(
@@ -115,6 +112,15 @@ export const parseDate = (text: string, format: string): string => {
         })[token] ?? escapeRegExp(token)
     )
     .join('');
+  return { tokens, pattern };
+};
+
+export const parseDate = (text: string, format: string): string => {
+  const trimmed = text.trim();
+  if (/^\d{5}(\.\d+)?$/.test(trimmed)) {
+    return fromSerial(Number(trimmed));
+  }
+  const { tokens, pattern } = datePattern(format);
   const match = new RegExp(`^${pattern}`).exec(trimmed);
   if (match === null) {
     throw new Error(`"${text}" does not match the date format ${format}`);
@@ -133,14 +139,14 @@ export const parseDate = (text: string, format: string): string => {
   return `${year}-${pad(month)}-${pad(day)}`;
 };
 
-const asList = (value: unknown): string[] => {
+export const asList = (value: unknown): string[] => {
   if (Array.isArray(value)) {
     return value.filter((item): item is string => typeof item === 'string');
   }
   return typeof value === 'string' ? [value] : [];
 };
 
-const optional = (value: unknown): string | undefined =>
+export const optional = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() !== '' ? value : undefined;
 
 /**
@@ -454,7 +460,9 @@ const planImport = (options: ImportOptions): Planned => {
     samePeriod !== undefined && samePeriod.check !== Check.Checked && proof.check === Check.Checked
       ? (samePeriod.file ?? null)
       : null;
-  const alreadyImported = statements.some((row) => row.sha === sha) || (samePeriod !== undefined && replaced === null);
+  const alreadyImported =
+    statements.some((row) => row.sha === sha && row.account === account.id) ||
+    (samePeriod !== undefined && replaced === null);
   const known = new Set(
     csvFiles(DATA.transactions(dir, entity.slug)).flatMap((path) =>
       readRows(path)

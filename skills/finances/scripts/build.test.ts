@@ -425,8 +425,8 @@ describe('paid for another entity', () => {
     expect(data.director[0]).toMatchObject({ currency: 'USD', balance: 5000 });
     expect(data.home).toBe('MYR');
     expect(data.entities.map((entity) => [entity.slug, entity.currency])).toEqual([
-      ['acme', 'USD'],
-      ['ada', 'MYR']
+      ['ada', 'MYR'],
+      ['acme', 'USD']
     ]);
   });
 

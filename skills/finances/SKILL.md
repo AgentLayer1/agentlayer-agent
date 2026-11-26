@@ -56,7 +56,7 @@ Each entity pins its own currency (where it pays tax or is registered), and each
 $PROJECTS/finances/
 ├── README.md
 ├── entities/<slug>.md                 flat facts (frontmatter) + `## Obligations` and `## Accounts` yaml blocks
-├── importers/<institution>.md         an institution's export columns (names only, no figures)
+├── importers/<institution>.md         an institution's export columns or PDF layout (labels only, no figures)
 ├── RULES.md                           how you categorise, in plain language, and the patterns learned from it
 ├── closes/<slug>/<YYYY-MM>.md         monthly close records
 ├── estimates/<slug>/<YA>.md           estimate worksheets

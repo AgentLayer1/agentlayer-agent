@@ -16,11 +16,12 @@ import { DATA } from './layout';
  * Usage: bun rules.ts apply [file]     the pasted `finances-edits` block, from the file or stdin
  *        bun rules.ts review [--limit N] the payees no rule covers, with the confirmed rules as examples
  *        bun rules.ts suggest [file]   adds the agent's suggestions (JSON) as unconfirmed rules
+ *        bun rules.ts drop [file]      removes unconfirmed rules by target (JSON, the suggest shape)
  *        bun rules.ts init             writes RULES.md from the template when the project has none
  */
 
 const TEMPLATE = join(import.meta.dir, '..', 'references', 'rules-template.md');
-const FIELDS = ['match', 'payee', 'account', 'date', 'id', 'category', 'for', 'confirmed'] as const;
+const FIELDS = ['match', 'payee', 'account', 'entity', 'date', 'id', 'category', 'for', 'confirmed'] as const;
 
 export const Scope = { Payee: 'payee', Line: 'line' } as const;
 export type Scope = (typeof Scope)[keyof typeof Scope];
@@ -108,11 +109,12 @@ export const withLearned = (text: string, payees: Rule[], categories: Rule[]): s
   return `${text.slice(0, start)}${learned.trimEnd()}\n${tail === '' ? '' : `\n${tail}`}`;
 };
 
-/** Whether two rules select the same lines: the same pattern, payee, account, date and line, case aside. */
+/** Whether two rules select the same lines: the same pattern, payee, account, entity, date and line, case aside. */
 const sameTarget = (a: Rule, b: Rule): boolean =>
   (a.match ?? '').toLowerCase() === (b.match ?? '').toLowerCase() &&
   (a.payee ?? '').toLowerCase() === (b.payee ?? '').toLowerCase() &&
   a.account === b.account &&
+  a.entity === b.entity &&
   a.date === b.date &&
   a.id === b.id;
 
@@ -208,27 +210,58 @@ export const reviewUncategorised = (dir: string, today: string, limit = 80): Rev
   };
 };
 
+interface Target {
+  match?: string;
+  payee?: string;
+  account?: string;
+  entity?: string;
+}
+
+interface PayeeSuggestion extends Target {
+  match: string;
+  payee: string;
+}
+
+interface CategorySuggestion extends Target {
+  category: string;
+  for?: string;
+}
+
 export interface Suggestions {
-  payees?: { match: string; payee: string }[];
-  categories?: { payee?: string; match?: string; category: string; for?: string }[];
+  payees?: PayeeSuggestion[];
+  categories?: CategorySuggestion[];
+}
+
+export interface Targets {
+  payees?: Target[];
+  categories?: Target[];
 }
 
 const isText = (value: unknown): boolean => value === undefined || typeof value === 'string';
 
+/** What a rule selects, with nothing else a suggestion might carry (a suggestion never confirms itself). */
+const targetOf = ({ match, payee, account, entity }: Target): Rule => ({ match, payee, account, entity });
+
+const isTarget = (item: unknown): item is Target =>
+  isRecord(item) &&
+  isText(item.match) &&
+  isText(item.payee) &&
+  isText(item.account) &&
+  isText(item.entity) &&
+  (item.match !== undefined || item.payee !== undefined);
+
+const listOf = (parsed: unknown, key: string): unknown[] =>
+  isRecord(parsed) && Array.isArray(parsed[key]) ? parsed[key] : [];
+
 /** The agent's suggestions JSON, refused when an entry isn't a rename or a category rule. */
 export const parseSuggestions = (text: string): Suggestions => {
   const parsed: unknown = JSON.parse(text);
-  const payees: unknown[] = isRecord(parsed) && Array.isArray(parsed.payees) ? parsed.payees : [];
-  const categories: unknown[] = isRecord(parsed) && Array.isArray(parsed.categories) ? parsed.categories : [];
-  const goodPayee = (item: unknown): item is { match: string; payee: string } =>
-    isRecord(item) && typeof item.match === 'string' && typeof item.payee === 'string';
-  const goodCategory = (item: unknown): item is { payee?: string; match?: string; category: string; for?: string } =>
-    isRecord(item) &&
-    typeof item.category === 'string' &&
-    isText(item.payee) &&
-    isText(item.match) &&
-    isText(item.for) &&
-    (item.payee !== undefined || item.match !== undefined);
+  const payees = listOf(parsed, 'payees');
+  const categories = listOf(parsed, 'categories');
+  const goodPayee = (item: unknown): item is PayeeSuggestion =>
+    isTarget(item) && typeof item.match === 'string' && typeof item.payee === 'string';
+  const goodCategory = (item: unknown): item is CategorySuggestion =>
+    isTarget(item) && isRecord(item) && typeof item.category === 'string' && isText(item.for);
   const bad = [...payees.filter((item) => !goodPayee(item)), ...categories.filter((item) => !goodCategory(item))];
   if (!isRecord(parsed) || bad.length > 0) {
     throw new Error(`not a suggestion: ${JSON.stringify(bad[0] ?? parsed)}`);
@@ -237,39 +270,99 @@ export const parseSuggestions = (text: string): Suggestions => {
 };
 
 /**
- * Adds the agent's suggestions as unconfirmed rules, after the ones already there. A suggestion for a
- * payee or pattern that already has a rule is skipped: an existing decision or suggestion is never
- * overwritten by a new guess. A batch the build couldn't read (a broken pattern, an unknown `for`)
- * is refused whole, so RULES.md is never left unreadable.
+ * Adds the agent's suggestions as unconfirmed rules, after the ones already there. A suggestion whose
+ * target already has an unconfirmed rule replaces it in place; one whose target the operator approved
+ * is skipped, so a decision is never overwritten by a guess. A batch the build couldn't read (a
+ * broken pattern, an unknown `for`, `entity` or `account`) is refused whole, so RULES.md is never left
+ * unreadable.
  */
 export const addSuggestions = (
   dir: string,
   suggestions: Suggestions
-): { payees: number; categories: number; skipped: number } => {
+): { payees: number; categories: number; replaced: number; skipped: number } => {
   const text = readRules(dir);
   const { payees, categories } = learnedRules(text);
-  const known = (rule: Rule, rules: Rule[]): boolean => rules.some((other) => sameTarget(other, rule));
-  const newPayees = (suggestions.payees ?? [])
-    .filter((rule) => !known(rule, payees))
-    .map(({ match, payee }) => ({ match, payee }));
-  const newCategories = (suggestions.categories ?? [])
-    .filter((rule) => rule.category.trim() !== '' && !known(rule, categories))
+  const proposedPayees = (suggestions.payees ?? []).map(targetOf);
+  const proposedCategories = (suggestions.categories ?? [])
+    .filter((rule) => rule.category.trim() !== '')
     .map(
-      ({ payee, match, category, for: owner }): Rule => ({
-        match,
-        payee,
-        category,
-        ...(owner === undefined ? {} : { for: owner })
+      (suggestion): Rule => ({
+        ...targetOf(suggestion),
+        category: suggestion.category,
+        ...(suggestion.for === undefined ? {} : { for: suggestion.for })
       })
     );
-  const skipped =
-    (suggestions.payees?.length ?? 0) + (suggestions.categories?.length ?? 0) - newPayees.length - newCategories.length;
-  if (newPayees.length + newCategories.length > 0 || !existsSync(DATA.rules(dir))) {
-    const next = withLearned(text, [...payees, ...newPayees], [...categories, ...newCategories]);
+  const merge = (current: Rule[], proposed: Rule[]): { rules: Rule[]; added: number; replaced: number } =>
+    proposed.reduce(
+      (acc, rule) => {
+        const at = acc.rules.findIndex((other) => sameTarget(other, rule));
+        const existing = acc.rules[at];
+        if (existing === undefined) {
+          return { ...acc, rules: [...acc.rules, rule], added: acc.added + 1 };
+        }
+        if (existing.confirmed === true || ruleKey(existing) === ruleKey(rule)) {
+          return acc;
+        }
+        return { ...acc, rules: acc.rules.with(at, rule), replaced: acc.replaced + 1 };
+      },
+      { rules: current, added: 0, replaced: 0 }
+    );
+  const nextPayees = merge(payees, proposedPayees);
+  const nextCategories = merge(categories, proposedCategories);
+  const changed = nextPayees.added + nextPayees.replaced + nextCategories.added + nextCategories.replaced;
+  if (changed > 0 || !existsSync(DATA.rules(dir))) {
+    const next = withLearned(text, nextPayees.rules, nextCategories.rules);
     classifyAll([], parseRules(next), loadEntities(dir));
     writeFileSync(DATA.rules(dir), next);
   }
-  return { payees: newPayees.length, categories: newCategories.length, skipped };
+  return {
+    payees: nextPayees.added,
+    categories: nextCategories.added,
+    replaced: nextPayees.replaced + nextCategories.replaced,
+    skipped: (suggestions.payees?.length ?? 0) + (suggestions.categories?.length ?? 0) - changed
+  };
+};
+
+/**
+ * Removes the unconfirmed rules with the given targets. An approved rule with that target stays and is
+ * named in `kept`: approved decisions are the operator's to change on the page.
+ */
+export const dropRules = (dir: string, targets: Targets): { dropped: number; kept: string[]; missing: string[] } => {
+  const text = readRules(dir);
+  const { payees, categories } = learnedRules(text);
+  const label = (rule: Rule): string => ruleLine(rule).slice(2);
+  const prune = (rules: Rule[], items: Target[] = []): { rules: Rule[]; kept: string[]; missing: string[] } => {
+    const wanted = items.map(targetOf);
+    const targeted = (rule: Rule): boolean => wanted.some((target) => sameTarget(rule, target));
+    return {
+      rules: rules.filter((rule) => rule.confirmed === true || !targeted(rule)),
+      kept: rules.filter((rule) => rule.confirmed === true && targeted(rule)).map(label),
+      missing: wanted.filter((target) => !rules.some((rule) => sameTarget(rule, target))).map(label)
+    };
+  };
+  const nextPayees = prune(payees, targets.payees);
+  const nextCategories = prune(categories, targets.categories);
+  const dropped = payees.length - nextPayees.rules.length + categories.length - nextCategories.rules.length;
+  if (dropped > 0) {
+    writeFileSync(DATA.rules(dir), withLearned(text, nextPayees.rules, nextCategories.rules));
+  }
+  return {
+    dropped,
+    kept: [...nextPayees.kept, ...nextCategories.kept],
+    missing: [...nextPayees.missing, ...nextCategories.missing]
+  };
+};
+
+/** The targets JSON for `drop`: the suggest shape, each entry naming a pattern or a payee, with its scope. */
+export const parseTargets = (text: string): Targets => {
+  const parsed: unknown = JSON.parse(text);
+  const payees = listOf(parsed, 'payees');
+  const categories = listOf(parsed, 'categories');
+  const bad = [...payees, ...categories].find((item) => !isTarget(item));
+  if (!isRecord(parsed) || bad !== undefined) {
+    throw new Error(`not a target: ${JSON.stringify(bad ?? parsed)}`);
+  }
+  return { payees: payees.filter(isTarget), categories: categories.filter(isTarget) };
 };
 
 if (import.meta.main) {
@@ -295,8 +388,12 @@ if (import.meta.main) {
       );
     } else if (command === 'suggest') {
       console.log(JSON.stringify(addSuggestions(dir, parseSuggestions(await input())), null, 2));
+    } else if (command === 'drop') {
+      console.log(JSON.stringify(dropRules(dir, parseTargets(await input())), null, 2));
     } else {
-      console.error('usage: bun rules.ts <apply [file] | review | suggest [file] | init> [--dir <finances dir>]');
+      console.error(
+        'usage: bun rules.ts <apply [file] | review | suggest [file] | drop [file] | init> [--dir <finances dir>]'
+      );
       process.exit(1);
     }
   } catch (error) {

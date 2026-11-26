@@ -134,7 +134,7 @@ describe('the page in a browser', () => {
   };
 
   test('where your money goes renders for a week, a month and a year without errors', () => {
-    const { doc, click, errors } = open(renderFinances(setup(), '2026-11-02'), '#spending');
+    const { doc, click, errors } = open(renderFinances(setup(), '2026-11-02'), '#overview');
     expect(doc.querySelector('h1.answer')?.textContent).toContain('went out in October 2026');
     click('button[data-mode="week"]');
     click('button[data-act="step"][data-by="-1"]');
@@ -146,11 +146,11 @@ describe('the page in a browser', () => {
   });
 
   test('accounts at zero are hidden until asked for', () => {
-    const { doc, click } = open(renderFinances(setup(), '2026-11-02'), '#overview');
-    expect(doc.querySelector('#overview')?.textContent).not.toContain('Ada old savings');
+    const { doc, click } = open(renderFinances(setup(), '2026-11-02'), '#accounts');
+    expect(doc.querySelector('#accounts')?.textContent).not.toContain('Ada old savings');
     expect(doc.querySelector('.zero-note')?.textContent).toContain('Hiding 1 account at zero');
     click('button[data-act="zero"]');
-    expect(doc.querySelector('#overview')?.textContent).toContain('Ada old savings');
+    expect(doc.querySelector('#accounts')?.textContent).toContain('Ada old savings');
   });
 
   test('an approval and a fix made on the page, copied and applied, come back approved after the rebuild', async () => {
@@ -247,8 +247,44 @@ describe('the page in a browser', () => {
     });
   });
 
+  test('approve all approves only the payees shown, and one undo takes the whole batch back', async () => {
+    const dir = setup();
+    writeFileSync(
+      join(dir, 'RULES.md'),
+      `${PROSE}\n## Learned\n\n### Payees\n\n\`\`\`yaml\n[]\n\`\`\`\n\n### Categories\n\n\`\`\`yaml\n- { payee: "STREAMCO KL", category: "entertainment" }\n- { payee: "RESTO X", category: "food" }\n- { payee: "SALARY", category: "income" }\n\`\`\`\n`
+    );
+    const { dom, doc, click, errors } = open(renderFinances(dir, '2026-11-02'), '#categorise');
+    click('button[data-tab="suggested"]');
+    const suggested = (): string[] =>
+      [...doc.querySelectorAll('.work-row strong')].map((el) => el.textContent ?? '').toSorted();
+    expect(suggested()).toEqual(['RESTO X', 'SALARY', 'STREAMCO KL']);
+    expect(doc.querySelector('button[data-bulk]')?.textContent).toBe('Approve all 3 payees (5 lines)');
+    const find = (text: string): void => {
+      const search = doc.querySelector('input[data-search]');
+      if (!(search instanceof dom.window.HTMLInputElement)) {
+        throw new Error('no search box');
+      }
+      search.value = text;
+      search.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    };
+    find('a');
+    expect(doc.querySelector('button[data-bulk]')?.textContent).toBe('Approve all 2 payees (3 lines)');
+    click('button[data-bulk]');
+    find('');
+    expect(suggested()).toEqual(['RESTO X']);
+    click('button[data-act="undo"]');
+    expect(suggested()).toEqual(['RESTO X', 'SALARY', 'STREAMCO KL']);
+    click('button[data-bulk]');
+    expect(suggested()).toEqual([]);
+    click('button[data-act="copy"]');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const pasted = doc.querySelector('.editbar pre')?.textContent ?? '';
+    expect(applyEdits(dir, parseEdits(pasted), '2026-11-02')).toMatchObject({ approved: 3, unknown: [] });
+    expect(errors).toEqual([]);
+  });
+
   test('a period still in progress counts both sides only to the day every statement reaches', () => {
-    const { doc } = open(renderFinances(company(), '2026-11-02'), '#spending');
+    const { doc } = open(renderFinances(company(), '2026-11-02'), '#overview');
     expect(doc.querySelector('h1.answer')?.textContent).toBe('RM\u00a05 went out in October 2026 so far.');
   });
 
@@ -265,9 +301,9 @@ describe('the page in a browser', () => {
       opening: 1234.56,
       closing: 1184.56
     });
-    const { doc, click } = open(renderFinances(dir, '2026-11-02'), '#checks');
+    const { doc, click } = open(renderFinances(dir, '2026-11-02'), '#health');
     click('#mask');
-    const note = [...doc.querySelectorAll('#checks .note')].find((el) => el.textContent?.includes('1234.56'));
+    const note = [...doc.querySelectorAll('#health .note')].find((el) => el.textContent?.includes('1234.56'));
     expect(note?.closest('.amt')).not.toBeNull();
     expect(doc.body.classList.contains('masked')).toBe(true);
   });
@@ -275,7 +311,7 @@ describe('the page in a browser', () => {
   test("summaries switch to USD at each month's rate, a month with no rate is left out and said so, and lines keep their own currency", () => {
     const dir = company();
     writeFileSync(join(dir, 'data/rates.csv'), 'month,currency,per_usd\n2026-10,MYR,5\n');
-    const { doc, click } = open(renderFinances(dir, '2026-11-02'), '#spending');
+    const { doc, click } = open(renderFinances(dir, '2026-11-02'), '#overview');
     expect(doc.querySelector('#currency')?.textContent).toBe('MYRUSD');
     click('button[data-usd="true"]');
     expect(doc.querySelector('h1.answer')?.textContent).toBe('$1 went out in October 2026 so far.');
@@ -293,8 +329,33 @@ describe('the page in a browser', () => {
     expect(amounts.every((text) => text.includes('RM'))).toBe(true);
   });
 
+  test('the personal entity comes first, then the companies by name', () => {
+    const dir = company();
+    mkdirSync(join(dir, 'entities'), { recursive: true });
+    writeFileSync(join(dir, 'entities/aaa.md'), '---\nname: Zed Ltd\nkind: company\nclose: none\ncurrency: MYR\n---\n');
+    const { doc } = open(renderFinances(dir, '2026-11-02'), '#overview');
+    expect([...doc.querySelectorAll('#entities button')].map((button) => button.textContent)).toEqual([
+      'All',
+      'Personal',
+      'Acme',
+      'Zed Ltd'
+    ]);
+  });
+
+  test('the page opens on where the money goes, and links to the old page names still land', () => {
+    const first = open(renderFinances(setup(), '2026-11-02'), '');
+    expect(first.doc.querySelector('section.page.on')?.id).toBe('overview');
+    expect(first.doc.querySelector('#overview h1.answer')?.textContent).toContain('went out in October 2026');
+    const spending = open(renderFinances(setup(), '2026-11-02'), '#spending');
+    expect(spending.doc.querySelector('section.page.on')?.id).toBe('overview');
+    expect(spending.dom.window.location.hash).toBe('#overview');
+    const checks = open(renderFinances(setup(), '2026-11-02'), '#checks');
+    expect(checks.doc.querySelector('section.page.on')?.id).toBe('health');
+    expect(checks.doc.querySelector('#health .kicker')?.textContent).toBe('Health');
+  });
+
   test('nothing owed shows as zero, never a negative zero', () => {
-    const { doc } = open(renderFinances(setup(), '2026-11-02'), '#overview');
+    const { doc } = open(renderFinances(setup(), '2026-11-02'), '#accounts');
     const owed = [...doc.querySelectorAll('.tile')].find((tile) => tile.textContent?.includes('Cards owed'));
     expect(owed?.querySelector('.value')?.textContent).toBe('RM\u00a00');
   });

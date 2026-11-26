@@ -182,6 +182,7 @@ select.picker { width: auto; }
 .btn { border: 1px solid var(--ring); background: var(--surface); color: var(--ink); padding: 5px 12px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 13px; }
 .btn.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 .btn:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: -10px 0 18px; }
 .work { margin: 0 0 90px; }
 .work-row { display: grid; grid-template-columns: minmax(160px, 1.6fr) 90px 110px minmax(130px, 1fr) auto; gap: 14px; align-items: center; padding: 11px 6px; border-bottom: 1px solid var(--grid); }
 .work-row .who { min-width: 0; }
@@ -227,13 +228,13 @@ body.masked iframe.tax:hover { filter: none; }
       <button class="ghost" id="mask" aria-pressed="false" title="Blur every amount; hover one to read it">Hide amounts</button>
     </div>
     <section class="page" id="overview"></section>
-    <section class="page" id="cashflow"></section>
-    <section class="page" id="spending"></section>
+    <section class="page" id="accounts"></section>
     <section class="page" id="categorise"></section>
+    <section class="page" id="cashflow"></section>
     <section class="page" id="bills"></section>
     <section class="page" id="director"></section>
     <section class="page" id="charity"></section>
-    <section class="page" id="checks"></section>
+    <section class="page" id="health"></section>
     <section class="page" id="tax">
       <p class="kicker">Tax</p>
       <h1>What you owe, and what's due</h1>
@@ -257,9 +258,11 @@ body.masked iframe.tax:hover { filter: none; }
 (() => {
   const DATA = JSON.parse(document.getElementById("finance-data").textContent);
   const PAGES = [
-    ["overview", "Overview"], ["spending", "Where it goes"], ["categorise", "Categorise"], ["cashflow", "Cash flow"], ["bills", "Bills"],
-    ["director", "Director"], ["charity", "Charity"], ["checks", "Checks"], ["tax", "Tax"], ["how", "How it works"]
+    ["overview", "Overview"], ["accounts", "Accounts"], ["categorise", "Categorise"], ["cashflow", "Cash flow"], ["bills", "Bills"],
+    ["director", "Director"], ["charity", "Charity"], ["health", "Health"], ["tax", "Tax"], ["how", "How it works"]
   ];
+  // Pages that moved, so an old link or bookmark still lands where it meant to.
+  const MOVED = { spending: "overview", checks: "health" };
   const SERIES = ["var(--s1)", "var(--s2)", "var(--s3)"];
   const KEY = "finances-view";
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -393,16 +396,19 @@ body.masked iframe.tax:hover { filter: none; }
   const lower = (text) => (text ?? "").toLowerCase();
   // An edit is applied once the build carries a confirmed rule for its target, with its category and owner.
   const applied = (op) => op.op === "approve"
-    ? !ruleBy.has(op.key) || ruleBy.get(op.key).confirmed
+    ? op.keys.every((key) => !ruleBy.has(key) || ruleBy.get(key).confirmed)
     : DATA.rules.some((r) => r.confirmed && r.category === op.category && r.for === op.for &&
-      (op.scope === "line" ? r.id === op.line : r.id === undefined && !r.match && !r.account && !r.date && lower(r.payee) === lower(op.payee)));
+      (op.scope === "line" ? r.id === op.line : r.id === undefined && !r.match && !r.account && !r.entity && !r.date && lower(r.payee) === lower(op.payee)));
   const store = {
-    ops: (() => { try { return JSON.parse(localStorage.getItem(EDITS) || "[]"); } catch (e) { return []; } })().filter((op) => !applied(op)),
+    // An approval saved by an older page names one key; read it as a list of one.
+    ops: (() => { try { return JSON.parse(localStorage.getItem(EDITS) || "[]"); } catch (e) { return []; } })()
+      .map((op) => (op.op === "approve" && !op.keys ? { op: "approve", keys: [op.key] } : op))
+      .filter((op) => !applied(op)),
     version: 0
   };
   const saveOps = () => { try { localStorage.setItem(EDITS, JSON.stringify(store.ops)); } catch (e) {} };
   const derived = () => {
-    const approve = new Set(store.ops.filter((op) => op.op === "approve").map((op) => op.key));
+    const approve = new Set(store.ops.filter((op) => op.op === "approve").flatMap((op) => op.keys));
     const byPayee = new Map(); const byLine = new Map();
     store.ops.filter((op) => op.op === "set").forEach((op) => (op.scope === "line" ? byLine.set(op.line, op) : byPayee.set(lower(op.payee), op)));
     return { approve, byPayee, byLine };
@@ -500,7 +506,7 @@ body.masked iframe.tax:hover { filter: none; }
     return `<div class="editbar" role="region" aria-label="Your edits"><span class="what">${state.copied ? "Copied. Paste it into a session with your agent; this page rebuilds with your changes." : `${parts}, covering ${covers()} lines. They count here now and become permanent once pasted into a session.`}</span><button class="btn" data-act="undo">Undo last</button><button class="btn" data-act="clear">Discard</button><button class="btn primary" data-act="copy">Copy changes</button>${state.copied ? `<pre>${esc(editsBlock())}</pre>` : ""}</div>`;
   };
   const pages = {
-    overview() {
+    accounts() {
       const ls = inView(lines());
       const month = latestMonth();
       const now = flows(ls.filter((l) => l.date.startsWith(month)));
@@ -518,7 +524,7 @@ body.masked iframe.tax:hover { filter: none; }
       const rows = DATA.entities.filter((e) => state.entity === "all" || e.slug === state.entity).map((e) => {
         const own = accounts.filter((a) => a.entity === e.slug && (state.showZero || a.balance !== 0));
         return own.length === 0 ? "" : `<tr class="group"><td colspan="5"><span class="dot" style="background:${entityColor(e.slug)}"></span> ${esc(e.name)}</td></tr>` + own.map((a) =>
-          `<tr><td>${esc(a.name)}<div class="note" style="margin:0">${esc(a.type)}</div></td><td class="num">${a.balance === null ? "—" : money(a.balance, a.currency, 2)}</td><td class="num">${a.asOf ? dateLabel(a.asOf) : "—"}</td><td class="num">${a.statements}</td><td class="num">${a.statements === 0 ? '<span class="chip">no statement yet</span>' : a.behind ? status("warning", "behind") : status("good", "current")}</td></tr>`).join("");
+          `<tr><td>${esc(a.name)}<div class="note" style="margin:0">${esc(a.type)}</div></td><td class="num">${a.spendingOnly ? '<span class="chip">spending only</span>' : a.balance === null ? "—" : money(a.balance, a.currency, 2)}</td><td class="num">${a.asOf ? dateLabel(a.asOf) : "—"}</td><td class="num">${a.statements}</td><td class="num">${a.statements === 0 ? '<span class="chip">no statement yet</span>' : a.behind ? status("warning", "behind") : status("good", "current")}</td></tr>`).join("");
       }).join("");
       return `<p class="kicker">${esc(monthLabel(month))}${month === thisMonth ? " so far" : ", the latest month your statements cover"}</p>
         <h1>${money(now.in)} in, ${money(now.out)} out</h1>
@@ -528,7 +534,7 @@ body.masked iframe.tax:hover { filter: none; }
           <div class="tile"><div class="label">Cards owed</div><div class="value">${money(-owed)}</div><div class="sub">${DATA.dues.filter(mine).filter((d) => !d.paid).length} statement(s) to pay</div></div>
           <div class="tile"><div class="label">Net, ${esc(monthLabel(month, false))}</div><div class="value">${money(now.in - now.out)}</div><div class="sub">${money(now.in)} in · ${money(now.out)} out</div></div>
           ${director.map((d) => `<div class="tile"><div class="label">You owe ${esc(entityName(d.company))}</div><div class="value">${moneyAt(d.balance, d.currency, thisMonth)}</div><div class="sub">${d.opening === null ? "movements only, no opening figure" : `from ${money(d.opening, d.currency)} on ${dateLabel(d.openingOn)}`}</div></div>`).join("")}
-          <div class="tile"><div class="label">Checks</div><div class="value">${DATA.checks.length - failing}/${DATA.checks.length}</div><div class="sub">${failing === 0 ? status("good", "all hold") : status("warning", `${failing} to look at`)}</div></div>
+          <div class="tile"><div class="label">Health</div><div class="value">${DATA.checks.length - failing}/${DATA.checks.length}</div><div class="sub">${failing === 0 ? status("good", "all hold") : status("warning", `${failing} to look at`)}</div></div>
         </div>
         <div class="grid2">
           <div class="card"><h2>Needs you</h2>${insights.length === 0 ? '<p class="empty">Nothing right now.</p>' : `<ul class="list">${insights.slice(0, 12).map((i) => `<li><span class="what">${esc(i.title)}</span><span class="when">${esc(entityName(i.entity))}${i.due ? ` · due ${dateLabel(i.due)}` : ""}</span></li>`).join("")}</ul>`}</div>
@@ -543,7 +549,7 @@ body.masked iframe.tax:hover { filter: none; }
         <div class="card">${barsChart(months, [{ name: "In", color: "var(--s1)", values: by.map((f) => f.in) }, { name: "Out", color: "var(--s2)", values: by.map((f) => f.out) }])}
         ${tableOf(["Month", "In", "Out", "Net"], months.map((m, i) => [monthLabel(m), money(by[i].in), money(by[i].out), money(by[i].in - by[i].out)]))}</div>`;
     },
-    spending() {
+    overview() {
       const mode = state.period;
       const anchor = anchorOf(mode);
       const all = viewed().filter(mine);
@@ -679,17 +685,22 @@ body.masked iframe.tax:hover { filter: none; }
       const q = state.query.trim().toLowerCase();
       const shown = groupsAll.filter((g) => g.state === state.tab && (q === "" || g.payee.toLowerCase().includes(q) || (g.category ?? "").includes(q))).sort((a, b) => b.out + b.inn - (a.out + a.inn));
       const tab = (t, label) => `<button data-act="tab" data-tab="${t}" aria-pressed="${state.tab === t}">${label} ${count(t)}</button>`;
-      const lineCount = (g) => g.keys.reduce((n, k) => n + (ruleBy.get(k)?.lines ?? 0), 0);
+      const lineCount = (keys) => keys.reduce((n, k) => n + (ruleBy.get(k)?.lines ?? 0), 0);
+      const approvable = shown.filter((g) => g.state === "suggested" && g.keys.length);
+      const bulkKeys = [...new Set(approvable.flatMap((g) => g.keys))];
+      const bulk = state.tab === "suggested" && approvable.length > 1
+        ? `<div class="bulk"><button class="btn primary" data-act="approve" data-bulk data-keys="${esc(bulkKeys.join(","))}">Approve all ${approvable.length} payees (${lineCount(bulkKeys)} lines)</button><span class="note" style="margin:0">${q ? "Only the payees your search shows. " : ""}Undo last takes the whole batch back.</span></div>`
+        : "";
       const list = shown.slice(0, 200).map((g) => `<div class="work-row"><div class="who"><strong>${esc(g.payee)}</strong><small>${[...new Set(g.rs.map((l) => l.entity))].map((e) => esc(entityName(e))).join(", ")}</small></div>
           <span class="count note" style="margin:0">${g.rs.length} line${g.rs.length === 1 ? "" : "s"}${g.rs.some((l) => l.receipt) ? " 🧾" : ""}</span><span class="total num">${g.out ? money(g.out) : money(g.inn)}</span>
           <span>${tagOf({ category: g.state === "none" ? null : g.category, approved: g.state === "approved", pending: g.pending }, g.mixed ? " and others" : "")}</span>
-          <span class="acts">${g.state === "suggested" && g.keys.length ? `<button class="btn" data-act="approve" data-keys="${esc(g.keys.join(","))}" title="Approves ${lineCount(g)} lines">Approve</button>` : ""}${fixControls("payee", g.rs[0], g.state === "none" ? "Set category" : "Change")}<button class="toggle" data-act="open" data-k="${esc(g.k)}" aria-expanded="${state.open.has(g.k)}" aria-label="Show lines">${state.open.has(g.k) ? "▾" : "▸"}</button></span></div>
+          <span class="acts">${g.state === "suggested" && g.keys.length ? `<button class="btn" data-act="approve" data-keys="${esc(g.keys.join(","))}" title="Approves ${lineCount(g.keys)} lines">Approve</button>` : ""}${fixControls("payee", g.rs[0], g.state === "none" ? "Set category" : "Change")}<button class="toggle" data-act="open" data-k="${esc(g.k)}" aria-expanded="${state.open.has(g.k)}" aria-label="Show lines">${state.open.has(g.k) ? "▾" : "▸"}</button></span></div>
           ${state.open.has(g.k) ? `<div class="work-lines"><table><tbody>${g.rs.slice(-30).reverse().map((l) => `<tr><td>${dateLabel(l.date)} ${l.date.slice(0, 4)}${receiptOf(l)}</td><td>${esc(accountName(l.account))}</td><td class="num">${money(l.amount, l.currency, 2)}</td><td>${tagOf(l)}</td><td>${fixControls("line", l, "Just this line")}</td></tr>`).join("")}</tbody></table>${g.rs.length > 30 ? `<p class="note">The latest 30 of ${g.rs.length}.</p>` : ""}</div>` : ""}`).join("");
       const a = DATA.approval;
       return `<h1 class="answer">${count("none") ? `${count("none")} payee${count("none") === 1 ? "" : "s"} need a category` : count("suggested") ? `${count("suggested")} suggestion${count("suggested") === 1 ? "" : "s"} to check` : "Everything is categorised and approved"}</h1>
         <p class="answer-sub">Approving a payee teaches every line from it, past and future; "Just this line" fixes one. Your edits count on this page straight away, and become permanent when you copy them into a session. ${a.approved} of ${a.approved + a.suggested + a.uncategorised} lines are approved so far.</p>
         <div class="periodbar"><div class="seg" role="group" aria-label="Show">${tab("none", "Needs a category")}${tab("suggested", "Suggested")}${tab("approved", "Approved")}</div><input class="search" type="search" data-search placeholder="Find a payee or category" value="${esc(state.query)}" aria-label="Find a payee or category"></div>
-        <div class="work">${list || `<p class="empty">${state.tab === "none" ? "Nothing needs a category." : state.tab === "suggested" ? "No suggestions waiting." : "Nothing approved yet."}</p>`}${shown.length > 200 ? `<p class="note">The first 200 of ${shown.length}; search to narrow.</p>` : ""}</div>
+        ${bulk}<div class="work">${list || `<p class="empty">${state.tab === "none" ? "Nothing needs a category." : state.tab === "suggested" ? "No suggestions waiting." : "Nothing approved yet."}</p>`}${shown.length > 200 ? `<p class="note">The first 200 of ${shown.length}; search to narrow.</p>` : ""}</div>
         ${catList()}${editBar()}`;
     },
     bills() {
@@ -739,15 +750,16 @@ body.masked iframe.tax:hover { filter: none; }
         <div class="grid2"><div class="card"><h2>By month</h2>${barsChart(months, [{ name: "Given", color: "var(--s3)", values: months.map((m) => -sum(ls.filter((l) => l.date.startsWith(m)), (l) => l.amount)) }])}</div>
         <div class="card"><h2>By recipient</h2>${hbars(byPayee, "var(--s3)")}</div></div>`;
     },
-    checks() {
-      return `<p class="kicker">Checks</p><h1>${DATA.checks.every((c) => c.ok) ? "Every check holds" : `${DATA.checks.filter((c) => !c.ok).length} of ${DATA.checks.length} checks need a look`}</h1><p class="lede">What has to be true before the numbers on this page can be trusted. Each one is worked out from your statements on every build.</p>
+    health() {
+      return `<p class="kicker">Health</p><h1>${DATA.checks.every((c) => c.ok) ? "Everything holds" : `${DATA.checks.filter((c) => !c.ok).length} of ${DATA.checks.length} need a look`}</h1><p class="lede">What has to be true before the numbers on this page can be trusted. Each one is worked out from your statements on every build.</p>
         <div class="card"><ul class="list">${DATA.checks.map((c) => `<li><span style="width:120px">${c.ok ? status("good", "TRUE") : status("critical", "FALSE")}</span><span class="what">${esc(c.label)}${c.items.length ? `<div class="note amt">${c.items.slice(0, 8).map(esc).join("<br>")}${c.items.length > 8 ? `<br>and ${c.items.length - 8} more` : ""}</div>` : ""}</span></li>`).join("")}</ul></div>`;
     }
   };
 
   const toReview = () => new Set(viewed().filter((l) => OWN.has(l.kind) && !l.approved).map((l) => l.payee.toLowerCase())).size;
-  const counts = { categorise: 0, overview: DATA.insights.length, checks: DATA.checks.filter((c) => !c.ok).length, bills: DATA.recurring.filter((b) => b.state === "missed").length };
+  const counts = { categorise: 0, accounts: DATA.insights.length, health: DATA.checks.filter((c) => !c.ok).length, bills: DATA.recurring.filter((b) => b.state === "missed").length };
   const current = () => (PAGES.some(([id]) => `#${id}` === location.hash) ? location.hash.slice(1) : "overview");
+  const redirect = () => { const from = location.hash.slice(1); if (Object.hasOwn(MOVED, from)) { history.replaceState(null, "", `#${MOVED[from]}`); } };
   const render = () => {
     const page = current();
     counts.categorise = toReview();
@@ -789,7 +801,7 @@ body.masked iframe.tax:hover { filter: none; }
     other: () => { state.showOther = true; render(); },
     tab: (el) => { state.tab = el.dataset.tab; render(); },
     open: (el) => { const k = el.dataset.k; if (state.open.has(k)) { state.open.delete(k); } else { state.open.add(k); } render(); },
-    approve: (el) => commit(() => el.dataset.keys.split(",").filter(Boolean).forEach((key) => store.ops.push({ op: "approve", key }))),
+    approve: (el) => push({ op: "approve", keys: el.dataset.keys.split(",").filter(Boolean) }),
     undo: () => commit(() => store.ops.pop()),
     clear: () => commit(() => { store.ops = []; }),
     copy: () => { copyText(editsBlock()).finally(() => { state.copied = true; render(); }); },
@@ -823,7 +835,7 @@ body.masked iframe.tax:hover { filter: none; }
     const button = event.target.closest("button[data-usd]");
     if (button) { state.usd = button.dataset.usd === "true"; save(); render(); }
   });
-  window.addEventListener("hashchange", render);
+  window.addEventListener("hashchange", () => { redirect(); render(); });
   const tip = document.getElementById("tip");
   document.addEventListener("mousemove", (event) => {
     const target = event.target.closest?.("[data-tip]");
@@ -833,6 +845,7 @@ body.masked iframe.tax:hover { filter: none; }
     tip.style.left = `${Math.min(event.clientX + 14, window.innerWidth - tip.offsetWidth - 8)}px`;
     tip.style.top = `${event.clientY + 14}px`;
   });
+  redirect();
   render();
 })();
 </script>

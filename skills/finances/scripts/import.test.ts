@@ -2,6 +2,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { buildFinance, loadFinance } from './build';
 import {
   CANONICAL,
   importStatement,
@@ -273,6 +274,49 @@ describe('importStatement', () => {
     const overlap = importStatement({ dir, file: write(dir, 'data/inbox/c.csv', longer), account: 'acme-main' });
     expect(overlap).toMatchObject({ added: 1, repeated: 4, to: '2026-11-02' });
     expect(readFileSync(join(dir, 'data/transactions/acme/2026.csv'), 'utf8').trim().split('\n')).toHaveLength(6);
+  });
+
+  test('one original can feed an import per account, while the same file into the same account is still caught', () => {
+    const dir = home();
+    write(
+      dir,
+      'entities/acme.md',
+      PROFILE.replace(
+        '- { id: acme-card,',
+        '- { id: nova-myr, name: Nova card MYR, type: card, currency: MYR, balances: false }\n- { id: nova-usd, name: Nova card USD, type: card, currency: USD, balances: false }\n- { id: acme-card,'
+      )
+    );
+    const pdf = write(dir, 'statements/nova.pdf', 'one statement, purchases in two currencies');
+    const stage = (name: string, body: string): string => write(dir, `data/inbox/.staged/${name}`, body);
+    const options = { dir, original: pdf, from: '2026-10-01', to: '2026-10-31' };
+    const myr = importStatement({
+      ...options,
+      account: 'nova-myr',
+      file: stage('myr.csv', 'date,description,amount,balance\n2026-10-03,Card spending · CAFE ONE,-12.50,\n')
+    });
+    const usd = importStatement({
+      ...options,
+      account: 'nova-usd',
+      file: stage('usd.csv', 'date,description,amount,balance\n2026-10-04,Card spending · BOOKSHOP,-20.00,\n')
+    });
+    expect([myr, usd].map((report) => [report.alreadyImported, report.added, report.check])).toEqual([
+      [false, 1, Check.Unchecked],
+      [false, 1, Check.Unchecked]
+    ]);
+    const again = importStatement({
+      ...options,
+      account: 'nova-usd',
+      file: stage('usd2.csv', 'date,description,amount,balance\n2026-10-04,Card spending · BOOKSHOP,-20.00,\n')
+    });
+    expect(again).toMatchObject({ alreadyImported: true, added: 0 });
+    const data = buildFinance(loadFinance(dir, '2026-11-02'));
+    const proven = data.checks.find((check) => check.id === 'proven');
+    expect(proven?.ok).toBe(true);
+    expect(proven?.items).toEqual(['Not checked, spending only (no balances in the export): nova-myr, nova-usd']);
+    expect(data.accounts.find((account) => account.id === 'nova-usd')).toMatchObject({
+      spendingOnly: true,
+      balance: null
+    });
   });
 
   test('an original that cannot be filed leaves no statement, so the retry imports it', () => {

@@ -7,8 +7,10 @@ import { importStatement } from './import';
 import {
   addSuggestions,
   applyEdits,
+  dropRules,
   parseEdits,
   parseSuggestions,
+  parseTargets,
   reviewUncategorised,
   ruleLine,
   Scope,
@@ -205,7 +207,7 @@ describe('reviewUncategorised', () => {
 });
 
 describe('addSuggestions', () => {
-  test('adds new suggestions unconfirmed, and never overwrites a payee that already has a rule', () => {
+  test('adds new suggestions unconfirmed, and a newer suggestion replaces an unconfirmed one in place', () => {
     const dir = project();
     const report = addSuggestions(
       dir,
@@ -219,10 +221,13 @@ describe('addSuggestions', () => {
         })
       )
     );
-    expect(report).toEqual({ payees: 1, categories: 1, skipped: 1 });
+    expect(report).toEqual({ payees: 1, categories: 1, replaced: 1, skipped: 0 });
     const rules = learnedRules(readFileSync(join(dir, 'RULES.md'), 'utf8'));
     expect(rules.payees).toEqual([{ match: '^RESTO', payee: 'Resto' }]);
-    expect(rules.categories).toEqual([SUGGESTION, { payee: 'Resto', category: 'food' }]);
+    expect(rules.categories).toEqual([
+      { payee: 'STREAMCO KL', category: 'subscriptions' },
+      { payee: 'Resto', category: 'food' }
+    ]);
     expect(
       lines(dir)
         .filter((line) => line.payee === 'Resto')
@@ -231,6 +236,40 @@ describe('addSuggestions', () => {
       ['food', false],
       ['food', false]
     ]);
+  });
+
+  test('never replaces a rule the operator approved', () => {
+    const dir = project();
+    applyEdits(dir, parseEdits(block({ approve: [ruleKey(SUGGESTION)], set: [] })), TODAY);
+    const report = addSuggestions(dir, { categories: [{ payee: 'STREAMCO KL', category: 'subscriptions' }] });
+    expect(report).toEqual({ payees: 0, categories: 0, replaced: 0, skipped: 1 });
+    expect(learnedRules(readFileSync(join(dir, 'RULES.md'), 'utf8')).categories).toEqual([
+      { ...SUGGESTION, confirmed: true }
+    ]);
+  });
+
+  test('a rule scoped to an entity leaves the same text in another entity alone, and keeps existing keys as they were', () => {
+    const dir = project();
+    mkdirSync(join(dir, 'entities'), { recursive: true });
+    writeFileSync(
+      join(dir, 'entities/acme.md'),
+      '---\nname: Acme\nkind: company\nclose: none\ncurrency: MYR\n---\n\n## Accounts\n\n```yaml\n- { id: acme-main, name: Acme current }\n```\n'
+    );
+    const file = join(dir, 'data/inbox/a.csv');
+    writeFileSync(file, 'date,description,amount,balance\n2026-10-14,RESTO X,-30,970\n');
+    importStatement({ dir, account: 'acme-main', file });
+    addSuggestions(dir, { categories: [{ match: '^RESTO', entity: 'acme', category: 'office' }] });
+    const resto = lines(dir).filter((line) => line.payee === 'RESTO X');
+    expect(resto.filter((line) => line.entity === 'acme').map((line) => line.category)).toEqual(['office']);
+    expect(resto.filter((line) => line.entity === 'ada').map((line) => line.category)).toEqual([null, null]);
+    expect(ruleKey({ payee: 'STREAMCO KL', category: 'entertainment' })).toBe(ruleKey(SUGGESTION));
+    expect(ruleKey({ ...SUGGESTION, entity: 'ada' })).not.toBe(ruleKey(SUGGESTION));
+    expect(() =>
+      addSuggestions(dir, { categories: [{ match: '^RESTO', entity: 'nobody', category: 'food' }] })
+    ).toThrow('entity: nobody is not an entity');
+    expect(() => addSuggestions(dir, { categories: [{ match: '^RESTO', account: 'nope', category: 'food' }] })).toThrow(
+      'account: nope is not an account'
+    );
   });
 
   test('refuses an entry that is neither a rename nor a category rule', () => {
@@ -246,5 +285,52 @@ describe('addSuggestions', () => {
     );
     expect(readFileSync(join(dir, 'RULES.md'), 'utf8')).toBe(before);
     expect(lines(dir).length).toBeGreaterThan(0);
+  });
+});
+
+describe('dropRules', () => {
+  test('removes an unconfirmed rule by its target, keeps an approved one, and names what it could not find', () => {
+    const dir = project();
+    addSuggestions(dir, {
+      payees: [{ match: '^RESTO', payee: 'Resto' }],
+      categories: [{ payee: 'Resto', category: 'food' }]
+    });
+    applyEdits(dir, parseEdits(block({ approve: [ruleKey(SUGGESTION)], set: [] })), TODAY);
+    const report = dropRules(
+      dir,
+      parseTargets(
+        JSON.stringify({
+          payees: [{ match: '^RESTO', payee: 'Resto' }],
+          categories: [{ payee: 'Resto' }, { payee: 'STREAMCO KL' }, { payee: 'NOBODY' }]
+        })
+      )
+    );
+    expect(report.dropped).toBe(2);
+    expect(report.kept).toHaveLength(1);
+    expect(report.kept[0]).toContain('STREAMCO KL');
+    expect(report.missing).toEqual(['{ payee: "NOBODY" }']);
+    const rules = learnedRules(readFileSync(join(dir, 'RULES.md'), 'utf8'));
+    expect(rules.payees).toEqual([]);
+    expect(rules.categories).toEqual([{ ...SUGGESTION, confirmed: true }]);
+  });
+
+  test('a rename target drops only the rename, never a category rule with the same pattern', () => {
+    const dir = project();
+    addSuggestions(dir, {
+      payees: [{ match: '^RESTO', payee: 'Resto' }],
+      categories: [{ match: '^RESTO', payee: 'Resto', category: 'food' }]
+    });
+    expect(dropRules(dir, { payees: [{ match: '^RESTO', payee: 'Resto' }] })).toEqual({
+      dropped: 1,
+      kept: [],
+      missing: []
+    });
+    const rules = learnedRules(readFileSync(join(dir, 'RULES.md'), 'utf8'));
+    expect(rules.payees).toEqual([]);
+    expect(rules.categories).toContainEqual({ match: '^RESTO', payee: 'Resto', category: 'food' });
+  });
+
+  test('refuses a target that names neither a pattern nor a payee', () => {
+    expect(() => parseTargets('{"categories":[{"entity":"ada"}]}')).toThrow('not a target');
   });
 });

@@ -57,6 +57,8 @@ export interface Rule {
   payee?: string;
   category?: string;
   account?: string;
+  /** Only lines of this entity, so a pattern that also fits another entity's text can't reach them. */
+  entity?: string;
   date?: string;
   for?: string;
   /** One transaction, by its id: a fix for that line alone, checked before every other rule. */
@@ -66,8 +68,10 @@ export interface Rule {
 }
 
 /** A rule's identity, so the dashboard can name the rule it approves without its place in the file. */
-export const ruleKey = (rule: Rule): string =>
-  hashBuffer(JSON.stringify([rule.match, rule.payee, rule.account, rule.date, rule.id, rule.category, rule.for]));
+export const ruleKey = (rule: Rule): string => {
+  const fields = [rule.match, rule.payee, rule.account, rule.date, rule.id, rule.category, rule.for];
+  return hashBuffer(JSON.stringify(rule.entity === undefined ? fields : [...fields, rule.entity]));
+};
 
 /** Fixes for one line first, then approved rules, then suggestions, each in file order. */
 export const orderRules = (rules: Rule[]): Rule[] => [
@@ -156,6 +160,7 @@ const matches = (rule: Rule, text: string): boolean => rule.match !== undefined 
 const applies = (rule: Rule, txn: Txn): boolean =>
   (rule.id === undefined || rule.id === txn.id) &&
   (rule.account === undefined || rule.account === txn.account) &&
+  (rule.entity === undefined || rule.entity === txn.entity) &&
   (rule.date === undefined || txn.date.startsWith(rule.date));
 
 export interface Classified {
@@ -172,7 +177,7 @@ export interface Classified {
  * Rules run in two passes over rules in `orderRules` order: the first rule naming a payee whose
  * pattern fits the raw description, or the payee it would otherwise get, renames it, then the first rule naming a category that fits the
  * line (its id, the payee by name or pattern before or after the rename, or the raw description) sets it, and the first naming a
- * `for` the same way says whose expense the line is. `account` and `date` (a day or a month) narrow any rule.
+ * `for` the same way says whose expense the line is. `account`, `entity` and `date` (a day or a month) narrow any rule.
  */
 export const classify = (txn: Txn, rules: Rule[]): Classified => {
   const fallback = defaultPayee(txn.raw);
@@ -258,11 +263,22 @@ const kindOf = (paired: Kind | null, category: string | null, amount: number): K
 
 /** Every line with its payee, category and kind. */
 export const classifyAll = (txns: Txn[], rules: Rule[], entities: Entity[]): Line[] => {
-  const unknown = rules.find((rule) => rule.for !== undefined && !entities.some((entity) => entity.slug === rule.for));
+  const slugs = entities.map((entity) => entity.slug);
+  const unknown = rules
+    .flatMap((rule) => [
+      ['for', rule.for],
+      ['entity', rule.entity]
+    ])
+    .find(([, slug]) => slug !== undefined && !slugs.includes(slug));
   if (unknown !== undefined) {
     throw new Error(
-      `RULES.md: for: ${unknown.for} is not an entity (use a profile's slug: ${entities.map((entity) => entity.slug).join(', ')})`
+      `RULES.md: ${unknown[0]}: ${unknown[1]} is not an entity (use a profile's slug: ${slugs.join(', ')})`
     );
+  }
+  const accountIds = entities.flatMap((entity) => entity.accounts.map((account) => account.id));
+  const strayAccount = rules.find((rule) => rule.account !== undefined && !accountIds.includes(rule.account));
+  if (strayAccount !== undefined) {
+    throw new Error(`RULES.md: account: ${strayAccount.account} is not an account in any profile`);
   }
   const ordered = orderRules(rules);
   const classified = txns.map((txn) => ({ txn, ...classify(txn, ordered) }));
@@ -478,6 +494,8 @@ export interface AccountView {
   asOf: string | null;
   statements: number;
   behind: boolean;
+  /** Its export prints no balances, so it counts for spending only and is never proven. */
+  spendingOnly: boolean;
 }
 
 export const Why = { Transfer: 'transfer', PaidForYou: 'paid-for-you', PaidForCompany: 'paid-for-company' } as const;
@@ -580,7 +598,8 @@ export const buildFinance = ({
       balance: latest?.closing ?? null,
       asOf: latest?.to ?? null,
       statements: byAccount.get(account.id)?.length ?? 0,
-      behind: latest === undefined || daysBetween(latest.to, today) > STALE_DAYS
+      behind: latest === undefined || daysBetween(latest.to, today) > STALE_DAYS,
+      spendingOnly: account.balances === false
     };
   });
   const recurring = detectRecurring(lines, coverage);
@@ -692,7 +711,10 @@ export const buildFinance = ({
       ({ before, statement }) =>
         `${statement.account}: ${statement.from} opens at ${statement.opening}, the statement before closed at ${before.closing}`
     );
-  const unproven = statements.filter((statement) => statement.check !== Check.Checked);
+  const spendingOnly = accountViews.filter((account) => account.spendingOnly).map((account) => account.id);
+  const unproven = statements.filter(
+    (statement) => statement.check !== Check.Checked && !spendingOnly.includes(statement.account)
+  );
   const unchecked = unproven.map((statement) => `${statement.account}: ${statement.from} to ${statement.to}`);
   const behind = accountViews
     .filter((account) => account.behind)
@@ -707,7 +729,12 @@ export const buildFinance = ({
       id: 'proven',
       label: 'Every statement adds up from its opening to its closing',
       ok: unchecked.length === 0,
-      items: unchecked
+      items: [
+        ...unchecked,
+        ...(spendingOnly.length === 0
+          ? []
+          : [`Not checked, spending only (no balances in the export): ${spendingOnly.join(', ')}`])
+      ]
     },
     { id: 'gaps', label: 'No days missing between statements', ok: gaps.length === 0, items: gaps },
     {
@@ -838,12 +865,18 @@ export const buildFinance = ({
     today,
     home: entities.find((entity) => entity.kind === EntityKind.Individual)?.currency ?? entities[0]?.currency ?? 'USD',
     rates: Object.fromEntries(Object.entries(rates).filter(([month]) => month >= oldest.slice(0, 7))),
-    entities: entities.map((entity) => ({
-      slug: entity.slug,
-      name: entity.name,
-      kind: entity.kind,
-      currency: entity.currency
-    })),
+    entities: entities
+      .toSorted(
+        (a, b) =>
+          Number(b.kind === EntityKind.Individual) - Number(a.kind === EntityKind.Individual) ||
+          a.name.localeCompare(b.name)
+      )
+      .map((entity) => ({
+        slug: entity.slug,
+        name: entity.name,
+        kind: entity.kind,
+        currency: entity.currency
+      })),
     accounts: accountViews,
     lines: lines
       .filter((line) => line.date >= oldest)
@@ -894,7 +927,7 @@ export const buildFinance = ({
 const numberOrNull = (text: string | undefined): number | null =>
   text === undefined || text.trim() === '' ? null : Number(text);
 
-const TEXT_FIELDS = ['match', 'payee', 'category', 'account', 'date', 'for', 'id'] as const;
+const TEXT_FIELDS = ['match', 'payee', 'category', 'account', 'entity', 'date', 'for', 'id'] as const;
 
 const isRule = (value: unknown): value is Rule =>
   isRecord(value) &&
@@ -931,7 +964,7 @@ export const learnedRules = (raw: string): { payees: Rule[]; categories: Rule[] 
   const bad = [...payees, ...categories].find((rule) => !isRule(rule));
   if (bad !== undefined) {
     throw new Error(
-      `RULES.md: ${JSON.stringify(bad)} is not a rule (match, payee, category, account, date, for and id are text; confirmed is true or false)`
+      `RULES.md: ${JSON.stringify(bad)} is not a rule (match, payee, category, account, entity, date, for and id are text; confirmed is true or false)`
     );
   }
   const isPattern = (source: string): boolean => {

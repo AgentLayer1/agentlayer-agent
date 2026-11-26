@@ -6,14 +6,14 @@ Your companies and your own money, kept legible and ahead of their deadlines. I 
 
 | Ask | Playbook | You get |
 |---|---|---|
-| "Import this statement", "import ~/Downloads/october.csv", `/finances import` | **import** | Each statement filed once, proven against its own balances, its lines added to your accounts, and the month marked in for the books |
+| "Import this statement", "import ~/Downloads/october.csv", `/finances import` | **import** | Each statement filed once, proven against its own balances, its lines added to your accounts, and the month marked in for the books. A bank's PDF statements read from a saved layout after the first one |
 | A receipt dropped in the inbox | **import** | The receipt filed and matched to the line it paid for, so its items help categorise it |
 
 ### 📊 Your money
 
 | Ask | Playbook | You get |
 |---|---|---|
-| "Refresh my finances", "categorise the new transactions", "why was October high?" | **dashboard** | The finances page rebuilt (where your money goes by week, month and year, cash, bills, the director balance, charity, checks; totals in your currency or USD), suggested categories for new payees, and answers from your statements |
+| "Refresh my finances", "categorise the new transactions", "why was October high?" | **dashboard** | The finances page rebuilt (an overview of where your money goes by week, month and year, your accounts, cash flow, bills, the director balance, charity, and the page's health; totals in your currency or USD), suggested categories for new payees, and answers from your statements |
 | The edits you copied from the page's Categorise tab, pasted | **dashboard** | Your approvals and fixes written into `RULES.md`, so every matching line, past and future, follows them |
 | "Booking.com flights are travel" | **dashboard** | Your rule added to `RULES.md` in your words, and the suggestions redone to follow it |
 

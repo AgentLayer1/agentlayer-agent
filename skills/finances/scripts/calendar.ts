@@ -50,6 +50,8 @@ export interface Account {
   type?: string;
   currency?: string;
   importer?: string;
+  /** False when the institution's export prints no balances: the account counts for spending only. */
+  balances?: boolean;
 }
 
 /** An account as its entity holds it: always in a currency, its own or the entity's. */
@@ -272,7 +274,10 @@ const isFye = (fye: string): boolean => {
 };
 
 const isAccount = (value: unknown): value is Account =>
-  isRecord(value) && typeof value.id === "string" && typeof value.name === "string";
+  isRecord(value) &&
+  typeof value.id === "string" &&
+  typeof value.name === "string" &&
+  (value.balances === undefined || typeof value.balances === "boolean");
 
 const monthField = (slug: string, data: Record<string, unknown>, field: string): string | null => {
   const raw = data[field];
