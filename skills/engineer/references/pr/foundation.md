@@ -14,6 +14,7 @@ Nothing is posted without the operator. Every output is a report the operator pa
 - **Read what the diff calls, not just the diff.** A changed function is judged by its callers and callees on the head commit. Regressions live in the unchanged code that used to rely on the old behavior.
 - **Green CI is a claim, not a verdict.** Read the workflow that produced the check: steps marked `continue-on-error`, jobs that skip on the PR event, or a `github_pr_checks` the token cannot read all mean the local run decides. Build, lint, format and test run locally in a worktree, or the report says they did not run.
 - **Understanding first, judging second.** A reviewer who cannot explain the change cannot judge it, and an author who cannot explain it cannot defend it.
+- **Read in batches.** The orchestrator and every agent it launches follow [reading](reading.md): several reads per turn, the hunks with their functions in one diff command, callers in one grep. Turns are what a review costs; coverage never shrinks to save them.
 
 ## Step 0: Resolve the target and the playbook
 
