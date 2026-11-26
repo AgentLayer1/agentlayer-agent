@@ -1,6 +1,6 @@
 # Review lanes
 
-Each lane is one parallel agent in the [pr review](../playbooks/pr-review.md) fan-out (step 2), or one of the three lanes a grouped agent carries on a compact run. The checklist is the agent's prompt body; hand it over verbatim with the PR context, plus the absolute paths of the files its **Reads** line names. Each heading ends with the lane's slug, which the `lane:` field uses. A grouped agent works each lane's checklist in turn and sets `lane:` on every finding to the lane that found it. Every lane returns findings in the shape defined in that step and nothing else. A lane that finds nothing returns `no findings` and one line on what it checked.
+Each lane is one parallel agent in the [pr review](../playbooks/pr-review.md) fan-out (step 2), or one of the three lanes a grouped agent carries on a compact run, or one the orchestrator walks itself on a small run. The checklist is the agent's prompt body; hand it over verbatim with the PR context, plus the absolute paths of the files its **Reads** line names. Each heading ends with the lane's slug, which the `lane:` field uses. A grouped agent works each lane's checklist in turn and sets `lane:` on every finding to the lane that found it. Every lane returns findings in the shape defined in that step and nothing else. A lane that finds nothing returns `no findings` and one line on what it checked.
 
 Common rules for every lane:
 
