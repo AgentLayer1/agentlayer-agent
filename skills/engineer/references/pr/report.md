@@ -8,8 +8,8 @@ The model writes one data file. A script validates it and renders both: the page
 
 `<skill dir>` is this skill's base directory, which every host shows when it loads the skill (Claude Code's "Base directory for this skill" line, Codex's `<skill>` block path). The plugin's dependencies sit two levels up.
 
-1. Make a scratch folder: `mktemp -d "${TMPDIR:-/tmp}/pr-report-XXXXXX"`. The data file is `<folder>/data.json`; use that exact path in every later step, never a glob or `ls`.
-2. Write the data there as JSON, per the shape below.
+1. Use the review's scratch folder from [pr review](../playbooks/pr-review.md) step 2, or for replies make one: `mktemp -d "${TMPDIR:-/tmp}/pr-report-XXXXXX"`. The data file is `<folder>/data.json`; use that exact path in every later step, never a glob or `ls`.
+2. Write the data there as JSON, per the shape below, **once**. The file is the whole report, often 50,000 characters, so every full rewrite costs that much again as output and as context on every later turn. Every later change, a failing check included, is an `Edit` of the lines it names.
 3. Validate it and print the `report_write` arguments the data decides (`body`, the card; `summary`; `status`; `extra`). This also parses every diagram, so a bad one fails here, before anything is saved. Fix the data until it passes:
 
    ```bash
@@ -23,7 +23,7 @@ The model writes one data file. A script validates it and renders both: the page
    bun "<skill dir>/scripts/pr-report.ts" write "<data path>" "<the absolute path report_write returned>"
    ```
 
-   Use the `path` field `report_write` returns, not `relPath`, which is relative to `reports/`. It writes nothing when the card is missing or the data fails; fix the cause and run it again. To change a saved report, edit the data and run `write` again. `pr-report.ts check <page>` re-validates a page later.
+   Use the `path` field `report_write` returns, not `relPath`, which is relative to `reports/`. It writes nothing when the card is missing or the data fails; fix the cause and run it again. To change a saved report, `Edit` the data (never rewrite it) and run `write` again. `pr-report.ts check <page>` re-validates a page later.
 
 ## Both kinds
 
