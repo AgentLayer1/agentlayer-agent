@@ -303,6 +303,31 @@ describe('validate', () => {
     expect(validate({ ...data, outcome: { ...outcome, pr: '421' } }).errors).toEqual(['outcome.pr must be the tests PR number']);
   });
 
+  test('a PR with a risk file runs full unless the operator asked for less', () => {
+    const data = sampleReview();
+    expect(validate({ ...data, size: 'small' }).errors).toEqual([
+      'size: a PR with a risk file runs full unless the operator asked for less; set size to full, or sizeBy to operator when they asked'
+    ]);
+    expect(validate({ ...data, size: 'compact', sizeBy: 'operator' }).errors).toEqual([]);
+    const noRisk = rowsOf(data.files).map((file) => ({ ...file, class: file.class === 'risk' ? 'logic' : file.class }));
+    expect(validate({ ...data, files: noRisk, size: 'small' }).errors).toEqual([]);
+    expect(validate({ ...data, size: undefined, sizeBy: 'model' }).errors).toEqual([
+      'size must be one of quick | small | compact | full, got undefined',
+      'sizeBy must be one of rules | operator, got "model"',
+      'size: a PR with a risk file runs full unless the operator asked for less; set size to full, or sizeBy to operator when they asked'
+    ]);
+    expect(validate({ ...data, files: noRisk, size: 'quick' }).errors).toEqual(['sizeBy: a quick run is the operator passing --quick, so sizeBy is operator']);
+  });
+
+  test('a review without probes says which allowed reason skipped them', () => {
+    const data = sampleReview();
+    const outcomeRequired = 'outcome is required, or outcomeSkipped must say why the probes did not run: one of quick | docs-only | no-intent | operator';
+    expect(validate({ ...data, outcome: undefined }).errors).toContain(outcomeRequired);
+    expect(validate({ ...data, outcome: undefined, outcomeSkipped: 'cost' }).errors).toContain(outcomeRequired);
+    expect(validate({ ...data, outcomeSkipped: 'no-intent' }).errors).toEqual(['outcomeSkipped is only for a review with no outcome section']);
+    expect(validate({ ...data, outcome: undefined, outcomeSkipped: 'quick' }).errors).toContain('outcomeSkipped: quick needs size quick');
+  });
+
   test('hunk lines must be a line or a range', () => {
     const data = sampleReview();
     const files = rowsOf(data.files).map((file, i) => (i === 0 ? { ...file, hunks: [{ lines: 'L41, 90-95', text: 'x' }] } : file));
@@ -327,7 +352,7 @@ describe('validate', () => {
     expect(validate({ ...sampleReview(), verdict: 'approve' }).errors).toEqual(['verdict: approve leaves no blocker, fix-before-merge or question']);
     const noBlockers = rowsOf(sampleReview().findings).filter((finding) => finding.severity !== 'blocker');
     const conversation = rowsOf(sampleReview().conversation).filter((thread) => thread.finding !== 1);
-    expect(validate({ ...sampleReview(), findings: noBlockers, conversation, outcome: undefined, verdict: 'do-not-merge' }).errors).toEqual(['verdict: do-not-merge needs a blocker']);
+    expect(validate({ ...sampleReview(), findings: noBlockers, conversation, outcome: undefined, outcomeSkipped: 'no-intent', verdict: 'do-not-merge' }).errors).toEqual(['verdict: do-not-merge needs a blocker']);
   });
 
   test('a lookAt or decision anchor must name a file in files', () => {
@@ -345,7 +370,7 @@ describe('card', () => {
   test('a review card lists every finding, question and thread, checks the description, and links the page', () => {
     const card = renderCard(sampleReview());
     expect(card).toContain('# PR #418: Reserve stock when an order is placed, release it on cancel');
-    expect(card).toContain('**Verdict** 🟠 Changes requested · **Risk** L');
+    expect(card).toContain('**Verdict** 🟠 Changes requested · **Risk** L · **Size** full · **Page**');
     expect(card).toContain('- 🔴 #1 An edit that raises quantity can oversell: stock is read before the row lock · `src/orders/edit.ts:22` · PR #418');
     expect(card).toContain('- 🟡 #2 2 nits in errors.ts · `src/web/checkout/errors.ts` · PR #418');
     expect(card).toContain('## Questions for the author\n\n- ❓ #3');

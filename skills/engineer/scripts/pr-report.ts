@@ -32,6 +32,9 @@ const TONES = ['ok', 'warn', 'bad', 'cool'];
 const TOPICS = ['tests', 'lint'];
 const RESULTS = ['pass', 'fail', 'not-run', 'partial', 'info'];
 const PROBE_RESULTS = ['pass', 'fail', 'not-run'];
+const SIZES = ['quick', 'small', 'compact', 'full'];
+const SIZE_BY = ['rules', 'operator'];
+const OUTCOME_SKIPS = ['quick', 'docs-only', 'no-intent', 'operator'];
 const WHERE = ['inline', 'conversation', 'review'];
 const STATUSES = ['to-post', 'follow-up', 'posted'];
 const PATH = /^[^\s:`]+$/;
@@ -45,7 +48,7 @@ const GLANCE_WORDS = 14;
 const KEYS = {
   common: ['kind', 'pr', 'stack', 'summary', 'checks', 'prior', 'draft'],
   review: [
-    'verdict', 'risk', 'riskWhy', 'executed', 'sinceReview', 'description', 'lookAt', 'skim', 'decisions', 'asked', 'callTree', 'explanation', 'flows', 'walkTree',
+    'verdict', 'risk', 'riskWhy', 'size', 'sizeBy', 'outcomeSkipped', 'executed', 'sinceReview', 'description', 'lookAt', 'skim', 'decisions', 'asked', 'callTree', 'explanation', 'flows', 'walkTree',
     'behavior', 'holdQuestions', 'architecture', 'outcome', 'caseAgainst', 'findings', 'files', 'conversation', 'verifiedClean', 'summaryComment', 'noticed', 'dropped', 'notChecked'
   ],
   replies: ['sinceLast', 'threads', 'ownFindings', 'commits', 'resolveOnly', 'stillOpen'],
@@ -340,6 +343,26 @@ const outcomeErrors = (data: Row): string[] => {
   ]);
 };
 
+// The playbook's sizing rules, held here because prose alone did not stop a model from shrinking a risky review on its own.
+const sizeErrors = (data: Row): string[] => {
+  const risky = rows(data.files).some((file) => file.class === 'risk');
+  const operatorCall = data.sizeBy === 'operator';
+  return [
+    ...enumErrors(data.size, SIZES, 'size'),
+    ...enumErrors(data.sizeBy, SIZE_BY, 'sizeBy'),
+    ...(risky && data.size !== 'full' && !operatorCall
+      ? [`size: a PR with a risk file runs full unless the operator asked for less; set size to full, or sizeBy to operator when they asked`]
+      : []),
+    ...(data.size === 'quick' && !operatorCall ? ['sizeBy: a quick run is the operator passing --quick, so sizeBy is operator'] : []),
+    ...(data.outcome === undefined
+      ? enumErrors(data.outcomeSkipped, OUTCOME_SKIPS, 'outcomeSkipped').map(() => `outcome is required, or outcomeSkipped must say why the probes did not run: one of ${OUTCOME_SKIPS.join(' | ')}`)
+      : data.outcomeSkipped === undefined
+        ? []
+        : ['outcomeSkipped is only for a review with no outcome section']),
+    ...(data.outcomeSkipped === 'quick' && data.size !== 'quick' ? ['outcomeSkipped: quick needs size quick'] : [])
+  ];
+};
+
 const reviewErrors = (data: Row): string[] => {
   const pr = prOf(data);
   const findings = rows(data.findings);
@@ -392,6 +415,7 @@ const reviewErrors = (data: Row): string[] => {
     ...textListErrors(data.holdQuestions, 'holdQuestions'),
     ...architectureErrors(data),
     ...outcomeErrors(data),
+    ...sizeErrors(data),
     ...(data.caseAgainst === undefined
       ? []
       : isRecord(data.caseAgainst)
@@ -655,7 +679,7 @@ const reviewCard = (data: Row): string[] => {
   const probes = rows(outcome?.probes);
   const probeCount = (result: string) => probes.filter((probe) => probe.head === result).length;
   return [
-    `**Verdict** ${VERDICT_LABEL[text(data.verdict)] ?? md(data.verdict)} · **Risk** ${md(data.risk)} · **Page** [open the review](${PAGE_TOKEN})`,
+    `**Verdict** ${VERDICT_LABEL[text(data.verdict)] ?? md(data.verdict)} · **Risk** ${md(data.risk)} · **Size** ${md(data.size)}${data.sizeBy === 'operator' ? " (the operator's call)" : ''} · **Page** [open the review](${PAGE_TOKEN})`,
     ...(since
       ? [
           '',

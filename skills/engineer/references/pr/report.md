@@ -50,6 +50,9 @@ draft: true under --quick or --no-local, or whenever the local gates did not run
 verdict: approve | approve-with-fixes | needs-discussion | changes-requested | do-not-merge
 risk: S | M | L | XL
 riskWhy: what drove it, what it touches, tests added/changed/none, the triage counts
+size: quick | small | compact | full     # the fan-out that ran
+sizeBy: rules | operator               # operator only when they asked for this size
+outcomeSkipped: quick | docs-only | no-intent | operator   # only when there is no outcome section
 executed: where it has run (staging since a date, never, prod via #n); past 24 characters it shows as its own line, not a badge
 sinceReview:                       # a re-review only
   prior: "10-09, head 1a2b3c4"
@@ -102,6 +105,7 @@ notChecked: [what was skipped and why]
 
 - **sinceReview** is a re-review's opening: the last review's findings and questions, each re-checked at the new head (`fixed`, `changed`: the code moved but the problem moved with it, `open`, `moot`: the code is gone), the commits since its head, and the conversation since its date. The page and the card count fixed, changed, still open and new from these rows; nothing is counted by hand.
 - **summary** is the whole report for a reader in a hurry (on a re-review, lead with the delta): two or three sentences with the verdict, the one thing that matters most, and what the author needs to do. A reader who stops there knows whether this merges.
+- **size** is the fan-out that ran, and **sizeBy** says who chose it: `rules` when the playbook's sizing picked it, `operator` only when they asked for that size (`--quick`, or "a lighter review is fine"). The script refuses a PR with a `risk` file at less than `full` unless `sizeBy` is `operator`, so a review cannot shrink itself. **outcomeSkipped** is required when there is no `outcome` section and names the allowed reason: `quick`, `docs-only` (no behavior to probe), `no-intent` (the PR states nothing to test), or `operator`. The card and the page header show the size, and mark one the operator chose.
 - **risk** is a judgment: S is isolated with no auth, data or schema; XL is an auth or value path plus schema plus no tests. `riskWhy` says what drove it.
 - Every anchor in `lookAt`, `decisions` and `findings` names a file in `files`. Unknown or misspelled keys are errors, so no section silently disappears.
 - **lookAt** is where the operator's own attention goes: five hunks at most, `risk` files first, each with why it needs human judgment. A clean PR still names the hunk that carries its behavior. **skim** counts the mechanical bulk ("14 renames from the Order → Purchase move, 3 generated clients").
