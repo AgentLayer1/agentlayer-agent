@@ -43,8 +43,16 @@ fetch_guides() {
   done
 }
 
+# macOS kqueue rejects /dev/tty (EINVAL), and claude is a Bun binary that watches its stdin with
+# kqueue, so the guide and the shells it opens read the terminal's own device instead.
+terminal_device() {
+  local name
+  name=$(ps -o tty= -p $$ 2>/dev/null | tr -d ' ' || true)
+  if [[ -n $name && -c /dev/$name ]]; then printf '/dev/%s' "$name"; else printf '/dev/tty'; fi
+}
+
 main() {
-  local guide dir="" status=0
+  local guide dir="" status=0 terminal
   [[ -z ${SUDO_USER:-} && $(id -u) -ne 0 ]] || die "Run this without sudo: nothing here needs it."
   guide=$(guide_for_this_system)
   if ! dir=$(local_guides); then
@@ -53,8 +61,9 @@ main() {
     fetch_guides "$guide" "$dir"
   fi
   # Opening the terminal is the real test: /dev/tty can look readable where there is no terminal behind it.
-  if { : </dev/tty; } 2>/dev/null; then
-    bash "$dir/$guide.sh" "$@" </dev/tty || status=$?
+  terminal=$(terminal_device)
+  if { : <"$terminal"; } 2>/dev/null; then
+    bash "$dir/$guide.sh" "$@" <"$terminal" || status=$?
   else
     bash "$dir/$guide.sh" --list "$@" </dev/null || status=$?
   fi
