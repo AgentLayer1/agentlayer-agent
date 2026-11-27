@@ -52,6 +52,62 @@ and prompts per optional one. The new template files are the source of truth for
 
 <!-- Add new releases below this line, newest first. -->
 
+## [1.2.3] - 2026-11-27
+
+A code review now runs what a change claims as well as reading it, and the finances page opens on
+where the money goes.
+
+### Added
+- The review's outcome lane: a clean-room agent gets the PR's description, its acceptance criteria
+  and its public interface, never the diff. It writes probes in the repo's own test style and runs
+  them on the head, and also on the merge base when a claim says the change fixes or keeps a
+  behaviour. A failing probe becomes a candidate finding that its verifier re-runs. The report
+  draws an Outcome section above the findings, and the verdict needs both the probes and the reading.
+- A review of a teammate's PR offers to send its probes as a tests PR into the author's branch. The
+  tests PR opens as a draft while any probe fails, and a fork PR gets the probes as reproducers
+  instead. Re-reviews re-run the last review's probes at the new head, and replies on your own PR
+  settle a reviewer's claim about behaviour with a probe.
+- In adversarial-review, the reviewer writes probes from the brief's claims before it reads the
+  diff. Verify re-runs a failing probe, and a probe that pinned a confirmed finding carries into the
+  next brief.
+- A twenty-fourth engineering principle, judge the meal and its ingredients: probes prove what a
+  change does, the reading judges how it's built, and neither stands in for the other.
+- A small review size for PRs under 60 production lines with no risk file. One agent walks every
+  lane's checklist by name, but the outcome agent and an independent verifier for each serious
+  candidate still run.
+- The finances `pdf.ts` reads statements that have a column header, through a layout saved in the
+  home's importers folder. `--draft` proposes a layout from the header, and charge columns (a fee or
+  a tax) count as money going out. The skill ships one generic template and no bank's layout.
+- Finances rules can be held to one entity or one account. `rules.ts drop` retracts suggestions, and
+  Categorise gains "Approve all", undone in one step.
+- An account marked `balances: false` counts toward spending only. It stays out of the "adds up"
+  check and is labelled as such on the Accounts tab.
+
+### Changed
+- Review agents run as `agentlayer:pr-reviewer`, a plugin agent that loads none of the home's
+  instructions. It carries a review's hard rules in its own body, so each agent starts from a small
+  context instead of the whole home. It needs Claude Code 2.1.271 or later; on an older host or
+  another CLI the review falls back to a general-purpose agent and says so.
+- Review agents batch their reads, a defect several lanes found is verified once, and lanes and
+  verifiers share one brief file instead of each getting a full copy of the prompt.
+- A review's size follows its rules, never cost: a PR that touches a risk file gets the full review
+  unless the operator asks for less, a self-review is sized like a teammate's PR, and the report
+  script refuses a review that shrank itself.
+- The finances page opens on where the money goes. The old overview moves to an Accounts tab, Checks
+  becomes Health, and old `#spending` and `#checks` links redirect. Individuals come first, then
+  companies by name, and each entity keeps one colour across tabs. A newer rule suggestion replaces
+  an unconfirmed one, never an approved one, and existing rule keys are unchanged.
+- The manual is 28,846 bytes, up from 28,810.
+
+### Fixed
+- The Tax tab reads as part of the finances page: one entity switch, the page's theme, and a frame
+  that grows to fit its content instead of scrolling inside a box.
+- The one-line installer hands its guide the terminal's own device instead of `/dev/tty`, so a
+  `claude` command run from the shell the guide opens no longer crashes on macOS.
+
+### Upgrade
+- `template/AGENTS.md: mandatory` — the Principles list adds "judge the meal and its ingredients".
+
 ## [1.2.2] - 2026-11-26
 
 Antigravity knows when it isn't in an agent home, and `hosts status` names every host gap.
